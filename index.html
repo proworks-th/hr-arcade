@@ -88,6 +88,27 @@ kbd{font-family:inherit;font-size:.75em;border:2px solid currentColor;border-rad
 .xmark{position:absolute;transform:translate(-50%,-50%);font-size:7cqw;color:#ff2d55;font-weight:800;pointer-events:none;animation:fadeup .7s forwards;text-shadow:0 0 .5cqw #fff}
 @keyframes fadeup{to{opacity:0;transform:translate(-50%,-120%)}}
 
+/* online party */
+.pt{display:grid;grid-template-columns:1fr 230px;gap:12px}
+@media (max-width:900px){.pt{grid-template-columns:1fr}}
+.pt-stage{position:relative}
+.pt-stage canvas{display:block;width:100%;aspect-ratio:800/448;border:3px solid var(--line);border-radius:14px;box-shadow:0 6px 0 var(--line);background:#cfeeff;touch-action:none}
+.pt-res{position:absolute;inset:0;display:none;place-items:center;background:rgba(43,33,64,.45);border-radius:14px;padding:12px}
+.pt-res.show{display:grid}
+.pt-rank{text-align:left;padding-left:22px}.pt-rank li{margin:6px 0}.pt-rank img{vertical-align:-8px}
+.pt-bar{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;align-items:center}
+.pt-emotes{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.pt-side{background:#fff;border:3px solid var(--line);border-radius:14px;padding:10px 12px;align-self:start}
+.pt-side h3{margin:0 0 6px}.pt-side ul{list-style:none;margin:0;padding:0}
+.pt-side li{display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px dashed #e2d8c8}.pt-side li .tag{margin-left:auto}
+.pt-help{font-size:13px}
+.pt-touch{display:none;justify-content:space-between;margin-top:10px;user-select:none;-webkit-user-select:none}
+.pt-touch>div{display:flex;gap:10px}.pt-touch .btn{width:64px;height:56px;font-size:24px;padding:0;touch-action:none}
+@media (pointer:coarse){.pt-touch{display:flex}}
+.pt-join{margin:24px auto}.pt-field{display:flex;align-items:center;gap:8px;margin:10px 0;font-weight:600;text-align:left}
+.pt-field input{flex:1;font:inherit;border:3px solid var(--line);border-radius:10px;padding:6px 10px}
+.pt-colors{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}.pt-colors .btn{padding:4px 6px}
+
 /* runner */
 .run-box canvas{display:block;width:100%;max-width:980px;margin:0 auto;aspect-ratio:800/360;border:3px solid var(--line);border-radius:14px;box-shadow:0 6px 0 var(--line);touch-action:none;cursor:pointer;background:#cfeeff;user-select:none;-webkit-user-select:none}
 .hud-ic{width:22px;height:22px;vertical-align:-5px}
@@ -701,7 +722,15 @@ function stackGame(root,api){
 }
 
 /* ---------- registry & hub ---------- */
+function partyMount(root,api){
+  let inst=null,dead=false;
+  root.innerHTML='<div class="panel" style="margin:40px auto">⏳ กำลังโหลดโหมดออนไลน์…</div>';
+  import('./party.js?v=1').then(m=>{if(!dead)inst=m.partyGame(root,api)})
+    .catch(e=>{root.innerHTML=`<div class="panel" style="margin:40px auto">โหลดโหมดออนไลน์ไม่ได้ 😢<br><small class="muted">${e.message}</small></div>`});
+  return{destroy(){dead=true;inst&&inst.destroy()}};
+}
 const GAMES=[
+  {id:'party',title:'ปาร์ตี้ออนไลน์',emoji:'🎉',img:'assets/office/popper.svg',color:'#ffe08a',online:true,desc:'เข้าห้องเดียวกันทั้งออฟฟิศ เห็นเพื่อนวิ่งไปมา แข่งวิ่งแบบ Fall Guys หรือช่วยกันเคลียร์งานแบบ Overcooked',time:'เล่นพร้อมกัน',mount:partyMount},
   {id:'spot',title:'จับผิดภาพ',emoji:'🔍',img:'assets/kenney/character_green_front.png',color:'#9fd8ff',desc:'หาจุดต่างบนโต๊ะทำงาน ด่านประจำวันเหมือนกันทั้งออฟฟิศ',time:'2–4 นาที',mount:spotGame},
   {id:'run',title:'วิ่งไปตอกบัตร',emoji:'🏃',img:'assets/kenney/character_pink_jump.png',color:'#c6f0ff',desc:'เกมวิ่งแนว flash กระโดดข้ามสไลม์ ก้มหลบผึ้ง เก็บเหรียญให้ทันก่อน 8:30',time:'1–3 นาที',mount:runnerGame},
   {id:'whack',title:'สายด่วนถล่มโต๊ะ',emoji:'☎️',img:'assets/kenney/slime_fire_rest.png',color:'#ffb3c7',desc:'ตีสาย ตีอีเมล ตีงานด่วน… แต่อย่าเผลอตีหัวหน้า!',time:'40 วินาที',mount:whackGame},
@@ -711,10 +740,10 @@ function renderHub(){
   hub.innerHTML=`<section class="hero"><div><h2>พักสมอง <span>2 นาที</span></h2><p>เล่นสั้นๆ แล้วกลับไปลุยงานต่อ · ${todayTH}</p></div>
     <label class="namebox">😎 <input id="nameIn" maxlength="20" placeholder="ชื่อเล่น (ใช้ตอนอวด)"></label></section>
     <div class="cards">${GAMES.map(g=>`<button class="card" data-g="${g.id}"><div class="em" style="--c:${g.color}">${g.img?`<img src="${g.img}" alt="">`:g.emoji}</div>
-      <h3>${g.title}</h3><p>${g.desc}</p><div class="meta"><span class="tag">⏱ ${g.time}</span><span>🏆 ${fmt(store.get('best_'+g.id,0))}${g.unit?' '+g.unit:''}</span></div></button>`).join('')}</div>
+      <h3>${g.title}</h3><p>${g.desc}</p><div class="meta"><span class="tag">⏱ ${g.time}</span><span>${g.online?'👥 ออนไลน์':`🏆 ${fmt(store.get('best_'+g.id,0))}${g.unit?' '+g.unit:''}`}</span></div></button>`).join('')}</div>
     <div class="tips">🙈 <b>หัวหน้าเดินมา?</b> กด <b>Esc</b> (หรือ <b>\`</b>) หรือปุ่ม 🙈 มุมขวาล่าง → จอกลายเป็นไฟล์ Excel ทะเบียนวันลาทันที เกมหยุด เสียงเงียบ ชื่อแท็บเปลี่ยน<br>
     กลับมาเล่นต่อ: กด <b>Esc</b> อีกครั้ง หรือแตะคำว่า <b>"พร้อม"</b> ที่มุมซ้ายล่างของ Excel<br>
-    📋 จบเกมแล้วกด <b>"อวดในไลน์"</b> เพื่อคัดลอกคะแนนไปแปะในกลุ่ม · สถิติเก็บในเครื่องใครเครื่องมัน<br>🎨 ภาพและเสียงในเกม: <a href="https://kenney.nl" target="_blank" rel="noopener">Kenney.nl</a> (CC0)</div>`;
+    📋 จบเกมแล้วกด <b>"อวดในไลน์"</b> เพื่อคัดลอกคะแนนไปแปะในกลุ่ม · สถิติเก็บในเครื่องใครเครื่องมัน<br>🎨 ภาพและเสียงในเกม: <a href="https://kenney.nl" target="_blank" rel="noopener">Kenney.nl</a> (CC0) · ภาพโหมดออนไลน์: <a href="https://github.com/microsoft/fluentui-emoji" target="_blank" rel="noopener">Microsoft Fluent Emoji</a> (MIT)</div>`;
   const ni=$('#nameIn');ni.value=store.get('name','');ni.oninput=()=>store.set('name',ni.value);
   hub.querySelectorAll('.card').forEach(c=>c.onclick=()=>startGame(c.dataset.g));
 }
