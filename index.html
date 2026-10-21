@@ -92,37 +92,12 @@ kbd{font-family:inherit;font-size:.75em;border:2px solid currentColor;border-rad
 .xmark{position:absolute;transform:translate(-50%,-50%);font-size:7cqw;color:#ff2d55;font-weight:800;pointer-events:none;animation:fadeup .7s forwards;text-shadow:0 0 .5cqw #fff}
 @keyframes fadeup{to{opacity:0;transform:translate(-50%,-120%)}}
 
-/* leave desk */
-.stamp-wrap{display:grid;grid-template-columns:250px 1fr;gap:14px}
-@media (max-width:720px){.stamp-wrap{grid-template-columns:1fr}.rules{order:2}}
-.rules{background:#fffbe0;border:3px solid var(--line);border-radius:14px;padding:10px 14px;font-size:15px;align-self:start}
-.rules h3{margin:0 0 4px}.rules ol{margin:0;padding-left:20px}.rules li{margin:4px 0}
-.rules li.new{animation:flash .5s 4 alternate;border-radius:6px}
-@keyframes flash{to{background:var(--yel)}}
-.rules small{color:var(--muted)}
-.desk{background:#a9714b repeating-linear-gradient(90deg,transparent 0 40px,rgba(0,0,0,.05) 40px 80px);border:3px solid var(--line);border-radius:14px;min-height:400px;padding:14px;display:flex;flex-direction:column;align-items:center;gap:12px;overflow:hidden;position:relative}
-.desk .timer{width:min(360px,100%);flex:none}
-.slot{width:min(360px,100%);position:relative;min-height:330px}
-.doc{background:#fffdf6;border-radius:6px;box-shadow:0 8px 0 rgba(0,0,0,.25);padding:12px 16px;position:relative;transform:rotate(var(--r));animation:slidein .25s ease-out;font-size:15px}
-@keyframes slidein{from{transform:translateY(-60px) rotate(var(--r));opacity:0}}
-.doc.out-l{animation:outl .3s forwards}.doc.out-r{animation:outr .3s forwards}
-@keyframes outl{to{transform:translateX(-140%) rotate(-20deg);opacity:0}}
-@keyframes outr{to{transform:translateX(140%) rotate(20deg);opacity:0}}
-.doc-head{display:flex;gap:10px;align-items:center;border-bottom:2px dashed #d8cfc0;padding-bottom:6px;margin-bottom:4px}
-.doc-head .ava{font-family:var(--emoji);font-size:34px}
-.doc-head h4{margin:0;font-size:19px}.doc-head small{color:var(--muted)}
-.doc .f{display:flex;justify-content:space-between;gap:10px;border-bottom:1px dotted #d8cfc0;padding:4px 0}
-.doc .f span{color:var(--muted);white-space:nowrap}.doc .f b{font-weight:600;text-align:right}
-.sigline{margin-top:10px;text-align:right;color:var(--muted)}
-.sig{font-family:"Segoe Script","Brush Script MT","Comic Sans MS",cursive;font-size:21px;color:#1d3fbb;display:inline-block;transform:rotate(-6deg)}
-.blank{letter-spacing:2px}
-.stampmark{position:absolute;top:46%;left:50%;border:5px solid;border-radius:10px;padding:2px 14px;font-weight:800;font-size:30px;white-space:nowrap;opacity:.85;transform:translate(-50%,-50%) rotate(-14deg);animation:stampin .16s ease-out;background:rgba(255,255,255,.4)}
-.stampmark.ok{color:#139a5c}.stampmark.no{color:#e23030}
-@keyframes stampin{from{transform:translate(-50%,-50%) rotate(-14deg) scale(2.2);opacity:0}}
-.feedback{position:absolute;left:12px;right:12px;bottom:12px;background:var(--ink);color:#fff;border-radius:12px;padding:10px 14px;font-weight:600;text-align:center;display:none;z-index:2}
-.feedback.show{display:block;animation:popin .2s}
-.feedback.info{background:var(--blue)}
-.stamp-btns{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
+/* runner */
+.run-box canvas{display:block;width:100%;max-width:980px;margin:0 auto;aspect-ratio:800/360;border:3px solid var(--line);border-radius:14px;box-shadow:0 6px 0 var(--line);touch-action:none;cursor:pointer;background:#cfeeff;user-select:none;-webkit-user-select:none}
+.hud-ic{width:22px;height:22px;vertical-align:-5px}
+.run-tip{font-size:13px}
+@media (max-width:720px){.run-tip{display:none}}
+.card .em img{width:60px;height:60px}
 
 /* whack */
 .legend{text-align:center;margin:-2px 0 12px;font-size:15px}
@@ -465,92 +440,123 @@ function spotGame(root,api){
 }
 
 /* =================================================================
-   GAME 2 — โต๊ะอนุมัติใบลา
+   GAME 2 — วิ่งไปตอกบัตร (endless runner · sprites: Kenney New Platformer Pack, CC0)
 ================================================================= */
-const TH_FN=['สมชาย','สุดา','มานี','ปิติ','ชูใจ','วีระ','ดวงใจ','อารีย์','ณเดช','ญาญ่า','บุญมี','สมศรี','ประยุทธ','มะลิ','ก้อง','แพรวา','ต้นกล้า','ฟ้าใส','น้ำหวาน','บอย'];
-const TH_LN=['ใจดี','รักงาน','ขยันยิ่ง','มาสาย','ตื่นเช้า','สุขใจ','ทำงานดี','ลาบ่อย','งานด่วน','ไม่ขาด'];
-const AVA=['🧑‍💼','👩‍💼','👨‍💼','👩‍⚕️','👨‍⚕️','🧑‍⚕️','👩‍🔬','🧑‍🔧','👵','🧔'];
-const REASON={'ป่วย':['ไข้หวัด เจ็บคอ','ปวดท้อง ท้องเสีย','ไมเกรน','ไข้ขึ้นสูง','ปวดหลัง'],
-  'กิจ':['ไปทำบัตรประชาชน','พาแม่ไปหาหมอ','ติดต่อธนาคาร','งานบวชญาติ','ย้ายบ้าน','รับปริญญาน้อง'],
-  'พักผ่อน':['พักผ่อนต่างจังหวัด','เที่ยวกับครอบครัว','กลับบ้านต่างจังหวัด','ไปทะเล','พาลูกเที่ยว']};
-const ABSURD=['แมวที่บ้านอกหัก','ไปตามหาตัวเองที่ปาย','หมอดูห้ามออกจากบ้าน','รอพัสดุ Shopee ทั้งวัน','ซีรีส์เกาหลีออกตอนจบ','ปลาทองดูเศร้าๆ','ฝันเห็นเลข จะไปซื้อหวย','ขี้เกียจ (ขอบอกตามตรง)','ไปคอนเสิร์ตรอบที่ 4','ดวงวันนี้ไม่เหมาะกับการทำงาน','ต้นไม้ที่บ้านต้องการกำลังใจ'];
-const fmtDay=n=>n<=31?`${n} ต.ค. 69`:`${n-31} พ.ย. 69`;
-function genLeave(active){
-  const type=pick(rnd,['ป่วย','กิจ','พักผ่อน']);
-  const first=pick(rnd,TH_FN);
-  const d={first,name:first+' '+pick(rnd,TH_LN),ava:pick(rnd,AVA),type,days:1+Math.floor(rnd()*4),signed:true,cert:false,reason:pick(rnd,REASON[type]),leave:8+Math.floor(rnd()*45)};
-  d.cert=(type==='ป่วย'&&d.days>=3)?true:(type==='ป่วย'&&rnd()<.3);
-  d.submit=type==='ป่วย'?d.leave+d.days+Math.floor(rnd()*2):d.leave-1-Math.floor(rnd()*8);
-  d.valid=rnd()<.52;d.why='';
-  if(!d.valid){
-    switch(pick(rnd,active)){
-      case 'sign':d.signed=false;d.why='ไม่มีลายเซ็นผู้ลา';break;
-      case 'cert':d.type='ป่วย';d.days=3+Math.floor(rnd()*3);d.cert=false;d.reason=pick(rnd,REASON['ป่วย']);d.submit=d.leave+d.days;d.why='ลาป่วย '+d.days+' วัน ไม่มีใบรับรองแพทย์';break;
-      case 'adv':d.type='พักผ่อน';d.reason=pick(rnd,REASON['พักผ่อน']);d.cert=false;d.submit=d.leave+1+Math.floor(rnd()*3);d.why='ลาพักผ่อนแต่ยื่นย้อนหลัง';break;
-      case 'why':d.reason=pick(rnd,ABSURD);d.why='เหตุผล "'+d.reason+'" ฟังไม่ขึ้น 😂';break;
-    }
+const RUN_IMG={};
+function runImg(n){if(!RUN_IMG[n]){const i=new Image();i.src='assets/runner/'+n+'.png';RUN_IMG[n]=i}return RUN_IMG[n]}
+function runSfx(n){if(muted||bossOn)return;try{const a=new Audio('assets/runner/sfx_'+n+'.ogg');a.volume=.35;a.play().catch(()=>{})}catch(e){}}
+const RUN_COLORS=['green','pink','purple','yellow','beige'];
+// obstacle defs: draw size s, bottom offset from ground, hitbox [dx,dy,w,h] inside the s×s draw box
+const RUN_OBS={
+  slime:{f:['slime_normal_walk_a','slime_normal_walk_b'],s:64,yb:0,hb:[8,30,48,34],vx:-40},
+  spike:{f:['slime_spike_walk_a','slime_spike_walk_b'],s:64,yb:0,hb:[10,20,44,44],vx:-30},
+  snail:{f:['snail_walk_a','snail_walk_b'],s:64,yb:0,hb:[6,24,52,40],vx:-25},
+  saw:{f:['saw_a','saw_b'],s:72,yb:24,hb:[14,14,44,40],vx:0,spin:1},
+  mouse:{f:['mouse_walk_a','mouse_walk_b'],s:64,yb:0,hb:[6,30,52,34],vx:-230},
+  bee:{f:['bee_a','bee_b'],s:64,yb:-50,hb:[8,12,48,40],vx:-60},
+  fly:{f:['fly_a','fly_b'],s:64,yb:-150,hb:[10,14,44,36],vx:-40},
+};
+const RUN_QUIPS=['หัวหน้ายังไม่มา รีบเลย!','ใกล้ถึงเครื่องสแกนนิ้วแล้ว!','08:29 …ทันไหม?!','วิ่งเร็วกว่าระบบ สปส. ตอนเช้าอีก','เหรียญนี้เอาไปจ่ายค่ากาแฟ ☕'];
+function runnerGame(root,api){
+  root.innerHTML=`<div class="hud"><span data-k="hp"></span><span>📏 <b data-k="m">0</b> ม.</span>
+    <span><img src="assets/runner/hud_coin.png" class="hud-ic" alt=""> <b data-k="c">0</b></span><span>⭐ <b data-k="sc">0</b></span>
+    <span class="muted run-tip">แตะฝั่งขวา / Space = กระโดด (กดซ้ำกลางอากาศ = กระโดด 2 ชั้น) · แตะฝั่งซ้ายค้าง / ↓ = ก้ม</span></div>
+    <div class="run-box"><canvas></canvas></div>`;
+  const q=k=>root.querySelector(`[data-k="${k}"]`),cv=root.querySelector('canvas'),ctx=cv.getContext('2d');
+  const W=800,H=360,GY=300,PX=110,PH=96,G=2600;
+  const dpr=Math.min(2,window.devicePixelRatio||1);cv.width=W*dpr;cv.height=H*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);ctx.imageSmoothingQuality='high';
+  let color=store.get('runColor','green');
+  Object.values(RUN_OBS).forEach(o=>o.f.forEach(runImg));
+  ['terrain_grass_block_top','background_color_hills','coin_gold','gem_blue','heart','bush','sign_right'].forEach(runImg);
+  const p={y:GY,vy:0,jumps:0,duck:false,held:false,inv:0};
+  let speed=380,dist=0,coins=0,hp=3,obs=[],items=[],nextObs=700,nextDecor=300,anim=0,running=false,over=false,shake=0,lastQuip=0;
+  const meters=()=>Math.floor(dist/40),score=()=>meters()+coins*10;
+  function hud(){q('hp').innerHTML=[0,1,2].map(i=>`<img class="hud-ic" alt="" src="assets/runner/${i<hp?'hud_heart':'hud_heart_empty'}.png">`).join('');
+    q('m').textContent=fmt(meters());q('c').textContent=coins;q('sc').textContent=fmt(score())}
+  const grounded=()=>p.y>=GY&&p.vy>=0;
+  function box(){return p.duck&&grounded()?{x:PX+14,y:p.y-48,w:66,h:44}:{x:PX+20,y:p.y-80,w:56,h:74}}
+  function jump(){if(!running||over||api.paused)return;
+    if(grounded()){p.vy=-880;p.jumps=1;p.held=true;runSfx('jump')}
+    else if(p.jumps<2){p.vy=-760;p.jumps=2;p.held=true;runSfx('jump')}}
+  function release(){p.held=false;if(p.vy<-320)p.vy=-320}
+  function spawnObs(){
+    const m=meters();const pool=['slime','slime','snail','spike'];
+    if(m>150)pool.push('saw','bee');if(m>350)pool.push('mouse','bee','fly');if(m>700)pool.push('saw','mouse','spike');
+    const t=pick(rnd,pool),d=RUN_OBS[t];obs.push({t,d,x:W+20,rot:0});
+    // occasional pair of ground obstacles for later stages
+    if(m>500&&!d.yb&&rnd()<.25)obs.push({t:'slime',d:RUN_OBS.slime,x:W+20+70,rot:0});
+    // coins / pickups in the gap
+    const r=rnd();
+    if(r<.55){const arc=rnd()<.5,n=4+Math.floor(rnd()*3),x0=W+160;
+      for(let i=0;i<n;i++)items.push({k:'coin',x:x0+i*44,y:arc?GY-60-Math.sin(i/(n-1)*Math.PI)*110:GY-40})}
+    else if(r<.6)items.push({k:'gem',x:W+200,y:GY-150});
+    else if(r<.64&&hp<3)items.push({k:'heart',x:W+200,y:GY-140});
+    const minGap=speed*.8;nextObs=minGap+rnd()*(300+speed*.35);
   }
-  return d;
-}
-function stampGame(root,api){
-  root.innerHTML=`<div class="hud"><span data-k="lives"></span><span>⭐ <b data-k="sc">0</b></span><span>📄 <b data-k="n">0</b> ใบ</span><span data-k="combo" class="muted"></span></div>
-    <div class="stamp-wrap"><aside class="rules"><h3>📜 กฎโต๊ะนี้</h3><ol data-k="rules"></ol><small>* กฎในเกมเท่านั้น ไม่ใช่ระเบียบจริง 😆</small></aside>
-    <div class="desk"><div class="timer" data-k="tm"><div data-k="bar"></div></div><div class="slot" data-k="slot"></div><div class="feedback" data-k="fb"></div></div></div>
-    <div class="stamp-btns"><button class="btn no big" data-k="no">✖ ไม่อนุมัติ <kbd>←</kbd></button><button class="btn yes big" data-k="yes">✔ อนุมัติ <kbd>→</kbd></button></div>`;
-  const q=k=>root.querySelector(`[data-k="${k}"]`);
-  const RULES=[{id:'sign',at:0,t:'ใบลาต้องมี <b>ลายเซ็น</b> ผู้ลา'},{id:'cert',at:5,t:'ลาป่วย <b>ตั้งแต่ 3 วัน</b> ต้องแนบ <b>ใบรับรองแพทย์</b>'},
-    {id:'adv',at:12,t:'ลาพักผ่อนต้อง <b>ยื่นก่อน</b> วันลา'},{id:'why',at:20,t:'เหตุผลการลาต้อง <b>ฟังขึ้น</b>'}];
-  let lives=3,sc=0,n=0,combo=0,doc=null,docEl=null,tLeft=0,tMax=1,busy=true,active=[];
-  function hud(){q('lives').textContent='❤️'.repeat(lives)+'🖤'.repeat(3-lives);q('sc').textContent=fmt(sc);q('n').textContent=n;
-    const m=1+Math.floor(combo/5);q('combo').textContent=combo>=3?`🔥 คอมโบ ${combo}${m>1?' (x'+m+')':''}`:'';
-    q('bar').style.width=(tLeft/tMax*100)+'%';q('tm').classList.toggle('low',tLeft<tMax*.3)}
-  function fb(msg,cls){const f=q('fb');f.className='feedback show'+(cls?' '+cls:'');f.innerHTML=msg}
-  function fbHide(){q('fb').className='feedback'}
-  function next(){
-    const fresh=RULES.filter(r=>r.at<=n&&!active.includes(r.id));
-    if(fresh.length){
-      fresh.forEach(r=>active.push(r.id));
-      q('rules').innerHTML=RULES.filter(r=>active.includes(r.id)).map(r=>`<li class="${fresh.includes(r)?'new':''}">${r.t}</li>`).join('');
-      if(n>0){fb('📢 กฎใหม่! '+fresh.map(r=>r.t).join(' / '),'info');api.sfx('level');busy=true;q('slot').innerHTML='';api.after(2.6,()=>{fbHide();spawn()});return}
-    }
-    spawn();
+  function draw(){
+    ctx.save();if(shake>0)ctx.translate((rnd()-.5)*10*shake,(rnd()-.5)*10*shake);
+    const sky=ctx.createLinearGradient(0,0,0,GY);sky.addColorStop(0,'#6ec3f2');sky.addColorStop(1,'#d9f2ff');ctx.fillStyle=sky;ctx.fillRect(-10,-10,W+20,H+20);
+    ctx.fillStyle='rgba(255,255,255,.9)';for(let i=0;i<5;i++){const cx=((i*230-dist*.05)%1150+1150)%1150-120,cy=40+(i*53)%70;
+      ctx.beginPath();ctx.arc(cx,cy,22,0,7);ctx.arc(cx+26,cy-10,28,0,7);ctx.arc(cx+56,cy,20,0,7);ctx.fill()}
+    // hills strip only (the image's top rows are opaque white sky)
+    const bg=runImg('background_color_hills'),BS=256*1.4,BH=140*1.4;
+    if(bg.complete&&bg.naturalWidth){const off=(dist*.25)%BS;for(let x=-off;x<W;x+=BS)ctx.drawImage(bg,0,116,256,140,x,GY+40-BH,BS+1,BH)}
+    for(const it of items)if(it.k==='decor'){const im=runImg(it.n);if(im.complete)ctx.drawImage(im,it.x,GY-64,64,64)}
+    const gt=runImg('terrain_grass_block_top');if(gt.complete&&gt.naturalWidth){const off=dist%64;for(let x=-off;x<W;x+=64)ctx.drawImage(gt,x,GY,64,64)}
+    else{ctx.fillStyle='#6fc24a';ctx.fillRect(0,GY,W,H-GY)}
+    const fr=Math.floor(anim*6)%2;
+    for(const it of items){if(it.k==='decor')continue;const im=runImg(it.k==='coin'?'coin_gold':it.k==='gem'?'gem_blue':'heart');
+      const bob=Math.sin(anim*5+it.x*.05)*4;if(im.complete)ctx.drawImage(im,it.x-24,it.y-24+bob,48,48)}
+    for(const o of obs){const im=runImg(o.d.f[fr]),top=GY+o.d.yb-o.d.s;
+      if(o.d.spin){ctx.save();ctx.translate(o.x+o.d.s/2,top+o.d.s/2);ctx.rotate(o.rot);if(im.complete)ctx.drawImage(im,-o.d.s/2,-o.d.s/2,o.d.s,o.d.s);ctx.restore()}
+      else if(im.complete)ctx.drawImage(im,o.x,top,o.d.s,o.d.s)}
+    if(!(p.inv>0&&!over&&Math.floor(p.inv*12)%2)){
+      const pose=over?'hit':!grounded()?'jump':p.duck?'duck':(Math.floor(anim*speed/45)%2?'walk_a':'walk_b');
+      const im=runImg(`character_${color}_${pose}`);if(im.complete)ctx.drawImage(im,PX,p.y-PH+8,PH,PH)}
+    ctx.restore();
   }
-  function spawn(){
-    doc=genLeave(active);
-    q('slot').innerHTML=`<div class="doc" style="--r:${(rnd()*4-2).toFixed(1)}deg">
-      <div class="doc-head"><span class="ava">${doc.ava}</span><div><h4>ใบลา${doc.type}</h4><small>เขียนที่ โรงพยาบาล</small></div></div>
-      <div class="f"><span>ชื่อ</span><b>${doc.name}</b></div>
-      <div class="f"><span>ประเภท</span><b>ลา${doc.type}</b></div>
-      <div class="f"><span>วันที่ลา</span><b>${fmtDay(doc.leave)} (${doc.days} วัน)</b></div>
-      <div class="f"><span>วันที่ยื่น</span><b>${fmtDay(doc.submit)}</b></div>
-      <div class="f"><span>เหตุผล</span><b>${doc.reason}</b></div>
-      <div class="f"><span>เอกสารแนบ</span><b>${doc.cert?'📎 ใบรับรองแพทย์':'—'}</b></div>
-      <div class="sigline">ลงชื่อ ${doc.signed?`<span class="sig">${doc.first}</span>`:'<span class="blank">.....................</span>'}</div></div>`;
-    docEl=q('slot').firstElementChild;
-    tMax=Math.max(2.6,8-n*.13);tLeft=tMax;busy=false;hud();
-  }
-  function stamp(ok){const s=document.createElement('div');s.className='stampmark '+(ok?'ok':'no');s.textContent=ok?'อนุมัติ':'ไม่อนุมัติ';docEl.appendChild(s)}
-  function wrong(msg){
-    lives--;combo=0;api.sfx('bad');root.querySelector('.desk').classList.remove('shake');void root.offsetWidth;root.querySelector('.desk').classList.add('shake');
-    fb(msg);hud();
-    api.after(1.7,()=>{fbHide();if(lives<=0)api.end(sc,`ตรวจ ${n} ใบ`);else next()});
-  }
-  function decide(approve){
-    if(busy||api.paused||!doc)return;busy=true;stamp(approve);api.sfx('stamp');
-    if(approve===doc.valid){
-      n++;combo++;sc+=10*(1+Math.floor(combo/5));api.sfx('good');hud();
-      api.after(.22,()=>docEl.classList.add(approve?'out-r':'out-l'));api.after(.5,next);
-    }else wrong(approve?'❌ พลาด! ใบนี้ผิดกฎ: '+doc.why:'❌ พลาด! ใบนี้ถูกต้องครบ ปัดตกทำไม 😭');
-  }
-  q('yes').onclick=()=>decide(true);q('no').onclick=()=>decide(false);
-  api.onKey(e=>{const k=e.key.toLowerCase();if(k==='arrowright'||k==='d'){e.preventDefault();decide(true)}else if(k==='arrowleft'||k==='a'){e.preventDefault();decide(false)}});
-  api.loop(dt=>{if(busy)return;tLeft-=dt;if(tLeft<=0){tLeft=0;busy=true;hud();
-    wrong('⏰ ช้าไป! คิวยาวถึงหน้าห้องแล้ว'+(doc.valid?' (ใบนี้ถูกต้อง)':' (ผิดกฎ: '+doc.why+')'))}else hud()});
-  hud();
-  api.intro({how:`<p>📝 ใบลาไหลมาไม่หยุด! ตรวจตาม <b>กฎโต๊ะนี้</b> แล้วตัดสินให้ไว</p>
-      <p>✔ ถูกกฎ → <b>อนุมัติ</b> (→) · ✖ ผิดกฎ → <b>ไม่อนุมัติ</b> (←)</p>
-      <p>⏳ ยิ่งตรวจเยอะ เวลาต่อใบยิ่งน้อย · กฎใหม่จะเพิ่มมาเรื่อยๆ</p><p>❤️ พลาดหรือช้าเกิน 3 ครั้ง = จบเกม</p>`,
-    buttons:[{label:'🖋️ เริ่มงาน!',primary:true,go:next}]});
+  function hitTest(a,o){const b={x:o.x+o.d.hb[0],y:GY+o.d.yb-o.d.s+o.d.hb[1],w:o.d.hb[2],h:o.d.hb[3]};
+    return a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y}
+  api.loop(dt=>{
+    anim+=dt;shake=Math.max(0,shake-dt*3);
+    if(running&&!over){
+      speed=Math.min(920,380+meters()*.35);const dx=speed*dt;dist+=dx;
+      if(!grounded()||p.vy<0){p.vy+=G*(p.duck?1.8:1)*dt;p.y+=p.vy*dt;if(p.y>=GY){p.y=GY;p.vy=0;p.jumps=0}}
+      p.inv=Math.max(0,p.inv-dt);
+      for(const o of obs){o.x-=dx-o.d.vx*dt;if(o.d.spin)o.rot-=dt*8}
+      for(const it of items)it.x-=dx;
+      obs=obs.filter(o=>o.x>-100);items=items.filter(it=>it.x>-80);
+      nextObs-=dx;if(nextObs<=0)spawnObs();
+      nextDecor-=dx;if(nextDecor<=0){items.push({k:'decor',n:rnd()<.8?'bush':'sign_right',x:W+10});nextDecor=250+rnd()*500}
+      const b=box();
+      for(const it of items){if(it.k==='decor'||it.got)continue;
+        if(Math.abs(it.x-(b.x+b.w/2))<34&&Math.abs(it.y-(b.y+b.h/2))<52){it.got=true;
+          if(it.k==='coin'){coins++;runSfx('coin')}else if(it.k==='gem'){coins+=10;runSfx('gem');api.toast('💎 +10 เหรียญ')}else{hp=Math.min(3,hp+1);runSfx('gem');api.toast('❤️ +1')}}}
+      items=items.filter(it=>!it.got);
+      if(p.inv<=0)for(const o of obs)if(hitTest(b,o)){
+        hp--;p.inv=1.3;shake=1;runSfx('hurt');
+        if(hp<=0){over=true;p.vy=-600;api.after(1.2,()=>api.end(score(),`${fmt(meters())} ม. · 🪙 ${coins}`))}
+        break}
+      const m=meters();if(m-lastQuip>=400){lastQuip=m;api.toast(`${m} ม. — ${pick(rnd,RUN_QUIPS)}`)}
+      hud();
+    }else if(over){p.vy+=G*dt;p.y=Math.min(H+120,p.y+p.vy*dt)}
+    draw();
+  });
+  cv.addEventListener('pointerdown',e=>{e.preventDefault();const R=cv.getBoundingClientRect();
+    if(e.clientX-R.left<R.width*.35)p.duck=true;else jump()});
+  const up=()=>{p.duck=false;release()};
+  window.addEventListener('pointerup',up);
+  const keyUp=e=>{if([' ','ArrowUp','w','W'].includes(e.key))release();if(['ArrowDown','s','S'].includes(e.key))p.duck=false};
+  window.addEventListener('keyup',keyUp);
+  api.onKey(e=>{if([' ','ArrowUp','w','W'].includes(e.key)){e.preventDefault();if(!e.repeat)jump()}
+    else if(['ArrowDown','s','S'].includes(e.key)){e.preventDefault();p.duck=true}});
+  hud();draw();
+  api.intro({how:`<p>🏃 วิ่งไปตอกบัตรให้ทัน! <b>กระโดด</b>ข้ามสไลม์ หอยทาก เลื่อย · <b>ก้ม</b>หลบผึ้ง</p>
+      <p>👆 แตะฝั่ง <b>ขวา</b> / Space = กระโดด (กดซ้ำกลางอากาศ = 2 ชั้น) · แตะฝั่ง <b>ซ้าย</b>ค้าง / ↓ = ก้ม</p>
+      <p>🪙 เหรียญ +10 คะแนน · 💎 +10 เหรียญ · ❤️ 3 ดวง ชนครบ = จบ</p><p>👇 เลือกตัวละครแล้วออกวิ่งเลย</p>`,
+    buttons:RUN_COLORS.map(c=>({label:`<img src="assets/runner/character_${c}_walk_a.png" width="44" height="44" alt="${c}" style="display:block">`,primary:c===color,
+      go(){color=c;store.set('runColor',c);running=true}}))});
+  return{destroy(){window.removeEventListener('pointerup',up);window.removeEventListener('keyup',keyUp)}};
 }
 
 /* =================================================================
@@ -667,18 +673,18 @@ function stackGame(root,api){
 /* ---------- registry & hub ---------- */
 const GAMES=[
   {id:'spot',title:'จับผิดภาพ',emoji:'🔍',color:'#9fd8ff',desc:'หาจุดต่างบนโต๊ะทำงาน ด่านประจำวันเหมือนกันทั้งออฟฟิศ',time:'2–4 นาที',mount:spotGame},
-  {id:'stamp',title:'โต๊ะอนุมัติใบลา',emoji:'📝',color:'#ffd23f',desc:'ใบลาไหลมาไม่หยุด! ปั๊มอนุมัติ/ไม่อนุมัติให้ไวก่อนคิวล้น',time:'1–3 นาที',mount:stampGame},
+  {id:'run',title:'วิ่งไปตอกบัตร',emoji:'🏃',img:'assets/runner/character_pink_jump.png',color:'#c6f0ff',desc:'เกมวิ่งแนว flash กระโดดข้ามสไลม์ ก้มหลบผึ้ง เก็บเหรียญให้ทันก่อน 8:30',time:'1–3 นาที',mount:runnerGame},
   {id:'whack',title:'สายด่วนถล่มโต๊ะ',emoji:'☎️',color:'#ffb3c7',desc:'ตีสาย ตีอีเมล ตีงานด่วน… แต่อย่าเผลอตีหัวหน้า!',time:'40 วินาที',mount:whackGame},
   {id:'stack',title:'ซ้อนแฟ้มเสียดฟ้า',emoji:'📚',color:'#b8f2c9',desc:'แตะเดียวจบ ซ้อนแฟ้มให้สูงที่สุด ยิ่งเป๊ะยิ่งไปไกล',time:'1–2 นาที',unit:'ชั้น',mount:stackGame},
 ];
 function renderHub(){
   hub.innerHTML=`<section class="hero"><div><h2>พักสมอง <span>2 นาที</span></h2><p>เล่นสั้นๆ แล้วกลับไปลุยงานต่อ · ${todayTH}</p></div>
     <label class="namebox">😎 <input id="nameIn" maxlength="20" placeholder="ชื่อเล่น (ใช้ตอนอวด)"></label></section>
-    <div class="cards">${GAMES.map(g=>`<button class="card" data-g="${g.id}"><div class="em" style="--c:${g.color}">${g.emoji}</div>
+    <div class="cards">${GAMES.map(g=>`<button class="card" data-g="${g.id}"><div class="em" style="--c:${g.color}">${g.img?`<img src="${g.img}" alt="">`:g.emoji}</div>
       <h3>${g.title}</h3><p>${g.desc}</p><div class="meta"><span class="tag">⏱ ${g.time}</span><span>🏆 ${fmt(store.get('best_'+g.id,0))}${g.unit?' '+g.unit:''}</span></div></button>`).join('')}</div>
     <div class="tips">🙈 <b>หัวหน้าเดินมา?</b> กด <b>Esc</b> (หรือ <b>\`</b>) หรือปุ่ม 🙈 มุมขวาล่าง → จอกลายเป็นไฟล์ Excel ทะเบียนวันลาทันที เกมหยุด เสียงเงียบ ชื่อแท็บเปลี่ยน<br>
     กลับมาเล่นต่อ: กด <b>Esc</b> อีกครั้ง หรือแตะคำว่า <b>"พร้อม"</b> ที่มุมซ้ายล่างของ Excel<br>
-    📋 จบเกมแล้วกด <b>"อวดในไลน์"</b> เพื่อคัดลอกคะแนนไปแปะในกลุ่ม · สถิติเก็บในเครื่องใครเครื่องมัน</div>`;
+    📋 จบเกมแล้วกด <b>"อวดในไลน์"</b> เพื่อคัดลอกคะแนนไปแปะในกลุ่ม · สถิติเก็บในเครื่องใครเครื่องมัน<br>🎨 ภาพและเสียงเกมวิ่ง: <a href="https://kenney.nl" target="_blank" rel="noopener">Kenney.nl</a> (CC0)</div>`;
   const ni=$('#nameIn');ni.value=store.get('name','');ni.oninput=()=>store.set('name',ni.value);
   hub.querySelectorAll('.card').forEach(c=>c.onclick=()=>startGame(c.dataset.g));
 }
