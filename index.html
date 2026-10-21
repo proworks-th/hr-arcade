@@ -1,0 +1,688 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ห้องพักสมอง · HR Arcade</title>
+<link rel="icon" id="favicon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🕹️</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#fff4e6;--ink:#2b2140;--card:#fff;--line:#2b2140;--pri:#ff5c8a;--yel:#ffd23f;--ok:#21c07a;--bad:#ff4d4d;--blue:#3a86ff;--muted:#7a6f8c;
+  --emoji:"Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{background:var(--bg) radial-gradient(#ffe0c2 1.2px,transparent 1.2px) 0 0/18px 18px;color:var(--ink);
+  font-family:Kanit,"Leelawadee UI",Tahoma,sans-serif;-webkit-tap-highlight-color:transparent}
+button{font:inherit;color:inherit}
+kbd{font-family:inherit;font-size:.75em;border:2px solid currentColor;border-radius:6px;padding:0 5px;opacity:.8}
+.muted{color:var(--muted)}
+.top{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:3px solid var(--line);background:#fff;position:sticky;top:0;z-index:20}
+.top h1{font-size:18px;margin:0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.btn{font-weight:600;border:3px solid var(--line);background:#fff;border-radius:12px;padding:8px 14px;box-shadow:0 4px 0 var(--line);cursor:pointer;user-select:none;touch-action:manipulation}
+.btn:active{transform:translateY(3px);box-shadow:0 1px 0 var(--line)}
+.btn.primary{background:var(--pri);color:#fff}.btn.yes{background:var(--ok);color:#fff}.btn.no{background:var(--bad);color:#fff}
+.btn.sm{padding:3px 10px;font-size:14px;box-shadow:0 3px 0 var(--line);border-width:2px}
+.btn.big{font-size:20px;padding:12px 18px}
+.icon{width:42px;height:42px;padding:0;font-size:20px;display:grid;place-items:center}
+
+/* hub */
+#hub{max-width:1000px;margin:0 auto;padding:20px 16px 100px}
+.hero{display:flex;gap:16px;align-items:center;flex-wrap:wrap;margin-bottom:18px}
+.hero h2{font-size:clamp(26px,5vw,40px);margin:0;line-height:1.1}
+.hero h2 span{background:var(--yel);padding:0 8px;border-radius:8px;border:3px solid var(--line)}
+.hero p{margin:6px 0 0;color:var(--muted)}
+.namebox{display:flex;gap:8px;align-items:center;background:#fff;border:3px solid var(--line);border-radius:14px;padding:8px 12px;margin-left:auto}
+.namebox input{font:inherit;border:none;outline:none;width:130px;background:transparent}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px}
+.card{background:#fff;border:3px solid var(--line);border-radius:18px;box-shadow:0 6px 0 var(--line);padding:16px;cursor:pointer;text-align:left;transition:transform .12s;display:flex;flex-direction:column;gap:8px}
+.card:hover{transform:translateY(-3px) rotate(-.6deg)}
+.card:active{transform:translateY(3px);box-shadow:0 2px 0 var(--line)}
+.card .em{font-family:var(--emoji);font-size:40px;width:70px;height:70px;display:grid;place-items:center;border-radius:16px;border:3px solid var(--line);background:var(--c)}
+.card h3{margin:4px 0 0;font-size:21px}
+.card p{margin:0;color:var(--muted);font-size:14px;flex:1}
+.card .meta{display:flex;justify-content:space-between;font-size:13px;font-weight:600}
+.tag{background:var(--yel);border:2px solid var(--line);border-radius:999px;padding:0 8px;font-size:12px;font-weight:600}
+.tips{margin-top:22px;background:#fff;border:3px dashed var(--line);border-radius:16px;padding:14px 16px;font-size:15px}
+.tips b{background:#ffe9a8;padding:0 4px;border-radius:4px}
+
+/* stage & shared */
+#stage{max-width:1100px;margin:0 auto;padding:12px 16px 100px}
+.game{position:relative}
+.hud{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;background:#fff;border:3px solid var(--line);border-radius:14px;padding:8px 12px;margin-bottom:12px;box-shadow:0 4px 0 var(--line);font-size:16px}
+.hud b{font-size:19px}
+.timer{flex:1;min-width:90px;height:14px;border:2px solid var(--line);border-radius:8px;overflow:hidden;background:#eee}
+.timer>div{height:100%;background:var(--ok);width:100%;transition:background .3s}
+.timer.low>div{background:var(--bad)}
+.overlay{position:fixed;inset:0;background:rgba(43,33,64,.55);display:grid;place-items:center;z-index:50;padding:16px}
+.panel{background:#fff;border:3px solid var(--line);border-radius:20px;box-shadow:0 8px 0 var(--line);padding:22px;max-width:460px;width:100%;text-align:center;max-height:calc(100dvh - 32px);overflow:auto}
+.panel h2{margin:4px 0 8px;font-size:28px}
+.panel .how{text-align:left;background:#fff8ec;border-radius:12px;padding:10px 14px;font-size:15px;line-height:1.55}
+.panel .how p{margin:4px 0}
+.panel .big{font-family:var(--emoji);font-size:56px;line-height:1}
+.panel .score{font-size:56px;font-weight:800;line-height:1;margin:6px 0}
+.panel .row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:16px}
+.badge{display:inline-block;background:var(--yel);border:3px solid var(--line);border-radius:999px;padding:2px 14px;font-weight:800;margin-top:8px;animation:wob .6s ease-in-out infinite alternate}
+.popin{animation:popin .25s ease-out}
+@keyframes popin{from{transform:scale(.8);opacity:0}}
+@keyframes wob{from{transform:rotate(-4deg)}to{transform:rotate(4deg) scale(1.06)}}
+.shake{animation:shake .3s}
+@keyframes shake{25%{transform:translateX(-6px)}50%{transform:translateX(6px)}75%{transform:translateX(-3px)}}
+#toast{position:fixed;left:50%;top:76px;transform:translateX(-50%);z-index:60;pointer-events:none;display:flex;flex-direction:column;gap:6px;align-items:center}
+#toast div{background:var(--ink);color:#fff;border-radius:999px;padding:6px 16px;font-weight:600;animation:toast 1.8s forwards;white-space:nowrap}
+@keyframes toast{0%{opacity:0;transform:translateY(-10px)}10%,80%{opacity:1;transform:none}100%{opacity:0}}
+#bossBtn{position:fixed;right:16px;bottom:16px;z-index:40;width:56px;height:56px;border-radius:50%;font-size:26px;font-family:var(--emoji);padding:0;background:var(--yel)}
+
+/* spot the difference */
+.spot-tip{font-size:14px;color:var(--muted);margin:-4px 0 10px}
+.spot-wrap{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:720px){.spot-wrap{grid-template-columns:1fr}}
+.spot-panel{position:relative;aspect-ratio:4/3;container-type:inline-size;border:3px solid var(--line);border-radius:14px;overflow:hidden;cursor:crosshair;user-select:none;-webkit-user-select:none;touch-action:manipulation;
+  background:linear-gradient(#8d5a3b,#8d5a3b) 0 50.67%/100% 1.4% no-repeat,linear-gradient(180deg,#f9e7c9 0 50.67%,#c98b5e 50.67% 100%)}
+.spot-panel .win{position:absolute;left:62cqw;top:4cqw;width:32cqw;height:24cqw;border:1.2cqw solid #fff;border-radius:1cqw;
+  background:linear-gradient(90deg,transparent 48%,#fff 48% 52%,transparent 52%),linear-gradient(#9fd8ff,#e3f5ff)}
+.spot-panel .shelf{position:absolute;left:4cqw;top:26cqw;width:40cqw;height:1.6cqw;background:#7a4a2e;border-radius:.4cqw}
+.spot-panel .it{position:absolute;line-height:1;pointer-events:none}
+.spot-panel .emo{font-family:var(--emoji)}
+.spot-panel .blk{border-radius:.5cqw;box-shadow:inset -.6cqw 0 rgba(0,0,0,.18)}
+.spot-panel .blk.note{box-shadow:.3cqw .3cqw 0 rgba(0,0,0,.15);border-radius:.2cqw}
+.mark{position:absolute;border:.7cqw solid #ff2d55;border-radius:50%;transform:translate(-50%,-50%);pointer-events:none;box-shadow:0 0 0 .4cqw #fff;animation:popin .3s}
+.mark.hint{border-color:var(--yel);animation:pulse .5s ease-in-out infinite alternate}
+@keyframes pulse{to{transform:translate(-50%,-50%) scale(1.25)}}
+.xmark{position:absolute;transform:translate(-50%,-50%);font-size:7cqw;color:#ff2d55;font-weight:800;pointer-events:none;animation:fadeup .7s forwards;text-shadow:0 0 .5cqw #fff}
+@keyframes fadeup{to{opacity:0;transform:translate(-50%,-120%)}}
+
+/* leave desk */
+.stamp-wrap{display:grid;grid-template-columns:250px 1fr;gap:14px}
+@media (max-width:720px){.stamp-wrap{grid-template-columns:1fr}.rules{order:2}}
+.rules{background:#fffbe0;border:3px solid var(--line);border-radius:14px;padding:10px 14px;font-size:15px;align-self:start}
+.rules h3{margin:0 0 4px}.rules ol{margin:0;padding-left:20px}.rules li{margin:4px 0}
+.rules li.new{animation:flash .5s 4 alternate;border-radius:6px}
+@keyframes flash{to{background:var(--yel)}}
+.rules small{color:var(--muted)}
+.desk{background:#a9714b repeating-linear-gradient(90deg,transparent 0 40px,rgba(0,0,0,.05) 40px 80px);border:3px solid var(--line);border-radius:14px;min-height:400px;padding:14px;display:flex;flex-direction:column;align-items:center;gap:12px;overflow:hidden;position:relative}
+.desk .timer{width:min(360px,100%);flex:none}
+.slot{width:min(360px,100%);position:relative;min-height:330px}
+.doc{background:#fffdf6;border-radius:6px;box-shadow:0 8px 0 rgba(0,0,0,.25);padding:12px 16px;position:relative;transform:rotate(var(--r));animation:slidein .25s ease-out;font-size:15px}
+@keyframes slidein{from{transform:translateY(-60px) rotate(var(--r));opacity:0}}
+.doc.out-l{animation:outl .3s forwards}.doc.out-r{animation:outr .3s forwards}
+@keyframes outl{to{transform:translateX(-140%) rotate(-20deg);opacity:0}}
+@keyframes outr{to{transform:translateX(140%) rotate(20deg);opacity:0}}
+.doc-head{display:flex;gap:10px;align-items:center;border-bottom:2px dashed #d8cfc0;padding-bottom:6px;margin-bottom:4px}
+.doc-head .ava{font-family:var(--emoji);font-size:34px}
+.doc-head h4{margin:0;font-size:19px}.doc-head small{color:var(--muted)}
+.doc .f{display:flex;justify-content:space-between;gap:10px;border-bottom:1px dotted #d8cfc0;padding:4px 0}
+.doc .f span{color:var(--muted);white-space:nowrap}.doc .f b{font-weight:600;text-align:right}
+.sigline{margin-top:10px;text-align:right;color:var(--muted)}
+.sig{font-family:"Segoe Script","Brush Script MT","Comic Sans MS",cursive;font-size:21px;color:#1d3fbb;display:inline-block;transform:rotate(-6deg)}
+.blank{letter-spacing:2px}
+.stampmark{position:absolute;top:46%;left:50%;border:5px solid;border-radius:10px;padding:2px 14px;font-weight:800;font-size:30px;white-space:nowrap;opacity:.85;transform:translate(-50%,-50%) rotate(-14deg);animation:stampin .16s ease-out;background:rgba(255,255,255,.4)}
+.stampmark.ok{color:#139a5c}.stampmark.no{color:#e23030}
+@keyframes stampin{from{transform:translate(-50%,-50%) rotate(-14deg) scale(2.2);opacity:0}}
+.feedback{position:absolute;left:12px;right:12px;bottom:12px;background:var(--ink);color:#fff;border-radius:12px;padding:10px 14px;font-weight:600;text-align:center;display:none;z-index:2}
+.feedback.show{display:block;animation:popin .2s}
+.feedback.info{background:var(--blue)}
+.stamp-btns{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
+
+/* whack */
+.legend{text-align:center;margin:-2px 0 12px;font-size:15px}
+.legend .e{font-family:var(--emoji)}
+.wgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;max-width:min(520px,calc(100dvh - 260px));margin:0 auto}
+.hole{aspect-ratio:1;background:#6c4f9e;border:3px solid var(--line);border-radius:18px;position:relative;overflow:hidden;cursor:pointer;touch-action:manipulation;user-select:none;-webkit-user-select:none;
+  box-shadow:inset 0 -16px 0 rgba(0,0,0,.25)}
+.hole::after{content:"";position:absolute;left:8%;right:8%;bottom:0;height:20%;background:#4a3470;border-radius:50% 50% 0 0;z-index:2}
+.hole .key{position:absolute;top:4px;left:8px;font-size:12px;color:#fff9;z-index:3}
+.mole{position:absolute;left:0;right:0;top:4%;bottom:22%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+  font-family:var(--emoji);font-size:clamp(34px,10vw,62px);transform:translateY(115%);transition:transform .11s ease-out;z-index:1}
+.mole small{font-family:Kanit,sans-serif;font-size:13px;color:#fff;background:rgba(0,0,0,.45);border-radius:6px;padding:0 6px;font-weight:600}
+.hole.up .mole{transform:translateY(0)}
+.hole.isboss{background:#c0392b}
+.float{position:absolute;left:50%;top:30%;transform:translateX(-50%);color:#fff;font-weight:800;font-size:22px;z-index:4;pointer-events:none;animation:fadeup2 .7s forwards;text-shadow:0 2px 0 var(--line)}
+@keyframes fadeup2{to{opacity:0;transform:translate(-50%,-40px)}}
+
+/* stack */
+.stack-box{display:flex;justify-content:center}
+.stack-box canvas{display:block;height:min(560px,calc(100dvh - 210px),calc((100vw - 40px) * 1.5556));aspect-ratio:360/560;border:3px solid var(--line);border-radius:14px;box-shadow:0 6px 0 var(--line);touch-action:manipulation;cursor:pointer;background:#fde7c8}
+
+/* boss screen (fake Excel) */
+#boss{position:fixed;inset:0;z-index:1000;background:#fff;font-family:"Segoe UI",Tahoma,sans-serif;font-size:13px;color:#222;display:flex;flex-direction:column}
+#boss[hidden]{display:none}
+.xl-title{background:#217346;color:#fff;height:34px;display:flex;align-items:center;padding:0 10px;gap:14px;flex:none}
+.xl-title .nm{flex:1;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.xl-title .ctl{display:flex;gap:22px;font-size:14px}
+.xl-tabs{background:#217346;color:#fff;display:flex;gap:4px;padding:0 10px;height:30px;align-items:flex-end;flex:none;overflow:hidden;white-space:nowrap}
+.xl-tabs span{padding:5px 10px}.xl-tabs .on{background:#f3f3f3;color:#217346;border-radius:4px 4px 0 0;font-weight:600}
+.xl-ribbon{background:#f3f3f3;border-bottom:1px solid #d4d4d4;height:86px;display:flex;padding:6px 4px;overflow:hidden;flex:none}
+.xl-group{border-right:1px solid #d4d4d4;padding:0 12px;display:flex;flex-direction:column;justify-content:space-between;align-items:center;font-size:11px;color:#666;white-space:nowrap}
+.xl-group .ic{display:flex;gap:8px;font-size:13px;color:#333}
+.xl-group .ic i{font-style:normal;border:1px solid #c8c8c8;background:#fff;border-radius:3px;padding:2px 7px}
+.xl-fbar{display:flex;border-bottom:1px solid #d4d4d4;height:26px;align-items:center;flex:none}
+.xl-name{width:80px;border-right:1px solid #d4d4d4;padding:0 6px;height:100%;display:flex;align-items:center}
+.xl-fx{padding:0 10px;color:#888;font-style:italic;border-right:1px solid #d4d4d4}
+.xl-fv{padding:0 8px;white-space:nowrap;overflow:hidden}
+.xl-grid{flex:1;overflow:auto;background:#fff}
+.xl-grid table{border-collapse:collapse;table-layout:fixed}
+.xl-grid td,.xl-grid th{border:1px solid #e1e1e1;height:21px;padding:0 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:cell}
+.xl-grid th{background:#f3f3f3;color:#555;font-weight:400;position:sticky;top:0;z-index:1}
+.xl-grid th.rh,.xl-grid td.rh{position:sticky;left:0;background:#f3f3f3;color:#555;text-align:center;z-index:2}
+.xl-grid td.n{text-align:right}.xl-grid td.h{font-weight:700;background:#e2efda}.xl-grid td.t{font-weight:700;font-size:15px}.xl-grid td.t,.xl-grid td.ov{overflow:visible}
+.xl-grid td.sel{outline:2px solid #217346;outline-offset:-2px}
+.xl-sheets{height:28px;background:#f3f3f3;border-top:1px solid #d4d4d4;display:flex;align-items:stretch;flex:none;white-space:nowrap;overflow:hidden}
+.xl-sheets span{padding:4px 16px;display:flex;align-items:center}.xl-sheets .on{background:#fff;color:#217346;border-bottom:2px solid #217346;font-weight:600}
+.xl-status{height:24px;background:#f3f3f3;border-top:1px solid #d4d4d4;display:flex;align-items:center;gap:18px;padding:0 12px;color:#555;font-size:12px;flex:none}
+.xl-status .ready{cursor:default}
+.xl-status .sp{flex:1}
+</style>
+</head>
+<body>
+<header class="top">
+  <button class="btn icon" id="homeBtn" title="หน้าหลัก" hidden>🏠</button>
+  <h1>🕹️ ห้องพักสมอง · HR Arcade</h1>
+  <button class="btn icon" id="muteBtn" title="เปิด/ปิดเสียง">🔊</button>
+</header>
+<main id="hub"></main>
+<main id="stage" hidden></main>
+<div id="toast"></div>
+<button class="btn" id="bossBtn" title="หัวหน้ามา! (Esc)">🙈</button>
+<div id="boss" hidden></div>
+
+<script>
+'use strict';
+/* ---------- utils ---------- */
+const $=s=>document.querySelector(s);
+const store={get(k,d){try{const v=localStorage.getItem('hra_'+k);return v==null?d:JSON.parse(v)}catch(e){return d}},
+             set(k,v){try{localStorage.setItem('hra_'+k,JSON.stringify(v))}catch(e){}}};
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const pick=(r,a)=>a[Math.floor(r()*a.length)];
+const rnd=Math.random;
+const fmt=n=>Math.round(n).toLocaleString('th-TH');
+function shuffle(r,a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(r()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+const NOW=new Date();
+const todayKey=`${NOW.getFullYear()}${String(NOW.getMonth()+1).padStart(2,'0')}${String(NOW.getDate()).padStart(2,'0')}`;
+const todayTH=NOW.toLocaleDateString('th-TH',{day:'numeric',month:'short'});
+function toast(msg){const d=document.createElement('div');d.textContent=msg;$('#toast').appendChild(d);setTimeout(()=>d.remove(),1900)}
+async function copyText(t){
+  try{await navigator.clipboard.writeText(t);return true}catch(e){
+    const ta=document.createElement('textarea');ta.value=t;document.body.appendChild(ta);ta.select();
+    let ok=false;try{ok=document.execCommand('copy')}catch(_){} ta.remove();return ok}
+}
+
+/* ---------- sound ---------- */
+let actx=null,muted=store.get('muted',false);
+function beep(f=440,d=.08,type='square',v=.05,slide=0){
+  if(muted||bossOn)return;
+  try{actx=actx||new(window.AudioContext||window.webkitAudioContext)();
+    const t=actx.currentTime,o=actx.createOscillator(),g=actx.createGain();
+    o.type=type;o.frequency.setValueAtTime(f,t);if(slide)o.frequency.exponentialRampToValueAtTime(Math.max(40,f+slide),t+d);
+    g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(.0001,t+d);
+    o.connect(g).connect(actx.destination);o.start(t);o.stop(t+d+.02)}catch(e){}
+}
+const SFX={
+  good(){beep(660,.07);setTimeout(()=>beep(990,.09),60)},
+  bad(){beep(170,.25,'sawtooth',.05,-90)},
+  tick(){beep(900,.03,'square',.03)},
+  stamp(){beep(110,.12,'triangle',.14,-50)},
+  level(){[523,659,784,1047].forEach((f,i)=>setTimeout(()=>beep(f,.11),i*80))},
+  over(){[523,392,330,262].forEach((f,i)=>setTimeout(()=>beep(f,.18,'triangle',.07),i*140))},
+};
+function renderMute(){$('#muteBtn').textContent=muted?'🔇':'🔊'}
+$('#muteBtn').onclick=()=>{muted=!muted;store.set('muted',muted);renderMute()};
+renderMute();
+
+/* ---------- runtime: loop, pause, games ---------- */
+let bossOn=false,paused=false,current=null;
+const loops=new Set();
+let lastT=performance.now();
+function frame(t){const dt=Math.min(.05,(t-lastT)/1000);lastT=t;
+  if(!paused&&!bossOn)for(const f of [...loops])f(dt);
+  requestAnimationFrame(frame)}
+requestAnimationFrame(frame);
+
+const hub=$('#hub'),stage=$('#stage');
+function startGame(id){
+  const g=GAMES.find(x=>x.id===id);
+  stopGame();
+  hub.hidden=true;stage.hidden=false;$('#homeBtn').hidden=false;stage.innerHTML='';window.scrollTo(0,0);
+  const root=document.createElement('div');root.className='game game-'+id;stage.appendChild(root);
+  const mine=new Set();
+  const cur={g,root,mine,ended:false,started:false,keyFn:null,daily:false};
+  const api={
+    loop(fn){mine.add(fn);loops.add(fn);return()=>{mine.delete(fn);loops.delete(fn)}},
+    after(s,fn){let t=s;const off=api.loop(dt=>{t-=dt;if(t<=0){off();fn()}})},
+    sfx(n){SFX[n]&&SFX[n]()},
+    toast,
+    onKey(fn){cur.keyFn=fn},
+    get paused(){return paused||bossOn},
+    intro({how,buttons}){
+      const ov=document.createElement('div');ov.className='overlay';
+      ov.innerHTML=`<div class="panel popin"><div class="big">${g.emoji}</div><h2>${g.title}</h2><div class="how">${how}</div><div class="row"></div></div>`;
+      for(const b of buttons){const el=document.createElement('button');el.className='btn'+(b.primary?' primary':'');el.innerHTML=b.label;
+        el.onclick=()=>{ov.remove();cur.started=true;b.go()};ov.querySelector('.row').appendChild(el)}
+      root.appendChild(ov);
+    },
+    end(score,extra='',daily=false){
+      if(cur.ended)return;cur.ended=true;
+      mine.forEach(f=>loops.delete(f));mine.clear();
+      api.sfx('over');
+      const bk='best_'+g.id,prev=store.get(bk,0),isBest=score>prev;if(isBest)store.set(bk,score);
+      const ov=document.createElement('div');ov.className='overlay';
+      ov.innerHTML=`<div class="panel popin"><div class="big">${g.emoji}</div><h2>จบเกม!</h2>
+        <div class="score">${fmt(score)}</div><div>${g.unit||'คะแนน'}${extra?' · '+extra:''}</div>
+        ${isBest?'<div class="badge">🏆 สถิติใหม่!</div>':`<div class="muted" style="margin-top:6px">สถิติของคุณ: ${fmt(prev)}</div>`}
+        <div class="row"><button class="btn primary" data-a="again">🔁 เล่นอีก</button><button class="btn" data-a="share">📋 อวดในไลน์</button><button class="btn" data-a="home">🏠 หน้าหลัก</button></div></div>`;
+      ov.querySelector('[data-a=again]').onclick=()=>startGame(g.id);
+      ov.querySelector('[data-a=home]').onclick=goHome;
+      ov.querySelector('[data-a=share]').onclick=async()=>{
+        const name=store.get('name','').trim();
+        const txt=`🕹️ HR Arcade ${todayTH} — ${g.title}${daily?' (ด่านประจำวัน)':''}\n${name?name+': ':''}${fmt(score)} ${g.unit||'คะแนน'}${extra?' · '+extra:''}${isBest?' 🏆':''}\nใครแน่มาสู้ 👉 ${location.href.split('#')[0]}`;
+        toast(await copyText(txt)?'คัดลอกแล้ว ไปวางในไลน์ได้เลย 📋':'คัดลอกไม่ได้ 😢');
+      };
+      root.appendChild(ov);
+    }
+  };
+  current=cur;
+  cur.inst=g.mount(root,api)||{};
+}
+function stopGame(){
+  if(current){current.mine.forEach(f=>loops.delete(f));current.inst&&current.inst.destroy&&current.inst.destroy();current=null}
+  paused=false;const p=$('#pauseOv');p&&p.remove();
+}
+function goHome(){stopGame();stage.hidden=true;stage.innerHTML='';hub.hidden=false;$('#homeBtn').hidden=true;renderHub()}
+$('#homeBtn').onclick=goHome;
+
+function showPause(){
+  if(!current||!current.started||current.ended||$('#pauseOv'))return;
+  paused=true;
+  const ov=document.createElement('div');ov.className='overlay';ov.id='pauseOv';
+  ov.innerHTML=`<div class="panel popin"><div class="big">⏸️</div><h2>พักเกมไว้ก่อน</h2><p class="muted">รอดตัวไปอีกรอบ 😮‍💨</p><div class="row"><button class="btn primary">▶ เล่นต่อ</button><button class="btn">🏠 หน้าหลัก</button></div></div>`;
+  const [go,home]=ov.querySelectorAll('button');
+  go.onclick=()=>{ov.remove();paused=false};home.onclick=goHome;
+  document.body.appendChild(ov);
+}
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&!bossOn)showPause()});
+
+/* ---------- boss key: fake Excel ---------- */
+const GAME_ICON=$('#favicon').href;
+const XLS_ICON="data:image/svg+xml,"+encodeURIComponent("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect x='6' y='3' width='23' height='26' rx='2' fill='#fff' stroke='#217346' stroke-width='2'/><rect x='2' y='8' width='16' height='16' rx='2' fill='#217346'/><path d='M6 12l6 8M12 12l-6 8' stroke='#fff' stroke-width='2.4' stroke-linecap='round'/></svg>");
+const ORIG_TITLE=document.title;
+let bossBuilt=false;
+function buildBoss(){
+  if(bossBuilt)return;bossBuilt=true;
+  const r=mulberry32(2570);
+  const FN=['สมชาย','สุดารัตน์','กนกพร','ณัฐวุฒิ','พิมพ์ชนก','ธนากร','วราภรณ์','ศิริพร','อนุชา','ปิยะนุช','จิราพร','ธีรวัฒน์','นภัสสร','กิตติพงษ์','อรอุมา','ชไมพร','วีระพงษ์','สุภาพร','ภานุวัฒน์','รัชนี','อัญชลี','ปริญญา'];
+  const LN=['ใจดี','สุขสวัสดิ์','ศรีสุข','วงศ์ทอง','บุญมา','แก้วประเสริฐ','ทองคำ','มณีรัตน์','พรหมมา','รุ่งเรือง','จันทร์หอม','ศรีวงศ์','ประเสริฐวงศ์','สายบุญ'];
+  const UN=['งานการเจ้าหน้าที่','งานประกันสังคม','ศูนย์จัดเก็บรายได้','งานการเงิน','งานเวชระเบียน','ห้องบัตร','งานพัสดุ'];
+  const cols=['','A','B','C','D','E','F','G','H','I','J','K'];
+  const widths=[42,46,190,150,70,70,80,80,150,70,70,70];
+  const rows=[];
+  rows.push([{v:'ทะเบียนสรุปวันลา ปีงบประมาณ 2570 (1 ต.ค. 69 – 30 ก.ย. 70)',c:'t'}]);
+  rows.push([{v:'ข้อมูล ณ วันที่ '+NOW.toLocaleDateString('th-TH',{day:'numeric',month:'long',year:'numeric'}),c:'ov'}]);
+  rows.push(['ลำดับ','ชื่อ - สกุล','กลุ่มงาน','ลาป่วย','ลากิจ','พักผ่อน','สิทธิพักผ่อน','คงเหลือ','หมายเหตุ'].map(v=>({v,c:'h'})));
+  for(let i=1;i<=46;i++){
+    const s=Math.floor(r()*6),k=Math.floor(r()*4),p=Math.floor(r()*7),q=r()<.3?20:10+Math.floor(r()*11);
+    rows.push([{v:i,c:'n'},{v:pick(r,FN)+' '+pick(r,LN)},{v:pick(r,UN)},{v:s,c:'n'},{v:k,c:'n'},{v:p,c:'n'},{v:q,c:'n'},{v:q-p,c:'n',f:`=G${i+3}-F${i+3}`},{v:r()<.12?'รอใบรับรองแพทย์':(r()<.08?'ยกยอดมา':'')}]);
+  }
+  let tb=`<table style="width:${widths.reduce((a,b)=>a+b,0)}px"><colgroup>`+widths.map(w=>`<col style="width:${w}px">`).join('')+'</colgroup><thead><tr>'+cols.map((c,i)=>`<th class="${i?'':'rh'}">${c}</th>`).join('')+'</tr></thead><tbody>';
+  for(let i=0;i<rows.length+12;i++){
+    const row=rows[i]||[];tb+=`<tr><td class="rh">${i+1}</td>`;
+    for(let j=1;j<cols.length;j++){const c=row[j-1]||{v:''};tb+=`<td class="${c.c||''}" data-a="${cols[j]}${i+1}"${c.f?` data-f="${c.f}"`:''}>${c.v}</td>`}
+    tb+='</tr>';
+  }
+  tb+='</tbody></table>';
+  $('#boss').innerHTML=`
+  <div class="xl-title"><span>💾 ↶ ↷</span><span class="nm">ทะเบียนวันลา_FY2570.xlsx - บันทึกแล้ว</span><span class="ctl"><span>—</span><span>☐</span><span>✕</span></span></div>
+  <div class="xl-tabs"><span>ไฟล์</span><span class="on">หน้าแรก</span><span>แทรก</span><span>เค้าโครงหน้ากระดาษ</span><span>สูตร</span><span>ข้อมูล</span><span>รีวิว</span><span>มุมมอง</span></div>
+  <div class="xl-ribbon">
+    <div class="xl-group"><div class="ic"><i>📋 วาง</i></div>คลิปบอร์ด</div>
+    <div class="xl-group"><div class="ic"><i>TH Sarabun New ▾</i><i>16 ▾</i></div><div class="ic"><i><b>B</b></i><i><em>I</em></i><i><u>U</u></i></div>ฟอนต์</div>
+    <div class="xl-group"><div class="ic"><i>≡</i><i>≣</i><i>⇥</i></div><div class="ic"><i>ผสานและจัดกึ่งกลาง</i></div>การจัดแนว</div>
+    <div class="xl-group"><div class="ic"><i>ทั่วไป ▾</i></div><div class="ic"><i>%</i><i>,</i><i>.00</i></div>ตัวเลข</div>
+    <div class="xl-group"><div class="ic"><i>การจัดรูปแบบตามเงื่อนไข</i></div><div class="ic"><i>จัดรูปแบบเป็นตาราง</i></div>สไตล์</div>
+    <div class="xl-group"><div class="ic"><i>Σ ผลรวมอัตโนมัติ</i></div><div class="ic"><i>เรียงลำดับและกรอง</i></div>การแก้ไข</div>
+  </div>
+  <div class="xl-fbar"><div class="xl-name">A1</div><div class="xl-fx">fx</div><div class="xl-fv"></div></div>
+  <div class="xl-grid">${tb}</div>
+  <div class="xl-sheets"><span>◀ ▶</span><span class="on">สรุปวันลา</span><span>ลาป่วย-ลากิจ</span><span>ปกส.</span><span>ยกยอด</span><span>⊕</span></div>
+  <div class="xl-status"><span class="ready" title="">พร้อม</span><span>♿ การช่วยสำหรับการเข้าถึง: ตรวจสอบ</span><span class="sp"></span><span class="sum"></span><span>▦ ▤ ▣</span><span>— ▬▬▬▬ + 100%</span></div>`;
+  const grid=$('#boss .xl-grid');let sel=null;
+  grid.addEventListener('pointerdown',e=>{const td=e.target.closest('td[data-a]');if(!td)return;
+    sel&&sel.classList.remove('sel');sel=td;td.classList.add('sel');
+    $('#boss .xl-name').textContent=td.dataset.a;$('#boss .xl-fv').textContent=td.dataset.f||td.textContent;
+    $('#boss .sum').textContent=td.classList.contains('n')&&td.textContent!==''?'ผลรวม: '+td.textContent:''});
+  $('#boss .ready').addEventListener('click',()=>toggleBoss(false));
+}
+function toggleBoss(force){
+  const on=force===undefined?!bossOn:force;if(on===bossOn)return;
+  bossOn=on;
+  if(on){buildBoss();$('#boss').hidden=false;document.title='ทะเบียนวันลา_FY2570.xlsx - Excel';$('#favicon').href=XLS_ICON;
+    try{actx&&actx.suspend()}catch(e){}}
+  else{$('#boss').hidden=true;document.title=ORIG_TITLE;$('#favicon').href=GAME_ICON;
+    try{actx&&actx.resume()}catch(e){} showPause()}
+}
+$('#bossBtn').onclick=()=>toggleBoss(true);
+window.addEventListener('keydown',e=>{
+  if(e.key==='Escape'||e.key==='`'){e.preventDefault();toggleBoss();return}
+  if(bossOn)return;
+  if($('#pauseOv')){if(e.key==='Enter'||e.key===' '){e.preventDefault();$('#pauseOv button').click()}return}
+  if(current&&current.started&&!current.ended&&current.keyFn)current.keyFn(e);
+});
+
+/* =================================================================
+   GAME 1 — จับผิดภาพ
+   coords: panel is 100 x 75 units (1 unit = 1cqw)
+================================================================= */
+const SPOT_EMO=['📁','📂','📎','📌','✏️','📏','☕','🍵','🥤','🧋','💻','⌨️','🖱️','🖨️','📞','📱','🗂️','📋','📅','📊','📈','🩺','💊','💉','🩹','🌡️','🧾','📦','🪴','🌵','🍩','🍪','🍌','🍎','🧸','⏰','🔖','🗑️','📚','😷','🦷','🧴','🍜','🎧','💡','🔑','🧃','🥐','🍫','🧁'];
+const WALL_EMO=['🪴','📅','🖼️','🕰️','🏆','🧸','🌵','🎌','📣'];
+const BOOK_COL=['#ef476f','#ffd166','#06d6a0','#118ab2','#8338ec','#ff7f50','#3a86ff','#fb5607','#6a994e'];
+const NOTE_COL=['#fff176','#ffab91','#a5d6a7','#90caf9','#f48fb1'];
+function buildScene(r,lv){
+  const it=[];
+  let bx=6;
+  while(bx<40){const w=2.4+r()*1.8,h=8+r()*5;if(bx+w>43)break;it.push({k:'b',x:bx+w/2,y:26-h/2,w,h,c:pick(r,BOOK_COL),rot:0});bx+=w+.5+(r()<.15?3:0)}
+  const nn=3+Math.min(lv,3);
+  for(let i=0;i<nn;i++)it.push({k:'b',note:1,x:50.5+(i%2)*6+r()*1.2,y:7+Math.floor(i/2)*7+r()*1.2,w:5,h:5,c:pick(r,NOTE_COL),rot:(r()-.5)*16});
+  for(const [x,y] of [[48,21],[12,33],[30,33],[70,34],[88,34]])if(r()<.8)it.push({k:'e',ch:pick(r,WALL_EMO),x,y,s:5+r()*1.5,rot:0});
+  const cols=6+Math.min(lv-1,2),rows=3,cw=94/cols;
+  for(let row=0;row<rows;row++)for(let c=0;c<cols;c++){
+    if(r()<.15)continue;
+    it.push({k:'e',ch:pick(r,SPOT_EMO),x:3+cw*(c+.5)+(r()-.5)*cw*.35,y:45+row*10+(r()-.5)*3,s:5.6+r()*2.4-(lv>3?.6:0),rot:(r()-.5)*24});
+  }
+  return it;
+}
+function makeDiffs(r,items,n,lv){
+  const ops=['remove','swap','color'];if(lv>=2)ops.push('size');if(lv>=3)ops.push('rotate','move');
+  const subtle=Math.min(1,(lv-1)/5);
+  const out=[];
+  for(const it of shuffle(r,items)){
+    if(out.length>=n)break;
+    if(out.some(d=>Math.hypot(d.it.x-it.x,d.it.y-it.y)<11))continue;
+    const ok=ops.filter(o=>it.k==='e'?o!=='color':(o!=='swap'&&o!=='rotate'));
+    const op=pick(r,ok),d={it,op,side:r()<.5?0:1};
+    if(op==='swap'){do d.ch=pick(r,SPOT_EMO);while(d.ch===it.ch)}
+    if(op==='color'){do d.c=pick(r,it.note?NOTE_COL:BOOK_COL);while(d.c===it.c)}
+    if(op==='size')d.sc=r()<.5?1.45-.15*subtle:.62+.1*subtle;
+    if(op==='rotate')d.dr=(r()<.5?-1:1)*(45-15*subtle);
+    if(op==='move')d.dx=(r()<.5?-1:1)*(5-1.5*subtle);
+    const size=it.k==='e'?it.s:Math.max(it.w,it.h);
+    d.cx=it.x+(d.dx||0)/2;d.cy=it.y;d.rad=Math.max(4.5,size*.65)+2+Math.abs(d.dx||0)/2;
+    out.push(d);
+  }
+  return out;
+}
+function renderPanel(p,items,diffs,side){
+  p.innerHTML='<div class="win"></div><div class="shelf"></div>';
+  for(const it of items){
+    const d=diffs.find(d=>d.it===it&&d.side===side);
+    let x=it.x,rot=it.rot||0,sc=1,ch=it.ch,c=it.c;
+    if(d){if(d.op==='remove')continue;if(d.op==='swap')ch=d.ch;if(d.op==='color')c=d.c;if(d.op==='size')sc=d.sc;if(d.op==='rotate')rot+=d.dr;if(d.op==='move')x+=d.dx}
+    const e=document.createElement(it.k==='e'?'span':'div');
+    e.className='it '+(it.k==='e'?'emo':'blk'+(it.note?' note':''));
+    e.style.left=x+'cqw';e.style.top=it.y+'cqw';e.style.transform=`translate(-50%,-50%) rotate(${rot}deg) scale(${sc})`;
+    if(it.k==='e'){e.textContent=ch;e.style.fontSize=it.s+'cqw'}else{e.style.width=it.w+'cqw';e.style.height=it.h+'cqw';e.style.background=c}
+    p.appendChild(e);
+  }
+}
+function spotGame(root,api){
+  root.innerHTML=`<div class="hud"><span>ด่าน <b data-k="lv">1</b></span><span>🎯 เหลือ <b data-k="left">0</b> จุด</span>
+    <div class="timer" data-k="tm"><div data-k="bar"></div></div><span>⏱ <b data-k="t">0</b></span><span>⭐ <b data-k="sc">0</b></span>
+    <button class="btn sm" data-k="hint">💡 ใบ้ −10 วิ</button></div>
+    <div class="spot-tip">สองภาพต่างกันตรงไหน? แตะภาพไหนก็ได้ · แตะผิดเสีย 4 วินาที</div>
+    <div class="spot-wrap"><div class="spot-panel"></div><div class="spot-panel"></div></div>`;
+  const q=k=>root.querySelector(`[data-k="${k}"]`),panels=[...root.querySelectorAll('.spot-panel')];
+  let mode='daily',level=0,score=0,time=0,maxT=1,diffs=[],running=false,done=false;
+  function hud(){q('lv').textContent=level;q('left').textContent=diffs.filter(d=>!d.found).length;q('t').textContent=Math.ceil(time);
+    q('sc').textContent=fmt(score);q('bar').style.width=(time/maxT*100)+'%';q('tm').classList.toggle('low',time<10)}
+  function startLevel(){
+    level++;
+    const r=mulberry32(mode==='daily'?(+todayKey)*97+level*7919:Math.floor(rnd()*1e9));
+    const items=buildScene(r,level);
+    diffs=makeDiffs(r,items,Math.min(4+level,8),level);
+    panels.forEach((p,s)=>renderPanel(p,items,diffs,s));
+    maxT=Math.max(45,85-level*6);time=maxT;done=false;running=true;hud();
+  }
+  function ring(d,cls){for(const p of panels){const m=document.createElement('div');m.className='mark'+(cls?' '+cls:'');
+    m.style.left=d.cx+'cqw';m.style.top=d.cy+'cqw';m.style.width=m.style.height=d.rad*2+'cqw';p.appendChild(m);if(cls)setTimeout(()=>m.remove(),1800)}}
+  panels.forEach(p=>p.addEventListener('pointerdown',e=>{
+    if(!running||done||api.paused)return;
+    const R=p.getBoundingClientRect(),u=100/R.width,x=(e.clientX-R.left)*u,y=(e.clientY-R.top)*u;
+    let best=null,bd=1e9;for(const d of diffs){const dd=Math.hypot(d.cx-x,d.cy-y);if(dd<d.rad&&dd<bd){best=d;bd=dd}}
+    if(best){if(best.found)return;best.found=true;ring(best);score+=100+level*20;api.sfx('good');
+      if(diffs.every(d=>d.found)){done=true;const bonus=Math.ceil(time)*5;score+=bonus;api.sfx('level');api.toast(`ผ่านด่าน ${level}! โบนัสเวลา +${bonus}`);api.after(1.5,startLevel)}}
+    else{time=Math.max(0,time-4);api.sfx('bad');const xm=document.createElement('div');xm.className='xmark';xm.textContent='✖';
+      xm.style.left=x+'cqw';xm.style.top=y+'cqw';p.appendChild(xm);setTimeout(()=>xm.remove(),700);
+      p.classList.remove('shake');void p.offsetWidth;p.classList.add('shake')}
+    hud();
+  }));
+  q('hint').onclick=()=>{if(!running||done||api.paused)return;
+    if(time<=11){api.toast('เวลาไม่พอใช้คำใบ้ 😅');return}
+    const d=diffs.find(d=>!d.found);if(!d)return;time-=10;ring(d,'hint');hud()};
+  api.loop(dt=>{if(!running||done)return;time-=dt;
+    if(time<=0){time=0;running=false;hud();api.end(score,`ผ่าน ${level-1} ด่าน`,mode==='daily')}else hud()});
+  api.intro({how:`<p>🔍 หาจุดที่ <b>ภาพซ้าย-ขวาไม่เหมือนกัน</b> ให้ครบก่อนหมดเวลา</p>
+      <p>⏱ ผ่านด่านเร็ว = โบนัสเวลา · แตะผิด <b>−4 วินาที</b></p><p>💡 ติดจริงๆ กดใบ้ได้ (−10 วินาที)</p>
+      <p>📅 <b>ด่านประจำวัน</b>: วันนี้ทุกคนได้ภาพชุดเดียวกัน มาวัดกันว่าใครตาไว!</p>`,
+    buttons:[{label:'📅 ด่านประจำวัน',primary:true,go(){mode='daily';startLevel()}},{label:'🎲 สุ่มด่าน',go(){mode='rand';startLevel()}}]});
+}
+
+/* =================================================================
+   GAME 2 — โต๊ะอนุมัติใบลา
+================================================================= */
+const TH_FN=['สมชาย','สุดา','มานี','ปิติ','ชูใจ','วีระ','ดวงใจ','อารีย์','ณเดช','ญาญ่า','บุญมี','สมศรี','ประยุทธ','มะลิ','ก้อง','แพรวา','ต้นกล้า','ฟ้าใส','น้ำหวาน','บอย'];
+const TH_LN=['ใจดี','รักงาน','ขยันยิ่ง','มาสาย','ตื่นเช้า','สุขใจ','ทำงานดี','ลาบ่อย','งานด่วน','ไม่ขาด'];
+const AVA=['🧑‍💼','👩‍💼','👨‍💼','👩‍⚕️','👨‍⚕️','🧑‍⚕️','👩‍🔬','🧑‍🔧','👵','🧔'];
+const REASON={'ป่วย':['ไข้หวัด เจ็บคอ','ปวดท้อง ท้องเสีย','ไมเกรน','ไข้ขึ้นสูง','ปวดหลัง'],
+  'กิจ':['ไปทำบัตรประชาชน','พาแม่ไปหาหมอ','ติดต่อธนาคาร','งานบวชญาติ','ย้ายบ้าน','รับปริญญาน้อง'],
+  'พักผ่อน':['พักผ่อนต่างจังหวัด','เที่ยวกับครอบครัว','กลับบ้านต่างจังหวัด','ไปทะเล','พาลูกเที่ยว']};
+const ABSURD=['แมวที่บ้านอกหัก','ไปตามหาตัวเองที่ปาย','หมอดูห้ามออกจากบ้าน','รอพัสดุ Shopee ทั้งวัน','ซีรีส์เกาหลีออกตอนจบ','ปลาทองดูเศร้าๆ','ฝันเห็นเลข จะไปซื้อหวย','ขี้เกียจ (ขอบอกตามตรง)','ไปคอนเสิร์ตรอบที่ 4','ดวงวันนี้ไม่เหมาะกับการทำงาน','ต้นไม้ที่บ้านต้องการกำลังใจ'];
+const fmtDay=n=>n<=31?`${n} ต.ค. 69`:`${n-31} พ.ย. 69`;
+function genLeave(active){
+  const type=pick(rnd,['ป่วย','กิจ','พักผ่อน']);
+  const first=pick(rnd,TH_FN);
+  const d={first,name:first+' '+pick(rnd,TH_LN),ava:pick(rnd,AVA),type,days:1+Math.floor(rnd()*4),signed:true,cert:false,reason:pick(rnd,REASON[type]),leave:8+Math.floor(rnd()*45)};
+  d.cert=(type==='ป่วย'&&d.days>=3)?true:(type==='ป่วย'&&rnd()<.3);
+  d.submit=type==='ป่วย'?d.leave+d.days+Math.floor(rnd()*2):d.leave-1-Math.floor(rnd()*8);
+  d.valid=rnd()<.52;d.why='';
+  if(!d.valid){
+    switch(pick(rnd,active)){
+      case 'sign':d.signed=false;d.why='ไม่มีลายเซ็นผู้ลา';break;
+      case 'cert':d.type='ป่วย';d.days=3+Math.floor(rnd()*3);d.cert=false;d.reason=pick(rnd,REASON['ป่วย']);d.submit=d.leave+d.days;d.why='ลาป่วย '+d.days+' วัน ไม่มีใบรับรองแพทย์';break;
+      case 'adv':d.type='พักผ่อน';d.reason=pick(rnd,REASON['พักผ่อน']);d.cert=false;d.submit=d.leave+1+Math.floor(rnd()*3);d.why='ลาพักผ่อนแต่ยื่นย้อนหลัง';break;
+      case 'why':d.reason=pick(rnd,ABSURD);d.why='เหตุผล "'+d.reason+'" ฟังไม่ขึ้น 😂';break;
+    }
+  }
+  return d;
+}
+function stampGame(root,api){
+  root.innerHTML=`<div class="hud"><span data-k="lives"></span><span>⭐ <b data-k="sc">0</b></span><span>📄 <b data-k="n">0</b> ใบ</span><span data-k="combo" class="muted"></span></div>
+    <div class="stamp-wrap"><aside class="rules"><h3>📜 กฎโต๊ะนี้</h3><ol data-k="rules"></ol><small>* กฎในเกมเท่านั้น ไม่ใช่ระเบียบจริง 😆</small></aside>
+    <div class="desk"><div class="timer" data-k="tm"><div data-k="bar"></div></div><div class="slot" data-k="slot"></div><div class="feedback" data-k="fb"></div></div></div>
+    <div class="stamp-btns"><button class="btn no big" data-k="no">✖ ไม่อนุมัติ <kbd>←</kbd></button><button class="btn yes big" data-k="yes">✔ อนุมัติ <kbd>→</kbd></button></div>`;
+  const q=k=>root.querySelector(`[data-k="${k}"]`);
+  const RULES=[{id:'sign',at:0,t:'ใบลาต้องมี <b>ลายเซ็น</b> ผู้ลา'},{id:'cert',at:5,t:'ลาป่วย <b>ตั้งแต่ 3 วัน</b> ต้องแนบ <b>ใบรับรองแพทย์</b>'},
+    {id:'adv',at:12,t:'ลาพักผ่อนต้อง <b>ยื่นก่อน</b> วันลา'},{id:'why',at:20,t:'เหตุผลการลาต้อง <b>ฟังขึ้น</b>'}];
+  let lives=3,sc=0,n=0,combo=0,doc=null,docEl=null,tLeft=0,tMax=1,busy=true,active=[];
+  function hud(){q('lives').textContent='❤️'.repeat(lives)+'🖤'.repeat(3-lives);q('sc').textContent=fmt(sc);q('n').textContent=n;
+    const m=1+Math.floor(combo/5);q('combo').textContent=combo>=3?`🔥 คอมโบ ${combo}${m>1?' (x'+m+')':''}`:'';
+    q('bar').style.width=(tLeft/tMax*100)+'%';q('tm').classList.toggle('low',tLeft<tMax*.3)}
+  function fb(msg,cls){const f=q('fb');f.className='feedback show'+(cls?' '+cls:'');f.innerHTML=msg}
+  function fbHide(){q('fb').className='feedback'}
+  function next(){
+    const fresh=RULES.filter(r=>r.at<=n&&!active.includes(r.id));
+    if(fresh.length){
+      fresh.forEach(r=>active.push(r.id));
+      q('rules').innerHTML=RULES.filter(r=>active.includes(r.id)).map(r=>`<li class="${fresh.includes(r)?'new':''}">${r.t}</li>`).join('');
+      if(n>0){fb('📢 กฎใหม่! '+fresh.map(r=>r.t).join(' / '),'info');api.sfx('level');busy=true;q('slot').innerHTML='';api.after(2.6,()=>{fbHide();spawn()});return}
+    }
+    spawn();
+  }
+  function spawn(){
+    doc=genLeave(active);
+    q('slot').innerHTML=`<div class="doc" style="--r:${(rnd()*4-2).toFixed(1)}deg">
+      <div class="doc-head"><span class="ava">${doc.ava}</span><div><h4>ใบลา${doc.type}</h4><small>เขียนที่ โรงพยาบาล</small></div></div>
+      <div class="f"><span>ชื่อ</span><b>${doc.name}</b></div>
+      <div class="f"><span>ประเภท</span><b>ลา${doc.type}</b></div>
+      <div class="f"><span>วันที่ลา</span><b>${fmtDay(doc.leave)} (${doc.days} วัน)</b></div>
+      <div class="f"><span>วันที่ยื่น</span><b>${fmtDay(doc.submit)}</b></div>
+      <div class="f"><span>เหตุผล</span><b>${doc.reason}</b></div>
+      <div class="f"><span>เอกสารแนบ</span><b>${doc.cert?'📎 ใบรับรองแพทย์':'—'}</b></div>
+      <div class="sigline">ลงชื่อ ${doc.signed?`<span class="sig">${doc.first}</span>`:'<span class="blank">.....................</span>'}</div></div>`;
+    docEl=q('slot').firstElementChild;
+    tMax=Math.max(2.6,8-n*.13);tLeft=tMax;busy=false;hud();
+  }
+  function stamp(ok){const s=document.createElement('div');s.className='stampmark '+(ok?'ok':'no');s.textContent=ok?'อนุมัติ':'ไม่อนุมัติ';docEl.appendChild(s)}
+  function wrong(msg){
+    lives--;combo=0;api.sfx('bad');root.querySelector('.desk').classList.remove('shake');void root.offsetWidth;root.querySelector('.desk').classList.add('shake');
+    fb(msg);hud();
+    api.after(1.7,()=>{fbHide();if(lives<=0)api.end(sc,`ตรวจ ${n} ใบ`);else next()});
+  }
+  function decide(approve){
+    if(busy||api.paused||!doc)return;busy=true;stamp(approve);api.sfx('stamp');
+    if(approve===doc.valid){
+      n++;combo++;sc+=10*(1+Math.floor(combo/5));api.sfx('good');hud();
+      api.after(.22,()=>docEl.classList.add(approve?'out-r':'out-l'));api.after(.5,next);
+    }else wrong(approve?'❌ พลาด! ใบนี้ผิดกฎ: '+doc.why:'❌ พลาด! ใบนี้ถูกต้องครบ ปัดตกทำไม 😭');
+  }
+  q('yes').onclick=()=>decide(true);q('no').onclick=()=>decide(false);
+  api.onKey(e=>{const k=e.key.toLowerCase();if(k==='arrowright'||k==='d'){e.preventDefault();decide(true)}else if(k==='arrowleft'||k==='a'){e.preventDefault();decide(false)}});
+  api.loop(dt=>{if(busy)return;tLeft-=dt;if(tLeft<=0){tLeft=0;busy=true;hud();
+    wrong('⏰ ช้าไป! คิวยาวถึงหน้าห้องแล้ว'+(doc.valid?' (ใบนี้ถูกต้อง)':' (ผิดกฎ: '+doc.why+')'))}else hud()});
+  hud();
+  api.intro({how:`<p>📝 ใบลาไหลมาไม่หยุด! ตรวจตาม <b>กฎโต๊ะนี้</b> แล้วตัดสินให้ไว</p>
+      <p>✔ ถูกกฎ → <b>อนุมัติ</b> (→) · ✖ ผิดกฎ → <b>ไม่อนุมัติ</b> (←)</p>
+      <p>⏳ ยิ่งตรวจเยอะ เวลาต่อใบยิ่งน้อย · กฎใหม่จะเพิ่มมาเรื่อยๆ</p><p>❤️ พลาดหรือช้าเกิน 3 ครั้ง = จบเกม</p>`,
+    buttons:[{label:'🖋️ เริ่มงาน!',primary:true,go:next}]});
+}
+
+/* =================================================================
+   GAME 3 — สายด่วนถล่มโต๊ะ (whack-a-mole)
+================================================================= */
+function whackGame(root,api){
+  const KEYS=['7','8','9','4','5','6','1','2','3'],ALT=['q','w','e','a','s','d','z','x','c'];
+  root.innerHTML=`<div class="hud"><div class="timer" data-k="tm"><div data-k="bar"></div></div><span>⏱ <b data-k="t">40</b></span><span>⭐ <b data-k="sc">0</b></span><span data-k="combo" class="muted"></span></div>
+    <div class="legend"><span class="e">📞📨</span> +10 · <span class="e">🔥</span> งานด่วน +30 · <span class="e">☕</span> +3 วิ · <b><span class="e">👔</span> หัวหน้า ห้ามตี!</b></div>
+    <div class="wgrid">${KEYS.map((k,i)=>`<div class="hole" data-i="${i}"><span class="key">${k}</span><div class="mole"></div></div>`).join('')}</div>`;
+  const q=k=>root.querySelector(`[data-k="${k}"]`);
+  const holes=[...root.querySelectorAll('.hole')].map(el=>({el,mole:el.querySelector('.mole'),obj:null,life:0,cool:0}));
+  const T={phone:{e:'📞',cap:'สายเข้า',pts:10,life:1.4},mail:{e:'📨',cap:'อีเมล',pts:10,life:1.5},fire:{e:'🔥',cap:'ด่วน!',pts:30,life:.8},
+    boss:{e:'👔',cap:'หัวหน้า',pts:0,life:1.5},coffee:{e:'☕',cap:'+3 วิ',pts:0,life:1}};
+  const TOTAL=40;let time=TOTAL,sc=0,combo=0,best=0,spawnT=.4,el=0,running=false;
+  function hud(){q('t').textContent=Math.ceil(time);q('sc').textContent=fmt(sc);q('bar').style.width=Math.min(100,time/TOTAL*100)+'%';q('tm').classList.toggle('low',time<8);
+    const m=1+Math.floor(combo/6)*.5;q('combo').textContent=combo>=3?`🔥 คอมโบ ${combo}${m>1?' (x'+m+')':''}`:''}
+  function pickType(){const w=[['phone',40],['mail',25],['fire',10+el*.15],['boss',10+el*.45],['coffee',time<15?9:4]];
+    let s=w.reduce((a,b)=>a+b[1],0)*rnd();for(const [t,v] of w){if((s-=v)<0)return t}return 'phone'}
+  function spawn(){const empty=holes.filter(h=>!h.obj&&h.cool<=0);if(!empty.length)return;const h=pick(rnd,empty),t=pickType();
+    h.obj=t;h.life=T[t].life*Math.max(.55,1-el/70);h.mole.innerHTML=`${T[t].e}<small>${T[t].cap}</small>`;h.el.classList.add('up');h.el.classList.toggle('isboss',t==='boss')}
+  function hide(h){h.obj=null;h.cool=.15;h.el.classList.remove('up','isboss')}
+  function float(h,txt){const f=document.createElement('div');f.className='float';f.textContent=txt;h.el.appendChild(f);setTimeout(()=>f.remove(),700)}
+  function hit(i){
+    if(!running||api.paused)return;const h=holes[i];if(!h.obj)return;const t=h.obj;
+    if(t==='boss'){sc=Math.max(0,sc-40);combo=0;api.sfx('bad');api.toast('😡 ตีหัวหน้าทำไม! −40');float(h,'−40');
+      const g=root.querySelector('.wgrid');g.classList.remove('shake');void g.offsetWidth;g.classList.add('shake')}
+    else if(t==='coffee'){time+=3;api.sfx('good');float(h,'+3 วิ')}
+    else{combo++;best=Math.max(best,combo);const p=Math.round(T[t].pts*(1+Math.floor(combo/6)*.5));sc+=p;api.sfx('good');float(h,'+'+p)}
+    h.obj=null;h.cool=.15;h.mole.textContent='💥';setTimeout(()=>{if(!h.obj)h.el.classList.remove('up','isboss')},110);hud();
+  }
+  holes.forEach((h,i)=>h.el.addEventListener('pointerdown',e=>{e.preventDefault();hit(i)}));
+  api.onKey(e=>{const k=e.key.toLowerCase();let i=KEYS.indexOf(k);if(i<0)i=ALT.indexOf(k);if(i>=0){e.preventDefault();hit(i)}});
+  api.loop(dt=>{if(!running)return;el+=dt;time-=dt;spawnT-=dt;
+    if(spawnT<=0){spawn();if(el>12&&rnd()<.35)spawn();spawnT=Math.max(.36,.9-el*.014)}
+    for(const h of holes){h.cool-=dt;if(h.obj){h.life-=dt;if(h.life<=0){if(h.obj!=='boss'&&h.obj!=='coffee')combo=0;hide(h)}}}
+    if(time<=0){time=0;running=false;hud();holes.forEach(hide);api.end(sc,`คอมโบสูงสุด ${best}`)}else hud()});
+  hud();
+  api.intro({how:`<p>☎️ สาย อีเมล และงานด่วนโผล่จากโต๊ะ — <b>ตีให้ไว!</b></p>
+      <p><span class="e">📞📨</span> +10 · <span class="e">🔥</span> +30 (หายไวมาก) · <span class="e">☕</span> ต่อเวลา +3 วิ</p>
+      <p>⚠️ <b><span class="e">👔</span> หัวหน้าโผล่มา ห้ามตี!</b> ตีโดน −40 และคอมโบหาย</p>
+      <p>⌨️ ใช้คีย์ <b>ตัวเลข 1-9</b> (แบบ numpad) หรือ <b>Q W E / A S D / Z X C</b> ได้</p>`,
+    buttons:[{label:'📞 รับสาย!',primary:true,go(){running=true}}]});
+}
+
+/* =================================================================
+   GAME 4 — ซ้อนแฟ้มเสียดฟ้า (stacker)
+================================================================= */
+function stackGame(root,api){
+  root.innerHTML=`<div class="hud"><span>🏢 ชั้น <b data-k="sc">0</b></span><span>✨ วางเป๊ะ <b data-k="pf">0</b></span><span class="muted">แตะจอ / Space เพื่อวางแฟ้ม</span></div><div class="stack-box"><canvas></canvas></div>`;
+  const q=k=>root.querySelector(`[data-k="${k}"]`),cv=root.querySelector('canvas'),ctx=cv.getContext('2d');
+  const W=360,H=560,BH=26,BASE_Y=H-70;
+  const dpr=Math.min(2,window.devicePixelRatio||1);cv.width=W*dpr;cv.height=H*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);
+  const LAB=['ใบลา','ปกส.','พ.ต.ส.','เงินเดือน','ทะเบียนประวัติ','สัญญาจ้าง','เวร OT','ประเมินผล','ตกเบิก','ค่าตอบแทน','ใบรับรองแพทย์','กองทุนทดแทน'];
+  const COL=['#ff5c8a','#ffd23f','#3a86ff','#21c07a','#8338ec','#ff7f50','#00b4d8','#f15bb5'];
+  const DECO=[[9,'☁️',60],[14,'☁️',270],[19,'🐦',110],[24,'✈️',250],[30,'☁️',90],[38,'🌙',280],[46,'🛰️',80],[55,'🚀',260],[70,'🛸',120],[90,'👽',220]];
+  const STOPS=[[0,[253,231,200]],[10,[159,216,255]],[28,[255,170,130]],[38,[60,40,110]],[48,[14,12,40]]];
+  let stack=[{x:80,w:200,c:'#8d5a3b',lab:'โต๊ะ HR'}],cur,cam=0,debris=[],combo=0,perf=0,over=false,running=false,flash=0;
+  function newBlock(){const top=stack[stack.length-1],n=stack.length,fl=n%2===1;
+    cur={w:top.w,x:fl?-top.w:W,dir:fl?1:-1,sp:Math.min(390,150+n*7),c:COL[n%COL.length],lab:LAB[n%LAB.length]}}
+  newBlock();
+  const yOf=lv=>BASE_Y-lv*BH+cam;
+  function bg(){const h=(cam/BH)+8;let a=STOPS[0],b=STOPS[STOPS.length-1];
+    for(let i=0;i<STOPS.length-1;i++)if(h>=STOPS[i][0]&&h<STOPS[i+1][0]){a=STOPS[i];b=STOPS[i+1];break}
+    const t=h>=b[0]?1:(h-a[0])/(b[0]-a[0]);return a[1].map((v,i)=>Math.round(v+(b[1][i]-v)*t))}
+  function folder(b,y,alpha=1){
+    ctx.globalAlpha=alpha;ctx.fillStyle=b.c;ctx.fillRect(b.x,y,b.w,BH-2);
+    ctx.fillStyle='rgba(0,0,0,.18)';ctx.fillRect(b.x,y,7,BH-2);ctx.fillRect(b.x,y+BH-6,b.w,4);
+    ctx.strokeStyle='#2b2140';ctx.lineWidth=2;ctx.strokeRect(b.x+1,y+1,b.w-2,BH-4);
+    if(b.w>58){const lw=Math.min(b.w-26,104);ctx.fillStyle='#fff';ctx.fillRect(b.x+(b.w-lw)/2,y+5,lw,BH-12);
+      ctx.fillStyle='#2b2140';ctx.font='600 12px Kanit, sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillText(b.lab,b.x+b.w/2,y+BH/2-1,lw-6)}
+    ctx.globalAlpha=1}
+  function draw(){
+    const c=bg();ctx.fillStyle=`rgb(${c})`;ctx.fillRect(0,0,W,H);
+    if(cam>30*BH){ctx.fillStyle='rgba(255,255,255,.8)';for(let i=0;i<40;i++){const sx=(i*97)%W,sy=((i*53+cam*.3)%H);ctx.fillRect(sx,sy,2,2)}}
+    ctx.font='34px "Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji"';ctx.textAlign='center';ctx.textBaseline='middle';
+    for(const [lv,e,x] of DECO){const y=yOf(lv);if(y>-40&&y<H+40)ctx.fillText(e,x,y)}
+    const fy=yOf(0)+BH-2;if(fy<H){ctx.fillStyle='#6b4a34';ctx.fillRect(0,fy,W,H-fy)}
+    for(let i=0;i<stack.length;i++){const y=yOf(i);if(y>H||y<-BH)continue;folder(stack[i],y)}
+    if(!over&&running)folder(cur,yOf(stack.length));
+    for(const d of debris){ctx.save();ctx.translate(d.x+d.w/2,d.y+BH/2);ctx.rotate(d.rot);folder({...d,x:-d.w/2},-BH/2,.9);ctx.restore()}
+    if(flash>0){ctx.globalAlpha=Math.min(1,flash*3);ctx.fillStyle='#fff';ctx.strokeStyle='#2b2140';ctx.lineWidth=5;ctx.font='800 30px Kanit, sans-serif';
+      const ty=yOf(stack.length)-14;ctx.strokeText(combo>=3?`เป๊ะ x${combo}!`:'เป๊ะ!',W/2,ty);ctx.fillText(combo>=3?`เป๊ะ x${combo}!`:'เป๊ะ!',W/2,ty);ctx.globalAlpha=1}
+  }
+  function hud(){q('sc').textContent=stack.length-1;q('pf').textContent=perf}
+  function drop(){
+    if(!running||over||api.paused)return;
+    const top=stack[stack.length-1],L=Math.max(cur.x,top.x),R=Math.min(cur.x+cur.w,top.x+top.w),y=yOf(stack.length);
+    if(R-L<=0){debris.push({...cur,y,vy:0,rot:0,vr:cur.dir*2});over=true;api.sfx('bad');
+      api.after(1.1,()=>api.end(stack.length-1,`วางเป๊ะ ${perf} ครั้ง`));return}
+    if(Math.abs(cur.x-top.x)<5){combo++;perf++;let w=top.w;if(combo>=3)w=Math.min(220,w+10);
+      stack.push({x:top.x-(w-top.w)/2,w,c:cur.c,lab:cur.lab});flash=.7;api.sfx('level')}
+    else{combo=0;
+      if(cur.x<top.x)debris.push({...cur,x:cur.x,w:top.x-cur.x,y,vy:0,rot:0,vr:-1.5});
+      else debris.push({...cur,x:R,w:cur.x+cur.w-R,y,vy:0,rot:0,vr:1.5});
+      stack.push({x:L,w:R-L,c:cur.c,lab:cur.lab});api.sfx('stamp')}
+    newBlock();hud();
+  }
+  cv.addEventListener('pointerdown',e=>{e.preventDefault();drop()});
+  api.onKey(e=>{if(e.key===' '||e.key==='Enter'||e.key==='ArrowDown'){e.preventDefault();drop()}});
+  api.loop(dt=>{
+    if(running&&!over){cur.x+=cur.dir*cur.sp*dt;if(cur.dir>0&&cur.x>W-cur.w*.5)cur.dir=-1;else if(cur.dir<0&&cur.x<-cur.w*.5)cur.dir=1}
+    const target=Math.max(0,(stack.length-13)*BH);cam+=(target-cam)*Math.min(1,dt*6);
+    for(const d of debris){d.vy+=1000*dt;d.y+=d.vy*dt;d.rot+=d.vr*dt}
+    debris=debris.filter(d=>d.y<H+120);flash=Math.max(0,flash-dt);draw();
+  });
+  draw();hud();
+  api.intro({how:`<p>📚 แฟ้มเลื่อนไปมา — <b>แตะจอ</b> หรือกด <b>Space</b> เพื่อวางลงบนกอง</p>
+      <p>✂️ ส่วนที่ล้นจะถูกตัดทิ้ง แฟ้มเลยแคบลงเรื่อยๆ</p><p>✨ วาง <b>เป๊ะ</b> ติดกัน 3 ครั้ง แฟ้มจะกว้างขึ้น</p><p>🚀 ซ้อนสูงพอ… อาจได้ไปถึงอวกาศ</p>`,
+    buttons:[{label:'📚 เริ่มซ้อน!',primary:true,go(){running=true}}]});
+}
+
+/* ---------- registry & hub ---------- */
+const GAMES=[
+  {id:'spot',title:'จับผิดภาพ',emoji:'🔍',color:'#9fd8ff',desc:'หาจุดต่างบนโต๊ะทำงาน ด่านประจำวันเหมือนกันทั้งออฟฟิศ',time:'2–4 นาที',mount:spotGame},
+  {id:'stamp',title:'โต๊ะอนุมัติใบลา',emoji:'📝',color:'#ffd23f',desc:'ใบลาไหลมาไม่หยุด! ปั๊มอนุมัติ/ไม่อนุมัติให้ไวก่อนคิวล้น',time:'1–3 นาที',mount:stampGame},
+  {id:'whack',title:'สายด่วนถล่มโต๊ะ',emoji:'☎️',color:'#ffb3c7',desc:'ตีสาย ตีอีเมล ตีงานด่วน… แต่อย่าเผลอตีหัวหน้า!',time:'40 วินาที',mount:whackGame},
+  {id:'stack',title:'ซ้อนแฟ้มเสียดฟ้า',emoji:'📚',color:'#b8f2c9',desc:'แตะเดียวจบ ซ้อนแฟ้มให้สูงที่สุด ยิ่งเป๊ะยิ่งไปไกล',time:'1–2 นาที',unit:'ชั้น',mount:stackGame},
+];
+function renderHub(){
+  hub.innerHTML=`<section class="hero"><div><h2>พักสมอง <span>2 นาที</span></h2><p>เล่นสั้นๆ แล้วกลับไปลุยงานต่อ · ${todayTH}</p></div>
+    <label class="namebox">😎 <input id="nameIn" maxlength="20" placeholder="ชื่อเล่น (ใช้ตอนอวด)"></label></section>
+    <div class="cards">${GAMES.map(g=>`<button class="card" data-g="${g.id}"><div class="em" style="--c:${g.color}">${g.emoji}</div>
+      <h3>${g.title}</h3><p>${g.desc}</p><div class="meta"><span class="tag">⏱ ${g.time}</span><span>🏆 ${fmt(store.get('best_'+g.id,0))}${g.unit?' '+g.unit:''}</span></div></button>`).join('')}</div>
+    <div class="tips">🙈 <b>หัวหน้าเดินมา?</b> กด <b>Esc</b> (หรือ <b>\`</b>) หรือปุ่ม 🙈 มุมขวาล่าง → จอกลายเป็นไฟล์ Excel ทะเบียนวันลาทันที เกมหยุด เสียงเงียบ ชื่อแท็บเปลี่ยน<br>
+    กลับมาเล่นต่อ: กด <b>Esc</b> อีกครั้ง หรือแตะคำว่า <b>"พร้อม"</b> ที่มุมซ้ายล่างของ Excel<br>
+    📋 จบเกมแล้วกด <b>"อวดในไลน์"</b> เพื่อคัดลอกคะแนนไปแปะในกลุ่ม · สถิติเก็บในเครื่องใครเครื่องมัน</div>`;
+  const ni=$('#nameIn');ni.value=store.get('name','');ni.oninput=()=>store.set('name',ni.value);
+  hub.querySelectorAll('.card').forEach(c=>c.onclick=()=>startGame(c.dataset.g));
+}
+renderHub();
+</script>
+</body>
+</html>
