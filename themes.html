@@ -22,24 +22,25 @@ canvas{display:block;width:100%;border:2px solid var(--line);border-radius:12px;
 .why{margin:10px 0 0;padding-left:20px;line-height:1.6}
 .why b{color:#139a5c}.why i{color:#c0392b;font-style:normal}
 .cast{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
-.cast img{width:44px;height:44px;background:#fdf3e6;border-radius:8px;padding:3px}
+.cast img{width:44px;height:44px;object-fit:contain;image-rendering:pixelated;background:#fdf3e6;border-radius:8px;padding:3px}
+.head h2 a{color:inherit}
 </style>
 </head>
 <body>
 <main>
-<h1>ชุดภาพธีมออฟฟิศน่ารัก — Top 3</h1>
-<p class="sub">ตอนนี้เกมใช้ Fluent Emoji แบบ Flat · ทุกชุดใช้ฟรี ใส่ใน repo สาธารณะได้ · ฉากด้านล่างวาดด้วยโค้ดเดียวกับโหมดปาร์ตี้ (ห้องรวม + ครัวเอกสาร) เปลี่ยนแค่ชุดภาพ</p>
+<h1>ชุดภาพออฟฟิศจาก itch.io — Top 3</h1>
+<p class="sub">ทุกชุดฟรีและอนุญาตให้ใส่ใน repo สาธารณะ · ฉากด้านล่างวาดด้วยโค้ดเดียวกับโหมดปาร์ตี้ (ห้องรวม + ครัวเอกสาร) เปลี่ยนแค่ชุดภาพ</p>
 <div id="picks"></div>
 </main>
 <script>
 const KEYS=['p_office','p_woffice','p_whealth','p_tech','boss','printer','laptop','trash','postbox','stamp','plant','cabinet','coffee','cactus','robot','disk','box','chair','goal','paper'];
 const SETS=[
-  {id:'fluent3d',ext:'png',rank:'อันดับ 1',name:'Microsoft Fluent Emoji — 3D',lic:'MIT · ใส่เครดิต Microsoft',
-   why:['<b>น่ารักที่สุด</b> ตัวละครเงา 3 มิติ ดูเป็นเกมมือถือจริงจัง','ครบทั้งพนักงานออฟฟิศ หมอ/พยาบาล ไอที และของในออฟฟิศ','ต่อยอดจากชุดที่ใช้อยู่ได้เลย (ชื่อไฟล์ตรงกัน)','<i>ไฟล์ PNG ใหญ่กว่า (~35 KB/ภาพ) โหลดครั้งแรกช้ากว่านิดหน่อย</i>']},
-  {id:'noto',ext:'svg',rank:'อันดับ 2',name:'Google Noto Emoji (SVG)',lic:'Apache 2.0 / OFL · ใส่เครดิต Google',
-   why:['<b>หน้าตาคุ้นเคย</b> แบบอีโมจิใน Android/LINE ที่ทุกคนเห็นทุกวัน','เป็นเวกเตอร์ เบาและคมทุกขนาดจอ','ตัวละครเต็มตัว อ่านง่ายเวลาวิ่งตัวเล็ก','<i>ดูเรียบกว่าแบบ 3D</i>']},
-  {id:'twemoji',ext:'svg',rank:'อันดับ 3',name:'Twemoji (SVG)',lic:'CC-BY 4.0 · ต้องใส่เครดิตในหน้าเว็บ',
-   why:['<b>มินิมอลสุด</b> สีเรียบ ขอบคม ดูสะอาดตาแบบแอปออฟฟิศ','ไฟล์เล็กที่สุด (~5 KB/ภาพ) โหลดไวบนเน็ตโรงพยาบาล','<i>ความน่ารักน้อยกว่าสองชุดแรก</i>']},
+  {id:'pixeloffice',rank:'อันดับ 1',name:'Pixel Office Asset Pack — 2dPig',url:'https://2dpig.itch.io/pixel-office',lic:'CC0 · ไม่ต้องใส่เครดิต',
+   why:['<b>มุมมองด้านข้าง</b> ตรงกับเกมเรา ใส่แทนได้ทันที','พนักงาน 5 คน + แมว + หมา น่ารักแบบพิกเซลเกมยุคใหม่','ของครบ: ตู้กดน้ำ ตู้ขนม ปริ้นเตอร์ ถังขยะแยกสี โซฟา ต้นไม้','<i>ชิ้นงานน้อย (~50 ชิ้น) และตัวละครไม่มีท่าเดิน (ใช้โค้ดทำท่าแทนแบบตอนนี้)</i>']},
+  {id:'antea',rank:'อันดับ 2',name:'Office Furniture (Antea) + ตัวละคร 2dPig',url:'https://stcrbcn.itch.io/furniture-office-set',lic:'เฟอร์นิเจอร์ CC-BY 4.0 (ใส่เครดิต) · ตัวละคร CC0',
+   why:['<b>เฟอร์นิเจอร์ละเอียดกว่า</b> 40+ ชิ้น: ปริ้นเตอร์ใหญ่ ตู้เอกสาร โต๊ะหัวหน้า ตู้กดน้ำ','สีโทนน้ำเงิน-เทา ดูเป็นออฟฟิศจริงจังขึ้น','<i>ไม่มีตัวละคร ต้องยืมจาก 2dPig · ของบางชิ้นเป็นมุมบนเล็กน้อย</i>']},
+  {id:'arlan',rank:'อันดับ 3',name:'Free Office Pixel Art — Arlan_TR',url:'https://arlantr.itch.io/free-office-pixel-art',lic:'"ใช้ได้ทุกแบบ" · ใส่เครดิต',
+   why:['<b>มีโต๊ะเฉพาะงาน</b> โต๊ะปั๊มตรา โต๊ะเขียนเอกสาร ตรงกับครัวเอกสารพอดี','ตัวละคร Julia มีท่าเดิน 4 ทิศ + ท่าดื่มกาแฟ/นั่งคอม','<i>มีตัวละครเดินได้ตัวเดียว (คนอื่นในภาพเป็น Julia เปลี่ยนสี) · มุมมองด้านบน</i>']},
 ];
 const TS=32;
 function load(src){return new Promise(r=>{const i=new Image();i.onload=()=>r(i);i.onerror=()=>r(null);i.src=src})}
@@ -51,7 +52,9 @@ function label(ctx,s,x,y,size=13,col='#2b2140'){ctx.font=`600 ${size}px Kanit, s
 function scene(cv,im,kind){
   const W=800,H=kind==='lobby'?420:320,ctx=cv.getContext('2d'),d=2;cv.width=W*d;cv.height=H*d;ctx.setTransform(d,0,0,d,0,0);
   const g=y=>H-2*TS+y;wall(ctx,W,H);for(let x=0;x<W;x+=TS){floor(ctx,x,H-2*TS,true);floor(ctx,x,H-TS,false)}
-  const put=(k,x,yb,s)=>{const i=im[k];if(i)ctx.drawImage(i,x-s/2,yb-s,s,s)};
+  ctx.imageSmoothingEnabled=false;
+  // fit inside an s×s box, keep aspect ratio, stand on yb
+  const put=(k,x,yb,s)=>{const i=im[k];if(!i)return;const r=i.naturalWidth/i.naturalHeight,w=r>=1?s:s*r,h=r>=1?s/r:s;ctx.drawImage(i,Math.round(x-w/2),Math.round(yb-h),Math.round(w),Math.round(h))};
   if(kind==='lobby'){
     desk(ctx,90,g(-96),160);desk(ctx,540,g(-96),160);desk(ctx,320,g(-190),160);
     put('cabinet',44,g(0),66);put('plant',300,g(0),58);put('coffee',640,g(-96),42);put('printer',705,g(0),62);put('box',140,g(-96),50);put('chair',770,g(0),52);
@@ -72,12 +75,12 @@ function scene(cv,im,kind){
 (async()=>{
   const root=document.getElementById('picks');
   for(const s of SETS){
-    const im={};await Promise.all(KEYS.map(async k=>{im[k]=await load(`assets/themes/${s.id}/${k}.${s.ext}`)}));
+    const im={};await Promise.all(KEYS.map(async k=>{im[k]=await load(`assets/themes/${s.id}/${k}.png`)}));
     const el=document.createElement('section');el.className='pick';
-    el.innerHTML=`<div class="head"><span class="rank">${s.rank}</span><h2>${s.name}</h2><span class="lic">${s.lic}</span></div>
+    el.innerHTML=`<div class="head"><span class="rank">${s.rank}</span><h2><a href="${s.url}" target="_blank" rel="noopener">${s.name}</a></h2><span class="lic">${s.lic}</span></div>
       <div class="shots"><canvas data-k="lobby" aria-label="ห้องรวม"></canvas><canvas data-k="kitchen" aria-label="ครัวเอกสาร"></canvas></div>
       <ul class="why">${s.why.map(w=>`<li>${w}</li>`).join('')}</ul>
-      <div class="cast">${KEYS.map(k=>`<img alt="" src="assets/themes/${s.id}/${k}.${s.ext}">`).join('')}</div>`;
+      <div class="cast">${KEYS.map(k=>`<img alt="" src="assets/themes/${s.id}/${k}.png">`).join('')}</div>`;
     root.appendChild(el);
     scene(el.querySelector('[data-k=lobby]'),im,'lobby');scene(el.querySelector('[data-k=kitchen]'),im,'kitchen');
   }
