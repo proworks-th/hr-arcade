@@ -306,6 +306,8 @@ function recordMission(e){ // e: {game,score,daily,st,kind}
   renderMissions();
 }
 window.addEventListener('hra-party',e=>recordMission({game:'party',kind:e.detail.kind}));
+// mission events queued by the 3D room (separate page)
+{const q=store.get('pendingMissions',[]);if(q.length){store.set('pendingMissions',[]);setTimeout(()=>q.forEach(recordMission),0)}}
 
 /* ---------- hub live panel renderers (data arrives from Firebase watchers) ---------- */
 const ACT={hub:'อยู่หน้าแรก',party:'อยู่ห้องปาร์ตี้',party3d:'🧊 อยู่ห้อง 3D',busy:'🙈 แอบทำงาน',spot:'🔍 จับผิดภาพ',run:'🏃 วิ่งไปตอกบัตร',whack:'☎️ สายด่วน',stack:'📚 ซ้อนแฟ้ม'};

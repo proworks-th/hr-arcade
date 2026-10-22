@@ -33,6 +33,24 @@ main{max-width:1200px;margin:0 auto;padding:12px 16px 40px}
 .tag .bub[hidden]{display:none}
 .tag .bub{display:inline-block;background:#fff;border:2px solid var(--line);border-radius:10px;padding:1px 10px;font-weight:600;margin-bottom:2px;animation:pop .2s}
 @keyframes pop{from{transform:scale(.6);opacity:0}}
+.tag .held{font-size:18px;line-height:1;margin-bottom:1px;text-shadow:0 0 4px #fff}
+.tag .held[hidden]{display:none}
+.st{position:absolute;transform:translate(-50%,-100%);text-align:center;pointer-events:none;min-width:70px}
+.st[hidden]{display:none}
+.st .ic{font-size:22px;line-height:1}.st .lb{font-size:11px;font-weight:600;background:#fff;border:2px solid var(--line);border-radius:8px;padding:0 6px;display:inline-block}
+.st .it{font-size:16px;min-height:18px}
+.st .pg{width:56px;height:8px;margin:2px auto 0;border:2px solid var(--line);border-radius:6px;background:#fff;overflow:hidden}.st .pg[hidden]{display:none}
+.st .pg i{display:block;height:100%;width:0;background:var(--ok)}
+.khud{position:absolute;left:8px;top:30px;display:flex;flex-wrap:wrap;gap:6px;max-width:75%;pointer-events:none}
+.khud[hidden],.count[hidden],.res[hidden]{display:none}
+.khud .kt{background:#fff;border:2px solid var(--line);border-radius:10px;padding:2px 10px;font-weight:800}
+.tk{background:#fffbe0;border:2px solid var(--line);border-radius:10px;padding:2px 8px 6px;position:relative;font-size:13px;min-width:96px}
+.tk b{display:block}.tk i{position:absolute;left:6px;bottom:3px;height:4px;border-radius:2px}
+.count{position:absolute;inset:0;display:grid;place-content:center;text-align:center;background:rgba(43,33,64,.35);color:#fff;pointer-events:none}
+.count b{font-size:90px;line-height:1;text-shadow:0 4px 0 var(--line)}.count span{font-weight:600;text-shadow:0 2px 0 var(--line)}
+.res{position:absolute;inset:0;display:grid;place-items:center;background:rgba(43,33,64,.45)}.res .panel{max-width:380px}
+.toasts{position:absolute;left:50%;top:10px;transform:translateX(-50%);display:flex;flex-direction:column;gap:4px;align-items:center;pointer-events:none}
+.toast{background:var(--ink);color:#fff;border-radius:999px;padding:4px 14px;font-weight:600;animation:pop .2s}
 .hud{position:absolute;left:10px;top:8px;font-size:12px;background:rgba(255,255,255,.75);border-radius:8px;padding:2px 8px;pointer-events:none}
 .loading{position:absolute;inset:0;display:grid;place-items:center;background:rgba(255,244,230,.9);font-weight:600}
 .side{background:#fff;border:3px solid var(--line);border-radius:14px;padding:10px 12px;align-self:start}
@@ -62,15 +80,17 @@ main{max-width:1200px;margin:0 auto;padding:12px 16px 40px}
 <main>
   <div class="wrap">
     <div>
-      <div class="stage" id="stage"><div class="labels" id="labels"></div><div class="hud" id="hud"></div><div class="loading" id="loading">⏳ กำลังโหลดโมเดล 3D…</div></div>
-      <div class="touch"><div class="joy" id="joy"><i></i></div><div class="bar"><button class="btn primary" id="tJump">⤒ กระโดด</button></div></div>
+      <div class="stage" id="stage"><div class="labels" id="labels"></div><div class="hud" id="hud"></div><div class="khud" id="khud" hidden></div>
+        <div class="count" id="count" hidden></div><div class="res" id="res" hidden></div><div class="toasts" id="toasts"></div><div class="loading" id="loading">⏳ กำลังโหลดโมเดล 3D…</div></div>
+      <div class="touch"><div class="joy" id="joy"><i></i></div><div class="bar"><button class="btn" id="tAct">✋ ใช้งาน</button><button class="btn primary" id="tJump">⤒ กระโดด</button></div></div>
+      <div class="bar" id="bar"></div>
       <div class="bar" id="emotes"></div>
     </div>
     <aside class="side"><h3>👥 ในห้องตอนนี้</h3><ul id="plist"></ul>
-      <p>⬅️⬆️⬇️➡️ / WASD เดิน · Space กระโดด · 1-8 อีโมจิ<br>กล้องล็อกมุมเดียวกันทุกคน — ทุกคนเห็นห้องเหมือนกัน</p>
+      <p>⬅️⬆️⬇️➡️ / WASD เดิน · Space กระโดด · E ใช้งาน (กดค้าง = ทำงาน) · 1-8 อีโมจิ<br>กล้องล็อกมุมเดียวกันทุกคน — ทุกคนเห็นห้องเหมือนกัน</p>
       <p>🎨 โมเดล 3D: <a href="https://kenney.nl/assets/mini-characters" target="_blank" rel="noopener">Kenney Mini Characters</a> + <a href="https://kenney.nl/assets/furniture-kit" target="_blank" rel="noopener">Furniture Kit</a> (CC0)</p></aside>
   </div>
 </main>
-<script type="module" src="party3d.js?v=3"></script>
+<script type="module" src="party3d.js?v=5"></script>
 </body>
 </html>
