@@ -725,7 +725,7 @@ function stackGame(root,api){
 function partyMount(root,api){
   let inst=null,dead=false;
   root.innerHTML='<div class="panel" style="margin:40px auto">⏳ กำลังโหลดโหมดออนไลน์…</div>';
-  import('./party.js?v=1').then(m=>{if(!dead)inst=m.partyGame(root,api)})
+  import('./party.js?v=2').then(m=>{if(!dead)inst=m.partyGame(root,api)})
     .catch(e=>{root.innerHTML=`<div class="panel" style="margin:40px auto">โหลดโหมดออนไลน์ไม่ได้ 😢<br><small class="muted">${e.message}</small></div>`});
   return{destroy(){dead=true;inst&&inst.destroy()}};
 }
