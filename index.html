@@ -88,6 +88,20 @@ kbd{font-family:inherit;font-size:.75em;border:2px solid currentColor;border-rad
 .xmark{position:absolute;transform:translate(-50%,-50%);font-size:7cqw;color:#ff2d55;font-weight:800;pointer-events:none;animation:fadeup .7s forwards;text-shadow:0 0 .5cqw #fff}
 @keyframes fadeup{to{opacity:0;transform:translate(-50%,-120%)}}
 
+/* ranking */
+.rankline{margin-top:10px;font-size:15px;min-height:22px}
+.rankline input{font:inherit;border:2px solid var(--line);border-radius:8px;padding:2px 8px;width:140px}
+.rk-tabs{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:8px 0}
+.rk-tabs .btn{padding:4px 10px;font-size:14px;box-shadow:0 3px 0 var(--line);border-width:2px}
+.rk-tabs .btn.on{background:var(--yel)}
+.rk-list{list-style:none;margin:8px 0 0;padding:0;text-align:left}
+.rk-list li{display:flex;gap:8px;align-items:center;padding:6px 8px;border-bottom:1px dashed #e2d8c8}
+.rk-list li.me{background:#fff3c4;border-radius:8px}
+.rk-list .pos{width:34px;font-weight:800;text-align:center}
+.rk-list .nm{flex:1;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rk-list .sc{font-weight:800}.rk-list .ex{font-size:12px;color:var(--muted)}
+.champ{font-size:13px;font-weight:600;color:#8a5a00;min-height:18px}
+
 /* online party */
 .pt{display:grid;grid-template-columns:1fr 230px;gap:12px}
 @media (max-width:900px){.pt{grid-template-columns:1fr}}
@@ -172,6 +186,7 @@ kbd{font-family:inherit;font-size:.75em;border:2px solid currentColor;border-rad
 <header class="top">
   <button class="btn icon" id="homeBtn" title="หน้าหลัก" hidden>🏠</button>
   <h1>🕹️ ห้องพักสมอง · HR Arcade</h1>
+  <button class="btn icon" id="rankBtn" title="อันดับ">🏆</button>
   <button class="btn icon" id="muteBtn" title="เปิด/ปิดเสียง">🔊</button>
 </header>
 <main id="hub"></main>
@@ -221,6 +236,39 @@ const SFX={
 };
 function renderMute(){$('#muteBtn').textContent=muted?'🔇':'🔊'}
 $('#muteBtn').onclick=()=>{muted=!muted;store.set('muted',muted);renderMute()};
+
+/* ---------- shared ranking (ranking.js, Firebase) ---------- */
+let rankMod=null;
+const loadRank=()=>rankMod||(rankMod=import('./ranking.js?v=1'));
+const esc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+async function showRanking(gid='spot',per='d'){
+  const R=await loadRank();
+  const games=GAMES.filter(g=>R.RANK_GAMES[g.id]);
+  const ov=document.createElement('div');ov.className='overlay';
+  ov.innerHTML=`<div class="panel popin"><div class="big">🏆</div><h2>อันดับ</h2><div class="rk-tabs" data-k="g"></div><div class="rk-tabs" data-k="p"></div>
+    <ol class="rk-list" data-k="list"><li class="muted">⏳ กำลังโหลด…</li></ol><p class="muted" data-k="note" style="font-size:13px;margin:8px 0 0"></p>
+    <div class="row"><button class="btn" data-k="close">ปิด</button></div></div>`;
+  ov.onclick=e=>{if(e.target===ov)ov.remove()};ov.querySelector('[data-k=close]').onclick=()=>ov.remove();
+  document.body.appendChild(ov);
+  const me=R.nameKey(store.get('name',''));
+  async function draw(){
+    ov.querySelector('[data-k=g]').innerHTML=games.map(g=>`<button class="btn${g.id===gid?' on':''}" data-g="${g.id}">${g.emoji} ${g.title}</button>`).join('');
+    ov.querySelector('[data-k=p]').innerHTML=Object.entries(R.PERIODS).map(([k,v])=>`<button class="btn${k===per?' on':''}" data-p="${k}">${v}</button>`).join('');
+    ov.querySelectorAll('[data-g]').forEach(b=>b.onclick=()=>{gid=b.dataset.g;draw()});
+    ov.querySelectorAll('[data-p]').forEach(b=>b.onclick=()=>{per=b.dataset.p;draw()});
+    const g=GAMES.find(x=>x.id===gid),L=ov.querySelector('[data-k=list]');
+    ov.querySelector('[data-k=note]').textContent=(gid==='spot'?'นับเฉพาะด่านประจำวัน · ':'')+'เก็บคะแนนดีที่สุดคนละ 1 ค่า · วันนี้รีเซ็ตเที่ยงคืน · สัปดาห์รีเซ็ตวันจันทร์';
+    L.innerHTML='<li class="muted">⏳ กำลังโหลด…</li>';
+    try{
+      const rows=await R.board(gid,per),medal=['🥇','🥈','🥉'],mi=rows.findIndex(r=>r.k===me);
+      if(!rows.length){L.innerHTML='<li class="muted">ยังไม่มีใครลงอันดับ — เป็นคนแรกเลย!</li>';return}
+      const li=(r,i)=>`<li class="${r.k===me?'me':''}"><span class="pos">${medal[i]||'#'+(i+1)}</span><span class="nm">${esc(r.n)}${r.k===me?' (คุณ)':''}</span><span><span class="sc">${fmt(r.s)}</span> ${g.unit||''}<br><span class="ex">${esc(r.x||'')}</span></span></li>`;
+      L.innerHTML=rows.slice(0,10).map(li).join('')+(mi>=10?`<li class="muted" style="justify-content:center">⋯</li>`+li(rows[mi],mi):'');
+    }catch(e){L.innerHTML='<li class="muted">โหลดอันดับไม่ได้ 😢 (เน็ตหลุด?)</li>'}
+  }
+  draw();
+}
+$('#rankBtn').onclick=()=>showRanking();
 renderMute();
 
 /* ---------- runtime: loop, pause, games ---------- */
@@ -263,9 +311,21 @@ function startGame(id){
       ov.innerHTML=`<div class="panel popin"><div class="big">${g.emoji}</div><h2>จบเกม!</h2>
         <div class="score">${fmt(score)}</div><div>${g.unit||'คะแนน'}${extra?' · '+extra:''}</div>
         ${isBest?'<div class="badge">🏆 สถิติใหม่!</div>':`<div class="muted" style="margin-top:6px">สถิติของคุณ: ${fmt(prev)}</div>`}
-        <div class="row"><button class="btn primary" data-a="again">🔁 เล่นอีก</button><button class="btn" data-a="share">📋 อวดในไลน์</button><button class="btn" data-a="home">🏠 หน้าหลัก</button></div></div>`;
+        <div class="rankline" data-a="rk"></div>
+        <div class="row"><button class="btn primary" data-a="again">🔁 เล่นอีก</button><button class="btn" data-a="board">🏆 อันดับ</button><button class="btn" data-a="share">📋 อวดในไลน์</button><button class="btn" data-a="home">🏠 หน้าหลัก</button></div></div>`;
       ov.querySelector('[data-a=again]').onclick=()=>startGame(g.id);
       ov.querySelector('[data-a=home]').onclick=goHome;
+      ov.querySelector('[data-a=board]').onclick=()=>showRanking(g.id,'d');
+      const rk=ov.querySelector('[data-a=rk]');
+      const send=nm=>{rk.textContent='⏳ กำลังส่งคะแนนเข้าอันดับ…';
+        loadRank().then(async R=>{const res=await R.submit(g.id,nm,score,extra);const rows=await R.board(g.id,'d'),i=rows.findIndex(r=>r.k===R.nameKey(nm));
+          rk.innerHTML=i<0?'ส่งคะแนนแล้ว':`🏆 อันดับวันนี้ของคุณ: <b>#${i+1}</b> จาก ${rows.length} คน${res&&res.d?'':' <span class="muted">(ยังไม่ชนะสถิติวันนี้ของตัวเอง)</span>'}`})
+          .catch(()=>{rk.textContent='ส่งคะแนนเข้าอันดับไม่ได้ (เน็ตหลุด?)'})};
+      if(g.id==='spot'&&!daily)rk.innerHTML='<span class="muted">โหมดสุ่มด่านไม่นับอันดับ — เล่นด่านประจำวันเพื่อลงอันดับ</span>';
+      else if(score>0){const nm=store.get('name','').trim();
+        if(nm)send(nm);
+        else{rk.innerHTML='ใส่ชื่อเล่นเพื่อลงอันดับ: <input maxlength="20" placeholder="ชื่อเล่น"> <button class="btn sm">ส่ง</button>';
+          const inp=rk.querySelector('input');rk.querySelector('button').onclick=()=>{const v=inp.value.trim();if(!v)return;store.set('name',v);send(v)}}}
       ov.querySelector('[data-a=share]').onclick=async()=>{
         const name=store.get('name','').trim();
         const txt=`🕹️ HR Arcade ${todayTH} — ${g.title}${daily?' (ด่านประจำวัน)':''}\n${name?name+': ':''}${fmt(score)} ${g.unit||'คะแนน'}${extra?' · '+extra:''}${isBest?' 🏆':''}\nใครแน่มาสู้ 👉 ${location.href.split('#')[0]}`;
@@ -738,14 +798,21 @@ const GAMES=[
 ];
 function renderHub(){
   hub.innerHTML=`<section class="hero"><div><h2>พักสมอง <span>2 นาที</span></h2><p>เล่นสั้นๆ แล้วกลับไปลุยงานต่อ · ${todayTH}</p></div>
-    <label class="namebox">😎 <input id="nameIn" maxlength="20" placeholder="ชื่อเล่น (ใช้ตอนอวด)"></label></section>
+    <button class="btn" id="hubRank">🏆 อันดับรวม</button>
+    <label class="namebox">😎 <input id="nameIn" maxlength="20" placeholder="ชื่อเล่น (ใช้ลงอันดับ)"></label></section>
     <div class="cards">${GAMES.map(g=>`<button class="card" data-g="${g.id}"><div class="em" style="--c:${g.color}">${g.img?`<img src="${g.img}" alt="">`:g.emoji}</div>
-      <h3>${g.title}</h3><p>${g.desc}</p><div class="meta"><span class="tag">⏱ ${g.time}</span><span>${g.online?'👥 ออนไลน์':`🏆 ${fmt(store.get('best_'+g.id,0))}${g.unit?' '+g.unit:''}`}</span></div></button>`).join('')}</div>
+      <h3>${g.title}</h3><p>${g.desc}</p><div class="champ" data-champ="${g.id}"></div><div class="meta"><span class="tag">⏱ ${g.time}</span><span>${g.online?'👥 ออนไลน์':`🏆 ${fmt(store.get('best_'+g.id,0))}${g.unit?' '+g.unit:''}`}</span></div></button>`).join('')}</div>
     <div class="tips">🙈 <b>หัวหน้าเดินมา?</b> กด <b>Esc</b> (หรือ <b>\`</b>) หรือปุ่ม 🙈 มุมขวาล่าง → จอกลายเป็นไฟล์ Excel ทะเบียนวันลาทันที เกมหยุด เสียงเงียบ ชื่อแท็บเปลี่ยน<br>
     กลับมาเล่นต่อ: กด <b>Esc</b> อีกครั้ง หรือแตะคำว่า <b>"พร้อม"</b> ที่มุมซ้ายล่างของ Excel<br>
-    📋 จบเกมแล้วกด <b>"อวดในไลน์"</b> เพื่อคัดลอกคะแนนไปแปะในกลุ่ม · สถิติเก็บในเครื่องใครเครื่องมัน<br>🎨 ภาพและเสียงในเกม: <a href="https://kenney.nl" target="_blank" rel="noopener">Kenney.nl</a> (CC0) · ภาพโหมดออนไลน์: <a href="https://2dpig.itch.io/pixel-office" target="_blank" rel="noopener">2dPig Pixel Office</a> (CC0)</div>`;
+    🏆 คะแนนส่งเข้า<b>อันดับรวม</b>อัตโนมัติตอนจบเกม (ใช้ชื่อเล่นด้านบน — อย่าใช้ชื่อซ้ำกับเพื่อน) · 📋 กด "อวดในไลน์" เพื่อคัดลอกคะแนนไปแปะในกลุ่ม<br>🎨 ภาพและเสียงในเกม: <a href="https://kenney.nl" target="_blank" rel="noopener">Kenney.nl</a> (CC0) · ภาพโหมดออนไลน์: <a href="https://2dpig.itch.io/pixel-office" target="_blank" rel="noopener">2dPig Pixel Office</a> (CC0)</div>`;
   const ni=$('#nameIn');ni.value=store.get('name','');ni.oninput=()=>store.set('name',ni.value);
   hub.querySelectorAll('.card').forEach(c=>c.onclick=()=>startGame(c.dataset.g));
+  $('#hubRank').onclick=()=>showRanking();
+  loadRank().then(R=>Promise.all(Object.keys(R.RANK_GAMES).map(async id=>{
+    const el=hub.querySelector(`[data-champ="${id}"]`);if(!el)return;
+    const top=(await R.board(id,'d'))[0],g=GAMES.find(x=>x.id===id);
+    el.textContent=top?`🥇 แชมป์วันนี้: ${top.n} · ${fmt(top.s)}${g.unit?' '+g.unit:''}`:'🥇 วันนี้ยังไม่มีแชมป์ — ว่างอยู่!';
+  }))).catch(()=>{});
 }
 renderHub();
 </script>
