@@ -1,17 +1,17 @@
 // Online party mode: shared lobby + "Fall Guys"-style race + "Overcooked"-style co-op document kitchen.
 // Sync: Firebase Realtime Database (settings in firebase-config.js).
-// Art: Microsoft Fluent Emoji (MIT) in assets/office + hand-drawn office tiles; sfx: Kenney (CC0).
+// Art: 2dPig "Pixel Office Asset Pack" (CC0) cut into assets/pixel + hand-drawn floor/desk tiles; sfx: Kenney (CC0).
 // Uses helpers defined in index.html: runSfx, store, toast, fmt, mulberry32, bossOn.
 import {initializeApp,getApps} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
 import {getDatabase,ref,set,remove,onValue,onDisconnect,push,onChildAdded,runTransaction} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js';
 import {FIREBASE_CONFIG} from './firebase-config.js';
 
 const TS=32,VW=800,VH=448,GRAV=1600,MAXV=230,JUMP=560,SPRING=900,PW=20,PH=30;
-const AVAS=['p_office','p_woffice','p_moffice','p_health','p_whealth','p_mhealth','p_tech','p_wtech'];
+const AVAS=['p_office','p_woffice','p_whealth','p_tech','p_cat','p_dog'];
 const ava=c=>AVAS.includes(c)?c:'p_office';
 const OIMG={};
-function oImg(n){if(!OIMG[n]){const i=new Image();i.src='assets/office/'+n+'.svg';OIMG[n]=i}return OIMG[n]}
-const PROPS=['cabinet','plant','printer','desktop','plant','coffee'];
+function oImg(n){if(!OIMG[n]){const i=new Image();i.src='assets/pixel/'+n+'.png';OIMG[n]=i}return OIMG[n]}
+const PROPS=['cabinet','plant','vending','sofa','printer','coffee','plant','sofa2'];
 const EMOTES=['👋','😂','😱','👍','🔥','หัวหน้ามา!','รอด้วย!','GG'];
 const RECIPES=[{n:'ใบลากิจ',f:1,s:0,g:0,pts:20},{n:'ใบลาป่วย',f:1,s:1,g:0,pts:30},{n:'ขอ OT',f:1,s:0,g:1,pts:30},{n:'หนังสือรับรอง',f:1,s:1,g:1,pts:50}];
 const KST=[{id:'paper',t:'paper',tx:1,sp:'printer',lab:'หยิบกระดาษ'},{id:'fill1',t:'fill',tx:4,sp:'laptop',lab:'โต๊ะกรอก'},
@@ -79,7 +79,7 @@ export function partyGame(root,api){
   root.innerHTML=`<div class="panel pt-join popin"><div class="big">🎉</div><h2>ปาร์ตี้ออนไลน์</h2>
     <p class="muted">เข้าห้องเดียวกัน เห็นเพื่อนวิ่งไปมา แล้วเปิดเกมเล่นพร้อมกัน</p>
     <label class="pt-field">ชื่อเล่น <input data-k="name" maxlength="12" value="${(store.get('name','')||'').replace(/"/g,'')}" placeholder="เช่น พล"></label>
-    <div class="pt-colors">${AVAS.map(c=>`<button class="btn${c===color?' primary':''}" data-c="${c}"><img src="assets/office/${c}.svg" width="44" height="44" alt=""></button>`).join('')}</div>
+    <div class="pt-colors">${AVAS.map(c=>`<button class="btn${c===color?' primary':''}" data-c="${c}"><img src="assets/pixel/${c}.png" width="44" height="44" alt="" style="object-fit:contain;image-rendering:pixelated"></button>`).join('')}</div>
     <label class="pt-field">ห้อง <input data-k="room" maxlength="16" value="${(qs.get('room')||'office').replace(/[^\w-]/g,'')}"></label>
     <div class="row"><button class="btn primary big" data-k="go">🚪 เข้าห้อง</button></div></div>`;
   root.querySelectorAll('[data-c]').forEach(b=>b.onclick=()=>{color=b.dataset.c;root.querySelectorAll('[data-c]').forEach(x=>x.classList.toggle('primary',x===b))});
@@ -99,8 +99,8 @@ export function partyGame(root,api){
       <div class="pt-bar" data-k="bar"></div><div class="pt-emotes">${EMOTES.map((e,i)=>`<button class="btn sm" data-e="${i}">${e}</button>`).join('')}</div></div>
       <aside class="pt-side"><h3>🏠 ห้อง ${room}</h3><ul data-k="plist"></ul><p class="muted pt-help">⬅️➡️ / A D เดิน · Space / W กระโดด · E ใช้งาน (กดค้าง = ทำงาน) · 1-8 อีโมจิ<br>ชวนเพื่อน: ส่งลิงก์นี้ แล้วกด "เข้าห้อง" ชื่อเดียวกัน</p></aside></div>`;
     const cv=root.querySelector('canvas'),ctx=cv.getContext('2d'),q=k=>root.querySelector(`[data-k="${k}"]`);
-    const dpr=Math.min(2,window.devicePixelRatio||1);cv.width=VW*dpr;cv.height=VH*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);
-    [...AVAS,...PROPS,...KST.map(s=>s.sp),'boss','paper','memo','nib','box','cactus','disk','robot','flag','goal','chair','dizzy','calendar','clock','popper'].forEach(oImg);
+    const dpr=Math.min(2,window.devicePixelRatio||1);cv.width=VW*dpr;cv.height=VH*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);ctx.imageSmoothingEnabled=false;
+    [...AVAS,...PROPS,...KST.map(s=>s.sp),'boss','paper','memo','vending','cactus','disk','robot','flag','goal','chair','calendar','window','window2','pic1','pic2','pic3'].forEach(oImg);
 
     let players={},scores={},best={},K=null,S={sc:'lobby'},sceneKey='',map=lobbyMap(),intents=[],lastEv=0;
     const me={n:name,c:color,e:'',et:0,j:Date.now(),wk:'',fin:0};
@@ -152,7 +152,7 @@ export function partyGame(root,api){
       const el=q('res');if(S.sc!=='res'){el.className='pt-res';return}
       el.className='pt-res show';
       if(S.g==='race'){const medal=['🥇','🥈','🥉'];
-        el.innerHTML=`<div class="panel popin"><h2>🏁 ผลแข่งวิ่ง</h2><ol class="pt-rank">${(S.res||[]).map((p,i)=>`<li><img src="assets/office/${ava(p.c)}.svg" width="28" height="28" alt=""> <b>${p.n}</b> ${p.fin?`${medal[i]||'✅'} ${(p.fin/1000).toFixed(1)} วิ`:'❌ ไม่ถึงเส้นชัย'} ${p.pts?`<span class="tag">+${p.pts}</span>`:''}</li>`).join('')}</ol><p class="muted">กลับห้องรวมใน 10 วินาที</p></div>`}
+        el.innerHTML=`<div class="panel popin"><h2>🏁 ผลแข่งวิ่ง</h2><ol class="pt-rank">${(S.res||[]).map((p,i)=>`<li><img src="assets/pixel/${ava(p.c)}.png" width="28" height="28" alt="" style="object-fit:contain;image-rendering:pixelated"> <b>${p.n}</b> ${p.fin?`${medal[i]||'✅'} ${(p.fin/1000).toFixed(1)} วิ`:'❌ ไม่ถึงเส้นชัย'} ${p.pts?`<span class="tag">+${p.pts}</span>`:''}</li>`).join('')}</ol><p class="muted">กลับห้องรวมใน 10 วินาที</p></div>`}
       else{const stars=S.score>=400?'⭐⭐⭐':S.score>=220?'⭐⭐':S.score>=90?'⭐':'💀';
         el.innerHTML=`<div class="panel popin"><h2>🍳 ครัวเอกสาร</h2><div class="score">${fmt(S.score||0)}</div><div style="font-size:30px">${stars}</div>
           <p>ส่งงานสำเร็จ ${S.done||0} ชิ้น · หลุด ${S.fail||0} ชิ้น<br><span class="muted">สถิติห้องนี้: ${fmt(Math.max(best.kitchen||0,S.score||0))}</span></p><p class="muted">กลับห้องรวมใน 10 วินาที</p></div>`}
@@ -161,7 +161,7 @@ export function partyGame(root,api){
     function renderSide(){
       const hid=hostId(),list=Object.entries(players).sort((a,b)=>a[1].j-b[1].j);
       const sig=list.map(([id,p])=>id+p.n+p.c+p.sc).join()+JSON.stringify(scores)+hid;if(sig===sideSig)return;sideSig=sig;
-      q('plist').innerHTML=list.map(([id,p])=>`<li><img src="assets/office/${ava(p.c)}.svg" width="26" height="26" alt=""> <b>${p.n}</b>${id===pid?' (คุณ)':''}${id===hid?' 👑':''}<span class="tag">🏆 ${scores[safeKey(p.n)]||0}</span></li>`).join('');
+      q('plist').innerHTML=list.map(([id,p])=>`<li><img src="assets/pixel/${ava(p.c)}.png" width="26" height="26" alt="" style="object-fit:contain;image-rendering:pixelated"> <b>${p.n}</b>${id===pid?' (คุณ)':''}${id===hid?' 👑':''}<span class="tag">🏆 ${scores[safeKey(p.n)]||0}</span></li>`).join('');
     }
 
     /* --- physics --- */
@@ -266,25 +266,29 @@ export function partyGame(root,api){
 
     /* --- render --- */
     const img=n=>oImg(n);
+    // pixel sprites: fit inside w×h with a whole-number scale, centred, standing on the box bottom
     function spr(n,x,y,w,h,flip){const im=img(n);if(!im.complete||!im.naturalWidth)return;
-      if(flip){ctx.save();ctx.translate(x+w,y);ctx.scale(-1,1);ctx.drawImage(im,0,0,w,h);ctx.restore()}else ctx.drawImage(im,x,y,w,h)}
+      const iw=im.naturalWidth,ih=im.naturalHeight;let k=Math.min(w/iw,h/ih);if(k>=1)k=Math.floor(k);
+      const dw=Math.round(iw*k),dh=Math.round(ih*k),dx=Math.round(x+(w-dw)/2),dy=Math.round(y+h-dh);
+      if(flip){ctx.save();ctx.translate(dx+dw,dy);ctx.scale(-1,1);ctx.drawImage(im,0,0,dw,dh);ctx.restore()}else ctx.drawImage(im,dx,dy,dw,dh)}
     function text(s,x,y,size=14,col='#2b2140',stroke='#fff'){ctx.font=`600 ${size}px Kanit, sans-serif`;ctx.textAlign='center';ctx.textBaseline='middle';
       ctx.lineWidth=4;ctx.strokeStyle=stroke;ctx.strokeText(s,x,y);ctx.fillStyle=col;ctx.fillText(s,x,y)}
     function drawPlayer(p,x,y,t,isMe){
-      // Fluent avatars are front-facing busts: animate with bob / squash / tilt instead of frames
+      // the pixel characters have a single pose: animate with bob / squash / tilt instead of frames
       const walk=p.a==='w',jump=p.a==='j',hit=p.a==='h',bob=walk?Math.abs(Math.sin(t/85))*5:Math.sin(t/400)*1.2;
       const im=img(ava(p.c));
       if(im.complete&&im.naturalWidth){ctx.save();ctx.translate(x+PW/2,y+PH+2);
         ctx.rotate(hit?Math.sin(t/60)*.35:walk?Math.sin(t/85)*.08*p.f:0);ctx.scale(jump?.9:1,jump?1.12:1);
-        ctx.drawImage(im,-24,-48-bob,48,48);ctx.restore()}
-      if(hit)spr('dizzy',x+PW/2-12,y-30,24,24);
+        const k=Math.max(1,Math.floor(Math.min(48/im.naturalWidth,48/im.naturalHeight))),dw=im.naturalWidth*k,dh=im.naturalHeight*k;
+        if(p.f<0)ctx.scale(-1,1);ctx.drawImage(im,-dw/2,-dh-bob,dw,dh);ctx.restore()}
+      if(hit)text('💫',x+PW/2,y-34,18);
       text(p.n+(isMe?' ★':''),x+PW/2,y-26,13,isMe?'#d6336c':'#2b2140');
       if(p.e&&t-p.et<3000){ctx.font='600 15px Kanit, sans-serif';const w=Math.max(34,ctx.measureText(p.e).width+16);
         ctx.fillStyle='#fff';ctx.strokeStyle='#2b2140';ctx.lineWidth=2;ctx.beginPath();ctx.roundRect(x+PW/2-w/2,y-64,w,26,10);ctx.fill();ctx.stroke();
         ctx.fillStyle='#2b2140';ctx.textAlign='center';ctx.fillText(p.e,x+PW/2,y-50)}
     }
     function drawItem(it,x,y){spr('paper',x-13,y-13,26,26);let bx=x-16;
-      for(const [f,n] of [['f','memo'],['s','stamp'],['g','nib']])if(it[f]){spr(n,bx,y-26,15,15);bx+=15}}
+      if(it.f){spr('memo',bx,y-30,14,16);bx+=15}if(it.s){spr('stamp',bx,y-28,14,12);bx+=15}if(it.g)text('✒️',bx+6,y-22,12)}
     function floorTile(X,Y,top){ctx.fillStyle=top?'#e2a868':'#9b6a45';ctx.fillRect(X,Y,TS,TS);
       if(top){ctx.fillStyle='#c98b5e';ctx.fillRect(X,Y,TS,6);ctx.fillStyle='rgba(0,0,0,.08)';ctx.fillRect(X+TS-2,Y+6,2,TS-6)}
       else{ctx.fillStyle='rgba(0,0,0,.12)';ctx.fillRect(X,Y+TS/2-1,TS,2);ctx.fillRect(X+((Y/TS)%2?8:24),Y,2,TS)}}
@@ -294,31 +298,30 @@ export function partyGame(root,api){
     function wall(cx){
       const g=ctx.createLinearGradient(0,0,0,VH);g.addColorStop(0,'#fdf3e6');g.addColorStop(1,'#f6e2cb');ctx.fillStyle=g;ctx.fillRect(0,0,VW,VH);
       const off=(cx*.5)%320;
-      for(let x=-off-320;x<VW+320;x+=320){ctx.fillStyle='#fff';ctx.beginPath();ctx.roundRect(x+90,60,140,110,10);ctx.fill();
-        const sk=ctx.createLinearGradient(0,66,0,164);sk.addColorStop(0,'#8fd3ff');sk.addColorStop(1,'#d8f1ff');ctx.fillStyle=sk;ctx.fillRect(x+97,67,126,96);
-        ctx.fillStyle='#fff';ctx.fillRect(x+158,67,4,96);ctx.fillStyle='rgba(255,255,255,.8)';ctx.beginPath();ctx.arc(x+125,100,10,0,7);ctx.arc(x+140,96,13,0,7);ctx.arc(x+154,101,9,0,7);ctx.fill()}
+      const n0=Math.floor((cx*.5)/320);
+      for(let x=-off-320,i=n0-1;x<VW+320;x+=320,i++){spr(i%2?'window2':'window',x+95,52,130,110);spr(['pic1','pic2','pic3'][((i%3)+3)%3],x+262,92,36,40)}
       ctx.fillStyle='#f0cfa8';ctx.fillRect(0,12*TS-18,VW,18)}
     function draw(t){
       const cx=Math.max(0,Math.min(map.W*TS-VW,P.x+PW/2-VW/2));
       wall(cx);
       ctx.save();ctx.translate(-Math.round(cx),0);
       for(let i=Math.floor((cx-200)/260);i<=Math.floor((cx+VW)/260);i++){if(i<0||S.sc==='kitchen')continue;const n=PROPS[i%PROPS.length],X=i*260+150;
-        if(map.g[11]&&map.g[12]&&map.g[12][Math.floor(X/TS)]==='#'&&map.g[11][Math.floor(X/TS)]===' '){ctx.globalAlpha=.55;spr(n,X,12*TS-46,46,46);ctx.globalAlpha=1}}
+        if(map.g[11]&&map.g[12]&&map.g[12][Math.floor(X/TS)]==='#'&&map.g[11][Math.floor(X/TS)]===' '){ctx.globalAlpha=.8;spr(n,X-32,12*TS-80,64,80);ctx.globalAlpha=1}}
       const tx0=Math.floor(cx/TS),tx1=Math.min(map.W-1,tx0+Math.ceil(VW/TS)+1);
       for(let ty=0;ty<map.H;ty++)for(let tx=tx0;tx<=tx1;tx++){const c=map.g[ty][tx],X=tx*TS,Y=ty*TS;
         if(c==='#')floorTile(X,Y,!(ty>0&&map.g[ty-1][tx]==='#'));
         else if(c==='=')deskTile(X,Y,map.g[ty][tx-1]!=='=',map.g[ty][tx+1]!=='=');
-        else if(c==='B')spr('box',X-2,Y-2,TS+4,TS+4);
-        else if(c==='S'){spr('chair',X-4,Y-6,TS+8,TS+8);text('เด้ง!',X+TS/2,Y-12,10)}
+        else if(c==='B')spr('vending',X,Y,TS,TS+2);
+        else if(c==='S'){spr('chair',X-6,Y-12,TS+12,TS+12);text('เด้ง!',X+TS/2,Y-18,10)}
         else if(c==='^')spr('cactus',X-2,Y-2,TS+4,TS+4);
-        else if(c==='F'){spr('flag',X,Y-8,TS+6,TS+6);if(P.cp&&P.cp.x>=X)text('✓',X+TS/2,Y-14,14,'#21c07a')}}
+        else if(c==='F'){spr('flag',X-4,Y-8,TS+8,TS+8);text(P.cp&&P.cp.x>=X?'✓ เช็คพอยต์':'เช็คพอยต์',X+TS/2,Y-16,10,P.cp&&P.cp.x>=X?'#21c07a':'#2b2140')}}
       if(map.goalX){for(let y=4;y<12;y++)for(let i=0;i<2;i++){ctx.fillStyle=(y+i)%2?'#fff':'#2b2140';ctx.fillRect(map.goalX+i*8,y*TS,8,TS)}
-        spr('goal',map.goalX-12,2.6*TS,48,48);text('เส้นชัย',map.goalX+8,2.2*TS,18)}
+        spr('goal',map.goalX-24,12*TS-100,64,96);text('🏁 เส้นชัย',map.goalX+8,12*TS-112,18)}
       for(const z of map.haz){const hx=hazPos(z,t);
-        if(z.t==='saw'){ctx.save();ctx.translate(hx,z.y-6);ctx.rotate(t/90);spr('disk',-20,-20,40,40);ctx.restore()}
-        else spr('robot',hx-20,z.y-40-Math.abs(Math.sin(t/120))*3,40,40,Math.cos(t/1000/z.per*Math.PI*2+z.ph)>0)}
+        if(z.t==='saw'){ctx.save();ctx.translate(hx,z.y-6);ctx.rotate(t/90);spr('disk',-18,-18,36,36);ctx.restore()}
+        else spr('robot',hx-28,z.y-30-Math.abs(Math.sin(t/120))*3,56,30,Math.cos(t/1000/z.per*Math.PI*2+z.ph)>0)}
       if(S.sc==='kitchen')drawKitchen(t);
-      if(S.sc==='lobby'||S.sc==='res'){spr('popper',VW/2-150,2*TS-18,34,34);text('ห้องปาร์ตี้ HR',VW/2,2*TS,26);text('กดปุ่มด้านล่างเพื่อเริ่มเกม · กดตัวเลข 1-8 ส่งอีโมจิ',VW/2,3*TS,14,'#2b2140')}
+      if(S.sc==='lobby'||S.sc==='res'){text('🎉 ห้องปาร์ตี้ HR',VW/2,2*TS,26);text('กดปุ่มด้านล่างเพื่อเริ่มเกม · กดตัวเลข 1-8 ส่งอีโมจิ',VW/2,3*TS,14,'#2b2140')}
       for(const [id,p] of Object.entries(players)){if(id===pid||p.sc!==S.sc)continue;
         const ip=interp[id]||(interp[id]={x:p.x,y:p.y});ip.x+=(p.x-ip.x)*.25;ip.y+=(p.y-ip.y)*.25;
         if(Math.abs(p.x-ip.x)>300){ip.x=p.x;ip.y=p.y}
@@ -335,7 +338,7 @@ export function partyGame(root,api){
       else{spr('boss',bx-24,10*TS-48+Math.sin(t/300)*1.5,48,48);text('หัวหน้า ✒️ เซ็น',bx,10*TS-58,13,'#8338ec')}
       for(const s of KST){const X=s.tx*TS,Y=12*TS;
         ctx.fillStyle='#d9a066';ctx.beginPath();ctx.roundRect(X-6,Y-14,TS+12,14,4);ctx.fill();ctx.fillStyle='#b97f50';ctx.fillRect(X-6,Y-4,TS+12,4);
-        spr(s.sp,X-4,Y-52,40,40);text(s.lab,X+TS/2,Y-66,11);
+        spr(s.sp,X+TS/2-28,Y-62,56,52);text(s.lab,X+TS/2,Y-70,11);
         const slot=K&&K.st&&K.st[s.id];
         if(slot&&slot.i)drawItem(slot.i,X+TS/2+22,Y-30);
         if(slot&&slot.p>0){ctx.fillStyle='#2b2140';ctx.fillRect(X-4,Y-84,TS+8,8);ctx.fillStyle='#21c07a';ctx.fillRect(X-3,Y-83,(TS+6)*Math.min(1,slot.p),6)}
@@ -355,7 +358,7 @@ export function partyGame(root,api){
         const ords=Object.values(K.o||{}).sort((a,b)=>a.t-b.t);
         ords.forEach((o,i)=>{const r=RECIPES[o.r],X=90+i*170;ctx.fillStyle='#fffbe0';ctx.strokeStyle='#2b2140';ctx.lineWidth=2;ctx.beginPath();ctx.roundRect(X,6,160,46,8);ctx.fill();ctx.stroke();
           ctx.fillStyle='#2b2140';ctx.font='600 13px Kanit, sans-serif';ctx.textAlign='left';ctx.textBaseline='middle';ctx.fillText(r.n,X+8,18);
-          [['memo',1],['stamp',r.s],['nib',r.g]].filter(x=>x[1]).forEach(([n],j)=>spr(n,X+8+j*22,27,18,18));
+          spr('memo',X+8,26,18,18);if(r.s)spr('stamp',X+30,28,18,14);if(r.g)text('✒️',X+(r.s?62:40),36,13);
           const fr=Math.max(0,(o.exp-t)/55000);ctx.fillStyle=fr<.3?'#ff4d4d':'#21c07a';ctx.fillRect(X+90,32,64*fr,8);ctx.strokeRect(X+90,32,64,8)})}
     }
 
