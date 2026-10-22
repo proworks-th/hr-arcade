@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Office Asset Picks</title>
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#fff4e6;--ink:#2b2140;--muted:#7a6f8c;--line:#2b2140;--yel:#ffd23f}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:Kanit,"Leelawadee UI",Tahoma,sans-serif}
+main{max-width:1100px;margin:0 auto;padding:20px 16px 60px}
+h1{margin:0 0 4px;font-size:28px}
+.sub{color:var(--muted);margin:0 0 18px}
+.pick{background:#fff;border:3px solid var(--line);border-radius:18px;box-shadow:0 6px 0 var(--line);padding:16px;margin-bottom:22px}
+.head{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:baseline;margin-bottom:10px}
+.rank{background:var(--yel);border:3px solid var(--line);border-radius:999px;padding:0 12px;font-weight:800}
+.head h2{margin:0;font-size:22px}
+.lic{font-size:13px;background:#eef7ff;border-radius:8px;padding:2px 8px}
+.shots{display:grid;grid-template-columns:1fr;gap:12px}
+canvas{display:block;width:100%;border:2px solid var(--line);border-radius:12px;background:#fdf3e6}
+.why{margin:10px 0 0;padding-left:20px;line-height:1.6}
+.why b{color:#139a5c}.why i{color:#c0392b;font-style:normal}
+.cast{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.cast img{width:44px;height:44px;background:#fdf3e6;border-radius:8px;padding:3px}
+</style>
+</head>
+<body>
+<main>
+<h1>ชุดภาพธีมออฟฟิศน่ารัก — Top 3</h1>
+<p class="sub">ตอนนี้เกมใช้ Fluent Emoji แบบ Flat · ทุกชุดใช้ฟรี ใส่ใน repo สาธารณะได้ · ฉากด้านล่างวาดด้วยโค้ดเดียวกับโหมดปาร์ตี้ (ห้องรวม + ครัวเอกสาร) เปลี่ยนแค่ชุดภาพ</p>
+<div id="picks"></div>
+</main>
+<script>
+const KEYS=['p_office','p_woffice','p_whealth','p_tech','boss','printer','laptop','trash','postbox','stamp','plant','cabinet','coffee','cactus','robot','disk','box','chair','goal','paper'];
+const SETS=[
+  {id:'fluent3d',ext:'png',rank:'อันดับ 1',name:'Microsoft Fluent Emoji — 3D',lic:'MIT · ใส่เครดิต Microsoft',
+   why:['<b>น่ารักที่สุด</b> ตัวละครเงา 3 มิติ ดูเป็นเกมมือถือจริงจัง','ครบทั้งพนักงานออฟฟิศ หมอ/พยาบาล ไอที และของในออฟฟิศ','ต่อยอดจากชุดที่ใช้อยู่ได้เลย (ชื่อไฟล์ตรงกัน)','<i>ไฟล์ PNG ใหญ่กว่า (~35 KB/ภาพ) โหลดครั้งแรกช้ากว่านิดหน่อย</i>']},
+  {id:'noto',ext:'svg',rank:'อันดับ 2',name:'Google Noto Emoji (SVG)',lic:'Apache 2.0 / OFL · ใส่เครดิต Google',
+   why:['<b>หน้าตาคุ้นเคย</b> แบบอีโมจิใน Android/LINE ที่ทุกคนเห็นทุกวัน','เป็นเวกเตอร์ เบาและคมทุกขนาดจอ','ตัวละครเต็มตัว อ่านง่ายเวลาวิ่งตัวเล็ก','<i>ดูเรียบกว่าแบบ 3D</i>']},
+  {id:'twemoji',ext:'svg',rank:'อันดับ 3',name:'Twemoji (SVG)',lic:'CC-BY 4.0 · ต้องใส่เครดิตในหน้าเว็บ',
+   why:['<b>มินิมอลสุด</b> สีเรียบ ขอบคม ดูสะอาดตาแบบแอปออฟฟิศ','ไฟล์เล็กที่สุด (~5 KB/ภาพ) โหลดไวบนเน็ตโรงพยาบาล','<i>ความน่ารักน้อยกว่าสองชุดแรก</i>']},
+];
+const TS=32;
+function load(src){return new Promise(r=>{const i=new Image();i.onload=()=>r(i);i.onerror=()=>r(null);i.src=src})}
+function floor(ctx,X,Y,top){ctx.fillStyle=top?'#e2a868':'#9b6a45';ctx.fillRect(X,Y,TS,TS);if(top){ctx.fillStyle='#c98b5e';ctx.fillRect(X,Y,TS,6)}else{ctx.fillStyle='rgba(0,0,0,.12)';ctx.fillRect(X,Y+15,TS,2)}}
+function desk(ctx,X,Y,w){ctx.fillStyle='#a8714a';ctx.fillRect(X+3,Y+8,4,TS-6);ctx.fillRect(X+w-7,Y+8,4,TS-6);ctx.fillStyle='#d9a066';ctx.beginPath();ctx.roundRect(X,Y,w,9,4);ctx.fill()}
+function wall(ctx,W,H){const g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,'#fdf3e6');g.addColorStop(1,'#f6e2cb');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+  for(let x=60;x<W;x+=300){ctx.fillStyle='#fff';ctx.beginPath();ctx.roundRect(x,40,130,96,10);ctx.fill();const s=ctx.createLinearGradient(0,46,0,130);s.addColorStop(0,'#8fd3ff');s.addColorStop(1,'#d8f1ff');ctx.fillStyle=s;ctx.fillRect(x+6,46,118,84);ctx.fillStyle='#fff';ctx.fillRect(x+63,46,4,84)}}
+function label(ctx,s,x,y,size=13,col='#2b2140'){ctx.font=`600 ${size}px Kanit, sans-serif`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.lineWidth=4;ctx.strokeStyle='#fff';ctx.strokeText(s,x,y);ctx.fillStyle=col;ctx.fillText(s,x,y)}
+function scene(cv,im,kind){
+  const W=800,H=kind==='lobby'?420:320,ctx=cv.getContext('2d'),d=2;cv.width=W*d;cv.height=H*d;ctx.setTransform(d,0,0,d,0,0);
+  const g=y=>H-2*TS+y;wall(ctx,W,H);for(let x=0;x<W;x+=TS){floor(ctx,x,H-2*TS,true);floor(ctx,x,H-TS,false)}
+  const put=(k,x,yb,s)=>{const i=im[k];if(i)ctx.drawImage(i,x-s/2,yb-s,s,s)};
+  if(kind==='lobby'){
+    desk(ctx,90,g(-96),160);desk(ctx,540,g(-96),160);desk(ctx,320,g(-190),160);
+    put('cabinet',44,g(0),66);put('plant',300,g(0),58);put('coffee',640,g(-96),42);put('printer',705,g(0),62);put('box',140,g(-96),50);put('chair',770,g(0),52);
+    label(ctx,'ห้องปาร์ตี้ HR',W/2,24,22);
+    const ppl=[['p_office','พล',220,g(0)],['p_woffice','เมย์',400,g(-190)],['p_whealth','ฝน',470,g(0)],['p_tech','บอย',620,g(-96)]];
+    ppl.forEach(([k,n,x,yb],i)=>{put(k,x,yb,76);label(ctx,n,x,yb-84,15)});
+    ctx.fillStyle='#fff';ctx.strokeStyle='#2b2140';ctx.lineWidth=2;ctx.beginPath();ctx.roundRect(470-52,g(0)-130,104,28,10);ctx.fill();ctx.stroke();label(ctx,'หัวหน้ามา!',470,g(0)-116,14);
+    put('robot',560,g(0),52);put('cactus',115,g(0),46);
+  }else{
+    desk(ctx,330,g(-64),150);put('boss',405,g(-64),72);label(ctx,'หัวหน้า ✒️ เซ็น',405,g(-64)-82,14,'#8338ec');
+    const st=[['printer','หยิบกระดาษ',50],['laptop','โต๊ะกรอก',150],['trash','ถังขยะ',250],['stamp','ปั๊มตรา',560],['laptop','โต๊ะกรอก',660],['postbox','ส่งงาน',750]];
+    st.forEach(([k,n,x])=>{ctx.fillStyle='#d9a066';ctx.beginPath();ctx.roundRect(x-24,g(-14),48,14,4);ctx.fill();put(k,x,g(-14),54);label(ctx,n,x,g(-14)-64,13)});
+    put('p_office',150,g(0)+2,72);put('paper',186,g(-52),32);put('p_whealth',560,g(0)+2,72);
+    ctx.fillStyle='#2b2140';ctx.fillRect(532,g(-128),56,9);ctx.fillStyle='#21c07a';ctx.fillRect(533,g(-127),34,7);
+    ctx.fillStyle='#fffbe0';ctx.strokeStyle='#2b2140';ctx.lineWidth=2;ctx.beginPath();ctx.roundRect(16,10,170,40,8);ctx.fill();ctx.stroke();label(ctx,'ใบลาป่วย  ✍️ 🔏',100,30,13);
+  }
+}
+(async()=>{
+  const root=document.getElementById('picks');
+  for(const s of SETS){
+    const im={};await Promise.all(KEYS.map(async k=>{im[k]=await load(`assets/themes/${s.id}/${k}.${s.ext}`)}));
+    const el=document.createElement('section');el.className='pick';
+    el.innerHTML=`<div class="head"><span class="rank">${s.rank}</span><h2>${s.name}</h2><span class="lic">${s.lic}</span></div>
+      <div class="shots"><canvas data-k="lobby" aria-label="ห้องรวม"></canvas><canvas data-k="kitchen" aria-label="ครัวเอกสาร"></canvas></div>
+      <ul class="why">${s.why.map(w=>`<li>${w}</li>`).join('')}</ul>
+      <div class="cast">${KEYS.map(k=>`<img alt="" src="assets/themes/${s.id}/${k}.${s.ext}">`).join('')}</div>`;
+    root.appendChild(el);
+    scene(el.querySelector('[data-k=lobby]'),im,'lobby');scene(el.querySelector('[data-k=kitchen]'),im,'kitchen');
+  }
+})();
+</script>
+</body>
+</html>
