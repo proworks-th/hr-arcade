@@ -88,6 +88,28 @@ kbd{font-family:inherit;font-size:.75em;border:2px solid currentColor;border-rad
 .xmark{position:absolute;transform:translate(-50%,-50%);font-size:7cqw;color:#ff2d55;font-weight:800;pointer-events:none;animation:fadeup .7s forwards;text-shadow:0 0 .5cqw #fff}
 @keyframes fadeup{to{opacity:0;transform:translate(-50%,-120%)}}
 
+/* hub live panel */
+.live{display:grid;grid-template-columns:1.25fr 1fr;gap:14px;margin-bottom:20px}
+.live .feedbox{grid-column:1/-1}
+@media (max-width:760px){.live{grid-template-columns:1fr}}
+.box{background:#fff;border:3px solid var(--line);border-radius:16px;box-shadow:0 5px 0 var(--line);padding:12px 14px}
+.box h3{margin:0 0 8px;font-size:18px;display:flex;align-items:center;gap:8px}
+.box ul{list-style:none;margin:0;padding:0}
+.onlist{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;min-height:44px}
+.onp{display:flex;align-items:center;gap:6px;background:#f6efe4;border-radius:12px;padding:4px 10px 4px 4px;font-size:14px}
+.onp img,.feed img,.ava-btn img{image-rendering:pixelated;object-fit:contain}
+.onp b{display:block;line-height:1.1}.onp small{color:var(--muted)}
+.onp.me{background:#fff3c4}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--ok);box-shadow:0 0 0 3px #c8f3dd}
+.mlist li{display:flex;gap:8px;align-items:flex-start;padding:6px 0;border-bottom:1px dashed #e2d8c8;font-size:15px}
+.mlist li .ck{width:22px;flex:none;text-align:center}
+.mlist li.done{color:var(--muted);text-decoration:line-through}
+.mlist li .go{margin-left:auto;flex:none}
+.streak{margin-left:auto;font-size:14px;background:#ffe2c4;border-radius:999px;padding:2px 10px}
+.feed li{display:flex;gap:8px;align-items:center;padding:5px 0;border-bottom:1px dashed #e2d8c8;font-size:14px}
+.feed li .ago{margin-left:auto;color:var(--muted);font-size:12px;white-space:nowrap}
+.ava-btn{border:none;background:none;padding:0;cursor:pointer;display:grid;place-items:center}
+
 /* ranking */
 .rankline{margin-top:10px;font-size:15px;min-height:22px}
 .rankline input{font:inherit;border:2px solid var(--line);border-radius:8px;padding:2px 8px;width:140px}
@@ -237,9 +259,85 @@ const SFX={
 function renderMute(){$('#muteBtn').textContent=muted?'🔇':'🔊'}
 $('#muteBtn').onclick=()=>{muted=!muted;store.set('muted',muted);renderMute()};
 
-/* ---------- shared ranking (ranking.js, Firebase) ---------- */
-let rankMod=null;
-const loadRank=()=>rankMod||(rankMod=import('./ranking.js?v=1'));
+/* ---------- online services (online.js, Firebase): ranking, presence, feed ---------- */
+let onlineMod=null;
+const loadRank=()=>onlineMod||(onlineMod=import('./online.js?v=1'));
+const loadOnline=loadRank;
+const PIX_AVAS=['p_office','p_woffice','p_whealth','p_tech','p_cat','p_dog'];
+const myAva=()=>{const a=store.get('partyAva','p_office');return PIX_AVAS.includes(a)?a:'p_office'};
+const myName=()=>store.get('name','').trim();
+let presState='hub';
+function presence(g){if(g)presState=g;loadOnline().then(O=>O.setPresence({n:myName()||'ผู้เล่นปริศนา',a:myAva(),g:bossOn?'busy':presState})).catch(()=>{})}
+function ago(t){const s=Math.max(0,(Date.now()-t)/1000);return s<60?'เมื่อกี้':s<3600?Math.floor(s/60)+' นาทีที่แล้ว':s<86400?Math.floor(s/3600)+' ชม.ที่แล้ว':Math.floor(s/86400)+' วันที่แล้ว'}
+
+/* ---------- daily missions + streak (kept on this device; everyone gets the same 3 missions each day) ---------- */
+const MISSIONS=[
+  {id:'spot1',t:'จับผิดภาพด่านประจำวัน ผ่าน 1 ด่าน',g:'spot',ok:e=>e.game==='spot'&&e.daily&&e.st.levels>=1},
+  {id:'spot2',t:'จับผิดภาพด่านประจำวัน ผ่าน 2 ด่าน',g:'spot',ok:e=>e.game==='spot'&&e.daily&&e.st.levels>=2},
+  {id:'run500',t:'วิ่งไปตอกบัตรให้ได้ 500 ม.',g:'run',ok:e=>e.game==='run'&&e.st.meters>=500},
+  {id:'run20',t:'เก็บเหรียญ 20 เหรียญในรอบเดียว (วิ่งไปตอกบัตร)',g:'run',ok:e=>e.game==='run'&&e.st.coins>=20},
+  {id:'whack800',t:'สายด่วนถล่มโต๊ะ ทำ 800 คะแนน',g:'whack',ok:e=>e.game==='whack'&&e.score>=800},
+  {id:'whack20',t:'ทำคอมโบ 20 ในสายด่วนถล่มโต๊ะ',g:'whack',ok:e=>e.game==='whack'&&e.st.combo>=20},
+  {id:'stack20',t:'ซ้อนแฟ้มให้ถึง 20 ชั้น',g:'stack',ok:e=>e.game==='stack'&&e.st.floors>=20},
+  {id:'stack3',t:'วางแฟ้มเป๊ะ 3 ครั้งในรอบเดียว',g:'stack',ok:e=>e.game==='stack'&&e.st.perfects>=3},
+  {id:'race',t:'ลงแข่งวิ่งในห้องปาร์ตี้ 1 รอบ',g:'party',ok:e=>e.kind==='race'},
+  {id:'kitchen',t:'ช่วยทีมในครัวเอกสาร 1 รอบ',g:'party',ok:e=>e.kind==='kitchen'},
+  {id:'mix3',t:'เล่นเกมเดี่ยวให้ครบ 3 เกม',g:'any',ok:(e,m)=>m.played.length>=3},
+];
+const thaiDay=(t=Date.now())=>new Date(t+7*3600e3).toISOString().slice(0,10);
+function todayMissions(){
+  const r=mulberry32(+thaiDay().replace(/-/g,'')*13),out=[],seen=new Set();
+  for(const m of shuffle(r,MISSIONS)){if(out.length>=3)break;if(m.g!=='any'&&seen.has(m.g))continue;seen.add(m.g);out.push(m)}
+  return out;
+}
+function mState(){const s=store.get('missions',null);return s&&s.day===thaiDay()?s:{day:thaiDay(),done:[],played:[]}}
+function streakNow(){const k=store.get('streak',{last:'',n:0});return k.last===thaiDay()||k.last===thaiDay(Date.now()-864e5)?k.n:0}
+function recordMission(e){ // e: {game,score,daily,st,kind}
+  const s=mState(),list=todayMissions(),fresh=[];e={st:{},...e};
+  if(e.game&&e.game!=='party'&&!s.played.includes(e.game))s.played.push(e.game);
+  for(const m of list)if(!s.done.includes(m.id)&&m.ok(e,s)){s.done.push(m.id);fresh.push(m)}
+  store.set('missions',s);
+  fresh.forEach(m=>toast('✅ ภารกิจสำเร็จ: '+m.t));
+  if(fresh.length&&s.done.length>=list.length){
+    const k=store.get('streak',{last:'',n:0}),n=k.last===thaiDay()?k.n:k.last===thaiDay(Date.now()-864e5)?k.n+1:1;
+    store.set('streak',{last:thaiDay(),n});toast(`🔥 ภารกิจวันนี้ครบ! ต่อเนื่อง ${n} วัน`);
+    if(myName())loadOnline().then(O=>O.pushFeed(`✅ ${myName()} ทำภารกิจวันนี้ครบ 🔥 ${n} วันติด`,myName(),myAva())).catch(()=>{});
+  }
+  renderMissions();
+}
+window.addEventListener('hra-party',e=>recordMission({game:'party',kind:e.detail.kind}));
+
+/* ---------- hub live panel renderers (data arrives from Firebase watchers) ---------- */
+const ACT={hub:'อยู่หน้าแรก',party:'อยู่ห้องปาร์ตี้',busy:'🙈 แอบทำงาน',spot:'🔍 จับผิดภาพ',run:'🏃 วิ่งไปตอกบัตร',whack:'☎️ สายด่วน',stack:'📚 ซ้อนแฟ้ม'};
+let onlineList=null,feedList=null;
+function renderOnline(){
+  const el=document.querySelector('[data-k=onlist]');if(!el)return;
+  if(!onlineList){el.innerHTML='<span class="muted">กำลังเชื่อมต่อ…</span>';return}
+  const L=onlineList.slice().sort((a,b)=>(b.me-a.me)||((b.g==='party')-(a.g==='party')));
+  document.querySelector('[data-k=oncount]').textContent=`${L.length} คน`;
+  el.innerHTML=L.length?L.map(p=>`<span class="onp${p.me?' me':''}"><img src="assets/pixel/${PIX_AVAS.includes(p.a)?p.a:'p_office'}.png" width="30" height="30" alt=""><span><b>${esc(p.n)}${p.me?' (คุณ)':''}</b><small>${ACT[p.g]||'กำลังเล่น'}</small></span></span>`).join(''):'<span class="muted">ยังไม่มีใคร</span>';
+  const inParty=L.filter(p=>p.g==='party').length,b=document.getElementById('joinParty');
+  if(b)b.textContent=inParty?`🎉 เข้าร่วมเลย (${inParty} คนอยู่ในห้องปาร์ตี้)`:'🎉 เปิดห้องปาร์ตี้ ชวนเพื่อนมาเล่น';
+}
+function renderFeed(){
+  const el=document.querySelector('[data-k=feed]');if(!el)return;
+  if(!feedList){el.innerHTML='<li class="muted">กำลังโหลด…</li>';return}
+  el.innerHTML=feedList.length?feedList.map(f=>`<li>${f.a?`<img src="assets/pixel/${PIX_AVAS.includes(f.a)?f.a:'p_office'}.png" width="22" height="22" alt="">`:'<span>📣</span>'}<span>${esc(f.m)}</span><span class="ago">${f.t?ago(f.t):''}</span></li>`).join(''):'<li class="muted">ยังเงียบอยู่ — เล่นสักเกมแล้วชื่อคุณจะขึ้นตรงนี้</li>';
+}
+function renderMissions(){
+  const el=document.querySelector('[data-k=mlist]');if(!el)return;
+  const s=mState(),list=todayMissions(),n=streakNow();
+  document.querySelector('[data-k=streak]').textContent=`🔥 ${n} วันติด · ${s.done.filter(id=>list.some(m=>m.id===id)).length}/3`;
+  el.innerHTML=list.map(m=>{const d=s.done.includes(m.id),g=m.g==='any'?null:m.g;
+    return`<li class="${d?'done':''}"><span class="ck">${d?'✅':'⬜'}</span><span>${m.t}</span>${!d&&g?`<button class="btn sm go" data-go="${g}">เล่น</button>`:''}</li>`}).join('');
+  el.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>{if(b.dataset.go==='party')partyAutoJoin=true;startGame(b.dataset.go)});
+}
+let partyAutoJoin=false,liveStarted=false;
+function startLive(){
+  if(liveStarted)return;liveStarted=true;
+  loadOnline().then(O=>{O.watchOnline(l=>{onlineList=l;renderOnline()});O.watchFeed(l=>{feedList=l;renderFeed()});O.pruneFeed().catch(()=>{});
+    setInterval(renderFeed,60000)}).catch(()=>{onlineList=[];feedList=[];renderOnline();renderFeed()});
+}
 const esc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 async function showRanking(gid='spot',per='d'){
   const R=await loadRank();
@@ -283,6 +381,7 @@ requestAnimationFrame(frame);
 const hub=$('#hub'),stage=$('#stage');
 function startGame(id){
   const g=GAMES.find(x=>x.id===id);
+  presence(id);
   stopGame();
   hub.hidden=true;stage.hidden=false;$('#homeBtn').hidden=false;stage.innerHTML='';window.scrollTo(0,0);
   const root=document.createElement('div');root.className='game game-'+id;stage.appendChild(root);
@@ -302,8 +401,9 @@ function startGame(id){
         el.onclick=()=>{ov.remove();cur.started=true;b.go()};ov.querySelector('.row').appendChild(el)}
       root.appendChild(ov);
     },
-    end(score,extra='',daily=false){
+    end(score,extra='',daily=false,stats={}){
       if(cur.ended)return;cur.ended=true;
+      recordMission({game:g.id,score,daily,st:stats});
       mine.forEach(f=>loops.delete(f));mine.clear();
       api.sfx('over');
       const bk='best_'+g.id,prev=store.get(bk,0),isBest=score>prev;if(isBest)store.set(bk,score);
@@ -319,7 +419,9 @@ function startGame(id){
       const rk=ov.querySelector('[data-a=rk]');
       const send=nm=>{rk.textContent='⏳ กำลังส่งคะแนนเข้าอันดับ…';
         loadRank().then(async R=>{const res=await R.submit(g.id,nm,score,extra);const rows=await R.board(g.id,'d'),i=rows.findIndex(r=>r.k===R.nameKey(nm));
-          rk.innerHTML=i<0?'ส่งคะแนนแล้ว':`🏆 อันดับวันนี้ของคุณ: <b>#${i+1}</b> จาก ${rows.length} คน${res&&res.d?'':' <span class="muted">(ยังไม่ชนะสถิติวันนี้ของตัวเอง)</span>'}`})
+          rk.innerHTML=i<0?'ส่งคะแนนแล้ว':`🏆 อันดับวันนี้ของคุณ: <b>#${i+1}</b> จาก ${rows.length} คน${res&&res.d?'':' <span class="muted">(ยังไม่ชนะสถิติวันนี้ของตัวเอง)</span>'}`;
+          if(res&&res.d&&i===0)R.pushFeed(`👑 ${nm} ขึ้นที่ 1 วันนี้ ${g.emoji} ${g.title} (${fmt(score)}${g.unit?' '+g.unit:''})`,nm,myAva());
+          else if(res&&res.d&&i>0&&i<3)R.pushFeed(`⚡ ${nm} ติดอันดับ ${i+1} วันนี้ ${g.emoji} ${g.title}`,nm,myAva())})
           .catch(()=>{rk.textContent='ส่งคะแนนเข้าอันดับไม่ได้ (เน็ตหลุด?)'})};
       if(g.id==='spot'&&!daily)rk.innerHTML='<span class="muted">โหมดสุ่มด่านไม่นับอันดับ — เล่นด่านประจำวันเพื่อลงอันดับ</span>';
       else if(score>0){const nm=store.get('name','').trim();
@@ -408,6 +510,7 @@ function buildBoss(){
 function toggleBoss(force){
   const on=force===undefined?!bossOn:force;if(on===bossOn)return;
   bossOn=on;
+  presence();
   if(on){buildBoss();$('#boss').hidden=false;document.title='ทะเบียนวันลา_FY2570.xlsx - Excel';$('#favicon').href=XLS_ICON;
     try{actx&&actx.suspend()}catch(e){}}
   else{$('#boss').hidden=true;document.title=ORIG_TITLE;$('#favicon').href=GAME_ICON;
@@ -530,7 +633,7 @@ function spotGame(root,api){
     if(time<=11){api.toast('เวลาไม่พอใช้คำใบ้ 😅');return}
     const d=diffs.find(d=>!d.found);if(!d)return;time-=10;ring(d,'hint');hud()};
   api.loop(dt=>{if(!running||done)return;time-=dt;
-    if(time<=0){time=0;running=false;hud();api.end(score,`ผ่าน ${level-1} ด่าน`,mode==='daily')}else hud()});
+    if(time<=0){time=0;running=false;hud();api.end(score,`ผ่าน ${level-1} ด่าน`,mode==='daily',{levels:level-1})}else hud()});
   api.intro({how:`<p>🔍 หาจุดที่ <b>ภาพซ้าย-ขวาไม่เหมือนกัน</b> ให้ครบก่อนหมดเวลา — สีเปลี่ยน ของหาย ตัวสลับ หันกลับด้าน ฯลฯ</p>
       <p>⏱ ผ่านด่านเร็ว = โบนัสเวลา · แตะผิด <b>−4 วินาที</b></p><p>💡 ติดจริงๆ กดใบ้ได้ (−10 วินาที)</p>
       <p>📅 <b>ด่านประจำวัน</b>: วันนี้ทุกคนได้ภาพชุดเดียวกัน มาวัดกันว่าใครตาไว!</p>`,
@@ -633,7 +736,7 @@ function runnerGame(root,api){
       items=items.filter(it=>!it.got);
       if(p.inv<=0)for(const o of obs)if(hitTest(b,o)){
         hp--;p.inv=1.3;shake=1;runSfx('hurt');
-        if(hp<=0){over=true;p.vy=-600;api.after(1.2,()=>api.end(score(),`${fmt(meters())} ม. · 🪙 ${coins}`))}
+        if(hp<=0){over=true;p.vy=-600;api.after(1.2,()=>api.end(score(),`${fmt(meters())} ม. · 🪙 ${coins}`,false,{meters:meters(),coins}))}
         break}
       const m=meters();if(m-lastQuip>=400){lastQuip=m;api.toast(`${m} ม. — ${pick(rnd,RUN_QUIPS)}`)}
       hud();
@@ -693,7 +796,7 @@ function whackGame(root,api){
   api.loop(dt=>{if(!running)return;el+=dt;time-=dt;spawnT-=dt;
     if(spawnT<=0){spawn();if(el>12&&rnd()<.35)spawn();spawnT=Math.max(.36,.9-el*.014)}
     for(const h of holes){h.cool-=dt;if(h.obj){h.life-=dt;if(h.life<=0){if(h.obj!=='boss'&&h.obj!=='coffee')combo=0;hide(h)}}}
-    if(time<=0){time=0;running=false;hud();holes.forEach(hide);api.end(sc,`คอมโบสูงสุด ${best}`)}else hud()});
+    if(time<=0){time=0;running=false;hud();holes.forEach(hide);api.end(sc,`คอมโบสูงสุด ${best}`,false,{combo:best})}else hud()});
   hud();
   api.intro({how:`<p>☎️ งานเอกสาร อีเมล และงานด่วนโผล่จากพื้นหญ้า — <b>ตีให้ไว!</b></p>
       <p><img class="li" alt="" src="assets/kenney/slime_normal_rest.png" width="26" height="26"><img class="li" alt="" src="assets/kenney/snail_rest.png" width="26" height="26"> +10 · <img class="li" alt="" src="assets/kenney/slime_fire_rest.png" width="26" height="26"> งานด่วน +30 (หายไวมาก) · <img class="li" alt="" src="assets/kenney/heart.png" width="26" height="26"> ต่อเวลา +3 วิ</p>
@@ -758,7 +861,7 @@ function stackGame(root,api){
     if(!running||over||api.paused)return;
     const top=stack[stack.length-1],L=Math.max(cur.x,top.x),R=Math.min(cur.x+cur.w,top.x+top.w),y=yOf(stack.length);
     if(R-L<=0){debris.push({...cur,y,vy:0,rot:0,vr:cur.dir*2});over=true;api.sfx('bad');
-      api.after(1.1,()=>api.end(stack.length-1,`วางเป๊ะ ${perf} ครั้ง`));return}
+      api.after(1.1,()=>api.end(stack.length-1,`วางเป๊ะ ${perf} ครั้ง`,false,{floors:stack.length-1,perfects:perf}));return}
     if(Math.abs(cur.x-top.x)<5){combo++;perf++;let w=top.w;if(combo>=3)w=Math.min(220,w+10);
       stack.push({x:top.x-(w-top.w)/2,w,img:cur.img,lab:cur.lab});hop=1;flash=.7;api.sfx('level')}
     else{combo=0;
@@ -785,7 +888,8 @@ function stackGame(root,api){
 function partyMount(root,api){
   let inst=null,dead=false;
   root.innerHTML='<div class="panel" style="margin:40px auto">⏳ กำลังโหลดโหมดออนไลน์…</div>';
-  import('./party.js?v=3').then(m=>{if(!dead)inst=m.partyGame(root,api)})
+  import('./party.js?v=4').then(m=>{if(dead)return;inst=m.partyGame(root,api);
+    if(partyAutoJoin){partyAutoJoin=false;const go=root.querySelector('[data-k=go]');if(go&&myName())go.click()}})
     .catch(e=>{root.innerHTML=`<div class="panel" style="margin:40px auto">โหลดโหมดออนไลน์ไม่ได้ 😢<br><small class="muted">${e.message}</small></div>`});
   return{destroy(){dead=true;inst&&inst.destroy()}};
 }
@@ -799,13 +903,21 @@ const GAMES=[
 function renderHub(){
   hub.innerHTML=`<section class="hero"><div><h2>พักสมอง <span>2 นาที</span></h2><p>เล่นสั้นๆ แล้วกลับไปลุยงานต่อ · ${todayTH}</p></div>
     <button class="btn" id="hubRank">🏆 อันดับรวม</button>
-    <label class="namebox">😎 <input id="nameIn" maxlength="20" placeholder="ชื่อเล่น (ใช้ลงอันดับ)"></label></section>
+    <label class="namebox"><button class="ava-btn" id="avaBtn" type="button" title="เปลี่ยนตัวละคร"><img src="assets/pixel/${myAva()}.png" width="30" height="30" alt=""></button><input id="nameIn" maxlength="20" placeholder="ชื่อเล่น (ใช้ลงอันดับ)"></label></section>
+    <section class="live">
+      <div class="box"><h3><span class="dot"></span>ออนไลน์ตอนนี้ <span class="muted" data-k="oncount"></span></h3><div class="onlist" data-k="onlist"></div><button class="btn primary" id="joinParty">🎉 เข้าห้องปาร์ตี้</button></div>
+      <div class="box"><h3>🎯 ภารกิจวันนี้ <span class="streak" data-k="streak"></span></h3><ul class="mlist" data-k="mlist"></ul></div>
+      <div class="box feedbox"><h3>⚡ ความเคลื่อนไหว</h3><ul class="feed" data-k="feed"></ul></div>
+    </section>
     <div class="cards">${GAMES.map(g=>`<button class="card" data-g="${g.id}"><div class="em" style="--c:${g.color}">${g.img?`<img src="${g.img}" alt="">`:g.emoji}</div>
       <h3>${g.title}</h3><p>${g.desc}</p><div class="champ" data-champ="${g.id}"></div><div class="meta"><span class="tag">⏱ ${g.time}</span><span>${g.online?'👥 ออนไลน์':`🏆 ${fmt(store.get('best_'+g.id,0))}${g.unit?' '+g.unit:''}`}</span></div></button>`).join('')}</div>
     <div class="tips">🙈 <b>หัวหน้าเดินมา?</b> กด <b>Esc</b> (หรือ <b>\`</b>) หรือปุ่ม 🙈 มุมขวาล่าง → จอกลายเป็นไฟล์ Excel ทะเบียนวันลาทันที เกมหยุด เสียงเงียบ ชื่อแท็บเปลี่ยน<br>
     กลับมาเล่นต่อ: กด <b>Esc</b> อีกครั้ง หรือแตะคำว่า <b>"พร้อม"</b> ที่มุมซ้ายล่างของ Excel<br>
     🏆 คะแนนส่งเข้า<b>อันดับรวม</b>อัตโนมัติตอนจบเกม (ใช้ชื่อเล่นด้านบน — อย่าใช้ชื่อซ้ำกับเพื่อน) · 📋 กด "อวดในไลน์" เพื่อคัดลอกคะแนนไปแปะในกลุ่ม<br>🎨 ภาพและเสียงในเกม: <a href="https://kenney.nl" target="_blank" rel="noopener">Kenney.nl</a> (CC0) · ภาพโหมดออนไลน์: <a href="https://2dpig.itch.io/pixel-office" target="_blank" rel="noopener">2dPig Pixel Office</a> (CC0)</div>`;
-  const ni=$('#nameIn');ni.value=store.get('name','');ni.oninput=()=>store.set('name',ni.value);
+  const ni=$('#nameIn');ni.value=store.get('name','');let nt=0;ni.oninput=()=>{store.set('name',ni.value);clearTimeout(nt);nt=setTimeout(()=>presence(),800)};
+  $('#avaBtn').onclick=()=>{const a=PIX_AVAS[(PIX_AVAS.indexOf(myAva())+1)%PIX_AVAS.length];store.set('partyAva',a);$('#avaBtn img').src=`assets/pixel/${a}.png`;presence()};
+  $('#joinParty').onclick=()=>{partyAutoJoin=true;startGame('party')};
+  presence('hub');startLive();renderOnline();renderFeed();renderMissions();
   hub.querySelectorAll('.card').forEach(c=>c.onclick=()=>startGame(c.dataset.g));
   $('#hubRank').onclick=()=>showRanking();
   loadRank().then(R=>Promise.all(Object.keys(R.RANK_GAMES).map(async id=>{

@@ -126,6 +126,12 @@ export function partyGame(root,api){
     const hostId=()=>{const all=Object.entries(players),vis=all.filter(([,p])=>p.v!==0),pool=vis.length?vis:all;let best=null;
       for(const [id,p] of pool)if(!best||p.j<players[best].j||(p.j===players[best].j&&id<best))best=id;return best};
     function onState(st){
+      const prevSc=S.sc;
+      // tell the hub (missions) when a round I played has finished
+      if(st.sc==='res'&&prevSc!=='res'){
+        if(st.g==='race'&&(st.res||[]).some(p=>p.n===me.n))window.dispatchEvent(new CustomEvent('hra-party',{detail:{kind:'race'}}));
+        if(st.g==='kitchen'&&prevSc==='kitchen')window.dispatchEvent(new CustomEvent('hra-party',{detail:{kind:'kitchen'}}));
+      }
       S=st;const key=st.sc+':'+(st.seed||'')+':'+(st.at||'');
       if(key!==sceneKey){sceneKey=key;
         map=st.sc==='race'?raceMap(st.seed):st.sc==='kitchen'?kitchenMap():lobbyMap();
@@ -207,7 +213,9 @@ export function partyGame(root,api){
           list.forEach((p,i)=>{p.pts=p.fin?([5,3,2][i]||1):0;delete p.x});
           const at=S.at;
           runTransaction(ref(db,R+'/s'),cur=>{if(!cur||cur.sc!=='race'||cur.at!==at)return;return{sc:'res',g:'race',res:list,at:t}}).then(r=>{
-            if(r.committed)for(const p of list)if(p.pts)runTransaction(ref(db,`${R}/score/${safeKey(p.n)}`),v=>(v||0)+p.pts)});
+            if(!r.committed)return;
+            for(const p of list)if(p.pts)runTransaction(ref(db,`${R}/score/${safeKey(p.n)}`),v=>(v||0)+p.pts);
+            if(list[0]&&list[0].fin)push(ref(db,'rooms/_hub/feed'),{m:`🏁 ${list[0].n} ชนะแข่งวิ่ง (${(list[0].fin/1000).toFixed(1)} วิ) จาก ${list.length} คน`,n:list[0].n,a:list[0].c,t:now()})});
         }
       }
       if(S.sc==='res'&&t>S.at+RES_MS){const at=S.at;runTransaction(ref(db,R+'/s'),cur=>{if(!cur||cur.sc!=='res'||cur.at!==at)return;return{sc:'lobby'}})}
@@ -225,7 +233,9 @@ export function partyGame(root,api){
       for(const [id,o] of Object.entries(k.o))if(t>o.exp){delete k.o[id];k.fail++;k.sc=Math.max(0,k.sc-15);k.ev={t,m:'⏰ งานหลุดกำหนด −15'};ch=true}
       if(t>=k.end){const at=S.at;
         runTransaction(ref(db,R+'/s'),cur=>{if(!cur||cur.sc!=='kitchen'||cur.at!==at)return;return{sc:'res',g:'kitchen',score:k.sc,done:k.done,fail:k.fail,at:t}})
-          .then(r=>{if(r.committed)runTransaction(ref(db,R+'/best/kitchen'),v=>Math.max(v||0,k.sc))});return}
+          .then(r=>{if(!r.committed)return;runTransaction(ref(db,R+'/best/kitchen'),v=>Math.max(v||0,k.sc));
+            const team=Object.values(players).filter(p=>p.sc==='kitchen').length,stars=k.sc>=400?'⭐⭐⭐':k.sc>=220?'⭐⭐':k.sc>=90?'⭐':'';
+            push(ref(db,'rooms/_hub/feed'),{m:`🍳 ทีมครัวเอกสาร ${team} คน ส่งงาน ${k.done} ชิ้น ได้ ${k.sc} คะแนน ${stars}`,n:'',a:'',t:now()})});return}
       if(ch)set(ref(db,R+'/k'),k);
     }
     function applyIntent(k,it,p,t){
