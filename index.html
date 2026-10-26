@@ -2,6 +2,8 @@
 <html lang="th">
 <head>
 <meta charset="utf-8">
+<!-- ?test=1 swaps Firebase for in-memory mocks (verify/); does nothing for normal visits -->
+<script src="verify/testmode.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ห้องพักสมอง · HR Arcade</title>
 <link rel="icon" id="favicon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🕹️</text></svg>">
@@ -27,13 +29,42 @@ kbd{font-family:inherit;font-size:.75em;border:2px solid currentColor;border-rad
 .icon{width:42px;height:42px;padding:0;font-size:20px;display:grid;place-items:center}
 
 /* hub */
-#hub{max-width:1000px;margin:0 auto;padding:20px 16px 100px}
-.hero{display:flex;gap:16px;align-items:center;flex-wrap:wrap;margin-bottom:18px}
-.hero h2{font-size:clamp(26px,5vw,40px);margin:0;line-height:1.1}
+#hub{max-width:1080px;margin:0 auto;padding:16px 16px 100px}
+.hero{display:flex;gap:12px 16px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+.hero h2{font-size:clamp(24px,4vw,34px);margin:0;line-height:1.1}
 .hero h2 span{background:var(--yel);padding:0 8px;border-radius:8px;border:3px solid var(--line)}
-.hero p{margin:6px 0 0;color:var(--muted)}
-.namebox{display:flex;gap:8px;align-items:center;background:#fff;border:3px solid var(--line);border-radius:14px;padding:8px 12px;margin-left:auto}
-.namebox input{font:inherit;border:none;outline:none;width:130px;background:transparent}
+.hero p{margin:4px 0 0;color:var(--muted)}
+.namebox{display:flex;gap:8px;align-items:center;background:#fff;border:3px solid var(--line);border-radius:14px;padding:4px 10px 4px 6px;margin-left:auto}
+.namebox input{font:inherit;border:none;outline:none;width:190px;max-width:52vw;background:transparent}
+/* hub: online hero + missions, then solo games, then feed */
+.hubtop{display:grid;grid-template-columns:1.4fr 1fr;gap:14px;margin-bottom:16px}
+@media (max-width:820px){.hubtop{grid-template-columns:1fr}}
+.party-hero{background:linear-gradient(135deg,#fff 0,#fff6d8 100%)}
+.cta{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-start}
+.cta>div{display:flex;flex-direction:column;gap:4px}
+.btn.big{font-size:18px;padding:10px 18px}
+a.btn{text-decoration:none;display:inline-flex;align-items:center;gap:6px;color:var(--ink)}
+.solo h3,.feedbox h3{margin:0 0 10px;font-size:18px}
+.solo-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+@media (max-width:820px){.solo-grid{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:480px){.solo-grid{grid-template-columns:1fr}}
+.scard{background:#fff;border:3px solid var(--line);border-radius:16px;box-shadow:0 5px 0 var(--line);padding:10px 12px;cursor:pointer;text-align:left;display:grid;grid-template-columns:52px 1fr;gap:4px 10px;align-items:center;transition:transform .12s}
+.scard:hover{transform:translateY(-2px)}.scard:active{transform:translateY(3px);box-shadow:0 2px 0 var(--line)}
+.scard .em{grid-row:span 2;width:52px;height:52px;border-radius:12px;border:3px solid var(--line);background:var(--c);display:grid;place-items:center}
+.scard .em img{width:42px;height:42px;object-fit:contain;image-rendering:pixelated}
+.scard b{font-size:17px;line-height:1.2}
+.scard small{color:var(--muted);font-size:13px}
+.scard .champ{grid-column:1/-1;font-size:12.5px}
+.feedbox h3{display:flex;align-items:center;gap:8px}.feedbox h3 .btn{margin-left:auto}
+.credits{margin-top:14px;font-size:13px;color:var(--muted);text-align:center}
+.help p{margin:6px 0}.help b{background:#ffe9a8;padding:0 4px;border-radius:4px}
+#bossBtn{background:var(--yel)}
+.top .btn{white-space:nowrap}
+@media (max-width:720px){.top .lbl{display:none}.top{gap:6px}}
+@media (max-width:560px){.top h1 span{display:none}}
+/* touch screens: every control at least 44×44 */
+@media (pointer:coarse),(hover:none){.btn,.btn.sm{min-height:44px;min-width:44px}.btn.icon{width:46px;height:46px}.ava-btn{min-width:44px;min-height:44px}
+  input,.namebox input{min-height:44px}.credits a{display:inline-block;padding:13px 4px}}
 .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px}
 .card{background:#fff;border:3px solid var(--line);border-radius:18px;box-shadow:0 6px 0 var(--line);padding:16px;cursor:pointer;text-align:left;transition:transform .12s;display:flex;flex-direction:column;gap:8px}
 .card:hover{transform:translateY(-3px) rotate(-.6deg)}
@@ -71,7 +102,6 @@ kbd{font-family:inherit;font-size:.75em;border:2px solid currentColor;border-rad
 #toast{position:fixed;left:50%;top:76px;transform:translateX(-50%);z-index:60;pointer-events:none;display:flex;flex-direction:column;gap:6px;align-items:center}
 #toast div{background:var(--ink);color:#fff;border-radius:999px;padding:6px 16px;font-weight:600;animation:toast 1.8s forwards;white-space:nowrap}
 @keyframes toast{0%{opacity:0;transform:translateY(-10px)}10%,80%{opacity:1;transform:none}100%{opacity:0}}
-#bossBtn{position:fixed;right:16px;bottom:16px;z-index:40;width:56px;height:56px;border-radius:50%;font-size:26px;font-family:var(--emoji);padding:0;background:var(--yel)}
 
 /* spot the difference */
 .spot-tip{font-size:14px;color:var(--muted);margin:-4px 0 10px}
@@ -206,15 +236,17 @@ kbd{font-family:inherit;font-size:.75em;border:2px solid currentColor;border-rad
 </head>
 <body>
 <header class="top">
-  <button class="btn icon" id="homeBtn" title="หน้าหลัก" hidden>🏠</button>
-  <h1>🕹️ ห้องพักสมอง · HR Arcade</h1>
-  <button class="btn icon" id="rankBtn" title="อันดับ">🏆</button>
-  <button class="btn icon" id="muteBtn" title="เปิด/ปิดเสียง">🔊</button>
+  <button class="btn" id="homeBtn" hidden aria-label="หน้าแรก">🏠<span class="lbl"> หน้าแรก</span></button>
+  <h1>🕹️ <span>ห้องพักสมอง · HR Arcade</span></h1>
+  <button class="btn" id="rankBtn" aria-label="อันดับ">🏆<span class="lbl"> อันดับ</span></button>
+  <button class="btn" id="helpBtn" aria-label="วิธีเล่น">❓<span class="lbl"> วิธีเล่น</span></button>
+  <button class="btn icon" id="muteBtn" title="เปิด/ปิดเสียง" aria-label="เปิด/ปิดเสียง">🔊</button>
+  <!-- boss key lives in the sticky header so it never covers game content -->
+  <button class="btn" id="bossBtn" title="หัวหน้ามา! (Esc)" aria-label="หนีหัวหน้า (Esc)">🙈<span class="lbl"> หัวหน้ามา! <kbd>Esc</kbd></span></button>
 </header>
 <main id="hub"></main>
 <main id="stage" hidden></main>
 <div id="toast"></div>
-<button class="btn" id="bossBtn" title="หัวหน้ามา! (Esc)">🙈</button>
 <div id="boss" hidden></div>
 
 <script>
@@ -320,12 +352,13 @@ function renderOnline(){
   document.querySelector('[data-k=oncount]').textContent=`${L.length} คน`;
   el.innerHTML=L.length?L.map(p=>`<span class="onp${p.me?' me':''}"><img src="assets/pixel/${PIX_AVAS.includes(p.a)?p.a:'p_office'}.png" width="30" height="30" alt=""><span><b>${esc(p.n)}${p.me?' (คุณ)':''}</b><small>${ACT[p.g]||'กำลังเล่น'}</small></span></span>`).join(''):'<span class="muted">ยังไม่มีใคร</span>';
   const inParty=L.filter(p=>p.g==='party').length,b=document.getElementById('joinParty');
-  if(b)b.textContent=inParty?`🎉 เข้าร่วมเลย (${inParty} คนอยู่ในห้องปาร์ตี้)`:'🎉 เปิดห้องปาร์ตี้ ชวนเพื่อนมาเล่น';
+  if(b)b.textContent=inParty?`🎉 เข้าร่วมเลย (${inParty} คนในห้อง)`:'🎉 เข้าห้องปาร์ตี้';
 }
 function renderFeed(){
   const el=document.querySelector('[data-k=feed]');if(!el)return;
   if(!feedList){el.innerHTML='<li class="muted">กำลังโหลด…</li>';return}
-  el.innerHTML=feedList.length?feedList.map(f=>`<li>${f.a?`<img src="assets/pixel/${PIX_AVAS.includes(f.a)?f.a:'p_office'}.png" width="22" height="22" alt="">`:'<span>📣</span>'}<span>${esc(f.m)}</span><span class="ago">${f.t?ago(f.t):''}</span></li>`).join(''):'<li class="muted">ยังเงียบอยู่ — เล่นสักเกมแล้วชื่อคุณจะขึ้นตรงนี้</li>';
+  const L=feedOpen?feedList:feedList.slice(0,3);
+  el.innerHTML=L.length?L.map(f=>`<li>${f.a?`<img src="assets/pixel/${PIX_AVAS.includes(f.a)?f.a:'p_office'}.png" width="22" height="22" alt="">`:'<span>📣</span>'}<span>${esc(f.m)}</span><span class="ago">${f.t?ago(f.t):''}</span></li>`).join(''):'<li class="muted">ยังเงียบอยู่ — เล่นสักเกมแล้วชื่อคุณจะขึ้นตรงนี้</li>';
 }
 function renderMissions(){
   const el=document.querySelector('[data-k=mlist]');if(!el)return;
@@ -905,33 +938,49 @@ const GAMES=[
   {id:'whack',title:'สายด่วนถล่มโต๊ะ',emoji:'☎️',img:'assets/kenney/slime_fire_rest.png',color:'#ffb3c7',desc:'ตีสาย ตีอีเมล ตีงานด่วน… แต่อย่าเผลอตีหัวหน้า!',time:'40 วินาที',mount:whackGame},
   {id:'stack',title:'ซ้อนแฟ้มเสียดฟ้า',emoji:'📚',img:'assets/kenney/block_planks.png',color:'#b8f2c9',desc:'แตะเดียวจบ ซ้อนแฟ้มให้สูงที่สุด ยิ่งเป๊ะยิ่งไปไกล',time:'1–2 นาที',unit:'ชั้น',mount:stackGame},
 ];
+let feedOpen=false;
+function showHelp(){
+  const ov=document.createElement('div');ov.className='overlay';
+  ov.innerHTML=`<div class="panel popin help" style="text-align:left"><h2 style="text-align:center">❓ วิธีเล่น</h2>
+    <p>🙈 <b>หัวหน้าเดินมา?</b> กด <b>Esc</b> (หรือ <b>\`</b>) หรือปุ่ม 🙈 มุมขวาล่าง → จอกลายเป็นไฟล์ Excel ทะเบียนวันลาทันที เกมหยุด เสียงเงียบ ชื่อแท็บเปลี่ยน</p>
+    <p>↩️ กลับมาเล่นต่อ: กด <b>Esc</b> อีกครั้ง หรือแตะคำว่า <b>"พร้อม"</b> ที่มุมซ้ายล่างของ Excel</p>
+    <p>🏆 คะแนนส่งเข้า<b>อันดับรวม</b>อัตโนมัติตอนจบเกม ใช้ชื่อเล่นด้านบน — อย่าใช้ชื่อซ้ำกับเพื่อน</p>
+    <p>🎯 ภารกิจวันนี้ทุกคนได้ชุดเดียวกัน ทำครบ 3 ข้อ = 🔥 ต่อเนื่อง</p>
+    <p>📋 จบเกมแล้วกด "อวดในไลน์" เพื่อคัดลอกคะแนนไปแปะในกลุ่ม</p>
+    <div class="row"><button class="btn primary">เข้าใจแล้ว</button></div></div>`;
+  ov.onclick=e=>{if(e.target===ov||e.target.closest('button'))ov.remove()};document.body.appendChild(ov);
+}
+$('#helpBtn').onclick=showHelp;
 function renderHub(){
+  const solo=GAMES.filter(g=>!g.online);
   hub.innerHTML=`<section class="hero"><div><h2>พักสมอง <span>2 นาที</span></h2><p>เล่นสั้นๆ แล้วกลับไปลุยงานต่อ · ${todayTH}</p></div>
-    <button class="btn" id="hubRank">🏆 อันดับรวม</button>
-    <label class="namebox"><button class="ava-btn" id="avaBtn" type="button" title="เปลี่ยนตัวละคร"><img src="assets/pixel/${myAva()}.png" width="30" height="30" alt=""></button><input id="nameIn" maxlength="20" placeholder="ชื่อเล่น (ใช้ลงอันดับ)"></label></section>
-    <section class="live">
-      <div class="box"><h3><span class="dot"></span>ออนไลน์ตอนนี้ <span class="muted" data-k="oncount"></span></h3><div class="onlist" data-k="onlist"></div><button class="btn primary" id="joinParty">🎉 เข้าห้องปาร์ตี้</button></div>
+    <label class="namebox"><button class="ava-btn" id="avaBtn" type="button" title="เปลี่ยนตัวละคร" aria-label="เปลี่ยนตัวละคร"><img src="assets/pixel/${myAva()}.png" width="30" height="30" alt=""></button><input id="nameIn" maxlength="20" placeholder="ชื่อเล่นของคุณ"></label></section>
+    <section class="hubtop">
+      <div class="box party-hero"><h3><span class="dot"></span>ออนไลน์ตอนนี้ <span class="muted" data-k="oncount"></span></h3><div class="onlist" data-k="onlist"></div>
+        <div class="cta"><div><button class="btn primary big" id="joinParty">🎉 เข้าห้องปาร์ตี้</button><small class="muted">แข่งวิ่ง · ครัวเอกสาร (2D)</small></div>
+          <div><a class="btn big" href="party3d.html">🧊 ห้อง 3D · 🕺 เต้น</a><small class="champ" data-champ="dance"></small></div></div></div>
       <div class="box"><h3>🎯 ภารกิจวันนี้ <span class="streak" data-k="streak"></span></h3><ul class="mlist" data-k="mlist"></ul></div>
-      <div class="box feedbox"><h3>⚡ ความเคลื่อนไหว</h3><ul class="feed" data-k="feed"></ul></div>
     </section>
-    <div class="cards">${GAMES.map(g=>`<button class="card" data-g="${g.id}"><div class="em" style="--c:${g.color}">${g.img?`<img src="${g.img}" alt="">`:g.emoji}</div>
-      <h3>${g.title}</h3><p>${g.desc}</p><div class="champ" data-champ="${g.id}"></div><div class="meta"><span class="tag">⏱ ${g.time}</span><span>${g.online?'👥 ออนไลน์':`🏆 ${fmt(store.get('best_'+g.id,0))}${g.unit?' '+g.unit:''}`}</span></div></button>`).join('')}</div>
-    <div class="tips">🙈 <b>หัวหน้าเดินมา?</b> กด <b>Esc</b> (หรือ <b>\`</b>) หรือปุ่ม 🙈 มุมขวาล่าง → จอกลายเป็นไฟล์ Excel ทะเบียนวันลาทันที เกมหยุด เสียงเงียบ ชื่อแท็บเปลี่ยน<br>
-    กลับมาเล่นต่อ: กด <b>Esc</b> อีกครั้ง หรือแตะคำว่า <b>"พร้อม"</b> ที่มุมซ้ายล่างของ Excel<br>
-    🏆 คะแนนส่งเข้า<b>อันดับรวม</b>อัตโนมัติตอนจบเกม (ใช้ชื่อเล่นด้านบน — อย่าใช้ชื่อซ้ำกับเพื่อน) · 📋 กด "อวดในไลน์" เพื่อคัดลอกคะแนนไปแปะในกลุ่ม<br>🎨 ภาพและเสียงในเกม: <a href="https://kenney.nl" target="_blank" rel="noopener">Kenney.nl</a> (CC0) · ภาพโหมดออนไลน์: <a href="https://2dpig.itch.io/pixel-office" target="_blank" rel="noopener">2dPig Pixel Office</a> (CC0)</div>`;
+    <section class="solo"><h3>🎮 เกมเดี่ยว · เล่น 1–3 นาที</h3><div class="solo-grid">${solo.map(g=>`<button class="scard" data-g="${g.id}"><div class="em" style="--c:${g.color}">${g.img?`<img src="${g.img}" alt="">`:g.emoji}</div>
+      <b>${g.title}</b><small>⏱ ${g.time} · 🏆 ${fmt(store.get('best_'+g.id,0))}${g.unit?' '+g.unit:''}</small><div class="champ" data-champ="${g.id}"></div></button>`).join('')}</div></section>
+    <section class="box feedbox"><h3>⚡ ความเคลื่อนไหว <button class="btn sm" id="feedMore">${feedOpen?'ย่อ':'ดูทั้งหมด'}</button></h3><ul class="feed" data-k="feed"></ul></section>
+    <p class="credits">🎨 ภาพและเสียง: <a href="https://kenney.nl" target="_blank" rel="noopener">Kenney.nl</a> (CC0) · ภาพโหมดออนไลน์: <a href="https://2dpig.itch.io/pixel-office" target="_blank" rel="noopener">2dPig Pixel Office</a> (CC0)</p>`;
   const ni=$('#nameIn');ni.value=store.get('name','');let nt=0;ni.oninput=()=>{store.set('name',ni.value);clearTimeout(nt);nt=setTimeout(()=>presence(),800)};
   $('#avaBtn').onclick=()=>{const a=PIX_AVAS[(PIX_AVAS.indexOf(myAva())+1)%PIX_AVAS.length];store.set('partyAva',a);$('#avaBtn img').src=`assets/pixel/${a}.png`;presence()};
   $('#joinParty').onclick=()=>{partyAutoJoin=true;startGame('party')};
+  $('#feedMore').onclick=()=>{feedOpen=!feedOpen;$('#feedMore').textContent=feedOpen?'ย่อ':'ดูทั้งหมด';renderFeed()};
   presence('hub');startLive();renderOnline();renderFeed();renderMissions();
-  hub.querySelectorAll('.card').forEach(c=>c.onclick=()=>{const g=GAMES.find(x=>x.id===c.dataset.g);if(g.href)location.href=g.href;else startGame(g.id)});
-  $('#hubRank').onclick=()=>showRanking();
+  hub.querySelectorAll('.scard').forEach(c=>c.onclick=()=>startGame(c.dataset.g));
   loadRank().then(R=>Promise.all(Object.keys(R.RANK_GAMES).map(async id=>{
     const el=hub.querySelector(`[data-champ="${id}"]`);if(!el)return;
     const top=(await R.board(id,'d'))[0],g=GAMES.find(x=>x.id===id);
-    el.textContent=top?`🥇 แชมป์วันนี้: ${top.n} · ${fmt(top.s)}${g.unit?' '+g.unit:''}`:'🥇 วันนี้ยังไม่มีแชมป์ — ว่างอยู่!';
+    el.textContent=top?`🥇 ${top.n} · ${fmt(top.s)}${g.unit?' '+g.unit:''}`:'🥇 แชมป์วันนี้ยังว่าง!';
   }))).catch(()=>{});
 }
 renderHub();
+// test-mode hook for verify/run.py (absent for normal visits)
+if(window.__TEST__)window.__app={open:id=>startGame(id),home:()=>goHome(),start:()=>{const b=document.querySelector('.overlay .btn.primary');b&&b.click()},
+  state:()=>({screen:hub.hidden?(current&&current.g.id):'hub',started:!!(current&&current.started),ended:!!(current&&current.ended)})};
 </script>
 </body>
 </html>

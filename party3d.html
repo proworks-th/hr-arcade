@@ -6,10 +6,9 @@
 <title>ห้องรวม 3D · HR Arcade</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧊</text></svg>">
 <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;600;800&display=swap" rel="stylesheet">
-<script type="importmap">{"imports":{
-  "three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
-  "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
-}}</script>
+<script>window.HRA_IMPORTS={"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}</script>
+<!-- writes the import map (three + Firebase mocks when ?test=1); must stay before any module script -->
+<script src="verify/testmode.js"></script>
 <style>
 :root{--bg:#fff4e6;--ink:#2b2140;--line:#2b2140;--pri:#ff5c8a;--yel:#ffd23f;--ok:#21c07a;--muted:#7a6f8c}
 *{box-sizing:border-box}
@@ -67,6 +66,9 @@ main{max-width:1200px;margin:0 auto;padding:12px 16px 40px}
 .tk.meK{background:#ffe2ef}
 .dpad{display:flex;gap:8px;justify-content:center;margin-top:10px}.dpad .btn{min-width:56px;height:52px;font-size:22px}
 .rank{text-align:left;padding-left:20px}.rank li{display:flex;align-items:center;gap:8px;margin:4px 0}.rank img{width:28px;height:28px;object-fit:contain}.rank span{margin-left:auto}
+/* touch screens: every control at least 44×44 */
+@media (pointer:coarse),(hover:none){.btn,.btn.sm{min-height:44px;min-width:44px}.field input{min-height:44px}.side a{display:inline-block;padding:12px 0}}
+.side .credits a{display:block}
 .hud{position:absolute;left:10px;top:8px;font-size:12px;background:rgba(255,255,255,.75);border-radius:8px;padding:2px 8px;pointer-events:none}
 .loading{position:absolute;inset:0;display:grid;place-items:center;background:rgba(255,244,230,.9);font-weight:600}
 .side{background:#fff;border:3px solid var(--line);border-radius:14px;padding:10px 12px;align-self:start}
@@ -105,7 +107,7 @@ main{max-width:1200px;margin:0 auto;padding:12px 16px 40px}
     </div>
     <aside class="side"><h3>👥 ในห้องตอนนี้</h3><ul id="plist"></ul>
       <p>⬅️⬆️⬇️➡️ / WASD เดิน · Space กระโดด · E ใช้งาน (กดค้าง = ทำงาน) · 1-8 อีโมจิ<br>🕺 Audition: ลูกศรตามให้ครบ แล้ว Space ตอนเข็มถึงเส้นดำ (จังหวะที่ 4) · ลูกศรแดง = กดกลับด้าน<br>กล้องล็อกมุมเดียวกันทุกคน — ทุกคนเห็นห้องเหมือนกัน</p>
-      <p>🎨 โมเดล 3D: <a href="https://kenney.nl/assets/mini-characters" target="_blank" rel="noopener">Kenney Mini Characters</a> + <a href="https://kenney.nl/assets/furniture-kit" target="_blank" rel="noopener">Furniture Kit</a> (CC0)</p></aside>
+      <p class="credits">🎨 โมเดล 3D (CC0):<a href="https://kenney.nl/assets/mini-characters" target="_blank" rel="noopener">Kenney Mini Characters</a><a href="https://kenney.nl/assets/furniture-kit" target="_blank" rel="noopener">Kenney Furniture Kit</a></p></aside>
   </div>
 </main>
 <script type="module" src="party3d.js?v=7"></script>

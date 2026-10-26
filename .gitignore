@@ -1,2 +1,5 @@
 _test/
 _test.html
+verify/out/
+verify/last-run.txt
+__pycache__/
