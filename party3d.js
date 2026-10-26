@@ -1,12 +1,15 @@
 // 3D office room: one locked top-down camera for everyone, Kenney Mini Characters + Furniture Kit (CC0),
 // players synced through Firebase RTDB under rooms/lobby3d (the database rules only open rooms/$room).
-// Mini-game "ครัวเอกสาร" (Overcooked-style co-op) runs in the same room; the host (earliest visible player) owns its state.
+// Mini-games run in the same room; the host (earliest visible player) owns shared state:
+//  - "ครัวเอกสาร" (Overcooked-style co-op)
+//  - "Office Audition" (rhythm dance: arrows each bar, Space on beat 4; code-generated music from dance-music.js)
 import * as THREE from 'three';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import {initializeApp,getApps} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
 import {getDatabase,ref,set,remove,push,onValue,onChildAdded,onDisconnect,runTransaction} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js';
 import {FIREBASE_CONFIG} from './firebase-config.js';
+import {createMusic,SONGS,INTRO_BARS} from './dance-music.js?v=1';
 
 const $=s=>document.querySelector(s);
 const store={get(k,d){try{const v=localStorage.getItem('hra_'+k);return v==null?d:JSON.parse(v)}catch(e){return d}},
@@ -29,6 +32,25 @@ const bossPos=t=>({x:5+Math.sin(t/3200)*1.5,z:-.7+Math.sin(t/4700)*.25});
 const nearSt=(p,s)=>Math.hypot(p.x-s.px,p.z-s.pz)<USE_R;
 const nearBoss=(p,t)=>{if(bossAway(t))return false;const b=bossPos(t);return Math.hypot(p.x-b.x,p.z-b.z)<1.1};
 const badges=i=>i?'📄'+(i.f?'✍️':'')+(i.s?'🔏':'')+(i.g?'✒️':''):'';
+
+/* ---------- Office Audition ---------- */
+const music=createMusic();music.muted=store.get('muted3d',false);
+const ARROW={l:'←',u:'↑',r:'→',d:'↓'},OPP={l:'r',r:'l',u:'d',d:'u'};
+const DANCE_MOVES=['emote-yes','attack-kick-left','attack-kick-right','interact-left','interact-right','jump','attack-melee-right','pick-up','holding-both-shoot','crouch'];
+// [name, max |error| in ms from beat 4, points, colour]
+const JUDGE=[['PERFECT',60,100,'#ff5c8a'],['GREAT',110,70,'#ff9f1c'],['COOL',170,40,'#21c07a'],['BAD',250,10,'#7a6f8c']];
+const JCOL={PERFECT:'#ff5c8a',GREAT:'#ff9f1c',COOL:'#21c07a',BAD:'#7a6f8c',MISS:'#e23030'};
+const songOf=st=>SONGS[st.song|0]||SONGS[0];
+const barSec=song=>240/song.bpm;
+function drng(a){return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+// same arrows for everyone: seeded by the round seed + bar number; longer and trickier as the song goes on
+function seqFor(st,bar){
+  const song=songOf(st),r=drng((st.seed|0)*7919+bar*104729),prog=(bar-INTRO_BARS)/Math.max(1,song.bars-INTRO_BARS-1),last=bar===song.bars-1;
+  const extra=song.level==='ยาก'?2:song.level==='กลาง'?1:0,n=last?8:Math.min(8,3+Math.floor(prog*3)+extra);
+  const rev=song.level==='ยาก'&&prog>.3?.25:song.level==='กลาง'&&prog>.6?.12:0;
+  return Array.from({length:n},()=>({d:'lurd'[Math.floor(r()*4)],rev:r()<rev}));
+}
+const danceSlot=i=>({x:-3+(i%5)*1.5,z:.7+Math.floor(i/5)*1.4});
 
 /* ---------- renderer, scene, locked camera ---------- */
 const stage=$('#stage'),hi=store.get('gfx3d',true);
@@ -133,13 +155,19 @@ function buildStations(){
     stEls[s.id]={ring,d,it:d.querySelector('.it'),pg:d.querySelector('.pg'),bar:d.querySelector('.pg i')};
   }
 }
+const disco=[];
+function buildDisco(){for(let r=0;r<3;r++)for(let c=0;c<5;c++){const m=new THREE.Mesh(new THREE.PlaneGeometry(1.35,1.25),new THREE.MeshBasicMaterial({color:'#ff5c8a',transparent:true,opacity:.45}));
+  m.rotation.x=-Math.PI/2;const s=danceSlot(r*5+c);m.position.set(s.x,.012,s.z);m.visible=false;scene.add(m);disco.push(m)}}
 function placeLabel(el,x,y,z){tmp.set(x,y,z).project(camera);el.style.left=((tmp.x+1)/2*100)+'%';el.style.top=((1-tmp.y)/2*100)+'%'}
 
 /* ---------- input: keyboard + touch joystick ---------- */
 const keys={};let jumpPress=false,joy={x:0,y:0};
 const KM={ArrowLeft:'l',a:'l',A:'l',ArrowRight:'r',d:'r',D:'r',ArrowUp:'u',w:'u',W:'u',ArrowDown:'dn',s:'dn',S:'dn'};
 let actPress=false;
+const DKEY={ArrowLeft:'l',ArrowUp:'u',ArrowRight:'r',ArrowDown:'d',a:'l',w:'u',d:'r',s:'d',A:'l',W:'u',D:'r',S:'d',4:'l',8:'u',6:'r',2:'d'};
 addEventListener('keydown',e=>{if(e.target.closest&&e.target.closest('input'))return;
+  if(S.sc==='dance'&&D){if(DKEY[e.key]&&!e.repeat){e.preventDefault();danceKey(DKEY[e.key]);return}
+    if((e.key===' '||e.key==='Control')&&!e.repeat){e.preventDefault();danceSpace();return}}
   if(KM[e.key]){keys[KM[e.key]]=1;e.preventDefault()}else if(e.key===' '){if(!e.repeat)jumpPress=true;e.preventDefault()}
   else if(e.key==='e'||e.key==='E'||e.key==='Enter'){if(!keys.e)actPress=true;keys.e=1;e.preventDefault()}
   else{const n=+e.key;if(n>=1&&n<=EMOTES.length)emote(n-1)}});
@@ -158,6 +186,7 @@ document.querySelectorAll('[data-e]').forEach(b=>b.onclick=()=>emote(+b.dataset.
 
 /* ---------- local player ---------- */
 const me={n:'',c:'female-a',x:0,z:2,y:0,vy:0,r:0,a:'idle',e:'',et:0,j:Date.now(),busy:0,wk:''};
+let D=null; // my run in the current dance round
 let myAv=null,myTag=null;
 function emote(i){const e=EMOTES[i];me.e=e;me.et=now();if(EMOTE_ANIM[e]){me.a=EMOTE_ANIM[e];me.busy=1.2}}
 const blocked=(x,z)=>x<X0||x>X1||z<Z0||z>Z1||obstacles.some(o=>x>o.x0-RAD&&x<o.x1+RAD&&z>o.z0-RAD&&z<o.z1+RAD);
@@ -181,11 +210,78 @@ let S={sc:'lobby'},K=null,intents=[],best=0,lastEv=0,R='rooms/lobby3d',boss=null
 function hostId(){const all=Object.entries(players),v=all.filter(([,p])=>p.v!==0),pool=v.length?v:all;let b=null;
   for(const [id,p] of pool)if(!b||p.j<players[b].j||(p.j===players[b].j&&id<b))b=id;return b}
 function toast(m){const d=document.createElement('div');d.className='toast';d.textContent=m;$('#toasts').appendChild(d);setTimeout(()=>d.remove(),2200)}
+function queueMission(kind){try{const q=store.get('pendingMissions',[]);q.push({game:'party',kind});store.set('pendingMissions',q)}catch(e){}}
 function onState(st){
   const prev=S.sc;
-  if(st.sc==='res'&&prev==='kitchen'){ // round I was in has ended: queue a mission event for the hub
-    try{const q=store.get('pendingMissions',[]);q.push({game:'party',kind:'kitchen'});store.set('pendingMissions',q)}catch(e){}}
+  if(st.sc==='res'&&prev==='kitchen')queueMission('kitchen'); // round I was in has ended: the hub counts it as a mission
+  if(st.sc==='res'&&prev==='dance'&&D)queueMission('dance');
+  if(st.sc==='dance'&&(!D||D.at!==st.at)){
+    D={at:st.at,bar:-1,seq:[],idx:0,judged:true,score:0,combo:0,maxc:0,cnt:{PERFECT:0,GREAT:0,COOL:0,BAD:0,MISS:0},last:null,wrongT:0,done:false};
+    music.play(songOf(st),st.seed|0,st.at,now);
+  }
+  if(st.sc!=='dance'){music.stop();if(prev==='dance')me.a='idle'}
+  if(st.sc==='lobby')D=null;
   S=st;me.wk='';renderBar();renderRes();
+}
+function startDance(i){
+  music.unlock();const t=now(),at=t+LEAD_MS,seed=Math.floor(Math.random()*1e9);
+  runTransaction(ref(db,R+'/s'),cur=>{if(cur&&cur.sc&&cur.sc!=='lobby')return;return{sc:'dance',song:i,seed,at,by:me.n}});
+}
+function judge(name,why=''){
+  const song=songOf(S),J=JUDGE.find(j=>j[0]===name),last=D.bar===song.bars-1;
+  D.judged=true;D.cnt[name]++;
+  if(J&&name!=='BAD'){D.combo++;D.maxc=Math.max(D.maxc,D.combo)}else D.combo=0;
+  const pts=J?Math.round(J[2]*(1+Math.min(D.combo,20)*.1)*(1+D.seq.length/8)*(last?2:1)):0;
+  D.score+=pts;D.last={j:name,t:now(),pts,why};
+  if(J&&name!=='BAD'){me.a=DANCE_MOVES[Math.floor(Math.random()*DANCE_MOVES.length)];me.busy=barSec(song)*.9;music.blip(name==='PERFECT'?'perfect':'ok')}
+  else{me.a='emote-no';me.busy=1;music.blip('bad')}
+}
+function danceKey(k){
+  if(!D||D.judged||D.bar<INTRO_BARS)return;
+  const a=D.seq[D.idx];if(!a)return;
+  if(k===(a.rev?OPP[a.d]:a.d)){D.idx++;music.blip('ok')}else{D.idx=0;D.wrongT=now();music.blip('bad')} // a wrong key resets the bar, like Audition
+}
+function danceSpace(){
+  if(!D||D.judged||D.bar<INTRO_BARS)return;
+  if(D.idx<D.seq.length)return judge('MISS','ลูกศรยังไม่ครบ');
+  const song=songOf(S),st=(now()-S.at)/1000,err=Math.abs(st-(D.bar*4+3)*barSec(song)/4)*1000;
+  const j=JUDGE.find(j=>err<=j[1]);judge(j?j[0]:'MISS',j?'':'ไม่ตรงจังหวะ');
+}
+function finishDance(){
+  if(!D||D.done)return;D.done=true;
+  if(!me.n||D.score<=0)return;
+  const nm=me.n,extra=`Perfect ${D.cnt.PERFECT} · คอมโบ ${D.maxc}`,score=D.score;
+  import('./online.js?v=2').then(async O=>{const res=await O.submit('dance',nm,score,extra);const rows=await O.board('dance','d'),i=rows.findIndex(r=>r.k===O.nameKey(nm));
+    if(i>=0)toast(`🏆 อันดับวันนี้ Office Audition: #${i+1}`);
+    if(res&&res.d&&i===0)O.pushFeed(`👑 ${nm} ขึ้นที่ 1 วันนี้ 🕺 Office Audition (${score})`,nm,store.get('partyAva','p_office'))}).catch(()=>{});
+}
+function danceTick(t,dt){
+  const song=songOf(S),bs=barSec(song),st=(t-S.at)/1000,bar=Math.floor(st/bs);
+  // stand on my dance-floor slot facing the camera
+  const order=Object.entries(players).sort((a,b)=>a[1].j-b[1].j).map(([id])=>id),slot=danceSlot(Math.max(0,order.indexOf(me.id)));
+  me.x+=(slot.x-me.x)*Math.min(1,dt*8);me.z+=(slot.z-me.z)*Math.min(1,dt*8);me.r=0;me.y=Math.abs(Math.sin(st*Math.PI*song.bpm/60))*.08;
+  if(D&&st>=0){
+    if(bar>=INTRO_BARS&&bar<song.bars&&bar!==D.bar){if(!D.judged&&D.bar>=INTRO_BARS)judge('MISS','ช้าไป');D.bar=bar;D.seq=seqFor(S,bar);D.idx=0;D.judged=false}
+    if(!D.judged&&D.bar>=INTRO_BARS&&st>(D.bar*4+3)*bs/4+.25)judge('MISS','ช้าไป');
+    if(st>=song.bars*bs)finishDance();
+  }
+  me.busy=Math.max(0,me.busy-dt);if(me.busy<=0)me.a='idle';
+  danceHud(t,st,song);
+}
+function danceHud(t,st,song){
+  const el=$('#dpanel'),cnt=$('#count');
+  if(st<0){cnt.hidden=false;cnt.innerHTML=`<b>${Math.ceil(-st)}</b><span>🎵 ${song.th} (${song.level}) — กดลูกศรตามให้ครบ แล้วกด Space ตอนเข็มถึงเส้นจังหวะที่ 4</span>`}else cnt.hidden=true;
+  el.hidden=false;
+  const bs=barSec(song),ph=st<0?0:(st%bs)/bs,inPlay=D&&D.bar>=INTRO_BARS&&st<song.bars*bs,last=D&&D.bar===song.bars-1;
+  const arrows=inPlay?D.seq.map((a,i)=>`<span class="ar${i<D.idx?' ok':''}${a.rev?' rev':''}">${ARROW[a.d]}</span>`).join(''):`<span class="muted">${st<song.bars*bs?(st<INTRO_BARS*bs?'เตรียมตัว… ♪':'') :'จบเพลง!'}</span>`;
+  const shake=D&&t-D.wrongT<250?' shake':'';
+  const L=D&&D.last&&t-D.last.t<900?`<div class="judge" style="color:${JCOL[D.last.j]}">${D.last.j}${D.combo>1&&D.last.j!=='MISS'&&D.last.j!=='BAD'?` <small>x${D.combo}</small>`:''}${D.last.why?`<small class="why">${D.last.why}</small>`:''}</div>`:'';
+  el.innerHTML=`${L}<div class="drow${shake}">${last&&inPlay?'<span class="fin">FINISH!</span>':''}${arrows}</div>
+    <div class="beat"><i style="left:${ph*100}%"></i><b style="left:75%"></b></div>
+    <div class="dstat">⭐ ${D?D.score:0} · คอมโบ ${D?D.combo:0} · 🎵 ${song.th} · ห้อง ${Math.max(0,Math.min(song.bars,Math.floor(st/bs)+1))}/${song.bars}</div>`;
+  // live scoreboard
+  const rows=Object.entries(players).map(([id,p])=>({n:p.n,s:id===me.id?(D?D.score:0):(p.ds||0),me:id===me.id})).sort((a,b)=>b.s-a.s);
+  const sb=$('#khud');sb.hidden=false;sb.innerHTML=rows.slice(0,6).map((r,i)=>`<div class="tk${r.me?' meK':''}"><b>${['🥇','🥈','🥉'][i]||'#'+(i+1)} ${esc(r.n)}</b><span>${r.s}</span></div>`).join('');
 }
 function startKitchen(){
   const t=now(),at=t+LEAD_MS;
@@ -197,6 +293,11 @@ function startKitchen(){
 let hostAcc=0;
 function host(t,dt){
   if(S.sc==='kitchen'&&K&&t>S.at){hostAcc+=dt;if(hostAcc>=.1){hostKitchen(t,hostAcc);hostAcc=0}}
+  if(S.sc==='dance'&&t>S.at+songOf(S).bars*barSec(songOf(S))*1000+2500){
+    const at=S.at,song=songOf(S),list=Object.values(players).map(p=>({n:p.n,c:p.c,ds:p.ds||0,mc:p.dmc||0})).sort((a,b)=>b.ds-a.ds);
+    runTransaction(ref(db,R+'/s'),cur=>{if(!cur||cur.sc!=='dance'||cur.at!==at)return;return{sc:'res',g:'dance',song:S.song|0,res:list,at:t}}).then(r=>{
+      if(r.committed&&list[0]&&list[0].ds>0)push(ref(db,'rooms/_hub/feed'),{m:`💃 ${list[0].n} ชนะ Office Audition เพลง ${song.th} (${list[0].ds} คะแนน) จาก ${list.length} คน`,n:list[0].n,a:'',t})});
+  }
   if(S.sc==='res'&&t>S.at+RES_MS){const at=S.at;runTransaction(ref(db,R+'/s'),cur=>{if(!cur||cur.sc!=='res'||cur.at!==at)return;return{sc:'lobby'}})}
 }
 function hostKitchen(t,dt){
@@ -238,18 +339,23 @@ function kitchenTarget(t){
 }
 function renderBar(){
   const b=$('#bar');
-  if(S.sc==='lobby')b.innerHTML=`<button class="btn primary" id="startK">🍳 เริ่มครัวเอกสาร</button><span class="muted">ใครกดก็ได้ ทุกคนในห้องเล่นด้วยกัน · E = ใช้งาน (กดค้าง = ทำงาน)</span>`;
-  else b.innerHTML=`<span class="muted">${S.sc==='kitchen'?'🍳 ครัวเอกสาร — หยิบกระดาษ → กรอก/ปั๊ม/ให้หัวหน้าเซ็น → ส่งให้ตรงใบงาน':'📊 สรุปผล'}${S.by?' · เริ่มโดย '+esc(S.by):''}</span>`;
+  if(S.sc==='lobby')b.innerHTML=`<button class="btn primary" id="startK">🍳 เริ่มครัวเอกสาร</button>${SONGS.map((g,i)=>`<button class="btn" data-song="${i}">🕺 ${g.th} <small class="muted">(${g.level})</small></button>`).join('')}<span class="muted">ใครกดก็ได้ ทุกคนในห้องเล่นด้วยกัน</span>`;
+  else b.innerHTML=`<span class="muted">${S.sc==='kitchen'?'🍳 ครัวเอกสาร — หยิบกระดาษ → กรอก/ปั๊ม/ให้หัวหน้าเซ็น → ส่งให้ตรงใบงาน':S.sc==='dance'?'🕺 Office Audition — ลูกศร / WASD / 4 8 6 2 ตามให้ครบ แล้ว Space ตรงจังหวะที่ 4':'📊 สรุปผล'}${S.by?' · เริ่มโดย '+esc(S.by):''}</span>`;
   const s=$('#startK');if(s)s.onclick=startKitchen;
+  b.querySelectorAll('[data-song]').forEach(x=>x.onclick=()=>startDance(+x.dataset.song));
+  $('#dpad').hidden=S.sc!=='dance';
 }
 function renderRes(){
   const el=$('#res');if(S.sc!=='res'){el.hidden=true;return}
+  if(S.g==='dance'){const m=['🥇','🥈','🥉'];el.hidden=false;
+    el.innerHTML=`<div class="panel"><h2>🕺 Office Audition</h2><p class="muted">${esc(songOf(S).th)}</p><ol class="rank">${(S.res||[]).map((r,i)=>`<li><img src="assets/3d/chars/previews/character-${CHARS.includes(r.c)?r.c:'female-a'}.png" alt=""><b>${esc(r.n)}</b><span>${m[i]||'#'+(i+1)} ${r.ds} · คอมโบ ${r.mc}</span></li>`).join('')}</ol>${D?`<p>ของคุณ: Perfect ${D.cnt.PERFECT} · Great ${D.cnt.GREAT} · Cool ${D.cnt.COOL} · Bad ${D.cnt.BAD} · Miss ${D.cnt.MISS}</p>`:''}<p class="muted">กลับห้องรวมใน 10 วินาที</p></div>`;return}
   const stars=S.score>=400?'⭐⭐⭐':S.score>=220?'⭐⭐':S.score>=90?'⭐':'💀';
   el.hidden=false;el.innerHTML=`<div class="panel"><h2>🍳 ครัวเอกสาร</h2><div style="font-size:52px;font-weight:800;line-height:1">${S.score||0}</div><div style="font-size:30px">${stars}</div>
     <p>ส่งงานสำเร็จ ${S.done||0} ชิ้น · หลุด ${S.fail||0} ชิ้น<br><span class="muted">สถิติห้องนี้: ${Math.max(best,S.score||0)}</span></p><p class="muted">กลับห้องรวมใน 10 วินาที</p></div>`;
 }
 function kitchenHud(t){
   const el=$('#khud');
+  if(S.sc==='dance')return;$('#dpanel').hidden=true;
   if(S.sc!=='kitchen'||!K){el.hidden=true;$('#count').hidden=true;return}
   if(t<S.at){$('#count').hidden=false;$('#count').innerHTML=`<b>${Math.ceil((S.at-t)/1000)}</b><span>หยิบกระดาษ → กรอก / ปั๊มตรา / ให้หัวหน้าเซ็น → ส่งให้ตรงใบงาน</span>`}else $('#count').hidden=true;
   el.hidden=false;
@@ -268,6 +374,7 @@ async function syncOthers(){
 function send(t){
   if(!meRef||t-sendT<100)return;
   const o={n:me.n,c:me.c,j:me.j,x:+me.x.toFixed(2),z:+me.z.toFixed(2),y:+me.y.toFixed(2),r:+me.r.toFixed(2),a:me.a,e:me.e,et:me.et,wk:me.wk,v:vis};
+  if(S.sc==='dance'&&D){o.ds=D.score;o.dc=D.combo;o.dmc=D.maxc;if(D.last){o.dj=D.last.j;o.djt=D.last.t}}
   const s=JSON.stringify(o);if(s===last&&t-sendT<4000)return;sendT=t;last=s;set(meRef,o);
 }
 function renderList(){
@@ -283,9 +390,11 @@ function frame(){
   if(myAv){
     if(kit&&!frozen){tg=kitchenTarget(t);if(actPress&&tg){push(ref(db,R+'/ki'),{pid:me.id,st:tg,t})}
       const s=KST.find(s=>s.id===tg);me.wk=keys.e&&s&&WORK[s.t]?s.id:''}else me.wk='';
-    actPress=false;
-    step(dt,frozen);myAv.o.position.set(me.x,me.y,me.z);myAv.o.rotation.y=me.r;myAv.play(me.a);myAv.mixer.update(dt);
-    placeTag(myTag,me.x,me.y,me.z,me.n+' ★',me.e,me.et,t,kit?badges(K.h&&K.h[me.id]):'');send(t);
+    actPress=false;jumpPress=S.sc==='dance'?false:jumpPress;
+    if(S.sc==='dance')danceTick(t,dt);else step(dt,frozen);
+    myAv.o.position.set(me.x,me.y,me.z);myAv.o.rotation.y=me.r;myAv.play(me.a);myAv.mixer.update(dt);
+    const myJ=S.sc==='dance'&&D&&D.last&&t-D.last.t<1200?D.last.j+(D.combo>1?' x'+D.combo:''):'';
+    placeTag(myTag,me.x,me.y,me.z,me.n+' ★',me.e,me.et,t,kit?badges(K.h&&K.h[me.id]):myJ);send(t);
     if(db&&hostId()===me.id)host(t,dt);else intents.length=0;
   }
   // stations + boss only during the kitchen round
@@ -303,7 +412,11 @@ function frame(){
     o.x+=(p.x-o.x)*Math.min(1,dt*10);o.z+=(p.z-o.z)*Math.min(1,dt*10);o.y+=((p.y||0)-o.y)*Math.min(1,dt*12);
     let dr=(p.r||0)-o.r;dr=Math.atan2(Math.sin(dr),Math.cos(dr));o.r+=dr*Math.min(1,dt*10);
     if(o.av){o.av.o.position.set(o.x,o.y,o.z);o.av.o.rotation.y=o.r;o.av.play(p.a||'idle');o.av.mixer.update(dt)}
-    placeTag(o.tag,o.x,o.y,o.z,p.n,p.e,p.et,t,kit?badges(K.h&&K.h[id]):'')}
+    if(S.sc==='dance'&&o.av)o.av.o.position.y=Math.abs(Math.sin((t-S.at)/1000*Math.PI*songOf(S).bpm/60))*.08;
+    placeTag(o.tag,o.x,o.y,o.z,p.n,p.e,p.et,t,kit?badges(K.h&&K.h[id]):S.sc==='dance'&&p.dj&&t-p.djt<1200?p.dj+(p.dc>1?' x'+p.dc:''):'')}
+  // disco floor flashes on the beat during the dance
+  if(disco.length){const on=S.sc==='dance',beat=on?Math.floor((t-S.at)/1000*songOf(S).bpm/60):0;
+    disco.forEach((m,i)=>{m.visible=on;if(on)m.material.color.setHSL(((beat*47+i*29)%360)/360,.8,.6)})}
   renderer.render(scene,camera);
   frames++;fpsT+=dt;if(fpsT>=1){fps=Math.round(frames/fpsT);frames=0;fpsT=0;$('#hud').textContent=`${fps} fps · ${Object.keys(players).length} คนในห้อง`}
   requestAnimationFrame(frame);
@@ -318,7 +431,7 @@ function joinPanel(){
     <div class="avas">${CHARS.map(k=>`<button class="${k===c?'on':''}" data-c="${k}"><img src="assets/3d/chars/previews/character-${k}.png" alt=""></button>`).join('')}</div>
     <div style="margin-top:14px"><button class="btn primary" data-go>🚪 เข้าห้อง</button></div></div>`;
   ov.querySelectorAll('[data-c]').forEach(b=>b.onclick=()=>{c=b.dataset.c;ov.querySelectorAll('[data-c]').forEach(x=>x.classList.toggle('on',x===b))});
-  ov.querySelector('[data-go]').onclick=()=>{const n=ov.querySelector('input').value.trim()||'ผู้เล่นปริศนา';store.set('name',n);store.set('avatar3d',c);ov.remove();join(n,c)};
+  ov.querySelector('[data-go]').onclick=()=>{music.unlock();const n=ov.querySelector('input').value.trim()||'ผู้เล่นปริศนา';store.set('name',n);store.set('avatar3d',c);ov.remove();join(n,c)};
   document.body.appendChild(ov);
 }
 async function join(n,c){
@@ -339,9 +452,11 @@ async function join(n,c){
   addEventListener('pagehide',()=>remove(meRef));
   boss=await makeAvatar('male-f');boss.o.visible=false;bossTag=tagFor({},false);bossTag.hidden=true;
   // show up as "in the 3D room" in the hub's online box
-  import('./online.js?v=1').then(O=>O.setPresence({n,a:store.get('partyAva','p_office'),g:'party3d'})).catch(()=>{});
+  import('./online.js?v=2').then(O=>O.setPresence({n,a:store.get('partyAva','p_office'),g:'party3d'})).catch(()=>{});
 }
 
 // ?debug exposes state for local testing
-if(location.search.includes('debug'))window.__p3={me,keys,get K(){return K},get S(){return S},get players(){return players},press:()=>{actPress=true},tick:()=>frame()};
-buildRoom().catch(e=>console.error(e)).finally(()=>{buildStations();renderBar();$('#loading').remove();requestAnimationFrame(frame);joinPanel()});
+if(location.search.includes('debug'))window.__p3={me,keys,get K(){return K},get S(){return S},get players(){return players},get D(){return D},dkey:k=>danceKey(k),dspace:()=>danceSpace(),now:()=>now(),press:()=>{actPress=true},tick:()=>frame()};
+document.querySelectorAll('#dpad [data-d]').forEach(b=>b.addEventListener('pointerdown',e=>{e.preventDefault();b.dataset.d==='sp'?danceSpace():danceKey(b.dataset.d)}));
+$('#mute').textContent=music.muted?'🔇':'🔊';$('#mute').onclick=()=>{music.muted=!music.muted;store.set('muted3d',music.muted);$('#mute').textContent=music.muted?'🔇':'🔊'};
+buildRoom().catch(e=>console.error(e)).finally(()=>{buildStations();buildDisco();renderBar();$('#loading').remove();requestAnimationFrame(frame);joinPanel()});

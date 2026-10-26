@@ -5,7 +5,7 @@ import {getDatabase,ref,get,set,remove,push,onValue,onDisconnect,runTransaction,
 import {FIREBASE_CONFIG} from './firebase-config.js';
 
 // max = sanity cap so an obviously broken score can't take the board
-export const RANK_GAMES={spot:{max:30000},run:{max:200000},whack:{max:6000},stack:{max:400}};
+export const RANK_GAMES={spot:{max:30000},run:{max:200000},whack:{max:6000},stack:{max:400},dance:{max:400000}};
 export const PERIODS={d:'วันนี้',w:'สัปดาห์นี้',a:'ตลอดกาล'};
 const db=()=>getDatabase(getApps().find(a=>a.name==='hub')||initializeApp(FIREBASE_CONFIG,'hub'));
 // Thai calendar: day resets at midnight ICT, week starts Monday

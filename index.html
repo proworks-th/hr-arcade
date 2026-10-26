@@ -261,7 +261,7 @@ $('#muteBtn').onclick=()=>{muted=!muted;store.set('muted',muted);renderMute()};
 
 /* ---------- online services (online.js, Firebase): ranking, presence, feed ---------- */
 let onlineMod=null;
-const loadRank=()=>onlineMod||(onlineMod=import('./online.js?v=1'));
+const loadRank=()=>onlineMod||(onlineMod=import('./online.js?v=2'));
 const loadOnline=loadRank;
 const PIX_AVAS=['p_office','p_woffice','p_whealth','p_tech','p_cat','p_dog'];
 const myAva=()=>{const a=store.get('partyAva','p_office');return PIX_AVAS.includes(a)?a:'p_office'};
@@ -282,6 +282,7 @@ const MISSIONS=[
   {id:'stack3',t:'วางแฟ้มเป๊ะ 3 ครั้งในรอบเดียว',g:'stack',ok:e=>e.game==='stack'&&e.st.perfects>=3},
   {id:'race',t:'ลงแข่งวิ่งในห้องปาร์ตี้ 1 รอบ',g:'party',ok:e=>e.kind==='race'},
   {id:'kitchen',t:'ช่วยทีมในครัวเอกสาร 1 รอบ',g:'party',ok:e=>e.kind==='kitchen'},
+  {id:'dance',t:'เต้น Office Audition ในห้อง 3D ให้จบ 1 เพลง',g:'party',ok:e=>e.kind==='dance'},
   {id:'mix3',t:'เล่นเกมเดี่ยวให้ครบ 3 เกม',g:'any',ok:(e,m)=>m.played.length>=3},
 ];
 const thaiDay=(t=Date.now())=>new Date(t+7*3600e3).toISOString().slice(0,10);
@@ -898,6 +899,7 @@ function partyMount(root,api){
 const GAMES=[
   {id:'party',title:'ปาร์ตี้ออนไลน์',emoji:'🎉',img:'assets/pixel/p_cat.png',color:'#ffe08a',online:true,desc:'เข้าห้องเดียวกันทั้งออฟฟิศ เห็นเพื่อนวิ่งไปมา แข่งวิ่งแบบ Fall Guys หรือช่วยกันเคลียร์งานแบบ Overcooked',time:'เล่นพร้อมกัน',mount:partyMount},
   {id:'party3d',title:'ห้องรวม 3D (ทดลอง)',emoji:'🧊',img:'assets/3d/chars/previews/character-female-c.png',color:'#d6ecff',online:true,href:'party3d.html',desc:'ต้นแบบห้องออฟฟิศ 3D กล้องล็อกมุมเดียวกันทุกคน เดินเล่น ส่งอีโมจิ ลองดูว่าเครื่องเราลื่นไหม',time:'ทดลอง'},
+  {id:'dance',title:'Office Audition',emoji:'🕺',img:'assets/3d/chars/previews/character-male-b.png',color:'#ffd6ec',online:true,href:'party3d.html',desc:'เกมเต้นแบบ Audition ในห้อง 3D กดลูกศรตามจังหวะ เต้นพร้อมเพื่อนทั้งห้อง แข่งคะแนนสด',time:'1–2 นาที/เพลง'},
   {id:'spot',title:'จับผิดภาพ',emoji:'🔍',img:'assets/kenney/character_green_front.png',color:'#9fd8ff',desc:'หาจุดต่างบนโต๊ะทำงาน ด่านประจำวันเหมือนกันทั้งออฟฟิศ',time:'2–4 นาที',mount:spotGame},
   {id:'run',title:'วิ่งไปตอกบัตร',emoji:'🏃',img:'assets/kenney/character_pink_jump.png',color:'#c6f0ff',desc:'เกมวิ่งแนว flash กระโดดข้ามสไลม์ ก้มหลบผึ้ง เก็บเหรียญให้ทันก่อน 8:30',time:'1–3 นาที',mount:runnerGame},
   {id:'whack',title:'สายด่วนถล่มโต๊ะ',emoji:'☎️',img:'assets/kenney/slime_fire_rest.png',color:'#ffb3c7',desc:'ตีสาย ตีอีเมล ตีงานด่วน… แต่อย่าเผลอตีหัวหน้า!',time:'40 วินาที',mount:whackGame},
