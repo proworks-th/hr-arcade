@@ -323,6 +323,7 @@ const MISSIONS=[
   {id:'race',t:'ลงแข่งวิ่งในห้องปาร์ตี้ 1 รอบ',g:'party',ok:e=>e.kind==='race'},
   {id:'kitchen',t:'ช่วยทีมในครัวเอกสาร 1 รอบ',g:'party',ok:e=>e.kind==='kitchen'},
   {id:'dance',t:'เต้น Office Audition ในห้อง 3D ให้จบ 1 เพลง',g:'party',ok:e=>e.kind==='dance'},
+  {id:'chair',t:'แข่งเก้าอี้ล้อเลื่อนในห้อง 3D 1 รอบ',g:'party',ok:e=>e.kind==='chair'},
   {id:'mix3',t:'เล่นเกมเดี่ยวให้ครบ 3 เกม',g:'any',ok:(e,m)=>m.played.length>=3},
   {id:'tetris10',t:'Printer Tetris เคลียร์ 10 แถว',g:'tetris',ok:e=>e.game==='tetris'&&e.st.lines>=10},
   {id:'stamp10',t:'ปั๊มตรา PERFECT 10 ครั้งในรอบเดียว',g:'stamp',ok:e=>e.game==='stamp'&&e.st.perfect>=10},
@@ -974,7 +975,7 @@ function renderHub(){
     <section class="hubtop">
       <div class="box party-hero"><h3><span class="dot"></span>ออนไลน์ตอนนี้ <span class="muted" data-k="oncount"></span></h3><div class="onlist" data-k="onlist"></div>
         <div class="cta"><div><button class="btn primary big" id="joinParty">🎉 เข้าห้องปาร์ตี้</button><small class="muted">แข่งวิ่ง · ครัวเอกสาร (2D)</small></div>
-          <div><a class="btn big" href="party3d.html">🧊 ห้อง 3D · 🕺 เต้น</a><small class="champ" data-champ="dance"></small></div></div></div>
+          <div><a class="btn big" href="party3d.html">🧊 ห้อง 3D · 🕺 เต้น · 🪑 แข่ง</a><small class="champ" data-champ="dance"></small></div></div></div>
       <div class="box"><h3>🎯 ภารกิจวันนี้ <span class="streak" data-k="streak"></span></h3><ul class="mlist" data-k="mlist"></ul></div>
     </section>
     <section class="solo"><h3>🎮 เกมเดี่ยว · เล่น 1–3 นาที</h3><div class="solo-grid">${solo.map(g=>`<button class="scard" data-g="${g.id}"><div class="em" style="--c:${g.color}">${g.img?`<img src="${g.img}" alt="">`:g.emoji}</div>
