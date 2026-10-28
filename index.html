@@ -118,6 +118,13 @@ a.btn{text-decoration:none;display:inline-flex;align-items:center;gap:6px;color:
 .xmark{position:absolute;transform:translate(-50%,-50%);font-size:7cqw;color:#ff2d55;font-weight:800;pointer-events:none;animation:fadeup .7s forwards;text-shadow:0 0 .5cqw #fff}
 @keyframes fadeup{to{opacity:0;transform:translate(-50%,-120%)}}
 
+/* solo games in solo-games.js: fixed-size canvas scaled to fit, button pad under it */
+.g2box{display:flex;justify-content:center}
+.g2box canvas{display:block;width:auto;height:auto;max-width:100%;max-height:calc(100dvh - 230px);border:3px solid var(--line);border-radius:14px;box-shadow:0 6px 0 var(--line);touch-action:none;background:#fdf3e6}
+.g2pad{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:12px}
+.g2pad .btn small{font-size:12px;color:var(--muted)}
+@media (max-width:720px){.g2tip{display:none}}
+
 /* hub live panel */
 .live{display:grid;grid-template-columns:1.25fr 1fr;gap:14px;margin-bottom:20px}
 .live .feedbox{grid-column:1/-1}
@@ -249,6 +256,7 @@ a.btn{text-decoration:none;display:inline-flex;align-items:center;gap:6px;color:
 <div id="toast"></div>
 <div id="boss" hidden></div>
 
+<script src="solo-games.js?v=1"></script>
 <script>
 'use strict';
 /* ---------- utils ---------- */
@@ -293,7 +301,7 @@ $('#muteBtn').onclick=()=>{muted=!muted;store.set('muted',muted);renderMute()};
 
 /* ---------- online services (online.js, Firebase): ranking, presence, feed ---------- */
 let onlineMod=null;
-const loadRank=()=>onlineMod||(onlineMod=import('./online.js?v=2'));
+const loadRank=()=>onlineMod||(onlineMod=import('./online.js?v=3'));
 const loadOnline=loadRank;
 const PIX_AVAS=['p_office','p_woffice','p_whealth','p_tech','p_cat','p_dog'];
 const myAva=()=>{const a=store.get('partyAva','p_office');return PIX_AVAS.includes(a)?a:'p_office'};
@@ -316,6 +324,10 @@ const MISSIONS=[
   {id:'kitchen',t:'ช่วยทีมในครัวเอกสาร 1 รอบ',g:'party',ok:e=>e.kind==='kitchen'},
   {id:'dance',t:'เต้น Office Audition ในห้อง 3D ให้จบ 1 เพลง',g:'party',ok:e=>e.kind==='dance'},
   {id:'mix3',t:'เล่นเกมเดี่ยวให้ครบ 3 เกม',g:'any',ok:(e,m)=>m.played.length>=3},
+  {id:'tetris10',t:'Printer Tetris เคลียร์ 10 แถว',g:'tetris',ok:e=>e.game==='tetris'&&e.st.lines>=10},
+  {id:'stamp10',t:'ปั๊มตรา PERFECT 10 ครั้งในรอบเดียว',g:'stamp',ok:e=>e.game==='stamp'&&e.st.perfect>=10},
+  {id:'barista8',t:'บาริสต้า เสิร์ฟถูก 8 แก้ว',g:'barista',ok:e=>e.game==='barista'&&e.st.served>=8},
+  {id:'toss5',t:'ปากระดาษลงถัง 5 ลูก',g:'toss',ok:e=>e.game==='toss'&&e.st.made>=5},
 ];
 const thaiDay=(t=Date.now())=>new Date(t+7*3600e3).toISOString().slice(0,10);
 function todayMissions(){
@@ -936,6 +948,10 @@ const GAMES=[
   {id:'spot',title:'จับผิดภาพ',emoji:'🔍',img:'assets/kenney/character_green_front.png',color:'#9fd8ff',desc:'หาจุดต่างบนโต๊ะทำงาน ด่านประจำวันเหมือนกันทั้งออฟฟิศ',time:'2–4 นาที',mount:spotGame},
   {id:'run',title:'วิ่งไปตอกบัตร',emoji:'🏃',img:'assets/kenney/character_pink_jump.png',color:'#c6f0ff',desc:'เกมวิ่งแนว flash กระโดดข้ามสไลม์ ก้มหลบผึ้ง เก็บเหรียญให้ทันก่อน 8:30',time:'1–3 นาที',mount:runnerGame},
   {id:'whack',title:'สายด่วนถล่มโต๊ะ',emoji:'☎️',img:'assets/kenney/slime_fire_rest.png',color:'#ffb3c7',desc:'ตีสาย ตีอีเมล ตีงานด่วน… แต่อย่าเผลอตีหัวหน้า!',time:'40 วินาที',mount:whackGame},
+  {id:'tetris',title:'Printer Tetris',emoji:'🖨️',img:'assets/pixel/printer.png',color:'#d6e4ff',desc:'กระดาษไหลจากเครื่องพิมพ์ จัดให้เต็มแถว',time:'2–5 นาที',mount:tetrisGame},
+  {id:'stamp',title:'ปั๊มตรารัวๆ',emoji:'🔏',img:'assets/pixel/stamp.png',color:'#ffd6d6',desc:'ปั๊ม APPROVED ให้ตรงจังหวะสายพาน',time:'1–2 นาที',mount:stampGame},
+  {id:'barista',title:'บาริสต้าพักเที่ยง',emoji:'☕',img:'assets/pixel/desktop.png',color:'#f3dcc0',desc:'ผสมเครื่องดื่มตามออเดอร์ให้ทัน',time:'90 วินาที',mount:baristaGame},
+  {id:'toss',title:'ปากระดาษลงถัง',emoji:'🗑️',img:'assets/pixel/trash.png',color:'#dff3e4',desc:'ปาก้อนกระดาษ ดูลมพัดลมด้วย',time:'1–2 นาที',mount:tossGame},
   {id:'stack',title:'ซ้อนแฟ้มเสียดฟ้า',emoji:'📚',img:'assets/kenney/block_planks.png',color:'#b8f2c9',desc:'แตะเดียวจบ ซ้อนแฟ้มให้สูงที่สุด ยิ่งเป๊ะยิ่งไปไกล',time:'1–2 นาที',unit:'ชั้น',mount:stackGame},
 ];
 let feedOpen=false;

@@ -251,7 +251,7 @@ function finishDance(){
   if(!D||D.done)return;D.done=true;
   if(!me.n||D.score<=0)return;
   const nm=me.n,extra=`Perfect ${D.cnt.PERFECT} · คอมโบ ${D.maxc}`,score=D.score;
-  import('./online.js?v=2').then(async O=>{const res=await O.submit('dance',nm,score,extra);const rows=await O.board('dance','d'),i=rows.findIndex(r=>r.k===O.nameKey(nm));
+  import('./online.js?v=3').then(async O=>{const res=await O.submit('dance',nm,score,extra);const rows=await O.board('dance','d'),i=rows.findIndex(r=>r.k===O.nameKey(nm));
     if(i>=0)toast(`🏆 อันดับวันนี้ Office Audition: #${i+1}`);
     if(res&&res.d&&i===0)O.pushFeed(`👑 ${nm} ขึ้นที่ 1 วันนี้ 🕺 Office Audition (${score})`,nm,store.get('partyAva','p_office'))}).catch(()=>{});
 }
@@ -452,7 +452,7 @@ async function join(n,c){
   addEventListener('pagehide',()=>remove(meRef));
   boss=await makeAvatar('male-f');boss.o.visible=false;bossTag=tagFor({},false);bossTag.hidden=true;
   // show up as "in the 3D room" in the hub's online box
-  import('./online.js?v=2').then(O=>O.setPresence({n,a:store.get('partyAva','p_office'),g:'party3d'})).catch(()=>{});
+  import('./online.js?v=3').then(O=>O.setPresence({n,a:store.get('partyAva','p_office'),g:'party3d'})).catch(()=>{});
 }
 
 // ?debug exposes state for local testing
