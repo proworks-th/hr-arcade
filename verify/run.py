@@ -35,9 +35,13 @@ class QuietHandler(http.server.SimpleHTTPRequestHandler):
         pass
 
 
+class Server(socketserver.ThreadingTCPServer):
+    request_queue_size = 128  # games load many small sprites at once; the default backlog of 5 refuses connections
+
+
 def serve():
     handler = functools.partial(QuietHandler, directory=str(ROOT))
-    httpd = socketserver.ThreadingTCPServer(('127.0.0.1', 0), handler)
+    httpd = Server(('127.0.0.1', 0), handler)
     threading.Thread(target=httpd.serve_forever, daemon=True).start()
     return httpd, f'http://127.0.0.1:{httpd.server_address[1]}'
 
