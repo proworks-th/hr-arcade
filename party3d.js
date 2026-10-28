@@ -58,7 +58,7 @@ const LAPS=3,RACE_MAX=150000,RACE_GRACE=20000;
 // driving direction: start on the south lane heading east, then up the east lane, west along the north lane, down the west lane
 const HAZARDS=[{x:2.6,z:3.1},{x:-2.8,z:-2.9},{x:6.1,z:-1.3},{x:-6.2,z:1.4},{x:5.4,z:2.2}];
 const CUPS=[{x:0,z:3.7},{x:-5.9,z:-2.2},{x:6.2,z:-3.2},{x:0,z:-3.5},{x:-6.4,z:3.3}].map(c=>({...c,t:0}));
-const SEAT_Y=.28; // character sitting height on the chair model
+const SEAT_Y=.36,CHAIR_TURN=0; // rider height on the seat; model yaw so the backrest is behind the rider
 const raceSlot=i=>({x:-1.1-Math.floor(i/2)*1.15,z:1.9+(i%2)*1.5});
 let RC=null,chairs=new Map(),cupMeshes=[];
 async function buildRace(){
@@ -87,8 +87,11 @@ async function buildRace(){
 function setRaceScene(on){for(const o of groups.lobby)o.visible=!on;for(const o of groups.race)o.visible=on}
 // one chair model per racer; the promise is cached so concurrent frames never create duplicates
 function chairFor(key){
-  if(!chairs.has(key))chairs.set(key,load('assets/3d/furn/chairDesk.glb').then(g=>{const o=g.scene.clone(true);o.scale.setScalar(FS);
-    o.traverse(m=>{if(m.isMesh)m.castShadow=hi});scene.add(o);return o}));
+  // the kit's pivot sits at a corner, so centre the model inside a wrapper and turn it so the backrest is behind the rider
+  if(!chairs.has(key))chairs.set(key,load('assets/3d/furn/chairDesk.glb').then(g=>{const m=g.scene.clone(true);m.scale.setScalar(FS*1.25);
+    m.traverse(x=>{if(x.isMesh)x.castShadow=hi});const bb=new THREE.Box3().setFromObject(m),c=bb.getCenter(new THREE.Vector3());
+    m.position.set(-c.x,-bb.min.y,-c.z);const turn=new THREE.Group();turn.rotation.y=CHAIR_TURN;turn.add(m);const o=new THREE.Group();o.add(turn);scene.add(o);
+    return o}));
   return chairs.get(key);
 }
 const raceProgress=(x,z,prev)=>{ // unwrapped progress in radians; laps = progress / 2π, finish line at angle π/2 (south)
@@ -109,9 +112,10 @@ function raceTick(t,dt){
     if(thr>0)RC.v=Math.min(max,RC.v+7*thr*dt);else if(thr<0)RC.v=Math.max(-2.5,RC.v-9*dt);else RC.v*=Math.pow(.25,dt);
     me.r-=steer*2.7*Math.min(1,Math.abs(RC.v)/2)*Math.sign(RC.v||1)*dt;
   }
-  const nx=me.x+Math.sin(me.r)*RC.v*dt,nz=me.z+Math.cos(me.r)*RC.v*dt;let hit=false;
-  if(!blocked(nx,me.z))me.x=nx;else hit=true;if(!blocked(me.x,nz))me.z=nz;else hit=true;
-  if(hit&&Math.abs(RC.v)>1){RC.v*=-.35;music.blip('bad')}
+  // grazing a wall slides along it; only a head-on hit (both axes blocked) bounces you back
+  const nx=me.x+Math.sin(me.r)*RC.v*dt,nz=me.z+Math.cos(me.r)*RC.v*dt;let hits=0;
+  if(!blocked(nx,me.z))me.x=nx;else hits++;if(!blocked(me.x,nz))me.z=nz;else hits++;
+  if(hits===2&&Math.abs(RC.v)>1){RC.v*=-.35;music.blip('bad')}else if(hits===1)RC.v*=Math.pow(.4,dt);
   // after a spin you get a moment of immunity so you can drive away instead of spinning forever
   RC.imm=Math.max(0,(RC.imm||0)-dt);
   for(const h of HAZARDS)if(RC.spin<=0&&RC.imm<=0&&Math.hypot(me.x-h.x,me.z-h.z)<.62){RC.spin=.9;RC.imm=2;RC.v*=.3;toast('🗑️ ชนถังขยะ หมุนติ้ว!');music.blip('bad')}
@@ -570,7 +574,7 @@ async function join(n,c){
 }
 
 // ?debug exposes state for local testing
-if(location.search.includes('debug'))window.__p3={me,keys,get K(){return K},get S(){return S},get players(){return players},get D(){return D},get RC(){return RC},dkey:k=>danceKey(k),dspace:()=>danceSpace(),now:()=>now(),press:()=>{actPress=true},tick:()=>frame()};
+if(location.search.includes('debug'))window.__p3={me,keys,get K(){return K},get S(){return S},get players(){return players},get D(){return D},get RC(){return RC},raceObs,blocked:(x,z)=>blocked(x,z),dkey:k=>danceKey(k),dspace:()=>danceSpace(),now:()=>now(),press:()=>{actPress=true},tick:()=>frame()};
 document.querySelectorAll('#dpad [data-d]').forEach(b=>b.addEventListener('pointerdown',e=>{e.preventDefault();b.dataset.d==='sp'?danceSpace():danceKey(b.dataset.d)}));
 $('#mute').textContent=music.muted?'🔇':'🔊';$('#mute').onclick=()=>{music.muted=!music.muted;store.set('muted3d',music.muted);$('#mute').textContent=music.muted?'🔇':'🔊'};
 Promise.all([buildRoom(),buildRace()]).catch(e=>console.error(e)).finally(()=>{buildStations();buildDisco();renderBar();$('#loading').remove();requestAnimationFrame(frame);joinPanel()});
