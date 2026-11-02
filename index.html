@@ -448,7 +448,7 @@ button.pk:hover{transform:translateY(-2px)}div.pk{cursor:default}.pk b{font-size
 <div id="toast"></div>
 <div id="boss" hidden></div>
 
-<script src="solo-games.js?v=9"></script>
+<script src="solo-games.js?v=10"></script>
 <script src="office.js?v=7"></script>
 <script src="wardrobe.js?v=1"></script>
 <script src="gacha.js?v=2"></script>
@@ -1001,9 +1001,9 @@ function spotGame(root,api){
     if(!running||done||api.paused)return;
     const R=p.getBoundingClientRect(),u=100/R.width,x=(e.clientX-R.left)*u,y=(e.clientY-R.top)*u;
     let best=null,bd=1e9;for(const d of diffs){const dd=Math.hypot(d.cx-x,d.cy-y);if(dd<d.rad&&dd<bd){best=d;bd=dd}}
-    if(best){if(best.found)return;best.found=true;ring(best);streak++;const pts=100+level*20+(streak>1?streak*10:0);score+=pts;runSfx('coin');time=Math.min(maxT+30,time+3);
+    if(best){if(best.found)return;best.found=true;ring(best);streak++;const pts=100+level*20+(streak>1?streak*10:0);score+=pts;runSfx('coin');const tb=Math.max(0,Math.min(3,maxT-time));time+=tb;
       for(const pp of panels){const R2=pp.getBoundingClientRect(),k=R2.width/100;domBurst(pp,best.cx*k,best.cy*k,{n:12,dist:50})}
-      const f=document.createElement('div');f.className='float';f.textContent=`+${pts} · ⏱+3`;f.style.left=best.cx+'cqw';f.style.top=best.cy+'cqw';p.appendChild(f);setTimeout(()=>f.remove(),700);
+      const f=document.createElement('div');f.className='float';f.textContent=tb>=1?`+${pts} · ⏱+${Math.round(tb)}`:'+'+pts;f.style.left=best.cx+'cqw';f.style.top=best.cy+'cqw';p.appendChild(f);setTimeout(()=>f.remove(),700);
       if(diffs.every(d=>d.found)){done=true;const bonus=Math.ceil(time)*5;score+=bonus;api.sfx('level');api.toast(`ผ่านด่าน ${level}! โบนัสเวลา +${bonus}`);
         for(const pp of panels){const R2=pp.getBoundingClientRect();domBurst(pp,R2.width/2,R2.height/2,{n:30,dist:160,size:10})}
         api.after(1.5,startLevel)}}
@@ -1157,10 +1157,10 @@ function whackGame(root,api){
   // art: an animated character sheet (anim) or a still sprite (img)
   const T={phone:{anim:'phone',cap:'โทรมา!',pts:10,life:1.4},paper:{img:'papers',cap:'เอกสาร',pts:10,life:1.5},
     fire:{img:'papers2',cap:'ด่วน!',pts:30,life:.8,hot:1},boss:{anim:'boss',cap:'หัวหน้า',pts:0,life:1.5},coffee:{img:'cake_slice',cap:'+3 วิ',pts:0,life:1}};
-  const TOTAL=40;let time=TOTAL,sc=0,combo=0,best=0,spawnT=.4,el=0,running=false;
+  const TOTAL=40,BONUS_MAX=25;let bonus=0,time=TOTAL,sc=0,combo=0,best=0,spawnT=.4,el=0,running=false;
   function hud(){q('t').textContent=Math.ceil(time);q('sc').textContent=fmt(sc);q('bar').style.width=Math.min(100,time/TOTAL*100)+'%';q('tm').classList.toggle('low',time<8);
     const m=1+Math.floor(combo/6)*.5;q('combo').textContent=combo>=3?`🔥 คอมโบ ${combo}${m>1?' (x'+m+')':''}`:''}
-  function pickType(){const w=[['phone',40],['paper',25],['fire',10+el*.15],['boss',10+el*.45],['coffee',time<15?9:4]];
+  function pickType(){const w=[['phone',40],['paper',25],['fire',10+el*.15],['boss',10+el*.45],['coffee',bonus>=BONUS_MAX?0:time<15?9:4]];
     let s=w.reduce((a,b)=>a+b[1],0)*rnd();for(const [t,v] of w){if((s-=v)<0)return t}return 'phone'}
   function art(t){const d=T[t];
     if(d.anim==='phone')return`<div class="mia ph" style="background-image:url(${MDIR}chars/${pick(rnd,['adam','alex','amelia'])}_phone.png)"></div>`;
@@ -1174,11 +1174,11 @@ function whackGame(root,api){
     if(!running||api.paused)return;const h=holes[i];if(!h.obj)return;const t=h.obj,R=h.el.getBoundingClientRect();
     h.mole.classList.remove('bonk');void h.mole.offsetWidth;h.mole.classList.add('bonk');
     if(t==='boss'){sc=Math.max(0,sc-40);combo=0;runSfx('hurt');api.toast('😡 ตีหัวหน้าทำไม! −40');float(h,'−40','bad');domShake(grid,10);domFlash(h.el)}
-    else if(t==='coffee'){time+=3;runSfx('gem');float(h,'+3 วิ');domBurst(h.el,R.width/2,R.height*.45,{n:8,colors:['#fff',PAL.yel]})}
+    else if(t==='coffee'){const cb=Math.min(3,BONUS_MAX-bonus);bonus+=cb;time+=cb;runSfx('gem');float(h,`+${cb} วิ`);domBurst(h.el,R.width/2,R.height*.45,{n:8,colors:['#fff',PAL.yel]})}
     else{combo++;best=Math.max(best,combo);const p=Math.round(T[t].pts*(1+Math.floor(combo/6)*.5));sc+=p;runSfx('coin');float(h,'+'+p);
       domBurst(h.el,R.width/2,R.height*.45,{n:t==='fire'?16:10,colors:t==='fire'?[PAL.red,PAL.orange,PAL.yel]:CONFETTI});
       if(combo%10===0){api.toast(`🔥 คอมโบ ${combo}!`);domShake(grid,4)}
-      const bt=(t==='fire'?1:0)+(combo%5===0?1:0);if(bt){time+=bt;setTimeout(()=>float(h,`⏱ +${bt} วิ`,'time'),120)}}
+      const bt=Math.min(BONUS_MAX-bonus,(t==='fire'?1:0)+(combo%5===0?1:0));if(bt>0){bonus+=bt;time+=bt;setTimeout(()=>float(h,bonus>=BONUS_MAX?'⏱ โบนัสเต็ม!':`⏱ +${bt} วิ`,'time'),120)}}
     h.obj=null;h.cool=.2;setTimeout(()=>{if(!h.obj)h.el.classList.remove('up','isboss')},180);hud();
   }
   holes.forEach((h,i)=>h.el.addEventListener('pointerdown',e=>{e.preventDefault();hit(i)}));
@@ -1190,7 +1190,7 @@ function whackGame(root,api){
   hud();
   api.intro({how:`<p>☎️ เพื่อนโทรเข้า เอกสาร และงานด่วนโผล่ขึ้นมาหลังพาร์ทิชัน — <b>ตีให้ไว!</b></p>
       <p>${legend}</p>
-      <p>⏱ ตีงานด่วนได้ +1 วิ · ตีติดกันทุก 5 ครั้ง +1 วิ · เค้กให้ +3 วิ — ยิ่งเก่งยิ่งเล่นได้นาน</p>
+      <p>⏱ ตีงานด่วน +1 วิ · ตีติดกันทุก 5 ครั้ง +1 วิ · เค้ก +3 วิ — เวลาโบนัสรวมได้สูงสุด +25 วิ</p>
       <p>⚠️ ตีหัวหน้าโดน −40 และคอมโบหาย</p>
       <p>⌨️ ใช้คีย์ <b>ตัวเลข 1-9</b> (แบบ numpad) หรือ <b>Q W E / A S D / Z X C</b> ได้</p>`,
     buttons:[{label:'📞 รับสาย!',primary:true,go(){running=true}}]});
@@ -1295,10 +1295,10 @@ const GAMES=[
   {id:'dance',title:'Office Audition',emoji:'🕺',img:'assets/3d/chars/previews/character-male-b.png',color:'#ffd6ec',online:true,href:'party3d.html',desc:'เกมเต้นแบบ Audition ในห้อง 3D กดลูกศรตามจังหวะ เต้นพร้อมเพื่อนทั้งห้อง แข่งคะแนนสด',time:'1–2 นาที/เพลง'},
   {id:'spot',title:'จับผิดภาพ',emoji:'🔍',img:'assets/mi/amelia_down.png',color:'#9fd8ff',desc:'หาจุดต่างบนโต๊ะทำงาน ด่านประจำวันเหมือนกันทั้งออฟฟิศ',time:'2–4 นาที',mount:spotGame},
   {id:'run',title:'วิ่งไปตอกบัตร',emoji:'🏃',img:'assets/mi/adam_right.png',color:'#c6f0ff',desc:'เกมวิ่งแนว flash กระโดดข้ามลังกับเก้าอี้ ก้มหลบเครื่องบินกระดาษ ให้ทันก่อน 8:30',time:'1–3 นาที',mount:runnerGame},
-  {id:'whack',title:'สายด่วนถล่มโต๊ะ',emoji:'☎️',img:'assets/mi/alex_phone.png',color:'#ffb3c7',desc:'ตีสาย ตีอีเมล ตีงานด่วน… แต่อย่าเผลอตีหัวหน้า!',time:'40 วิ + เวลาโบนัส',mount:whackGame},
+  {id:'whack',title:'สายด่วนถล่มโต๊ะ',emoji:'☎️',img:'assets/mi/alex_phone.png',color:'#ffb3c7',desc:'ตีสาย ตีอีเมล ตีงานด่วน… แต่อย่าเผลอตีหัวหน้า!',time:'40–65 วิ',mount:whackGame},
   {id:'tetris',title:'Printer Tetris',emoji:'🖨️',img:'assets/mi/pc_desk.png',color:'#d6e4ff',desc:'กระดาษไหลจากเครื่องพิมพ์ จัดให้เต็มแถว',time:'2–5 นาที',mount:tetrisGame},
   {id:'stamp',title:'ปั๊มตรารัวๆ',emoji:'🔏',img:'assets/mi/papers.png',color:'#ffd6d6',desc:'ปั๊ม APPROVED ให้ตรงจังหวะสายพาน',time:'1–2 นาที',mount:stampGame},
-  {id:'barista',title:'บาริสต้าพักเที่ยง',emoji:'☕',img:'assets/mi/cake_straw.png',color:'#f3dcc0',desc:'ผสมเครื่องดื่มตามออเดอร์ให้ทัน',time:'90 วิ + เวลาโบนัส',mount:baristaGame},
+  {id:'barista',title:'บาริสต้าพักเที่ยง',emoji:'☕',img:'assets/mi/cake_straw.png',color:'#f3dcc0',desc:'ผสมเครื่องดื่มตามออเดอร์ให้ทัน',time:'1.5–2 นาที',mount:baristaGame},
   {id:'toss',title:'ปากระดาษลงถัง',emoji:'🗑️',img:'assets/mi/bin.png',color:'#dff3e4',desc:'ปาก้อนกระดาษ ดูลมพัดลมด้วย',time:'1–2 นาที',mount:tossGame},
   {id:'slack',title:'แอบเล่นมือถือ',emoji:'📱',img:'assets/mi/amelia_phone.png',color:'#ffe0f0',desc:'กดค้างแอบเล่นมือถือ ปล่อยให้ทันก่อนหัวหน้าหันมา',time:'1–3 นาที',mount:slackGame},
   {id:'conga',title:'ขบวนไปกินข้าว',emoji:'🍱',img:'assets/mi/adam_down.png',color:'#e0f4d6',desc:'เก็บเพื่อนต่อแถว พาออกประตูไปโรงอาหาร',time:'2–4 นาที',mount:congaGame},

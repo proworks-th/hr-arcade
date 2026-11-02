@@ -314,7 +314,7 @@ function stampGame(root, api) {
   const DOCS = ['รายงาน', 'ใบเสนอราคา', 'บันทึกประชุม', 'สัญญา', 'แผนงาน', 'ใบแจ้งหนี้', 'โปรเจกต์', 'งบประมาณ'];
   root.innerHTML = `<div class="hud"><span data-k="hp"></span><span>⭐ <b data-k="sc">0</b></span><span data-k="cb" class="muted"></span><span class="muted g2tip">Space / แตะจอ = ปั๊ม</span></div>`;
   const { cv, ctx } = g2canvas(root, W, H), q = k => root.querySelector(`[data-k="${k}"]`), fx = makeFX();
-  let docs = [], speed = 150, gap = 0, made = 0, lives = 3, score = 0, combo = 0, maxc = 0, perfect = 0, running = false, over = false, press = 0, beltOff = 0;
+  let healed = 0, docs = [], speed = 150, gap = 0, made = 0, lives = 3, score = 0, combo = 0, maxc = 0, perfect = 0, running = false, over = false, press = 0, beltOff = 0;
   function hud() { q('hp').textContent = '❤️'.repeat(lives) + '🖤'.repeat(3 - lives); q('sc').textContent = fmt(score); q('cb').textContent = combo >= 3 ? `🔥 คอมโบ ${combo}` : ''; }
   function spawn() { made++; const draft = made > 8 && rnd() < .2; docs.push({ x: -80, name: pick(rnd, DOCS), draft, stamped: false, done: false, mark: '', sq: 0 }); }
   function lose(msg) {
@@ -336,7 +336,7 @@ function stampGame(root, api) {
     if (label === 'PERFECT') { fx.shake(7, .18); fx.hitstop(.07); fx.burst(best.x, BELT_Y - 60, { n: 10, colors: [PAL.yel, '#fff'], speed: 260, grav: 0, size: 7, shape: 'star', life: .5 }); api.sfx('good'); }
     else fx.shake(label === 'GOOD' ? 4 : 2, .12);
     fx.text(SX, 125, label, { color: label === 'PERFECT' ? PAL.pink : label === 'GOOD' ? PAL.orange : PAL.green, size: label === 'PERFECT' ? 34 : 26 });
-    if (combo > 0 && combo % 10 === 0 && lives < 3) { lives++; fx.text(SX, 175, '❤️ +1 ชีวิต', { color: PAL.pink, size: 24, life: 1.2 }); }   // a long streak buys a life back
+    if (combo > 0 && combo % 10 === 0 && lives < 3 && healed < 2) { lives++; healed++; fx.text(SX, 175, '❤️ +1 ชีวิต', { color: PAL.pink, size: 24, life: 1.2 }); }   // a long streak buys a life back
     if (combo > 0 && combo % 10 === 0) { fx.text(SX, 80, `🔥 คอมโบ ${combo}!`, { color: PAL.yel, size: 30, life: 1.2 }); fx.burst(SX, 90, { n: 24, colors: CONFETTI, speed: 320, grav: 500, size: 6, shape: 'paper', life: 1 }); }
     hud();
   }
@@ -391,7 +391,7 @@ function stampGame(root, api) {
   });
   hud(); draw();
   api.intro({ how: `<p>🏢 เอกสารวิ่งมาบนสายพาน — กด <b>Space</b> หรือแตะจอ ตอนกรอบสีฟ้าอยู่ใต้ตราปั๊ม</p>
-      <p>🎯 ตรงกลางเป๊ะ = <b>PERFECT</b> · ยิ่งคอมโบยาวคะแนนยิ่งคูณ · คอมโบครบ 10 ได้หัวใจคืน ❤️</p><p>⚠️ เอกสาร <b>"ร่าง"</b> ห้ามปั๊ม · ปล่อยเอกสารปกติหลุดไป = เสียหัวใจ ❤️</p>`,
+      <p>🎯 ตรงกลางเป๊ะ = <b>PERFECT</b> · ยิ่งคอมโบยาวคะแนนยิ่งคูณ · คอมโบครบ 10 ได้หัวใจคืน ❤️ (สูงสุด 2 ครั้ง)</p><p>⚠️ เอกสาร <b>"ร่าง"</b> ห้ามปั๊ม · ปล่อยเอกสารปกติหลุดไป = เสียหัวใจ ❤️</p>`,
     buttons: [{ label: '🔏 เริ่มปั๊ม!', primary: true, go() { running = true; } }] });
 }
 
@@ -399,7 +399,7 @@ function stampGame(root, api) {
    Lunch Barista — mix the drink each customer ordered before they lose patience
 ================================================================= */
 function baristaGame(root, api) {
-  const W = 760, H = 420, TOTAL = 90, COUNTER = 262;
+  const W = 760, H = 420, TOTAL = 90, BONUS_MAX = 40, COUNTER = 262;
   // [key, label, liquid colour in the cup]
   const ING = [['shot', 'ช็อต', '#6b3e26'], ['milk', 'นม', '#fffdf6'], ['ice', 'น้ำแข็ง', '#bfe9ff'], ['choco', 'ช็อกโกแลต', '#7a4a2a'], ['water', 'น้ำ', '#9fdcff'], ['tea', 'ชา', '#e0913b']];
   const MENU = [{ n: 'อเมริกาโน่', r: ['shot', 'water'] }, { n: 'ลาเต้', r: ['shot', 'milk'] }, { n: 'ลาเต้เย็น', r: ['shot', 'milk', 'ice'] },
@@ -407,7 +407,7 @@ function baristaGame(root, api) {
     { n: 'ชาร้อน', r: ['tea', 'water'] }, { n: 'เอสเพรสโซ่', r: ['shot'] }];
   root.innerHTML = `<div class="hud"><div class="timer" data-k="tm"><div data-k="bar"></div></div><span>⏱ <b data-k="t">${TOTAL}</b></span><span>⭐ <b data-k="sc">0</b></span><span data-k="hp"></span></div>`;
   const { cv, ctx, at } = g2canvas(root, W, H), q = k => root.querySelector(`[data-k="${k}"]`), fx = makeFX();
-  let slots = [null, null, null], leaving = [], cup = [], time = TOTAL, el = 0, score = 0, served = 0, hearts = 3, next = 1, running = false, over = false, wob = 0, t = 0;
+  let bonus = 0, slots = [null, null, null], leaving = [], cup = [], time = TOTAL, el = 0, score = 0, served = 0, hearts = 3, next = 1, running = false, over = false, wob = 0, t = 0;
   const SLOT_X = [140, 380, 620], CUP_X = W / 2;
   const same = (a, b) => a.length === b.length && [...a].sort().join() === [...b].sort().join();
   const ingOf = k => ING.find(z => z[0] === k);
@@ -434,8 +434,8 @@ function baristaGame(root, api) {
     const x = SLOT_X[i];
     fx.burst(x, 170, { n: 22, colors: CONFETTI, speed: 300, grav: 500, size: 6, shape: 'paper', life: .9 });
     fx.burst(x, 150, { n: 6, colors: [PAL.yel], speed: 200, grav: 0, size: 7, shape: 'star', life: .5 });
-    const bt = tip >= 15 ? 5 : 3; time += bt;
-    fx.text(x, 120, `+${pts}`, { color: PAL.yel, size: 30 }); fx.text(x, 92, `⏱ +${bt} วิ`, { color: PAL.green, size: 20 }); if (tip >= 15) fx.text(x, 64, 'ทิปเพียบ! 💸', { color: PAL.green, size: 18 });
+    const bt = Math.min(BONUS_MAX - bonus, tip >= 15 ? 5 : 3); bonus += bt; time += bt;
+    fx.text(x, 120, `+${pts}`, { color: PAL.yel, size: 30 }); if (bt > 0) fx.text(x, 92, bonus >= BONUS_MAX ? '⏱ โบนัสเต็ม!' : `⏱ +${bt} วิ`, { color: PAL.green, size: 20 }); if (tip >= 15) fx.text(x, 64, 'ทิปเพียบ! 💸', { color: PAL.green, size: 18 });
     leaving.push({ x, face: s.face, t: 0, happy: true }); slots[i] = null; cup = []; hud();
   }
   const clear = () => { if (cup.length) fx.burst(CUP_X, 360, { n: 10, colors: cup.map(k => ingOf(k)[2]), speed: 120, grav: 700, size: 4, life: .5 }); cup = []; };
@@ -501,7 +501,7 @@ function baristaGame(root, api) {
   hud(); draw();
   api.intro({ how: `<p>☕ พักเที่ยงคิวยาว! ผสมเครื่องดื่มตามที่ลูกค้าสั่งในบับเบิล แล้วเสิร์ฟให้ทันก่อนหลอดความอดทนหมด</p>
       <p>⌨️ ปุ่ม <b>1–6</b> ใส่วัตถุดิบ (${ING.map(([k]) => pxImg(k, 18)).join(' ')}) · <b>Enter</b> เสิร์ฟ · <b>Backspace</b> เทแก้วทิ้ง — หรือแตะปุ่มใต้จอ / แตะลูกค้า</p>
-      <p>⏱ เสิร์ฟถูก +3 วิ · เสิร์ฟไวจนได้ทิปเพียบ +5 วิ — เสิร์ฟเก่งเล่นได้เรื่อยๆ</p>
+      <p>⏱ เสิร์ฟถูก +3 วิ · เสิร์ฟไวจนได้ทิปเพียบ +5 วิ (รวมได้สูงสุด +40 วิ)</p>
       <p>⭐ ลูกค้าเดินหนี 3 คน หรือเวลาหมด = จบ</p>`,
     buttons: [{ label: '☕ เปิดร้าน!', primary: true, go() { running = true; spawn(); } }] });
 }
@@ -597,7 +597,7 @@ function tossGame(root, api) {
     draw();
   });
   hud(); draw();
-  api.intro({ how: `<p>🗑️ ปากระดาษก้อนลงถังให้ได้มากที่สุดใน ${THROWS} ลูก · <b>SWISH</b> (ลงไม่โดนขอบ) ได้ลูกฟรี +1</p>
+  api.intro({ how: `<p>🗑️ ปากระดาษก้อนลงถังให้ได้มากที่สุดใน ${THROWS} ลูก · <b>SWISH</b> (ลงไม่โดนขอบ) ได้ลูกฟรี +1 (สูงสุด 5 ลูก)</p>
       <p>🖱️ <b>ลากลูกบอลถอยหลัง</b> เหมือนหนังสติ๊กแล้วปล่อย · หรือ <b>← →</b> เล็ง แล้ว <b>กด Space ค้าง</b> เพื่อออกแรง</p>
       <p>🌬️ ดูลมจากพัดลมด้านบนด้วย · ลงถังไม่โดนขอบ = <b>SWISH</b> +50 · ครึ่งหลังถังจะเลื่อนไปมา</p>`,
     buttons: [{ label: '🗑️ เริ่มปา!', primary: true, go() { running = true; newThrow(); } }] });
