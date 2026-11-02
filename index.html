@@ -207,6 +207,14 @@ button.pk:hover{transform:translateY(-2px)}div.pk{cursor:default}.pk b{font-size
 .g-it small{font-size:11px;line-height:1.2}.g-it.no{filter:grayscale(1);opacity:.5}.g-it.no small{color:var(--muted)}
 .g-it.r-r{border-color:#9cc0ff}.g-it.r-l{border-color:#ffcf5c}.g-it.on{background:#fff3c4;border-color:var(--line);box-shadow:0 0 0 2px var(--yel)}
 .feedbox{margin-top:8px}
+.seg{display:inline-flex;border:2px solid var(--line);border-radius:999px;overflow:hidden;background:#fff}
+.seg button{font:inherit;font-weight:700;font-size:14px;border:0;background:none;padding:4px 12px;cursor:pointer;color:var(--ink)}.seg button.on{background:var(--yel)}
+@media (pointer:coarse),(hover:none){.seg button{min-height:44px}}
+.tower{margin-bottom:16px}.tower[hidden],#room[hidden]{display:none}
+.tower-wrap{position:relative;max-height:min(70vh,640px);overflow:auto;border:3px solid var(--line);border-radius:14px;box-shadow:0 6px 0 var(--line);background:#7cc4ff}
+.tower-wrap canvas{display:block;width:100%;height:auto;image-rendering:pixelated}
+.tower-tip{position:absolute;max-width:240px;background:#fff;border:2px solid var(--line);border-radius:8px;padding:4px 8px;font-size:12.5px;pointer-events:none;z-index:2}
+.tower-bar{display:flex;align-items:center;gap:8px;margin-top:8px;font-size:13px}.tower-bar .muted{flex:1}.tower-zoom{display:flex;gap:4px;flex:none}
 .sz-h{margin:4px 0 6px;font-size:14px}.sz-h small{font-weight:400}.sz-row{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}.shop-it.sz{min-width:110px;min-height:56px}
 .float.time{color:#21c07a;margin-top:-22px}
 .shop-it .incart{position:absolute;left:3px;top:2px;font-style:normal;font-size:12px}.office-tools .cart small.bad{color:var(--bad);font-weight:700}
@@ -449,10 +457,11 @@ button.pk:hover{transform:translateY(-2px)}div.pk{cursor:default}.pk b{font-size
 <div id="boss" hidden></div>
 
 <script src="solo-games.js?v=10"></script>
-<script src="office.js?v=7"></script>
+<script src="office.js?v=8"></script>
 <script src="wardrobe.js?v=1"></script>
 <script src="gacha.js?v=2"></script>
-<script src="hubroom.js?v=4"></script>
+<script src="hubroom.js?v=5"></script>
+<script src="tower.js?v=1"></script>
 <script>
 'use strict';
 /* ---------- utils ---------- */
@@ -497,7 +506,7 @@ $('#muteBtn').onclick=()=>{muted=!muted;store.set('muted',muted);renderMute()};
 
 /* ---------- online services (online.js, Firebase): ranking, presence, feed ---------- */
 let onlineMod=null;
-const loadRank=()=>onlineMod||(onlineMod=import('./online.js?v=9'));
+const loadRank=()=>onlineMod||(onlineMod=import('./online.js?v=10'));
 const loadOnline=loadRank;
 const PIX_AVAS=['p_office','p_woffice','p_whealth','p_tech','p_cat','p_dog'];
 const myAva=()=>{const a=store.get('partyAva','p_office');return PIX_AVAS.includes(a)?a:'p_office'};
@@ -597,7 +606,7 @@ function renderCrew(){
 function partyInvite(G,name){
   const d=document.createElement('div');d.className='invite';
   d.innerHTML=`<span>🎉 <b>${esc(G.by||'เพื่อน')}</b> เปิด ${name} ในห้องรวม!</span><button class="btn sm primary">เข้าร่วม</button><button class="btn sm" aria-label="ปิด">✕</button>`;
-  const [go,x]=d.querySelectorAll('button');go.onclick=()=>{d.remove();goHome()};x.onclick=()=>d.remove();
+  const [go,x]=d.querySelectorAll('button');go.onclick=()=>{d.remove();store.set('hubView','room');goHome()};x.onclick=()=>d.remove();
   document.body.appendChild(d);setTimeout(()=>d.remove(),15000);
 }
 /* ---------- เกมแนะนำวันนี้: same pick for everyone, pays double coins ---------- */
@@ -1341,8 +1350,8 @@ function renderHub(){
       <button class="btn sm" id="officeBtn" type="button" aria-label="ห้องฉัน">🏠<span class="bl"> ห้องฉัน</span></button>
     </section>
     <div class="alerts" data-k="alerts"></div>
-    <div class="room-h"><span class="dot"></span><b>ห้องรวม</b> <span class="muted" data-k="oncount"></span><div class="heads" data-k="onlist"></div><button class="off-bar" id="offBar" type="button"></button></div>
-    <div data-k="room"></div>
+    <div class="room-h"><span class="seg"><button class="on" data-view="room" type="button">🏠 ห้องรวม</button><button data-view="tower" type="button">🏢 ตึกออฟฟิศ</button></span><span class="dot"></span><span class="muted" data-k="oncount"></span><div class="heads" data-k="onlist"></div><button class="off-bar" id="offBar" type="button"></button></div>
+    <div data-k="room"></div><div data-k="tower"></div>
     <section class="solo"><div class="sec-h"><h3>เกม</h3><button class="chip" id="mBtn" type="button" aria-expanded="${mOpen}">🎯 ภารกิจวันนี้ <b data-k="mcount">0/3</b> <span data-k="streak"></span> ${mOpen?'▴':'▾'}</button></div>
       <div class="mpanel"${mOpen?'':' hidden'}><ul class="mlist" data-k="mlist"></ul></div>
       <div class="solo-grid">${solo.map(g=>{const b=store.get('best_'+g.id,0),ft=g.id===featuredId();return`<button class="scard${ft?' feat':''}" data-g="${g.id}" title="${g.desc}">${ft?'<i class="feat-b">⭐ วันนี้ 🪙×2</i>':''}<span class="em" style="--c:${g.color}"><img src="${g.img}" alt=""></span>
@@ -1353,7 +1362,8 @@ function renderHub(){
   const ni=$('#nameIn');ni.value=store.get('name','');let nt=0;ni.oninput=()=>{store.set('name',ni.value);clearTimeout(nt);nt=setTimeout(()=>{presence();Prog.sync()},800)};
   $('#avaBtn').onclick=()=>Wardrobe.open();
   drawAva($('#avaCv'));
-  HubRoom.mount(hub.querySelector('[data-k=room]'));HubRoom.renderOffice();
+  HubRoom.mount(hub.querySelector('[data-k=room]'));HubRoom.renderOffice();Tower.mount(hub.querySelector('[data-k=tower]'));
+  hub.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>Tower.setView(b.dataset.view));
   $('#officeBtn').onclick=()=>startGame('office');
   $('#gachaBtn').onclick=()=>Gacha.open();
   $('#mBtn').onclick=()=>{store.set('mOpen',!store.get('mOpen',false));renderHub()};
@@ -1364,7 +1374,7 @@ function renderHub(){
 }
 renderHub();
 onboarding();
-if(/[?&]join=room/.test(location.search)){setTimeout(()=>{document.getElementById('room')?.scrollIntoView({behavior:'smooth',block:'center'});
+if(/[?&]join=room/.test(location.search)){Tower.setView('room');setTimeout(()=>{document.getElementById('room')?.scrollIntoView({behavior:'smooth',block:'center'});
   const G=HubRoom.G;toast(G.sc&&G.sc!=='lobby'&&G.sc!=='res'?'🎉 เพื่อนกำลังเล่นอยู่ในห้องรวม — รอบหน้าเล่นด้วยกัน!':'👋 เพื่อนชวนมาที่ห้องรวม ทักทายกันได้เลย')},600)}
 // test-mode hook for verify/run.py (absent for normal visits)
 if(window.__TEST__)window.__app={open:id=>startGame(id),home:()=>goHome(),start:()=>{const b=document.querySelector('.overlay .btn.primary');b&&b.click()},

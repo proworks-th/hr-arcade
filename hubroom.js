@@ -462,7 +462,7 @@ const HubRoom = (() => {
   return {
     // returns the room element (built once, so the hub can re-render around it)
     mount(slot) { if (!el) build(); slot.replaceWith(el); start(); setTimeout(() => cv.dispatchEvent(new Event('resize')), 0); },
-    send: () => send({}, true), picker: () => partyPicker(), get G() { return G; }, invite, officeLv, renderOffice, officePanel,
+    send: () => send({}, true), picker: () => partyPicker(), get G() { return G; }, invite, officeLv, renderOffice, officePanel, officeNow: () => officeLv(offPts),
     // test hooks
     _dbg: { me, get D() { return D; }, get TG() { return TG; }, get RN() { return RN; }, tug: () => tugTap(), start: startParty, roster, office: onOffice, burst },
   };

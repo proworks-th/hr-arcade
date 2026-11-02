@@ -47,7 +47,7 @@ const Prog = {
   sync() {
     clearTimeout(Prog._t);
     Prog._t = setTimeout(() => { const nm = myName(); if (!nm) return; const p = Prog.get();
-      loadOnline().then(O => O.saveProfile(nm, { lv: p.lv, ti: Prog.title(p.lv), who: p.who, room: p.room, b: (p.gacha && p.gacha.eq) || '' })).catch(() => {}); }, 1500);
+      loadOnline().then(O => O.saveProfile(nm, { lv: p.lv, ti: Prog.title(p.lv), who: p.who, room: p.room, b: (p.gacha && p.gacha.eq) || '', h: typeof Wardrobe !== 'undefined' ? Wardrobe.eq('h') : '', f: typeof Wardrobe !== 'undefined' ? Wardrobe.eq('f') : '' })).catch(() => {}); }, 1500);
   },
 };
 
@@ -128,7 +128,7 @@ function officeMount(root, api) {
   const at = e => { const b = cv.getBoundingClientRect(); return { x: (e.clientX - b.left) * RW * RC / b.width, y: (e.clientY - b.top) * RROWS * RC / b.height }; };
   roomBox.insertBefore(cv.parentNode, roomBox.firstChild);
   const q = k => root.querySelector(`[data-k="${k}"]`), fx = makeFX();
-  let p = Prog.get(), tab = window.officeTab || 'shop', placing = null, moving = -1, sel = -1, hover = null, visit = null, t = 0, pops = {};
+  let p = Prog.get(), tab = window.officeTab || 'shop', placing = null, moving = -1, sel = -1, hover = null, visit = window.officeVisit || null, t = 0, pops = {}; window.officeVisit = null;
   // try-before-you-buy: shop items are placed as see-through "cart" items, wall/floor styles are tried on; nothing is paid until ซื้อทั้งหมด
   let trial = [], tryStyle = {}, tryW = 0, selT = -1, movingT = -1, placingTrial = false;
   const priceOf = n => (SHOP.find(s => s[0] === n) || [, , 0])[2], stylePrice = n => (STYLES.find(s => s[0] === n) || [, 0])[1];
