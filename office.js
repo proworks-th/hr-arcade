@@ -74,10 +74,13 @@ const SHOP_KIND = Object.fromEntries(SHOP.map(s => [s[0], s[1]]));
 
 /* ---------- the room: 12 x 9 cells, rows 0-1 are the wall ---------- */
 const RC = 32, RCOLS = 12, RROWS = 9, RTOP = 2;
+// room sizes you can expand to: [columns, price, level]
+const ROOM_SIZES = [[12, 0, 1], [15, 300, 3], [18, 700, 6], [22, 1500, 10]];
+const roomW = room => room.w || RCOLS;
 const cellsW = n => Math.max(1, Math.ceil((MI_SZ[n] || [16])[0] / 16));
 function roomFits(room, n, x, y, skip) {
   const k = SHOP_KIND[n] || 'f', w = cellsW(n);
-  if (x < 0 || x + w > RCOLS) return false;
+  if (x < 0 || x + w > roomW(room)) return false;
   if (k === 'w' ? y >= RTOP : (y < RTOP || y >= RROWS)) return false;
   return !room.items.some((it, i) => { if (i === skip) return false; const k2 = SHOP_KIND[it[0]] || 'f';
     if ((k === 'w') !== (k2 === 'w') || (k === 'r') !== (k2 === 'r')) return false;   // rugs only collide with rugs, wall with wall
@@ -86,7 +89,7 @@ function roomFits(room, n, x, y, skip) {
 }
 // draws a room (yours or a coworker's); extra = things to depth-sort in (avatar, ghost)
 function drawRoom(ctx, room, extra = [], t = 0, pops = {}, tryFrom = Infinity) {
-  officeBG(ctx, RCOLS * RC, RROWS * RC, RTOP * RC, { wall: room.wall, floor: room.floor, k: 2, calm: .1 });
+  officeBG(ctx, roomW(room) * RC, RROWS * RC, RTOP * RC, { wall: room.wall, floor: room.floor, k: 2, calm: .1 });
   const list = [];
   room.items.forEach((it, i) => {
     const [n, x, y, f] = it, k = SHOP_KIND[n] || 'f', cx = (x + cellsW(n) / 2) * RC, pop = pops[i] || 0, o = { flip: !!f, sx: 1 + pop * .25, sy: 1 - pop * .2, alpha: i >= tryFrom ? .78 : null };
@@ -101,7 +104,7 @@ function drawRoom(ctx, room, extra = [], t = 0, pops = {}, tryFrom = Infinity) {
 function roomWalker(who) {
   const a = { who, x: 6, y: 7, tx: 6, ty: 7, wait: 1, dir: 'down' };
   a.step = (room, dt) => {
-    if (a.wait > 0) { a.wait -= dt; if (a.wait <= 0) { for (let i = 0; i < 30; i++) { const x = Math.floor(rnd() * RCOLS), y = RTOP + 1 + Math.floor(rnd() * (RROWS - RTOP - 1));
+    if (a.wait > 0) { a.wait -= dt; if (a.wait <= 0) { for (let i = 0; i < 30; i++) { const x = Math.floor(rnd() * roomW(room)), y = RTOP + 1 + Math.floor(rnd() * (RROWS - RTOP - 1));
       if (!room.items.some(it => (SHOP_KIND[it[0]] || 'f') === 'f' && it[2] === y && x >= it[1] && x < it[1] + cellsW(it[0]))) { a.tx = x; a.ty = y; break; } } } return; }
     const dx = a.tx - a.x, dy = a.ty - a.y, sp = 2.2 * dt;
     if (Math.abs(dx) > .02) { a.x += Math.sign(dx) * Math.min(sp, Math.abs(dx)); a.dir = dx > 0 ? 'right' : 'left'; }
@@ -118,19 +121,24 @@ function officeMount(root, api) {
     <span data-k="who" class="office-who"></span></div>
     <div class="office"><div class="office-room"><div class="office-tools" data-k="tools"></div></div>
     <div class="box office-side"><div class="rk-tabs" data-k="tabs"></div><div class="office-list" data-k="list"></div></div></div>`;
-  const roomBox = root.querySelector('.office-room'), { cv, ctx, at } = g2canvas(roomBox, RCOLS * RC, RROWS * RC);
+  const roomBox = root.querySelector('.office-room'), { cv, ctx } = g2canvas(roomBox, RCOLS * RC, RROWS * RC);
+  // the canvas follows the width of the room on screen (yours, a tried-on expansion, or a coworker's)
+  let RW = RCOLS;
+  function fitCanvas(w) { RW = w; const dpr = Math.min(2, devicePixelRatio || 1); cv.width = w * RC * dpr; cv.style.setProperty('--ar', w / RROWS); ctx.setTransform(dpr, 0, 0, dpr, 0, 0); }
+  const at = e => { const b = cv.getBoundingClientRect(); return { x: (e.clientX - b.left) * RW * RC / b.width, y: (e.clientY - b.top) * RROWS * RC / b.height }; };
   roomBox.insertBefore(cv.parentNode, roomBox.firstChild);
   const q = k => root.querySelector(`[data-k="${k}"]`), fx = makeFX();
   let p = Prog.get(), tab = window.officeTab || 'shop', placing = null, moving = -1, sel = -1, hover = null, visit = null, t = 0, pops = {};
   // try-before-you-buy: shop items are placed as see-through "cart" items, wall/floor styles are tried on; nothing is paid until ซื้อทั้งหมด
-  let trial = [], tryStyle = {}, selT = -1, movingT = -1, placingTrial = false;
+  let trial = [], tryStyle = {}, tryW = 0, selT = -1, movingT = -1, placingTrial = false;
   const priceOf = n => (SHOP.find(s => s[0] === n) || [, , 0])[2], stylePrice = n => (STYLES.find(s => s[0] === n) || [, 0])[1];
-  const cartCost = () => trial.reduce((a, it) => a + priceOf(it[0]), 0) + Object.values(tryStyle).reduce((a, n) => a + stylePrice(n), 0);
-  const cartN = () => trial.length + Object.keys(tryStyle).length;
+  const sizePrice = w => (ROOM_SIZES.find(z => z[0] === w) || [, 0])[1];
+  const cartCost = () => trial.reduce((a, it) => a + priceOf(it[0]), 0) + Object.values(tryStyle).reduce((a, n) => a + stylePrice(n), 0) + (tryW ? sizePrice(tryW) : 0);
+  const cartN = () => trial.length + Object.keys(tryStyle).length + (tryW ? 1 : 0);
   const allItems = () => p.room.items.concat(trial);
   const skipIdx = () => moving >= 0 ? moving : movingT >= 0 ? p.room.items.length + movingT : undefined;
   const walker = roomWalker(p.who); walker.ctx = ctx;
-  const view = () => visit ? visit.room : { ...p.room, wall: tryStyle.wall || p.room.wall, floor: tryStyle.floor || p.room.floor };
+  const view = () => visit ? visit.room : { ...p.room, wall: tryStyle.wall || p.room.wall, floor: tryStyle.floor || p.room.floor, w: tryW || roomW(p.room) };
   function save() { Prog.put(p); }
   function hud() {
     p = Prog.get(); const lvTxt = `Lv ${p.lv} · ${Prog.title(p.lv)}`;
@@ -159,23 +167,24 @@ function officeMount(root, api) {
     if (cartN()) { const c = cartCost(), short = c - p.coins;
       el.innerHTML = `<span class="cart">🛒 ลองไว้ <b>${cartN()}</b> ชิ้น · รวม <b>🪙 ${fmt(c)}</b>${short > 0 ? ` <small class="bad">ขาดอีก ${fmt(short)}</small>` : ''}</span><button class="btn sm primary" data-a="buy">✅ ซื้อทั้งหมด</button><button class="btn sm" data-a="clear">🗑️ ล้างตะกร้า</button>`;
       el.querySelector('[data-a=buy]').onclick = buyCart;
-      el.querySelector('[data-a=clear]').onclick = () => { trial = []; tryStyle = {}; selT = -1; tools(); list(); }; return; }
+      el.querySelector('[data-a=clear]').onclick = () => { trial = []; tryStyle = {}; tryW = 0; selT = -1; tools(); list(); }; return; }
     el.innerHTML = '<span class="muted">กดของในร้านเพื่อ<b>ลองวาง</b>ในห้องก่อน ถูกใจแล้วค่อยกดซื้อ · แตะของในห้องเพื่อย้าย / กลับด้าน / เก็บ</span>';
   }
   function buyCart() {
     const c = cartCost(); if (c > p.coins) { toast(`เหรียญไม่พอ ขาดอีก 🪙 ${fmt(c - p.coins)} — เอาบางชิ้นออก หรือไปเล่นเกมก่อน`); domShake(q('tools'), 5); return; }
     p = Prog.get(); p.coins -= c; p.room.items.push(...trial.map(it => it.slice()));
     for (const [slot, n] of Object.entries(tryStyle)) { if (!p.styles.includes(n)) p.styles.push(n); p.room[slot] = n; }
+    if (tryW) p.room.w = tryW;
     trial.forEach((it, i) => pops[p.room.items.length - trial.length + i] = 1);
-    fx.burst(RCOLS * RC / 2, RROWS * RC / 2, { n: 30, colors: CONFETTI, speed: 280, grav: 400, size: 5, shape: 'paper', life: .9 }); api.sfx('good');
-    toast(`🛍️ ซื้อแล้ว ${cartN()} ชิ้น (−${fmt(c)} 🪙)`); trial = []; tryStyle = {}; selT = -1; save(); hud(); tools(); list();
+    fx.burst(RW * RC / 2, RROWS * RC / 2, { n: 30, colors: CONFETTI, speed: 280, grav: 400, size: 5, shape: 'paper', life: .9 }); api.sfx('good');
+    toast(`🛍️ ซื้อแล้ว ${cartN()} ชิ้น (−${fmt(c)} 🪙)`); trial = []; tryStyle = {}; tryW = 0; selT = -1; save(); hud(); tools(); list();
   }
   function cancelPlace() { if (placing && moving < 0 && !placingTrial) p.inv[placing] = (p.inv[placing] || 0) + 1; placing = null; moving = -1; movingT = -1; placingTrial = false; save(); tools(); list(); }
   function startPlace(n) { if (p.inv[n] > 0) { p.inv[n]--; if (!p.inv[n]) delete p.inv[n]; } placing = n; moving = -1; movingT = -1; placingTrial = false; sel = -1; selT = -1; save(); tools(); list(); }
   function startTry(n) { placing = n; placingTrial = true; moving = -1; movingT = -1; sel = -1; selT = -1; tools(); }
   const icon = (n, h = 34) => `<img class="pxi" src="assets/mi/${n}.png" alt="" style="max-height:${h}px;max-width:${h * 1.6}px">`;
   function list() {
-    const tabs = [['shop', '🛒 ร้านค้า'], ['inv', '📦 ของของฉัน'], ['style', '🎨 ผนัง/พื้น'], ['friends', '👥 ห้องเพื่อน']];
+    const tabs = [['shop', '🛒 ร้านค้า'], ['inv', '📦 ของของฉัน'], ['style', '🎨 ห้อง/ผนัง'], ['friends', '👥 ห้องเพื่อน']];
     q('tabs').innerHTML = tabs.map(([k, v]) => `<button class="btn sm${k === tab ? ' on' : ''}" data-t="${k}">${v}</button>`).join('');
     q('tabs').querySelectorAll('[data-t]').forEach(b => b.onclick = () => { tab = b.dataset.t; list(); });
     const L = q('list');
@@ -189,14 +198,18 @@ function officeMount(root, api) {
         : '<p class="muted">ยังไม่มีของในกระเป๋า — ซื้อจากร้านค้า หรือกด 📦 เก็บ ของที่อยู่ในห้อง</p>';
       L.querySelectorAll('[data-place]').forEach(b => b.onclick = () => startPlace(b.dataset.place));
     } else if (tab === 'style') {
-      L.innerHTML = `<div class="shop-grid">${STYLES.map(([n, price, lv]) => { const own = p.styles.includes(n), lock = p.lv < lv, on = p.room.wall === n || p.room.floor === n;
+      const curW = roomW(p.room);
+      L.innerHTML = `<h4 class="sz-h">📐 ขยายห้อง <small class="muted">ตอนนี้กว้าง ${curW} ช่อง</small></h4><div class="sz-row">${ROOM_SIZES.filter(z => z[0] > curW).map(([w, price, lv]) => { const lock = p.lv < lv, tr = tryW === w;
+        return `<button class="shop-it sz${tr ? ' on' : ''}${lock ? ' lock' : ''}" data-size="${w}" ${lock ? 'disabled' : ''}><b>↔ ${w} ช่อง</b><small>${lock ? `🔒 Lv ${lv}` : tr ? `🛒 ลองอยู่ · 🪙 ${fmt(price)}` : `👀 🪙 ${fmt(price)}`}</small></button>`; }).join('') || '<span class="muted">ห้องใหญ่สุดแล้ว 🎉</span>'}</div>
+        <h4 class="sz-h">🎨 ผนัง / พื้น</h4><div class="shop-grid">${STYLES.map(([n, price, lv]) => { const own = p.styles.includes(n), lock = p.lv < lv, on = p.room.wall === n || p.room.floor === n;
         const tr = tryStyle.wall === n || tryStyle.floor === n;
         return `<button class="shop-it style${on || tr ? ' on' : ''}${lock && !own ? ' lock' : ''}" data-style="${n}" ${lock && !own ? 'disabled' : ''}><span class="sw" style="background-image:url(assets/mi/${n}.png)"></span><small>${tr ? `🛒 ลองอยู่ · 🪙 ${price}` : on ? '✓ ใช้อยู่' : own ? 'ใช้' : lock ? `🔒 Lv ${lv}` : `👀 🪙 ${price}`}</small></button>`; }).join('')}</div>`;
+      L.querySelectorAll('[data-size]').forEach(b => b.onclick = () => { const w = +b.dataset.size; tryW = tryW === w ? 0 : w; api.sfx('tick'); tools(); list(); });
       L.querySelectorAll('[data-style]').forEach(b => b.onclick = () => {
         const [n, price] = STYLES.find(s => s[0] === b.dataset.style);
         const slot = n.startsWith('wall') ? 'wall' : 'floor';
         if (!p.styles.includes(n)) { if (tryStyle[slot] === n) delete tryStyle[slot]; else tryStyle[slot] = n; api.sfx('tick'); tools(); list(); return; }
-        delete tryStyle[slot]; p.room[slot] = n; fx.burst(RCOLS * RC / 2, n.startsWith('wall') ? RC : RROWS * RC / 2, { n: 24, colors: CONFETTI, speed: 260, grav: 400, size: 5, shape: 'paper', life: .8 });
+        delete tryStyle[slot]; p.room[slot] = n; fx.burst(RW * RC / 2, n.startsWith('wall') ? RC : RROWS * RC / 2, { n: 24, colors: CONFETTI, speed: 260, grav: 400, size: 5, shape: 'paper', life: .8 });
         save(); hud(); list();
       });
     } else {
@@ -214,7 +227,7 @@ function officeMount(root, api) {
     const nm = myName(); if (!nm) { toast('ตั้งชื่อเล่นที่หน้าแรกก่อนนะ'); return; }
     if (visit.n.trim().toLowerCase() === nm.trim().toLowerCase()) { toast('กดถูกใจห้องตัวเองไม่ได้ 😆'); return; }
     loadOnline().then(O => O.like(visit.k, nm).then(() => O.likeCount(visit.k))).then(n => { const s = q('likes'); if (s) s.textContent = `(${n})`; toast('👍 ส่งกำลังใจแล้ว!'); }).catch(() => {});
-    for (let i = 0; i < 6; i++) fx.burst(RCOLS * RC / 2, RROWS * RC / 2, { n: 3, colors: [PAL.pink, '#fff'], speed: 220, grav: -60, size: 7, shape: 'star', life: 1 });
+    for (let i = 0; i < 6; i++) fx.burst(RW * RC / 2, RROWS * RC / 2, { n: 3, colors: [PAL.pink, '#fff'], speed: 220, grav: -60, size: 7, shape: 'star', life: 1 });
     api.sfx('good');
   }
   const cellAt = e => { const m = at(e); return { x: Math.floor(m.x / RC), y: Math.floor(m.y / RC) }; };
@@ -223,8 +236,8 @@ function officeMount(root, api) {
   cv.addEventListener('pointerdown', e => {
     if (visit) return; const c = cellAt(e); hover = c;
     if (placing) {
-      const k = SHOP_KIND[placing] || 'f', w = cellsW(placing), x = Math.max(0, Math.min(RCOLS - w, c.x - Math.floor((w - 1) / 2))), y = k === 'w' ? 0 : c.y;
-      if (!roomFits({ items: allItems() }, placing, x, y, skipIdx())) { fx.shake(3, .12); api.sfx('bad'); return; }
+      const k = SHOP_KIND[placing] || 'f', w = cellsW(placing), x = Math.max(0, Math.min(RW - w, c.x - Math.floor((w - 1) / 2))), y = k === 'w' ? 0 : c.y;
+      if (!roomFits({ w: view().w, items: allItems() }, placing, x, y, skipIdx())) { fx.shake(3, .12); api.sfx('bad'); return; }
       if (movingT >= 0) { trial[movingT][1] = x; trial[movingT][2] = y; }
       else if (placingTrial) trial.push([placing, x, y, 0]);
       else if (moving >= 0) { p.room.items[moving][1] = x; p.room.items[moving][2] = y; pops[moving] = 1; }
@@ -241,11 +254,11 @@ function officeMount(root, api) {
   });
   api.onKey(e => { if (e.key === 'Escape' && placing) cancelPlace(); });
   function draw() {
+    const room = view(), extra = []; if (roomW(room) !== RW) fitCanvas(roomW(room));
     fx.pre(ctx);
-    const room = view(), extra = [];
     if (!visit) extra.push(walker.item(t));
     if (placing && hover) {
-      const k = SHOP_KIND[placing] || 'f', w = cellsW(placing), x = Math.max(0, Math.min(RCOLS - w, hover.x - Math.floor((w - 1) / 2))), y = k === 'w' ? 0 : hover.y, ok = roomFits({ items: allItems() }, placing, x, y, skipIdx());
+      const k = SHOP_KIND[placing] || 'f', w = cellsW(placing), x = Math.max(0, Math.min(RW - w, hover.x - Math.floor((w - 1) / 2))), y = k === 'w' ? 0 : hover.y, ok = roomFits({ w: view().w, items: allItems() }, placing, x, y, skipIdx());
       extra.push({ y: (k === 'w' ? 0 : y + 1) + .02, d: () => {
         ctx.fillStyle = ok ? 'rgba(33,192,122,.35)' : 'rgba(226,48,48,.35)'; ctx.fillRect(x * RC, (k === 'w' ? 0 : y) * RC, w * RC, (k === 'w' ? RTOP : 1) * RC);
         drawPixAt(ctx, placing, (x + w / 2) * RC, k === 'w' ? RTOP * RC - 6 : (y + 1) * RC, 2, { alpha: .75 }); } });
@@ -261,7 +274,7 @@ function officeMount(root, api) {
     if (sel >= 0 && !visit) { const [n, x, y] = p.room.items[sel], k = SHOP_KIND[n] || 'f', w = cellsW(n); ctx.strokeStyle = PAL.yel; ctx.lineWidth = 3; ctx.setLineDash([6, 4]);
       ctx.strokeRect(x * RC + 2, (k === 'w' ? 0 : y) * RC + 2, w * RC - 4, (k === 'w' ? RTOP : 1) * RC - 4); ctx.setLineDash([]); }
     if (visit) { rrect(ctx, 8, 8, 200, 26, 8, 'rgba(255,255,255,.9)', PAL.ink); txt(ctx, `🏠 ห้องของ ${visit.n}`, 108, 21, 13, PAL.ink, 'center', 700); }
-    fx.post(ctx, RCOLS * RC, RROWS * RC);
+    fx.post(ctx, RW * RC, RROWS * RC);
   }
   api.loop(dt => { const d = fx.step(dt); t += dt; for (const i in pops) { pops[i] -= dt * 4; if (pops[i] <= 0) delete pops[i]; } if (!visit) walker.step(p.room, d); draw(); });
   // likes on my room turn into coins (5 each), claimed when I open the office

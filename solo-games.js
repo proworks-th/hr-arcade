@@ -336,6 +336,7 @@ function stampGame(root, api) {
     if (label === 'PERFECT') { fx.shake(7, .18); fx.hitstop(.07); fx.burst(best.x, BELT_Y - 60, { n: 10, colors: [PAL.yel, '#fff'], speed: 260, grav: 0, size: 7, shape: 'star', life: .5 }); api.sfx('good'); }
     else fx.shake(label === 'GOOD' ? 4 : 2, .12);
     fx.text(SX, 125, label, { color: label === 'PERFECT' ? PAL.pink : label === 'GOOD' ? PAL.orange : PAL.green, size: label === 'PERFECT' ? 34 : 26 });
+    if (combo > 0 && combo % 10 === 0 && lives < 3) { lives++; fx.text(SX, 175, '❤️ +1 ชีวิต', { color: PAL.pink, size: 24, life: 1.2 }); }   // a long streak buys a life back
     if (combo > 0 && combo % 10 === 0) { fx.text(SX, 80, `🔥 คอมโบ ${combo}!`, { color: PAL.yel, size: 30, life: 1.2 }); fx.burst(SX, 90, { n: 24, colors: CONFETTI, speed: 320, grav: 500, size: 6, shape: 'paper', life: 1 }); }
     hud();
   }
@@ -390,7 +391,7 @@ function stampGame(root, api) {
   });
   hud(); draw();
   api.intro({ how: `<p>🏢 เอกสารวิ่งมาบนสายพาน — กด <b>Space</b> หรือแตะจอ ตอนกรอบสีฟ้าอยู่ใต้ตราปั๊ม</p>
-      <p>🎯 ตรงกลางเป๊ะ = <b>PERFECT</b> · ยิ่งคอมโบยาวคะแนนยิ่งคูณ</p><p>⚠️ เอกสาร <b>"ร่าง"</b> ห้ามปั๊ม · ปล่อยเอกสารปกติหลุดไป = เสียหัวใจ ❤️</p>`,
+      <p>🎯 ตรงกลางเป๊ะ = <b>PERFECT</b> · ยิ่งคอมโบยาวคะแนนยิ่งคูณ · คอมโบครบ 10 ได้หัวใจคืน ❤️</p><p>⚠️ เอกสาร <b>"ร่าง"</b> ห้ามปั๊ม · ปล่อยเอกสารปกติหลุดไป = เสียหัวใจ ❤️</p>`,
     buttons: [{ label: '🔏 เริ่มปั๊ม!', primary: true, go() { running = true; } }] });
 }
 
@@ -398,7 +399,7 @@ function stampGame(root, api) {
    Lunch Barista — mix the drink each customer ordered before they lose patience
 ================================================================= */
 function baristaGame(root, api) {
-  const W = 760, H = 420, TOTAL = 120, COUNTER = 262;
+  const W = 760, H = 420, TOTAL = 90, COUNTER = 262;
   // [key, label, liquid colour in the cup]
   const ING = [['shot', 'ช็อต', '#6b3e26'], ['milk', 'นม', '#fffdf6'], ['ice', 'น้ำแข็ง', '#bfe9ff'], ['choco', 'ช็อกโกแลต', '#7a4a2a'], ['water', 'น้ำ', '#9fdcff'], ['tea', 'ชา', '#e0913b']];
   const MENU = [{ n: 'อเมริกาโน่', r: ['shot', 'water'] }, { n: 'ลาเต้', r: ['shot', 'milk'] }, { n: 'ลาเต้เย็น', r: ['shot', 'milk', 'ice'] },
@@ -410,7 +411,7 @@ function baristaGame(root, api) {
   const SLOT_X = [140, 380, 620], CUP_X = W / 2;
   const same = (a, b) => a.length === b.length && [...a].sort().join() === [...b].sort().join();
   const ingOf = k => ING.find(z => z[0] === k);
-  function hud() { q('t').textContent = Math.ceil(time); q('sc').textContent = fmt(score); q('bar').style.width = time / TOTAL * 100 + '%'; q('tm').classList.toggle('low', time < 15);
+  function hud() { q('t').textContent = Math.ceil(time); q('sc').textContent = fmt(score); q('bar').style.width = Math.min(100, time / TOTAL * 100) + '%'; q('tm').classList.toggle('low', time < 15);
     q('hp').textContent = '❤️'.repeat(hearts) + '🖤'.repeat(3 - hearts); }
   function end() { if (over) return; over = true; running = false; api.end(score, `เสิร์ฟ ${served} แก้ว`, false, { served }); }
   function spawn() { const free = slots.map((s, i) => s ? -1 : i).filter(i => i >= 0); if (!free.length) return;
@@ -433,7 +434,8 @@ function baristaGame(root, api) {
     const x = SLOT_X[i];
     fx.burst(x, 170, { n: 22, colors: CONFETTI, speed: 300, grav: 500, size: 6, shape: 'paper', life: .9 });
     fx.burst(x, 150, { n: 6, colors: [PAL.yel], speed: 200, grav: 0, size: 7, shape: 'star', life: .5 });
-    fx.text(x, 120, `+${pts}`, { color: PAL.yel, size: 30 }); if (tip >= 15) fx.text(x, 80, 'ทิปเพียบ! 💸', { color: PAL.green, size: 18 });
+    const bt = tip >= 15 ? 5 : 3; time += bt;
+    fx.text(x, 120, `+${pts}`, { color: PAL.yel, size: 30 }); fx.text(x, 92, `⏱ +${bt} วิ`, { color: PAL.green, size: 20 }); if (tip >= 15) fx.text(x, 64, 'ทิปเพียบ! 💸', { color: PAL.green, size: 18 });
     leaving.push({ x, face: s.face, t: 0, happy: true }); slots[i] = null; cup = []; hud();
   }
   const clear = () => { if (cup.length) fx.burst(CUP_X, 360, { n: 10, colors: cup.map(k => ingOf(k)[2]), speed: 120, grav: 700, size: 4, life: .5 }); cup = []; };
@@ -499,7 +501,8 @@ function baristaGame(root, api) {
   hud(); draw();
   api.intro({ how: `<p>☕ พักเที่ยงคิวยาว! ผสมเครื่องดื่มตามที่ลูกค้าสั่งในบับเบิล แล้วเสิร์ฟให้ทันก่อนหลอดความอดทนหมด</p>
       <p>⌨️ ปุ่ม <b>1–6</b> ใส่วัตถุดิบ (${ING.map(([k]) => pxImg(k, 18)).join(' ')}) · <b>Enter</b> เสิร์ฟ · <b>Backspace</b> เทแก้วทิ้ง — หรือแตะปุ่มใต้จอ / แตะลูกค้า</p>
-      <p>⭐ เสิร์ฟไวได้ทิปเยอะ · ลูกค้าเดินหนี 3 คน หรือหมดเวลา ${TOTAL} วิ = จบ</p>`,
+      <p>⏱ เสิร์ฟถูก +3 วิ · เสิร์ฟไวจนได้ทิปเพียบ +5 วิ — เสิร์ฟเก่งเล่นได้เรื่อยๆ</p>
+      <p>⭐ ลูกค้าเดินหนี 3 คน หรือเวลาหมด = จบ</p>`,
     buttons: [{ label: '☕ เปิดร้าน!', primary: true, go() { running = true; spawn(); } }] });
 }
 
@@ -507,20 +510,21 @@ function baristaGame(root, api) {
    Paper Toss — flick a paper ball into the bin, mind the fan
 ================================================================= */
 function tossGame(root, api) {
-  const W = 720, H = 420, G = 900, FLOOR = 372, THROWS = 12, R = 11, START = { x: 100, y: 300 };
-  root.innerHTML = `<div class="hud"><span>🗑️ ลงถัง <b data-k="mk">0</b>/<b data-k="th">0</b></span><span>⭐ <b data-k="sc">0</b></span><span data-k="st" class="muted"></span><span class="muted g2tip">ลากลูกบอลถอยหลังแล้วปล่อย · หรือ ←→ เล็ง + กด Space ค้างเพื่อออกแรง</span></div>`;
+  const W = 720, H = 420, G = 900, FLOOR = 372, THROWS = 10, R = 11, START = { x: 100, y: 300 };
+  root.innerHTML = `<div class="hud"><span>🗑️ ลงถัง <b data-k="mk">0</b>/<b data-k="th">0</b></span><span>เหลือ <b data-k="left">10</b> ลูก</span><span>⭐ <b data-k="sc">0</b></span><span data-k="st" class="muted"></span><span class="muted g2tip">ลากลูกบอลถอยหลังแล้วปล่อย · หรือ ←→ เล็ง + กด Space ค้างเพื่อออกแรง</span></div>`;
   const { cv, ctx, at } = g2canvas(root, W, H), q = k => root.querySelector(`[data-k="${k}"]`), fx = makeFX();
-  let ball = null, drag = null, wind = 0, throws = 0, made = 0, score = 0, streak = 0, running = false, over = false, binX = 520, aim = -.9, power = 0, charging = false, t = 0, rimHit = false;
+  let ball = null, drag = null, wind = 0, throws = 0, made = 0, score = 0, streak = 0, running = false, over = false, binX = 520, aim = -.9, power = 0, charging = false, t = 0, rimHit = false; let bonusT = 0;
   let fanA = 0, binSq = 0, throwSq = 0, trail = [], streaks = [];
   const BIN_K = 6, BIN_W = 9 * BIN_K, BIN_H = 13 * BIN_K, who = pick(rnd, MI_PEOPLE);
   function newThrow() { wind = throws < 2 ? 0 : (rnd() * 2 - 1) * Math.min(1, .3 + throws * .1); ball = { x: START.x, y: START.y, vx: 0, vy: 0, fly: false, rot: 0 }; rimHit = false; trail = []; }
-  function hud() { q('mk').textContent = made; q('th').textContent = throws; q('sc').textContent = fmt(score); q('st').textContent = streak >= 2 ? `🔥 ติดกัน ${streak}` : ''; }
+  function hud() { q('mk').textContent = made; q('th').textContent = throws; q('left') && (q('left').textContent = THROWS + bonusT - throws); q('sc').textContent = fmt(score); q('st').textContent = streak >= 2 ? `🔥 ติดกัน ${streak}` : ''; }
   function launch(vx, vy) { if (!running || !ball || ball.fly || api.paused) return; ball.vx = vx; ball.vy = vy; ball.fly = true; throws++; throwSq = 1; api.sfx('tick'); hud(); }
   function result(ok, swish) {
     const top = FLOOR - BIN_H;
     if (ok) {
       made++; streak++; const p = 100 + (swish ? 50 : 0) + (streak - 1) * 25; score += p; binSq = 1;
       fx.burst(binX, top, { n: swish ? 30 : 18, colors: CONFETTI, speed: 320, grav: 600, size: 6, shape: 'paper', life: 1, dir: -Math.PI / 2, spread: 1.6 });
+      if (swish && bonusT < 5) { bonusT++; fx.text(binX, top - 64, '🎁 ลูกฟรี +1', { color: PAL.green, size: 22, life: 1.2 }); }
       if (swish) { fx.flash(PAL.yel, .22); fx.hitstop(.08); fx.shake(7, .25); fx.burst(binX, top - 10, { n: 10, colors: [PAL.yel, '#fff'], speed: 240, grav: 0, size: 8, shape: 'star', life: .6 }); }
       else fx.shake(4, .15);
       fx.text(binX, top - 30, swish ? `SWISH! +${p}` : `ลงถัง +${p}`, { color: swish ? PAL.yel : PAL.green, size: swish ? 32 : 26, life: 1.1 });
@@ -531,7 +535,7 @@ function tossGame(root, api) {
       if (ball.y >= FLOOR - R - 2) fx.burst(ball.x, FLOOR, { n: 8, colors: ['#fffdf6', '#d9dde3'], speed: 140, grav: 500, size: 4, life: .4, spread: Math.PI, dir: -Math.PI / 2 });
     }
     hud(); ball = null;
-    if (throws >= THROWS) { over = true; running = false; api.after(1.2, () => api.end(score, `ลงถัง ${made}/${THROWS}`, false, { made })); } else api.after(.9, newThrow);
+    if (throws >= THROWS + bonusT) { over = true; running = false; api.after(1.2, () => api.end(score, `ลงถัง ${made}/${throws}`, false, { made })); } else api.after(.9, newThrow);
   }
   cv.addEventListener('pointerdown', e => { if (!ball || ball.fly) return; const p = at(e); if (Math.hypot(p.x - ball.x, p.y - ball.y) < 60) { drag = p; cv.setPointerCapture(e.pointerId); } });
   cv.addEventListener('pointermove', e => { if (drag) drag = at(e); });
@@ -575,7 +579,7 @@ function tossGame(root, api) {
     fanA += dt * (1 + Math.abs(wind) * 18) * Math.sign(wind || 1); binSq = Math.max(0, binSq - dt * 4); throwSq = Math.max(0, throwSq - dt * 5);
     if (Math.abs(wind) > .05 && rnd() < Math.abs(wind) * dt * 30) streaks.push({ x: wind > 0 ? -60 : W, y: 90 + rnd() * 230, l: 30 + rnd() * 50 });
     for (const s of streaks) s.x += wind * 420 * dt; streaks = streaks.filter(s => s.x > -80 && s.x < W + 10);
-    if (running && throws >= 6) binX = 520 + Math.sin(t * .9) * 90;   // the bin starts moving halfway through
+    if (running && throws >= 5) binX = 520 + Math.sin(t * .9) * 90;   // the bin starts moving halfway through
     if (charging) power = Math.min(1, power + dt * .8);
     if (ball && ball.fly && d) {
       trail.push({ x: ball.x, y: ball.y }); if (trail.length > 8) trail.shift(); ball.rot += ball.vx * d / R;
@@ -593,7 +597,7 @@ function tossGame(root, api) {
     draw();
   });
   hud(); draw();
-  api.intro({ how: `<p>🗑️ ปากระดาษก้อนลงถังให้ได้มากที่สุดใน ${THROWS} ลูก</p>
+  api.intro({ how: `<p>🗑️ ปากระดาษก้อนลงถังให้ได้มากที่สุดใน ${THROWS} ลูก · <b>SWISH</b> (ลงไม่โดนขอบ) ได้ลูกฟรี +1</p>
       <p>🖱️ <b>ลากลูกบอลถอยหลัง</b> เหมือนหนังสติ๊กแล้วปล่อย · หรือ <b>← →</b> เล็ง แล้ว <b>กด Space ค้าง</b> เพื่อออกแรง</p>
       <p>🌬️ ดูลมจากพัดลมด้านบนด้วย · ลงถังไม่โดนขอบ = <b>SWISH</b> +50 · ครึ่งหลังถังจะเลื่อนไปมา</p>`,
     buttons: [{ label: '🗑️ เริ่มปา!', primary: true, go() { running = true; newThrow(); } }] });
@@ -612,7 +616,8 @@ function slackGame(root, api) {
   let holding = false, slack = false, streak = 0, score = 0, strikes = 0, time = 0, level = 1, bored = 0, doze = 0, close = 0, running = false, over = false, t = 0, scold = 0, likeT = 0;
   // the boss patrols the back of the room; 'warn' is the fair tell before 'look'
   const boss = { x: 140, dir: 1, st: 'walk', t: 2.5, fake: false };
-  const mate = { x: -60, on: false, cool: 12 };   // the snitch coworker, from level 3
+  // the snitch coworker (from level 2): a ⚠️ warning first, then she crosses behind you; phone out inside the red zone = reported
+  const mate = { x: -60, on: false, cool: 6, warn: 0, met: false, passed: false, who: ['alex', 'amelia', 'adam'].find(c => c !== who) }, ZONE = 60;
   const lookDur = () => 1.1 + rnd() * (1 + level * .25), warnDur = () => Math.max(.28, .8 - level * .06), speed = () => 60 + level * 14;
   function hud() { q('hp').textContent = '❤️'.repeat(3 - strikes) + '🖤'.repeat(strikes); q('sc').textContent = fmt(Math.floor(score)); q('t').textContent = Math.floor(time);
     const m = mult(); q('mul').textContent = slack && m > 1 ? `📱 x${m}` : bored > 70 ? '😪 ง่วงแล้ว…' : ''; }
@@ -649,7 +654,19 @@ function slackGame(root, api) {
     drawChar(ctx, 'bob', boss.st === 'walk' ? 'run' : 'idle_anim', dirB, boss.st === 'walk' ? t * .55 : t, boss.x, BOSS_Y + 34, 3, { sx: scold > 0 ? 1.1 : 1, sy: scold > 0 ? 1.1 : 1 });
     if (boss.st === 'warn') txt(ctx, '?', boss.x + 22, BOSS_Y - 70, 30, PAL.orange, 'center', 800);
     if (boss.st === 'look') { txt(ctx, '👀', boss.x, BOSS_Y - 76, 22); }
-    if (mate.on) drawChar(ctx, 'alex', 'run', 'right', t, mate.x, BOSS_Y + 40, 3);
+    // snitch: warning arrow on the left edge, then her walk with a name tag and the danger zone behind your desk
+    if (mate.warn > 0) { const a = .55 + .45 * Math.sin(t * 14);
+      ctx.save(); ctx.globalAlpha = a; ctx.fillStyle = PAL.red; ctx.beginPath(); ctx.moveTo(14, 230); ctx.lineTo(44, 250); ctx.lineTo(14, 270); ctx.closePath(); ctx.fill(); ctx.restore();
+      rrect(ctx, 50, 232, 196, 36, 10, '#fff', PAL.red); txt(ctx, '⚠️ เพื่อนขี้ฟ้องกำลังเดินมา!', 148, 251, 15, PAL.red, 'center', 800); }
+    if (mate.on) {
+      const near = Math.abs(mate.x - ME_X) < 260, inZ = Math.abs(mate.x - ME_X) < ZONE;
+      if (near) { ctx.fillStyle = `rgba(226,48,48,${inZ ? .28 + Math.sin(t * 16) * .08 : .14})`; ctx.fillRect(ME_X - ZONE, 200, ZONE * 2, 76);
+        ctx.strokeStyle = PAL.red; ctx.lineWidth = 2; ctx.setLineDash([6, 4]); ctx.strokeRect(ME_X - ZONE, 200, ZONE * 2, 76); ctx.setLineDash([]);
+        txt(ctx, inZ ? '📵 ห้ามเล่นมือถือ!' : '📵 เขตขี้ฟ้อง', ME_X, 192, 14, PAL.red, 'center', 800); }
+      drawChar(ctx, mate.who, 'run', 'right', t * .8, mate.x, BOSS_Y + 40, 3.4);
+      rrect(ctx, mate.x - 42, BOSS_Y - 92, 84, 22, 8, PAL.red); txt(ctx, '🗣️ ขี้ฟ้อง', mate.x, BOSS_Y - 81, 13, '#fff', 'center', 800);
+      if (near && slack) { rrect(ctx, mate.x + 26, BOSS_Y - 128, 118, 28, 10, '#fff', PAL.ink); txt(ctx, 'เดี๋ยวฟ้องหัวหน้า!', mate.x + 85, BOSS_Y - 114, 13, PAL.red, 'center', 700); }
+    }
     // my desk: back to the camera while working, turned around with the phone while slacking
     drawPixAt(ctx, 'pc_desk', ME_X, 318, 4);
     const sleepy = doze > 0;
@@ -671,12 +688,17 @@ function slackGame(root, api) {
   api.loop(dt => {
     const d = fx.step(dt); t += dt; scold = Math.max(0, scold - dt);
     if (running && d) {
-      time += d; level = 1 + Math.floor(time / 26);
+      time += d; level = 1 + Math.floor(time / 20);
       stepBoss(d);
       // the snitch walks across from level 3; slacking while she passes behind you = reported
-      if (level >= 3) { if (!mate.on && (mate.cool -= d) <= 0) { mate.on = true; mate.x = -40; }
-        if (mate.on) { mate.x += 150 * d; if (slack && Math.abs(mate.x - ME_X) < 40 && scold <= 0) { mate.on = false; mate.cool = 10 + rnd() * 8; caught('mate'); }
-          if (mate.x > W + 40) { mate.on = false; mate.cool = 8 + rnd() * 10; } } }
+      if (level >= 2) {
+        if (!mate.on && mate.warn <= 0 && (mate.cool -= d) <= 0) { mate.warn = 1.8; api.sfx('tick');
+          if (!mate.met) { mate.met = true; fx.text(W / 2, 140, '🗣️ เพื่อนขี้ฟ้องมาแล้ว — ตอนเธอเดินผ่านหลังเรา ห้ามเล่นมือถือ!', { color: PAL.red, size: 18, life: 2.6 }); } }
+        if (mate.warn > 0 && (mate.warn -= d) <= 0) { mate.on = true; mate.x = -40; mate.passed = false; }
+        if (mate.on) { mate.x += 120 * d;
+          if (slack && Math.abs(mate.x - ME_X) < ZONE && scold <= 0) { mate.on = false; mate.cool = 9 + rnd() * 7; caught('mate'); }
+          else if (!mate.passed && mate.x > ME_X + ZONE) { mate.passed = true; score += 25; fx.text(ME_X, 190, '😇 รอดจากขี้ฟ้อง +25', { color: PAL.green, size: 22 }); api.sfx('good'); }
+          if (mate.x > W + 40) { mate.on = false; mate.cool = 7 + rnd() * 8; } } }
       const was = slack;
       if (doze > 0) { doze -= d; slack = true; if (doze <= 0) { slack = holding; bored = 30; } }
       else slack = holding && scold <= 0;
@@ -692,10 +714,11 @@ function slackGame(root, api) {
   hud(); draw();
   api.intro({ how: `<p>📱 งานน่าเบื่อ… <b>กดค้าง</b> (Space หรือแตะจอ) เพื่อแอบเล่นมือถือ ยิ่งเล่นต่อเนื่องคะแนนยิ่งคูณ</p>
       <p>👔 หัวหน้าเดินไปมาอยู่ด้านหลัง ถ้ามี <b>?</b> ขึ้นหัว = กำลังจะหันมา <b>ปล่อยมือให้ทัน!</b> (ปล่อยตอนเสี้ยววินาทีสุดท้าย = เฉียดฉิว +20)</p>
-      <p>😪 ทำงานนานเกินจนแถบความเบื่อเต็ม = เผลอหลับ · โดนจับได้ 3 ครั้ง = จบ · ด่านหลังๆ มีเพื่อนขี้ฟ้องเดินผ่านด้วย</p>
+      <p>🗣️ <b>เพื่อนขี้ฟ้อง</b> (ป้ายแดงบนหัว) มาหลังเล่นไป ~20 วิ — มี ⚠️ เตือนที่ขอบซ้ายก่อน แล้วเดินผ่านหลังเรา · ตอนเธออยู่ใน<b>กรอบแดง</b> ห้ามเล่นมือถือ · รอดได้ +25</p>
+      <p>😪 ทำงานนานเกินจนแถบความเบื่อเต็ม = เผลอหลับ · โดนจับได้ 3 ครั้ง = จบ</p>
       <p>👇 เลือกตัวละคร</p>`,
     buttons: MI_PEOPLE.filter(c => c !== 'bob').map(c => ({ label: `<img class="pxi" src="assets/mi/${c}_phone.png" height="44" alt="${c}" style="display:block">`, primary: c === who,
-      go() { who = c; store.set('runWho', c); running = true; } })) });
+      go() { who = c; store.set('runWho', c); mate.who = ['alex', 'amelia', 'adam'].find(x => x !== c); running = true; } })) });
   return { destroy() { removeEventListener('pointerup', up); removeEventListener('keyup', keyUp); } };
 }
 

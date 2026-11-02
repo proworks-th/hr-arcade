@@ -207,6 +207,8 @@ button.pk:hover{transform:translateY(-2px)}div.pk{cursor:default}.pk b{font-size
 .g-it small{font-size:11px;line-height:1.2}.g-it.no{filter:grayscale(1);opacity:.5}.g-it.no small{color:var(--muted)}
 .g-it.r-r{border-color:#9cc0ff}.g-it.r-l{border-color:#ffcf5c}.g-it.on{background:#fff3c4;border-color:var(--line);box-shadow:0 0 0 2px var(--yel)}
 .feedbox{margin-top:8px}
+.sz-h{margin:4px 0 6px;font-size:14px}.sz-h small{font-weight:400}.sz-row{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}.shop-it.sz{min-width:110px;min-height:56px}
+.float.time{color:#21c07a;margin-top:-22px}
 .shop-it .incart{position:absolute;left:3px;top:2px;font-style:normal;font-size:12px}.office-tools .cart small.bad{color:var(--bad);font-weight:700}
 .me-lv .nx{font-size:11.5px;color:var(--muted);margin-left:6px;white-space:nowrap}.me-lv .nx img{height:12px;image-rendering:pixelated;vertical-align:-1px}
 .unlock{display:flex;flex-wrap:wrap;gap:6px 10px;justify-content:center;align-items:center;margin-top:6px;padding:6px 8px;background:#fff3c4;border:2px dashed var(--line);border-radius:10px;font-size:13.5px}
@@ -417,6 +419,13 @@ button.pk:hover{transform:translateY(-2px)}div.pk{cursor:default}.pk b{font-size
 .xl-grid th.rh,.xl-grid td.rh{position:sticky;left:0;background:#f3f3f3;color:#555;text-align:center;z-index:2}
 .xl-grid td.n{text-align:right}.xl-grid td.h{font-weight:700;background:#e2efda}.xl-grid td.t{font-weight:700;font-size:15px}.xl-grid td.t,.xl-grid td.ov{overflow:visible}
 .xl-grid td.sel{outline:2px solid #217346;outline-offset:-2px}
+#boss.wd .wd-t{background:#2b579a}#boss.wd .xl-tabs .on{color:#2b579a}
+.wd-desk{flex:1;overflow:auto;background:#e6e6e6;padding:24px 0}
+.wd-page{width:min(794px,92vw);min-height:1000px;margin:0 auto;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.25);padding:70px 80px;font-family:"TH Sarabun New","TH SarabunPSK",Tahoma,sans-serif;font-size:18px;line-height:1.55;color:#000;box-sizing:border-box}
+.wd-page p{margin:0 0 6px}.wd-page .wd-h{text-align:center;font-size:28px;font-weight:700;margin-bottom:16px}.wd-page .ind{text-indent:2.5em;text-align:justify}
+.wd-page .sp{display:inline-block;width:120px}.wd-page .wd-sign{text-align:center;margin:48px 0 0 45%}
+.wd-caret{display:inline-block;width:1px;height:1.1em;background:#000;vertical-align:-3px;animation:wdblink 1s steps(1) infinite}@keyframes wdblink{50%{opacity:0}}
+#boss.wd .wd-s{background:#2b579a;color:#fff}
 .xl-sheets{height:28px;background:#f3f3f3;border-top:1px solid #d4d4d4;display:flex;align-items:stretch;flex:none;white-space:nowrap;overflow:hidden}
 .xl-sheets span{padding:4px 16px;display:flex;align-items:center}.xl-sheets .on{background:#fff;color:#217346;border-bottom:2px solid #217346;font-weight:600}
 .xl-status{height:24px;background:#f3f3f3;border-top:1px solid #d4d4d4;display:flex;align-items:center;gap:18px;padding:0 12px;color:#555;font-size:12px;flex:none}
@@ -439,8 +448,8 @@ button.pk:hover{transform:translateY(-2px)}div.pk{cursor:default}.pk b{font-size
 <div id="toast"></div>
 <div id="boss" hidden></div>
 
-<script src="solo-games.js?v=8"></script>
-<script src="office.js?v=6"></script>
+<script src="solo-games.js?v=9"></script>
+<script src="office.js?v=7"></script>
 <script src="wardrobe.js?v=1"></script>
 <script src="gacha.js?v=2"></script>
 <script src="hubroom.js?v=4"></script>
@@ -488,7 +497,7 @@ $('#muteBtn').onclick=()=>{muted=!muted;store.set('muted',muted);renderMute()};
 
 /* ---------- online services (online.js, Firebase): ranking, presence, feed ---------- */
 let onlineMod=null;
-const loadRank=()=>onlineMod||(onlineMod=import('./online.js?v=8'));
+const loadRank=()=>onlineMod||(onlineMod=import('./online.js?v=9'));
 const loadOnline=loadRank;
 const PIX_AVAS=['p_office','p_woffice','p_whealth','p_tech','p_cat','p_dog'];
 const myAva=()=>{const a=store.get('partyAva','p_office');return PIX_AVAS.includes(a)?a:'p_office'};
@@ -781,24 +790,49 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden&&!bossOn)sh
 /* ---------- boss key: fake Excel ---------- */
 const GAME_ICON=$('#favicon').href;
 const XLS_ICON="data:image/svg+xml,"+encodeURIComponent("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect x='6' y='3' width='23' height='26' rx='2' fill='#fff' stroke='#217346' stroke-width='2'/><rect x='2' y='8' width='16' height='16' rx='2' fill='#217346'/><path d='M6 12l6 8M12 12l-6 8' stroke='#fff' stroke-width='2.4' stroke-linecap='round'/></svg>");
+const DOC_ICON="data:image/svg+xml,"+encodeURIComponent("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect x='6' y='3' width='23' height='26' rx='2' fill='#fff' stroke='#2b579a' stroke-width='2'/><rect x='2' y='8' width='16' height='16' rx='2' fill='#2b579a'/><path d='M5 12l2 8 3-6 3 6 2-8' stroke='#fff' stroke-width='1.8' fill='none' stroke-linejoin='round'/></svg>");
 const ORIG_TITLE=document.title;
-let bossBuilt=false;
+// a different work file every time (rotates per use, numbers reshuffled) so the boss never sees the same screen twice
+const BOSS_FN=['สมชาย','สุดารัตน์','กนกพร','ณัฐวุฒิ','พิมพ์ชนก','ธนากร','วราภรณ์','ศิริพร','อนุชา','ปิยะนุช','จิราพร','ธีรวัฒน์','นภัสสร','กิตติพงษ์','อรอุมา','ชไมพร','วีระพงษ์','สุภาพร','ภานุวัฒน์','รัชนี','อัญชลี','ปริญญา'];
+const BOSS_LN=['ใจดี','สุขสวัสดิ์','ศรีสุข','วงศ์ทอง','บุญมา','แก้วประเสริฐ','ทองคำ','มณีรัตน์','พรหมมา','รุ่งเรือง','จันทร์หอม','ศรีวงศ์','ประเสริฐวงศ์','สายบุญ'];
+const BOSS_UN=['งานการเจ้าหน้าที่','งานประกันสังคม','ศูนย์จัดเก็บรายได้','งานการเงิน','งานเวชระเบียน','ห้องบัตร','งานพัสดุ'];
+const BOSS_POS=['พยาบาลวิชาชีพ','นักวิชาการสาธารณสุข','เภสัชกร','นักเทคนิคการแพทย์','นักกายภาพบำบัด','นักรังสีการแพทย์','ทันตแพทย์'];
+const thMonth=d=>d.toLocaleDateString('th-TH',{month:'long',year:'numeric'});
+const bossNm=r=>pick(r,BOSS_FN)+' '+pick(r,BOSS_LN),bn=v=>v.toLocaleString('en-US');
+const BOSS_DOCS=[
+  {file:'ทะเบียนวันลา_FY2570.xlsx',title:'ทะเบียนสรุปวันลา ปีงบประมาณ 2570 (1 ต.ค. 69 – 30 ก.ย. 70)',sheets:['สรุปวันลา','ลาป่วย-ลากิจ','ปกส.','ยกยอด'],
+    head:['ลำดับ','ชื่อ - สกุล','กลุ่มงาน','ลาป่วย','ลากิจ','พักผ่อน','สิทธิพักผ่อน','คงเหลือ','หมายเหตุ'],w:[46,190,150,70,70,80,80,80,150],n:46,
+    row:(r,i)=>{const s=Math.floor(r()*6),k=Math.floor(r()*4),p=Math.floor(r()*7),q=r()<.3?20:10+Math.floor(r()*11);
+      return[{v:i,c:'n'},{v:bossNm(r)},{v:pick(r,BOSS_UN)},{v:s,c:'n'},{v:k,c:'n'},{v:p,c:'n'},{v:q,c:'n'},{v:q-p,c:'n',f:`=G${i+3}-F${i+3}`},{v:r()<.12?'รอใบรับรองแพทย์':(r()<.08?'ยกยอดมา':'')}]}},
+  {file:()=>`เงิน พ.ต.ส._${thMonth(NOW)}.xlsx`,title:()=>`บัญชีเงินเพิ่มสำหรับตำแหน่งที่มีเหตุพิเศษ (พ.ต.ส.) ประจำเดือน ${thMonth(NOW)}`,sheets:['พ.ต.ส.','ใบปะหน้า','วันลา','สรุป'],
+    head:['ลำดับ','ชื่อ - สกุล','ตำแหน่ง','อัตรา/เดือน','วันลา','หักลา','คงจ่าย','หมายเหตุ'],w:[46,190,170,90,60,80,90,150],n:40,
+    row:(r,i)=>{const a=pick(r,[1000,1500,2000,3500,5000]),l=r()<.7?0:1+Math.floor(r()*4),d=Math.round(a/30*l);
+      return[{v:i,c:'n'},{v:bossNm(r)},{v:pick(r,BOSS_POS)},{v:bn(a),c:'n'},{v:l,c:'n'},{v:bn(d),c:'n',f:`=ROUND(D${i+3}/30*E${i+3},0)`},{v:bn(a-d),c:'n',f:`=D${i+3}-F${i+3}`},{v:l>3?'ตรวจสอบวันลา':''}]}},
+  {file:()=>`นำส่งประกันสังคม_${thMonth(NOW)}.xlsx`,title:()=>`รายละเอียดการนำส่งเงินสมทบประกันสังคม ${thMonth(NOW)}`,sheets:['สปส.1-10','สรุปยอด','ผู้ประกันตนใหม่','ลาออก'],
+    head:['ลำดับ','ชื่อ - สกุล','กลุ่มงาน','ค่าจ้าง','ฐานคำนวณ','ลูกจ้าง 5%','นายจ้าง 5%','สถานะ'],w:[46,190,150,90,90,90,90,110],n:44,
+    row:(r,i)=>{const w=9000+Math.floor(r()*30)*500,b=Math.min(15000,Math.max(1650,w)),c=Math.round(b*.05);
+      return[{v:i,c:'n'},{v:bossNm(r)},{v:pick(r,BOSS_UN)},{v:bn(w),c:'n'},{v:bn(b),c:'n',f:`=MIN(15000,MAX(1650,D${i+3}))`},{v:bn(c),c:'n',f:`=ROUND(E${i+3}*5%,0)`},{v:bn(c),c:'n',f:`=F${i+3}`},{v:r()<.06?'แจ้งเข้าใหม่':'ปกติ'}]}},
+  {file:'กรอบอัตรากำลัง_2570.xlsx',title:'สรุปกรอบอัตรากำลังและการครองตำแหน่ง ปีงบประมาณ 2570',sheets:['สรุปรายกลุ่มงาน','ข้าราชการ','พนักงานราชการ','ลูกจ้าง'],
+    head:['ลำดับ','กลุ่มงาน','กรอบ','มีคนครอง','ว่าง','ข้าราชการ','พนักงานราชการ','ลูกจ้าง','หมายเหตุ'],w:[46,210,70,80,60,80,100,70,160],n:28,
+    row:(r,i)=>{const g=8+Math.floor(r()*40),h=g-Math.floor(r()*4),a=Math.floor(h*.5),b=Math.floor(h*.2);
+      return[{v:i,c:'n'},{v:pick(r,['กลุ่มงานการพยาบาล','กลุ่มงานเภสัชกรรม','กลุ่มงานเทคนิคการแพทย์','กลุ่มงานรังสีวิทยา','กลุ่มงานบริหารทั่วไป','กลุ่มงานทันตกรรม','กลุ่มงานเวชกรรมฟื้นฟู','กลุ่มงานโภชนศาสตร์'])+(i>8?' '+(1+i%3):'')},
+        {v:g,c:'n'},{v:h,c:'n'},{v:g-h,c:'n',f:`=C${i+3}-D${i+3}`},{v:a,c:'n'},{v:b,c:'n'},{v:h-a-b,c:'n',f:`=D${i+3}-F${i+3}-G${i+3}`},{v:g-h>2?'ขอเปิดสอบ':''}]}},
+  {word:true,file:'บันทึกข้อความ_ขออนุมัติ.docx'},
+  {file:'ทะเบียนฝึกอบรม_2570.xlsx',title:'ทะเบียนการเข้ารับการฝึกอบรม/ประชุมวิชาการ ปีงบประมาณ 2570',sheets:['ทะเบียน','สรุปชั่วโมง','ค่าใช้จ่าย'],
+    head:['ลำดับ','ชื่อ - สกุล','หลักสูตร','วันที่','ชั่วโมง','ค่าลงทะเบียน','เบิกได้','หมายเหตุ'],w:[46,190,260,90,70,100,80,140],n:38,
+    row:(r,i)=>{const h=pick(r,[3,6,12,18,24]),c=pick(r,[0,1500,2500,3900,4500]);
+      return[{v:i,c:'n'},{v:bossNm(r)},{v:pick(r,['การพยาบาลผู้ป่วยวิกฤต','การบริหารความเสี่ยง','งานสารบรรณอิเล็กทรอนิกส์','ระเบียบการลาของข้าราชการ','การช่วยฟื้นคืนชีพขั้นสูง','การเขียนผลงานวิชาการ'])},
+        {v:`${1+Math.floor(r()*28)}/${pick(r,['10','11','12'])}/69`},{v:h,c:'n'},{v:bn(c),c:'n'},{v:c?'✓':'-'},{v:r()<.1?'รอรายงานผล':''}]}},
+];
 function buildBoss(){
-  if(bossBuilt)return;bossBuilt=true;
-  const r=mulberry32(2570);
-  const FN=['สมชาย','สุดารัตน์','กนกพร','ณัฐวุฒิ','พิมพ์ชนก','ธนากร','วราภรณ์','ศิริพร','อนุชา','ปิยะนุช','จิราพร','ธีรวัฒน์','นภัสสร','กิตติพงษ์','อรอุมา','ชไมพร','วีระพงษ์','สุภาพร','ภานุวัฒน์','รัชนี','อัญชลี','ปริญญา'];
-  const LN=['ใจดี','สุขสวัสดิ์','ศรีสุข','วงศ์ทอง','บุญมา','แก้วประเสริฐ','ทองคำ','มณีรัตน์','พรหมมา','รุ่งเรือง','จันทร์หอม','ศรีวงศ์','ประเสริฐวงศ์','สายบุญ'];
-  const UN=['งานการเจ้าหน้าที่','งานประกันสังคม','ศูนย์จัดเก็บรายได้','งานการเงิน','งานเวชระเบียน','ห้องบัตร','งานพัสดุ'];
-  const cols=['','A','B','C','D','E','F','G','H','I','J','K'];
-  const widths=[42,46,190,150,70,70,80,80,150,70,70,70];
-  const rows=[];
-  rows.push([{v:'ทะเบียนสรุปวันลา ปีงบประมาณ 2570 (1 ต.ค. 69 – 30 ก.ย. 70)',c:'t'}]);
-  rows.push([{v:'ข้อมูล ณ วันที่ '+NOW.toLocaleDateString('th-TH',{day:'numeric',month:'long',year:'numeric'}),c:'ov'}]);
-  rows.push(['ลำดับ','ชื่อ - สกุล','กลุ่มงาน','ลาป่วย','ลากิจ','พักผ่อน','สิทธิพักผ่อน','คงเหลือ','หมายเหตุ'].map(v=>({v,c:'h'})));
-  for(let i=1;i<=46;i++){
-    const s=Math.floor(r()*6),k=Math.floor(r()*4),p=Math.floor(r()*7),q=r()<.3?20:10+Math.floor(r()*11);
-    rows.push([{v:i,c:'n'},{v:pick(r,FN)+' '+pick(r,LN)},{v:pick(r,UN)},{v:s,c:'n'},{v:k,c:'n'},{v:p,c:'n'},{v:q,c:'n'},{v:q-p,c:'n',f:`=G${i+3}-F${i+3}`},{v:r()<.12?'รอใบรับรองแพทย์':(r()<.08?'ยกยอดมา':'')}]);
-  }
+  const n=(store.get('bossN',-1)+1)%BOSS_DOCS.length;store.set('bossN',n);
+  const D=BOSS_DOCS[n],r=mulberry32(Date.now()%1e9|0),val=v=>typeof v==='function'?v():v,file=val(D.file);
+  document.title=file+' - '+(D.word?'Word':'Excel');$('#favicon').href=D.word?DOC_ICON:XLS_ICON;
+  $('#boss').className=D.word?'wd':'';
+  if(D.word)return buildWord(r,file);
+  const cols=['','A','B','C','D','E','F','G','H','I','J','K'],widths=[42,...D.w,70,70].slice(0,12);while(widths.length<12)widths.push(70);
+  const rows=[[{v:val(D.title),c:'t'}],[{v:'ข้อมูล ณ วันที่ '+NOW.toLocaleDateString('th-TH',{day:'numeric',month:'long',year:'numeric'}),c:'ov'}],D.head.map(v=>({v,c:'h'}))];
+  for(let i=1;i<=D.n;i++)rows.push(D.row(r,i));
   let tb=`<table style="width:${widths.reduce((a,b)=>a+b,0)}px"><colgroup>`+widths.map(w=>`<col style="width:${w}px">`).join('')+'</colgroup><thead><tr>'+cols.map((c,i)=>`<th class="${i?'':'rh'}">${c}</th>`).join('')+'</tr></thead><tbody>';
   for(let i=0;i<rows.length+12;i++){
     const row=rows[i]||[];tb+=`<tr><td class="rh">${i+1}</td>`;
@@ -807,7 +841,7 @@ function buildBoss(){
   }
   tb+='</tbody></table>';
   $('#boss').innerHTML=`
-  <div class="xl-title"><span>💾 ↶ ↷</span><span class="nm">ทะเบียนวันลา_FY2570.xlsx - บันทึกแล้ว</span><span class="ctl"><span>—</span><span>☐</span><span>✕</span></span></div>
+  <div class="xl-title"><span>💾 ↶ ↷</span><span class="nm">${file} - บันทึกแล้ว</span><span class="ctl"><span>—</span><span>☐</span><span>✕</span></span></div>
   <div class="xl-tabs"><span>ไฟล์</span><span class="on">หน้าแรก</span><span>แทรก</span><span>เค้าโครงหน้ากระดาษ</span><span>สูตร</span><span>ข้อมูล</span><span>รีวิว</span><span>มุมมอง</span></div>
   <div class="xl-ribbon">
     <div class="xl-group"><div class="ic"><i>📋 วาง</i></div>คลิปบอร์ด</div>
@@ -819,20 +853,55 @@ function buildBoss(){
   </div>
   <div class="xl-fbar"><div class="xl-name">A1</div><div class="xl-fx">fx</div><div class="xl-fv"></div></div>
   <div class="xl-grid">${tb}</div>
-  <div class="xl-sheets"><span>◀ ▶</span><span class="on">สรุปวันลา</span><span>ลาป่วย-ลากิจ</span><span>ปกส.</span><span>ยกยอด</span><span>⊕</span></div>
+  <div class="xl-sheets"><span>◀ ▶</span>${D.sheets.map((t,i)=>`<span${i?'':' class="on"'}>${t}</span>`).join('')}<span>⊕</span></div>
   <div class="xl-status"><span class="ready" title="">พร้อม</span><span>♿ การช่วยสำหรับการเข้าถึง: ตรวจสอบ</span><span class="sp"></span><span class="sum"></span><span>▦ ▤ ▣</span><span>— ▬▬▬▬ + 100%</span></div>`;
   const grid=$('#boss .xl-grid');let sel=null;
-  grid.addEventListener('pointerdown',e=>{const td=e.target.closest('td[data-a]');if(!td)return;
-    sel&&sel.classList.remove('sel');sel=td;td.classList.add('sel');
+  const pickCell=td=>{sel&&sel.classList.remove('sel');sel=td;td.classList.add('sel');
     $('#boss .xl-name').textContent=td.dataset.a;$('#boss .xl-fv').textContent=td.dataset.f||td.textContent;
-    $('#boss .sum').textContent=td.classList.contains('n')&&td.textContent!==''?'ผลรวม: '+td.textContent:''});
+    $('#boss .sum').textContent=td.classList.contains('n')&&td.textContent!==''?'ผลรวม: '+td.textContent:''};
+  grid.addEventListener('pointerdown',e=>{const td=e.target.closest('td[data-a]');if(td)pickCell(td)});
+  // start somewhere mid-sheet, like you were in the middle of it
+  const ri=4+Math.floor(r()*Math.min(D.n,30)),ci=2+Math.floor(r()*(D.head.length-2)),td=grid.querySelector(`td[data-a="${cols[ci]}${ri}"]`);
+  if(td){pickCell(td);grid.scrollTop=Math.max(0,(ri-8)*22)}
+  // typing goes into the selected cell, Enter moves down — it really looks like work
+  bossType=e=>{if(!sel)return;if(e.key==='Enter'||e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();const m=sel.dataset.a.match(/([A-K])(\d+)/),nr=+m[2]+(e.key==='ArrowUp'?-1:1),nx=grid.querySelector(`td[data-a="${m[1]}${nr}"]`);if(nx)pickCell(nx);return}
+    if(e.key==='Backspace'){e.preventDefault();sel.textContent=sel.textContent.slice(0,-1)}else if(e.key.length===1&&!e.ctrlKey&&!e.metaKey){e.preventDefault();sel.textContent+=e.key}else return;
+    delete sel.dataset.f;$('#boss .xl-fv').textContent=sel.textContent};
   $('#boss .ready').addEventListener('click',()=>toggleBoss(false));
 }
+function buildWord(r,file){
+  const d=NOW.toLocaleDateString('th-TH',{day:'numeric',month:'long',year:'numeric'}),who=bossNm(r),un=pick(r,BOSS_UN);
+  const topic=pick(r,['ขออนุมัติเดินทางไปราชการ','ขออนุมัติจัดโครงการพัฒนาบุคลากร','รายงานผลการตรวจสอบวันลา','ขอความเห็นชอบปรับปรุงทะเบียนประวัติ','ขออนุมัติเบิกค่าลงทะเบียนอบรม']);
+  $('#boss').innerHTML=`
+  <div class="xl-title wd-t"><span>💾 ↶ ↷</span><span class="nm">${file} - บันทึกแล้ว</span><span class="ctl"><span>—</span><span>☐</span><span>✕</span></span></div>
+  <div class="xl-tabs wd-t"><span>ไฟล์</span><span class="on">หน้าแรก</span><span>แทรก</span><span>ออกแบบ</span><span>เค้าโครง</span><span>การอ้างอิง</span><span>ส่งจดหมาย</span><span>รีวิว</span><span>มุมมอง</span></div>
+  <div class="xl-ribbon"><div class="xl-group"><div class="ic"><i>📋 วาง</i></div>คลิปบอร์ด</div>
+    <div class="xl-group"><div class="ic"><i>TH SarabunPSK ▾</i><i>16 ▾</i></div><div class="ic"><i><b>B</b></i><i><em>I</em></i><i><u>U</u></i></div>ฟอนต์</div>
+    <div class="xl-group"><div class="ic"><i>≡</i><i>≣</i><i>☰</i></div><div class="ic"><i>¶</i><i>↕</i></div>ย่อหน้า</div>
+    <div class="xl-group"><div class="ic"><i>ปกติ</i><i>ไม่มีระยะห่าง</i><i>หัวเรื่อง 1</i></div>สไตล์</div></div>
+  <div class="wd-desk"><div class="wd-page">
+    <p class="wd-h">บันทึกข้อความ</p>
+    <p><b>ส่วนราชการ</b> ${un} โทร. ${1100+Math.floor(r()*800)}</p>
+    <p><b>ที่</b> ${pick(r,['สธ','ชบ'])} ${1000+Math.floor(r()*9000)}/${Math.floor(r()*900)+100}<span class="sp"></span><b>วันที่</b> ${d}</p>
+    <p><b>เรื่อง</b> ${topic}</p><p><b>เรียน</b> ผู้อำนวยการโรงพยาบาล</p>
+    <p class="ind">ด้วย${un} มีความประสงค์${topic.replace(/^ขอ/,'ขอ')} ตามระเบียบกระทรวงการคลังว่าด้วยการเบิกค่าใช้จ่ายในการบริหารงานของส่วนราชการ เพื่อให้การดำเนินงานเป็นไปด้วยความเรียบร้อยและมีประสิทธิภาพ</p>
+    <p class="ind">ในการนี้ จึงขออนุมัติให้ ${who} ตำแหน่ง${pick(r,BOSS_POS)} ดำเนินการตามรายละเอียดที่แนบมาพร้อมนี้ โดยไม่เสียค่าใช้จ่ายเพิ่มเติมจากงบประมาณที่ได้รับจัดสรร</p>
+    <p class="ind" data-k="typing">จึงเรียนมาเพื่อโปรดพิจารณา<span class="wd-caret"></span></p>
+    <p class="wd-sign">(${bossNm(r)})<br>หัวหน้า${un}</p>
+  </div></div>
+  <div class="xl-status wd-s"><span class="ready" title="">หน้า 1 จาก 1</span><span>${180+Math.floor(r()*120)} คำ</span><span>ไทย</span><span class="sp"></span><span>▦ ▤ ▣</span><span>— ▬▬▬▬ + 100%</span></div>`;
+  const p=$('#boss [data-k=typing]'),caret=p.querySelector('.wd-caret');
+  bossType=e=>{if(e.key==='Backspace'){e.preventDefault();const t=caret.previousSibling;if(t&&t.nodeType===3)t.textContent=t.textContent.slice(0,-1)}
+    else if(e.key==='Enter'){e.preventDefault();p.insertBefore(document.createElement('br'),caret)}
+    else if(e.key.length===1&&!e.ctrlKey&&!e.metaKey){e.preventDefault();p.insertBefore(document.createTextNode(e.key),caret)}};
+  $('#boss .ready').addEventListener('click',()=>toggleBoss(false));
+}
+let bossType=null;
 function toggleBoss(force){
   const on=force===undefined?!bossOn:force;if(on===bossOn)return;
   bossOn=on;
   presence();
-  if(on){buildBoss();$('#boss').hidden=false;document.title='ทะเบียนวันลา_FY2570.xlsx - Excel';$('#favicon').href=XLS_ICON;
+  if(on){buildBoss();$('#boss').hidden=false;
     try{actx&&actx.suspend()}catch(e){}}
   else{$('#boss').hidden=true;document.title=ORIG_TITLE;$('#favicon').href=GAME_ICON;
     try{actx&&actx.resume()}catch(e){} showPause()}
@@ -840,7 +909,7 @@ function toggleBoss(force){
 $('#bossBtn').onclick=()=>toggleBoss(true);
 window.addEventListener('keydown',e=>{
   if(e.key==='Escape'||e.key==='`'){e.preventDefault();toggleBoss();return}
-  if(bossOn)return;
+  if(bossOn){bossType&&bossType(e);return}
   if($('#pauseOv')){if(e.key==='Enter'||e.key===' '){e.preventDefault();$('#pauseOv button').click()}return}
   if(current&&current.started&&!current.ended&&current.keyFn)current.keyFn(e);
 });
@@ -924,7 +993,7 @@ function spotGame(root,api){
     const scene=buildScene(r,level);
     diffs=makeDiffs(r,scene.items,Math.min(4+level,8),level);
     panels.forEach((p,s)=>{renderPanel(p,scene,diffs,s);p.animate([{opacity:0,transform:'scale(.96)'},{opacity:1,transform:'none'}],{duration:300,easing:'ease-out'})});
-    maxT=Math.max(60,105-level*6);time=maxT;done=false;running=true;streak=0;hud();
+    maxT=Math.max(45,85-level*6);time=maxT;done=false;running=true;streak=0;hud();
   }
   function ring(d,cls){for(const p of panels){const m=document.createElement('div');m.className='mark'+(cls?' '+cls:'');
     m.style.left=d.cx+'cqw';m.style.top=d.cy+'cqw';m.style.width=m.style.height=d.rad*2+'cqw';p.appendChild(m);if(cls)setTimeout(()=>m.remove(),1800)}}
@@ -932,9 +1001,9 @@ function spotGame(root,api){
     if(!running||done||api.paused)return;
     const R=p.getBoundingClientRect(),u=100/R.width,x=(e.clientX-R.left)*u,y=(e.clientY-R.top)*u;
     let best=null,bd=1e9;for(const d of diffs){const dd=Math.hypot(d.cx-x,d.cy-y);if(dd<d.rad&&dd<bd){best=d;bd=dd}}
-    if(best){if(best.found)return;best.found=true;ring(best);streak++;const pts=100+level*20+(streak>1?streak*10:0);score+=pts;runSfx('coin');
+    if(best){if(best.found)return;best.found=true;ring(best);streak++;const pts=100+level*20+(streak>1?streak*10:0);score+=pts;runSfx('coin');time=Math.min(maxT+30,time+3);
       for(const pp of panels){const R2=pp.getBoundingClientRect(),k=R2.width/100;domBurst(pp,best.cx*k,best.cy*k,{n:12,dist:50})}
-      const f=document.createElement('div');f.className='float';f.textContent='+'+pts;f.style.left=best.cx+'cqw';f.style.top=best.cy+'cqw';p.appendChild(f);setTimeout(()=>f.remove(),700);
+      const f=document.createElement('div');f.className='float';f.textContent=`+${pts} · ⏱+3`;f.style.left=best.cx+'cqw';f.style.top=best.cy+'cqw';p.appendChild(f);setTimeout(()=>f.remove(),700);
       if(diffs.every(d=>d.found)){done=true;const bonus=Math.ceil(time)*5;score+=bonus;api.sfx('level');api.toast(`ผ่านด่าน ${level}! โบนัสเวลา +${bonus}`);
         for(const pp of panels){const R2=pp.getBoundingClientRect();domBurst(pp,R2.width/2,R2.height/2,{n:30,dist:160,size:10})}
         api.after(1.5,startLevel)}}
@@ -1080,7 +1149,7 @@ function runnerGame(root,api){
 function whackGame(root,api){
   const KEYS=['7','8','9','4','5','6','1','2','3'],ALT=['q','w','e','a','s','d','z','x','c'];
   const legend=`${pixImg('alex_phone',26)}${pixImg('papers',26)} +10 · ${pixImg('papers2',26)} งานด่วน +30 · ${pixImg('cake_slice',22)} +3 วิ · <b>${pixImg('bob_down',26)} หัวหน้า ห้ามตี!</b>`;
-  root.innerHTML=`<div class="hud"><div class="timer" data-k="tm"><div data-k="bar"></div></div><span>⏱ <b data-k="t">55</b></span><span>⭐ <b data-k="sc">0</b></span><span data-k="combo" class="muted"></span></div>
+  root.innerHTML=`<div class="hud"><div class="timer" data-k="tm"><div data-k="bar"></div></div><span>⏱ <b data-k="t">40</b></span><span>⭐ <b data-k="sc">0</b></span><span data-k="combo" class="muted"></span></div>
     <div class="legend">${legend}</div>
     <div class="wgrid">${KEYS.map((k,i)=>`<div class="hole" data-i="${i}"><span class="key">${k}</span><div class="mole"></div></div>`).join('')}</div>`;
   const q=k=>root.querySelector(`[data-k="${k}"]`),grid=root.querySelector('.wgrid');
@@ -1088,7 +1157,7 @@ function whackGame(root,api){
   // art: an animated character sheet (anim) or a still sprite (img)
   const T={phone:{anim:'phone',cap:'โทรมา!',pts:10,life:1.4},paper:{img:'papers',cap:'เอกสาร',pts:10,life:1.5},
     fire:{img:'papers2',cap:'ด่วน!',pts:30,life:.8,hot:1},boss:{anim:'boss',cap:'หัวหน้า',pts:0,life:1.5},coffee:{img:'cake_slice',cap:'+3 วิ',pts:0,life:1}};
-  const TOTAL=55;let time=TOTAL,sc=0,combo=0,best=0,spawnT=.4,el=0,running=false;
+  const TOTAL=40;let time=TOTAL,sc=0,combo=0,best=0,spawnT=.4,el=0,running=false;
   function hud(){q('t').textContent=Math.ceil(time);q('sc').textContent=fmt(sc);q('bar').style.width=Math.min(100,time/TOTAL*100)+'%';q('tm').classList.toggle('low',time<8);
     const m=1+Math.floor(combo/6)*.5;q('combo').textContent=combo>=3?`🔥 คอมโบ ${combo}${m>1?' (x'+m+')':''}`:''}
   function pickType(){const w=[['phone',40],['paper',25],['fire',10+el*.15],['boss',10+el*.45],['coffee',time<15?9:4]];
@@ -1108,7 +1177,8 @@ function whackGame(root,api){
     else if(t==='coffee'){time+=3;runSfx('gem');float(h,'+3 วิ');domBurst(h.el,R.width/2,R.height*.45,{n:8,colors:['#fff',PAL.yel]})}
     else{combo++;best=Math.max(best,combo);const p=Math.round(T[t].pts*(1+Math.floor(combo/6)*.5));sc+=p;runSfx('coin');float(h,'+'+p);
       domBurst(h.el,R.width/2,R.height*.45,{n:t==='fire'?16:10,colors:t==='fire'?[PAL.red,PAL.orange,PAL.yel]:CONFETTI});
-      if(combo%10===0){api.toast(`🔥 คอมโบ ${combo}!`);domShake(grid,4)}}
+      if(combo%10===0){api.toast(`🔥 คอมโบ ${combo}!`);domShake(grid,4)}
+      const bt=(t==='fire'?1:0)+(combo%5===0?1:0);if(bt){time+=bt;setTimeout(()=>float(h,`⏱ +${bt} วิ`,'time'),120)}}
     h.obj=null;h.cool=.2;setTimeout(()=>{if(!h.obj)h.el.classList.remove('up','isboss')},180);hud();
   }
   holes.forEach((h,i)=>h.el.addEventListener('pointerdown',e=>{e.preventDefault();hit(i)}));
@@ -1120,6 +1190,7 @@ function whackGame(root,api){
   hud();
   api.intro({how:`<p>☎️ เพื่อนโทรเข้า เอกสาร และงานด่วนโผล่ขึ้นมาหลังพาร์ทิชัน — <b>ตีให้ไว!</b></p>
       <p>${legend}</p>
+      <p>⏱ ตีงานด่วนได้ +1 วิ · ตีติดกันทุก 5 ครั้ง +1 วิ · เค้กให้ +3 วิ — ยิ่งเก่งยิ่งเล่นได้นาน</p>
       <p>⚠️ ตีหัวหน้าโดน −40 และคอมโบหาย</p>
       <p>⌨️ ใช้คีย์ <b>ตัวเลข 1-9</b> (แบบ numpad) หรือ <b>Q W E / A S D / Z X C</b> ได้</p>`,
     buttons:[{label:'📞 รับสาย!',primary:true,go(){running=true}}]});
@@ -1224,10 +1295,10 @@ const GAMES=[
   {id:'dance',title:'Office Audition',emoji:'🕺',img:'assets/3d/chars/previews/character-male-b.png',color:'#ffd6ec',online:true,href:'party3d.html',desc:'เกมเต้นแบบ Audition ในห้อง 3D กดลูกศรตามจังหวะ เต้นพร้อมเพื่อนทั้งห้อง แข่งคะแนนสด',time:'1–2 นาที/เพลง'},
   {id:'spot',title:'จับผิดภาพ',emoji:'🔍',img:'assets/mi/amelia_down.png',color:'#9fd8ff',desc:'หาจุดต่างบนโต๊ะทำงาน ด่านประจำวันเหมือนกันทั้งออฟฟิศ',time:'2–4 นาที',mount:spotGame},
   {id:'run',title:'วิ่งไปตอกบัตร',emoji:'🏃',img:'assets/mi/adam_right.png',color:'#c6f0ff',desc:'เกมวิ่งแนว flash กระโดดข้ามลังกับเก้าอี้ ก้มหลบเครื่องบินกระดาษ ให้ทันก่อน 8:30',time:'1–3 นาที',mount:runnerGame},
-  {id:'whack',title:'สายด่วนถล่มโต๊ะ',emoji:'☎️',img:'assets/mi/alex_phone.png',color:'#ffb3c7',desc:'ตีสาย ตีอีเมล ตีงานด่วน… แต่อย่าเผลอตีหัวหน้า!',time:'55 วินาที',mount:whackGame},
+  {id:'whack',title:'สายด่วนถล่มโต๊ะ',emoji:'☎️',img:'assets/mi/alex_phone.png',color:'#ffb3c7',desc:'ตีสาย ตีอีเมล ตีงานด่วน… แต่อย่าเผลอตีหัวหน้า!',time:'40 วิ + เวลาโบนัส',mount:whackGame},
   {id:'tetris',title:'Printer Tetris',emoji:'🖨️',img:'assets/mi/pc_desk.png',color:'#d6e4ff',desc:'กระดาษไหลจากเครื่องพิมพ์ จัดให้เต็มแถว',time:'2–5 นาที',mount:tetrisGame},
   {id:'stamp',title:'ปั๊มตรารัวๆ',emoji:'🔏',img:'assets/mi/papers.png',color:'#ffd6d6',desc:'ปั๊ม APPROVED ให้ตรงจังหวะสายพาน',time:'1–2 นาที',mount:stampGame},
-  {id:'barista',title:'บาริสต้าพักเที่ยง',emoji:'☕',img:'assets/mi/cake_straw.png',color:'#f3dcc0',desc:'ผสมเครื่องดื่มตามออเดอร์ให้ทัน',time:'2 นาที',mount:baristaGame},
+  {id:'barista',title:'บาริสต้าพักเที่ยง',emoji:'☕',img:'assets/mi/cake_straw.png',color:'#f3dcc0',desc:'ผสมเครื่องดื่มตามออเดอร์ให้ทัน',time:'90 วิ + เวลาโบนัส',mount:baristaGame},
   {id:'toss',title:'ปากระดาษลงถัง',emoji:'🗑️',img:'assets/mi/bin.png',color:'#dff3e4',desc:'ปาก้อนกระดาษ ดูลมพัดลมด้วย',time:'1–2 นาที',mount:tossGame},
   {id:'slack',title:'แอบเล่นมือถือ',emoji:'📱',img:'assets/mi/amelia_phone.png',color:'#ffe0f0',desc:'กดค้างแอบเล่นมือถือ ปล่อยให้ทันก่อนหัวหน้าหันมา',time:'1–3 นาที',mount:slackGame},
   {id:'conga',title:'ขบวนไปกินข้าว',emoji:'🍱',img:'assets/mi/adam_down.png',color:'#e0f4d6',desc:'เก็บเพื่อนต่อแถว พาออกประตูไปโรงอาหาร',time:'2–4 นาที',mount:congaGame},
