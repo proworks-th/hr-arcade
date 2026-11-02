@@ -119,6 +119,45 @@ a.btn{text-decoration:none;display:inline-flex;align-items:center;gap:6px;color:
 .crew-it{flex:none;display:flex;align-items:center;gap:6px;background:#fff;border:2px solid #e6dccb;border-radius:12px;padding:4px 10px 4px 6px}
 .crew-it.me{border-color:var(--line);background:#fff3c4}.crew-it img{height:28px;image-rendering:pixelated}
 .crew-it>span{display:grid;line-height:1.2}.crew-it b{font-size:13px}.crew-it small{font-size:11.5px;color:var(--muted);white-space:nowrap}
+/* ห้องรวม */
+.room-h{display:flex;align-items:center;gap:8px;margin:0 0 6px;flex-wrap:wrap}.room-h .heads{margin-left:auto}
+.room{margin-bottom:16px}
+.room-stage{position:relative}
+.room-stage .g2box canvas{width:min(100%,calc((100dvh - 330px) * var(--ar)));min-width:min(100%,560px);cursor:pointer;background:#e8dcc8}
+.room-log{position:absolute;left:10px;top:8px;max-width:45%;font-size:12.5px;pointer-events:none;z-index:2;display:grid;gap:2px}
+.room-log div{background:rgba(255,255,255,.85);border-radius:8px;padding:1px 8px;width:fit-content;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.room-ov{position:absolute;inset:0;pointer-events:none;z-index:2}
+.room-ov .kt{position:absolute;left:10px;top:8px;background:#fff;border:2px solid var(--line);border-radius:10px;padding:2px 10px;font-weight:800}
+.room-ov .dpanel{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);width:min(560px,92%);text-align:center}
+.room-ov .drow{display:flex;justify-content:center;gap:6px;min-height:46px;align-items:center;background:rgba(255,255,255,.9);border:3px solid var(--line);border-radius:14px;padding:4px 8px}
+.room-ov .ar{width:38px;height:38px;display:grid;place-items:center;border-radius:10px;background:#e9e2f2;font-size:24px;font-weight:800}
+.room-ov .ar.rev{background:#ffd6d6;color:#c0392b}.room-ov .ar.ok{background:var(--ok);color:#fff}
+.room-ov .drow.shake{animation:rshake .25s}@keyframes rshake{25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+.room-ov .beat{position:relative;height:12px;margin:6px 4px 0;background:rgba(255,255,255,.9);border:2px solid var(--line);border-radius:8px}
+.room-ov .beat i{position:absolute;top:-4px;width:6px;height:16px;margin-left:-3px;background:var(--pri);border-radius:3px}
+.room-ov .beat b{position:absolute;top:-6px;width:4px;height:20px;margin-left:-2px;background:var(--ink);border-radius:2px}
+.room-ov .dstat{margin-top:4px;font-size:13px;font-weight:600;text-shadow:0 0 3px #fff,0 0 3px #fff}
+.room-ov .judge{font-size:36px;font-weight:800;line-height:1;margin-bottom:4px;text-shadow:0 3px 0 #fff}.room-ov .judge small{font-size:18px}.room-ov .judge .why{display:block;font-size:13px;color:var(--ink)}
+.room-ov .tugbar{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.92);border:3px solid var(--line);border-radius:14px;padding:6px 10px;font-weight:800}
+.room-ov .tugbar .tb{flex:1;position:relative;height:14px;border-radius:8px;background:linear-gradient(90deg,#3a86ff 0 50%,#ff5c8a 50% 100%);border:2px solid var(--line)}
+.room-ov .tugbar .tb i{position:absolute;top:-7px;width:8px;height:24px;margin-left:-4px;background:#ff4d4d;border:2px solid var(--line);border-radius:3px;transition:left .1s}
+.room-cnt{position:absolute;inset:0;display:grid;place-content:center;text-align:center;background:rgba(43,33,64,.35);color:#fff;pointer-events:none;z-index:3;border-radius:14px;padding:12px}
+.room-cnt b{font-size:72px;line-height:1;text-shadow:0 4px 0 var(--line)}.room-cnt span{font-weight:600;text-shadow:0 2px 0 var(--line)}
+.room-res{position:absolute;inset:0;display:grid;place-items:center;background:rgba(43,33,64,.45);z-index:4;border-radius:14px;padding:10px}
+.room-res .panel{max-width:400px;padding:14px 18px}.room-res h2{margin:0 0 6px}.big-res{font-size:26px;font-weight:800}
+.room-res .rank{text-align:left;padding-left:0;list-style:none;margin:6px 0}.room-res .rank li{display:flex;align-items:center;gap:8px;margin:3px 0}.room-res .rank img{height:28px;image-rendering:pixelated}.room-res .rank span{margin-left:auto}
+.room-cnt[hidden],.room-res[hidden],.room-pad[hidden]{display:none}
+.room-bar{display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap}
+.room-bar input{flex:1;min-width:160px;font:inherit;border:2px solid var(--line);border-radius:12px;padding:6px 12px;background:#fff}
+.room-emo{display:flex;gap:4px}
+.room-pad{display:flex;gap:8px;justify-content:center;margin-top:10px}.room-pad .btn{min-width:56px;height:52px;font-size:22px}
+.room-pad .btn.wide{min-width:min(360px,90%);height:60px;font-size:24px}.room-pad .btn small{font-size:13px;opacity:.8}
+.pick{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:10px 0}
+@media (max-width:640px){.pick{grid-template-columns:1fr}}
+.pk{display:flex;flex-direction:column;align-items:flex-start;gap:4px;text-align:left;font:inherit;color:inherit;background:#fff;border:2px solid var(--line);border-radius:14px;box-shadow:0 3px 0 var(--line);padding:10px 12px;cursor:pointer}
+button.pk:hover{transform:translateY(-2px)}div.pk{cursor:default}.pk b{font-size:17px}.pk small{color:var(--muted);font-size:13px;flex:1}.pk .songs{display:flex;gap:6px;flex-wrap:wrap}
+.invite{position:fixed;left:50%;top:70px;transform:translateX(-50%);z-index:60;display:flex;gap:8px;align-items:center;background:#fff;border:3px solid var(--line);border-radius:14px;box-shadow:0 5px 0 var(--line);padding:8px 12px;animation:popin .25s;max-width:calc(100vw - 24px)}
+@media (max-width:520px){.room-emo{display:none}}
 .feedbox{margin-top:8px}
 @media (pointer:coarse),(hover:none){.chip,.linkbtn{min-height:44px;min-width:44px}}.feedbox h3{font-size:15px;color:var(--muted);margin:0 0 4px;display:flex;align-items:center;gap:8px}
 .linkbtn{margin-left:auto;border:none;background:none;font:inherit;font-size:13px;color:var(--blue);cursor:pointer;padding:4px}
@@ -335,6 +374,7 @@ a.btn{text-decoration:none;display:inline-flex;align-items:center;gap:6px;color:
 
 <script src="solo-games.js?v=7"></script>
 <script src="office.js?v=3"></script>
+<script src="hubroom.js?v=1"></script>
 <script>
 'use strict';
 /* ---------- utils ---------- */
@@ -379,7 +419,7 @@ $('#muteBtn').onclick=()=>{muted=!muted;store.set('muted',muted);renderMute()};
 
 /* ---------- online services (online.js, Firebase): ranking, presence, feed ---------- */
 let onlineMod=null;
-const loadRank=()=>onlineMod||(onlineMod=import('./online.js?v=5'));
+const loadRank=()=>onlineMod||(onlineMod=import('./online.js?v=6'));
 const loadOnline=loadRank;
 const PIX_AVAS=['p_office','p_woffice','p_whealth','p_tech','p_cat','p_dog'];
 const myAva=()=>{const a=store.get('partyAva','p_office');return PIX_AVAS.includes(a)?a:'p_office'};
@@ -400,9 +440,9 @@ const MISSIONS=[
   {id:'whack20',t:'ทำคอมโบ 20 ในสายด่วนถล่มโต๊ะ',g:'whack',ok:e=>e.game==='whack'&&e.st.combo>=20},
   {id:'stack20',t:'ซ้อนแฟ้มให้ถึง 20 ชั้น',g:'stack',ok:e=>e.game==='stack'&&e.st.floors>=20},
   {id:'stack3',t:'วางแฟ้มเป๊ะ 3 ครั้งในรอบเดียว',g:'stack',ok:e=>e.game==='stack'&&e.st.perfects>=3},
-  {id:'tug',t:'เล่นชักเย่อในห้องปาร์ตี้ 1 รอบ',g:'party',ok:e=>e.kind==='tug'},
-  {id:'dance',t:'เต้นในห้องปาร์ตี้ให้จบ 1 เพลง',g:'party',ok:e=>e.kind==='dance'},
-  {id:'chair',t:'แข่งเก้าอี้ในห้องปาร์ตี้ 1 รอบ',g:'party',ok:e=>e.kind==='chair'},
+  {id:'tug',t:'เล่นชักเย่อในห้องรวม 1 รอบ',g:'party',ok:e=>e.kind==='tug'},
+  {id:'dance',t:'เต้นในห้องรวมให้จบ 1 เพลง',g:'party',ok:e=>e.kind==='dance'},
+  {id:'chair',t:'วิ่งไปตอกบัตรกับเพื่อนในห้องรวม 1 รอบ',g:'party',ok:e=>e.kind==='chair'},
   {id:'mix3',t:'เล่นเกมเดี่ยวให้ครบ 3 เกม',g:'any',ok:(e,m)=>m.played.length>=3},
   {id:'tetris10',t:'Printer Tetris เคลียร์ 10 แถว',g:'tetris',ok:e=>e.game==='tetris'&&e.st.lines>=10},
   {id:'stamp10',t:'ปั๊มตรา PERFECT 10 ครั้งในรอบเดียว',g:'stamp',ok:e=>e.game==='stamp'&&e.st.perfect>=10},
@@ -438,17 +478,16 @@ window.addEventListener('hra-party',e=>recordMission({game:'party',kind:e.detail
 {const q=store.get('pendingMissions',[]);if(q.length){store.set('pendingMissions',[]);setTimeout(()=>q.forEach(recordMission),0)}}
 
 /* ---------- hub live panel renderers (data arrives from Firebase watchers) ---------- */
-const ACT={hub:'อยู่หน้าแรก',office:'🏠 แต่งออฟฟิศ',party:'อยู่ห้องปาร์ตี้',party3d:'🎉 อยู่ห้องปาร์ตี้',busy:'🙈 แอบทำงาน',spot:'🔍 จับผิดภาพ',run:'🏃 วิ่งไปตอกบัตร',whack:'☎️ สายด่วน',stack:'📚 ซ้อนแฟ้ม',tetris:'🖨️ Printer Tetris',stamp:'🔏 ปั๊มตรา',barista:'☕ บาริสต้า',toss:'🗑️ ปากระดาษ',slack:'📱 แอบเล่นมือถือ',conga:'🍱 ขบวนไปกินข้าว'};
+const ACT={office:'🏠 แต่งออฟฟิศ',party:'อยู่ห้องปาร์ตี้',party3d:'🎉 อยู่ห้องปาร์ตี้',hub:'อยู่ห้องรวม',busy:'🙈 แอบทำงาน',spot:'🔍 จับผิดภาพ',run:'🏃 วิ่งไปตอกบัตร',whack:'☎️ สายด่วน',stack:'📚 ซ้อนแฟ้ม',tetris:'🖨️ Printer Tetris',stamp:'🔏 ปั๊มตรา',barista:'☕ บาริสต้า',toss:'🗑️ ปากระดาษ',slack:'📱 แอบเล่นมือถือ',conga:'🍱 ขบวนไปกินข้าว'};
 let onlineList=null,feedList=null;
 function renderOnline(){
   const el=document.querySelector('[data-k=onlist]');if(!el)return;
   if(!onlineList){el.innerHTML='<span class="muted">กำลังเชื่อมต่อ…</span>';return}
-  const L=onlineList.slice().sort((a,b)=>(b.me-a.me)||((b.g==='party3d')-(a.g==='party3d')));
-  document.querySelector('[data-k=oncount]').textContent=`${L.length} คนออนไลน์`;
-  el.innerHTML=L.slice(0,8).map(p=>`<span class="head${p.me?' me':''}" title="${esc(p.n)} · ${ACT[p.g]||'กำลังเล่น'}"><img src="${avaSrc(p.a)}" alt=""><span><small>${esc(p.n)}${p.g==='party3d'?' 🎉':''}</small>${p.lv?`<i>Lv${p.lv} ${Prog.title(p.lv)}</i>`:''}</span></span>`).join('')
-    +(L.length>8?`<span class="muted">+${L.length-8}</span>`:'');
-  const inParty=L.filter(p=>p.g==='party3d').length,b=document.getElementById('joinParty');
-  if(b)b.innerHTML=inParty?`🎉 เข้าร่วม <small>(${inParty} คนในห้อง)</small>`:'🎉 เข้าห้องปาร์ตี้';
+  const L=onlineList.slice().sort((a,b)=>(b.me-a.me));
+  const inRoom=L.filter(p=>p.g==='hub').length,away=L.filter(p=>p.g!=='hub');
+  document.querySelector('[data-k=oncount]').textContent=`${inRoom} คนในห้อง${away.length?` · ${away.length} คนกำลังเล่นเกม`:''}`;
+  el.innerHTML=away.slice(0,6).map(p=>`<span class="head${p.me?' me':''}" title="${esc(p.n)} · ${ACT[p.g]||'กำลังเล่น'}"><img src="${avaSrc(p.a)}" alt=""><span><small>${esc(p.n)}${p.g==='party3d'?' 🎉':''}</small>${p.lv?`<i>Lv${p.lv} ${Prog.title(p.lv)}</i>`:''}</span></span>`).join('')
+    +(away.length>6?`<span class="muted">+${away.length-6}</span>`:'');
 }
 function renderFeed(){
   const el=document.querySelector('[data-k=feed]');if(!el)return;
@@ -464,7 +503,7 @@ function renderMissions(){
   document.querySelector('#mBtn').classList.toggle('all',done>=3);
   el.innerHTML=list.map(m=>{const d=s.done.includes(m.id),g=m.g==='any'?null:m.g;
     return`<li class="${d?'done':''}"><span class="ck">${d?'✅':'⬜'}</span><span>${m.t}</span>${!d&&g?`<button class="btn sm go" data-go="${g}">เล่น</button>`:''}</li>`}).join('');
-  el.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>{if(b.dataset.go==='party')location.href='party3d.html';else startGame(b.dataset.go)});
+  el.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>{if(b.dataset.go==='party'){HubRoom.picker()}else startGame(b.dataset.go)});
 }
 let crewList=null,crewT=0;
 function renderCrew(){
@@ -476,6 +515,12 @@ function renderCrew(){
   draw();
   if(Date.now()-crewT<60000)return;crewT=Date.now();
   loadOnline().then(O=>O.listProfiles(40)).then(L=>{crewList=L;draw()}).catch(()=>{crewList=crewList||[];draw()});
+}
+function partyInvite(G,name){
+  const d=document.createElement('div');d.className='invite';
+  d.innerHTML=`<span>🎉 <b>${esc(G.by||'เพื่อน')}</b> เปิด ${name} ในห้องรวม!</span><button class="btn sm primary">เข้าร่วม</button><button class="btn sm" aria-label="ปิด">✕</button>`;
+  const [go,x]=d.querySelectorAll('button');go.onclick=()=>{d.remove();goHome()};x.onclick=()=>d.remove();
+  document.body.appendChild(d);setTimeout(()=>d.remove(),15000);
 }
 let partyAutoJoin=false,liveStarted=false;
 function startLive(){
@@ -1086,10 +1131,8 @@ function renderHub(){
       <span class="me-coins">🪙 ${fmt(P.coins)}</span>
       <button class="btn sm" id="officeBtn" type="button">🏠 ห้องฉัน</button>
     </section>
-    <section class="party">
-      <div class="party-l"><span class="dot"></span><b data-k="oncount">…</b><div class="heads" data-k="onlist"></div></div>
-      <div class="party-r"><button class="btn primary" id="joinParty">🎉 เข้าห้องปาร์ตี้</button><small class="muted">เต้น · ชักเย่อ · แข่งเก้าอี้</small></div>
-    </section>
+    <div class="room-h"><span class="dot"></span><b>ห้องรวม</b> <span class="muted" data-k="oncount"></span><div class="heads" data-k="onlist"></div></div>
+    <div data-k="room"></div>
     <section class="solo"><div class="sec-h"><h3>เกม</h3><button class="chip" id="mBtn" type="button" aria-expanded="${mOpen}">🎯 ภารกิจวันนี้ <b data-k="mcount">0/3</b> <span data-k="streak"></span> ${mOpen?'▴':'▾'}</button></div>
       <div class="mpanel"${mOpen?'':' hidden'}><ul class="mlist" data-k="mlist"></ul></div>
       <div class="solo-grid">${solo.map(g=>{const b=store.get('best_'+g.id,0);return`<button class="scard" data-g="${g.id}" title="${g.desc}"><span class="em" style="--c:${g.color}"><img src="${g.img}" alt=""></span>
@@ -1099,7 +1142,7 @@ function renderHub(){
     <p class="credits">🎨 <a href="https://limezu.itch.io/moderninteriors" target="_blank" rel="noopener">LimeZu Modern Interiors</a> (ฟรี ไม่แสวงหากำไร) · เสียงและ 3D: <a href="https://kenney.nl" target="_blank" rel="noopener">Kenney</a> (CC0) · <a href="https://2dpig.itch.io/pixel-office" target="_blank" rel="noopener">2dPig</a> (CC0)</p>`;
   const ni=$('#nameIn');ni.value=store.get('name','');let nt=0;ni.oninput=()=>{store.set('name',ni.value);clearTimeout(nt);nt=setTimeout(()=>{presence();Prog.sync()},800)};
   $('#avaBtn').onclick=()=>{const p=Prog.get();p.who=MI_PEOPLE[(MI_PEOPLE.indexOf(meWho())+1)%MI_PEOPLE.length];Prog.put(p);$('#avaBtn img').src=`assets/mi/${p.who}_down.png`;presence()};
-  $('#joinParty').onclick=()=>{location.href='party3d.html'};
+  HubRoom.mount(hub.querySelector('[data-k=room]'));
   $('#officeBtn').onclick=()=>startGame('office');
   $('#mBtn').onclick=()=>{store.set('mOpen',!store.get('mOpen',false));renderHub()};
   $('#feedMore').onclick=()=>{feedOpen=!feedOpen;$('#feedMore').textContent=feedOpen?'ย่อ':'ดูทั้งหมด';renderFeed()};

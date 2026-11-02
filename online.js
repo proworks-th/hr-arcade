@@ -34,11 +34,11 @@ export async function board(game,period){
 /* ---------- presence: one node per open tab, removed by the server when the tab disconnects ---------- */
 const SID=Math.random().toString(36).slice(2,10);
 let me=null,beat=null;
-export function setPresence(info){ // info: {n,a,g}
+export function setPresence(info){ // info: {n,a,g,lv} + room position {x,y} and per-game fields
   if(!FIREBASE_CONFIG)return;
   const r=ref(db(),`rooms/_hub/on/${SID}`);
   if(!me){onDisconnect(r).remove();beat=setInterval(()=>me&&set(r,{...me,t:serverTimestamp()}),60000)}
-  me={...me,...info};set(r,{...me,t:serverTimestamp()});
+  me={j:Date.now(),...me,...info};set(r,{...me,t:serverTimestamp()});
 }
 // cb(list of {n,a,g,t}); entries without a heartbeat for 3 min are treated as gone
 export function watchOnline(cb){
@@ -74,3 +74,19 @@ export async function listProfiles(n=40){
 }
 export function like(ownerKey,fromName){return FIREBASE_CONFIG?set(ref(db(),`rooms/_like/${ownerKey}/${nameKey(fromName)}`),1):Promise.resolve()}
 export async function likeCount(ownerKey){if(!FIREBASE_CONFIG)return 0;const s=await get(ref(db(),`rooms/_like/${ownerKey}`));return Object.keys(s.val()||{}).length}
+
+/* ---------- ห้องรวม: chat, the shared party-game state and the server clock ---------- */
+export const mySid=()=>SID;
+export function chat(m,n,w){if(FIREBASE_CONFIG)push(ref(db(),'rooms/_hub/chat'),{m:String(m).slice(0,80),n:String(n).slice(0,20),w:String(w||'').slice(0,10),s:SID,t:serverTimestamp()})}
+export function watchChat(cb,n=20){
+  if(!FIREBASE_CONFIG)return()=>{};
+  return onValue(query(ref(db(),'rooms/_hub/chat'),limitToLast(n)),s=>cb(Object.values(s.val()||{}).sort((a,b)=>a.t-b.t)));
+}
+export async function pruneChat(){
+  if(!FIREBASE_CONFIG)return;
+  const old=await get(query(ref(db(),'rooms/_hub/chat'),orderByChild('t'),endAt(Date.now()-864e5)));
+  old.forEach(c=>{remove(c.ref)});
+}
+export function watchGame(cb){return FIREBASE_CONFIG?onValue(ref(db(),'rooms/_hub/game'),s=>cb(s.val()||{sc:'lobby'})):()=>{}}
+export function txGame(fn){return FIREBASE_CONFIG?runTransaction(ref(db(),'rooms/_hub/game'),fn):Promise.resolve({committed:false})}
+export function watchOffset(cb){if(FIREBASE_CONFIG)onValue(ref(db(),'.info/serverTimeOffset'),s=>cb(s.val()||0))}
