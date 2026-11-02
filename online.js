@@ -16,11 +16,11 @@ export const ready=()=>!!FIREBASE_CONFIG;
 
 /* ---------- rankings ---------- */
 // returns {d,w,a}: true where this score became the player's best for that period
-export async function submit(game,name,score,extra=''){
+export async function submit(game,name,score,extra='',lv=0){
   if(!FIREBASE_CONFIG||!RANK_GAMES[game]||!name||!(score>0))return null;
   const s=Math.min(Math.round(score),RANK_GAMES[game].max),b=buckets(),k=nameKey(name),D=db(),t=Date.now(),out={};
   await Promise.all(Object.entries(b).map(async([p,bk])=>{
-    const r=await runTransaction(ref(D,`rooms/_rank/${game}/${p}/${bk}/${k}`),cur=>{if(cur&&cur.s>=s)return;return{n:name.trim().slice(0,20),s,x:String(extra).slice(0,40),t}});
+    const r=await runTransaction(ref(D,`rooms/_rank/${game}/${p}/${bk}/${k}`),cur=>{if(cur&&cur.s>=s)return;return{n:name.trim().slice(0,20),s,x:String(extra).slice(0,40),t,...(lv?{l:lv}:{})}});
     out[p]=r.committed;
   }));
   return out;
@@ -58,3 +58,19 @@ export async function pruneFeed(){
   const old=await get(query(ref(db(),'rooms/_hub/feed'),orderByChild('t'),endAt(Date.now()-3*864e5)));
   old.forEach(c=>{remove(c.ref)});
 }
+
+/* ---------- "ออฟฟิศของฉัน" profiles: level, title and decorated room, plus likes from coworkers ---------- */
+export function saveProfile(name,p){
+  if(!FIREBASE_CONFIG||!name)return;
+  const items=(p.room.items||[]).slice(0,60).map(([n,x,y,f])=>[String(n).slice(0,24),x|0,y|0,f?1:0]);
+  return set(ref(db(),`rooms/_prof/${nameKey(name)}`),{n:name.trim().slice(0,20),lv:p.lv|0,ti:String(p.ti||'').slice(0,20),who:String(p.who||'adam').slice(0,10),
+    room:{wall:String(p.room.wall).slice(0,20),floor:String(p.room.floor).slice(0,20),items},t:serverTimestamp()});
+}
+export async function listProfiles(n=40){
+  if(!FIREBASE_CONFIG)return[];
+  const snap=await get(ref(db(),'rooms/_prof'));
+  return Object.entries(snap.val()||{}).map(([k,v])=>({k,...v,room:{wall:'wall_mint',floor:'floor_wood',...(v.room||{}),items:(v.room&&v.room.items)||[]}}))
+    .sort((a,b)=>(b.t||0)-(a.t||0)).slice(0,n);
+}
+export function like(ownerKey,fromName){return FIREBASE_CONFIG?set(ref(db(),`rooms/_like/${ownerKey}/${nameKey(fromName)}`),1):Promise.resolve()}
+export async function likeCount(ownerKey){if(!FIREBASE_CONFIG)return 0;const s=await get(ref(db(),`rooms/_like/${ownerKey}`));return Object.keys(s.val()||{}).length}

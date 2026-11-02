@@ -108,7 +108,17 @@ def party3d(page, base, shot):
     shot('party3d-room')
 
 
-SCREENS = {'hub': hub, 'spot': solo('spot'), 'run': solo('run'), 'whack': solo('whack'), 'stack': solo('stack', 600),
+def office(page, base, shot):
+    page.goto(base + '/index.html?test=1')
+    page.wait_for_function('window.__app', timeout=3000)
+    page.evaluate("localStorage.setItem('hra_name', JSON.stringify('ทดสอบ'))")
+    page.click('#officeBtn')
+    page.wait_for_selector('.office .shop-grid', timeout=3000)
+    page.wait_for_timeout(600)
+    shot('office')
+
+
+SCREENS = {'office': office, 'hub': hub, 'spot': solo('spot'), 'run': solo('run'), 'whack': solo('whack'), 'stack': solo('stack', 600),
            'tetris': solo('tetris'), 'stamp': solo('stamp'), 'barista': solo('barista', 2500), 'toss': solo('toss'), 'slack': solo('slack', 2000), 'conga': solo('conga', 2000),
            'party': party2d, 'party3d': party3d}
 
