@@ -30,12 +30,12 @@ const Prog = {
     }
     return { coins, xp, ups, before, after: { lv: p.lv, xp: p.xp } };
   },
-  award(game, score) { const c = Math.max(2, Math.min(60, Math.round(score / (PROG_NORM[game] || 20)))); return Prog.give(c, c * 8 + 15); },
+  award(game, score, mult = 1) { const c = Math.max(2, Math.min(60, Math.round(score / (PROG_NORM[game] || 20)))); return Prog.give(c * mult, c * 8 + 15); },
   // push the public part of the profile (debounced) so coworkers see your level and room
   sync() {
     clearTimeout(Prog._t);
     Prog._t = setTimeout(() => { const nm = myName(); if (!nm) return; const p = Prog.get();
-      loadOnline().then(O => O.saveProfile(nm, { lv: p.lv, ti: Prog.title(p.lv), who: p.who, room: p.room })).catch(() => {}); }, 1500);
+      loadOnline().then(O => O.saveProfile(nm, { lv: p.lv, ti: Prog.title(p.lv), who: p.who, room: p.room, b: (p.gacha && p.gacha.eq) || '' })).catch(() => {}); }, 1500);
   },
 };
 
@@ -143,7 +143,7 @@ function officeMount(root, api) {
     q('tabs').querySelectorAll('[data-t]').forEach(b => b.onclick = () => { tab = b.dataset.t; list(); });
     const L = q('list');
     if (tab === 'shop') {
-      L.innerHTML = `<div class="shop-grid">${SHOP.map(([n, k, price, lv]) => { const lock = p.lv < lv, poor = p.coins < price;
+      L.innerHTML = `<div class="shop-grid">${SHOP.filter(s => typeof GACHA_ONLY === 'undefined' || !GACHA_ONLY.has(s[0])).map(([n, k, price, lv]) => { const lock = p.lv < lv, poor = p.coins < price;
         return `<button class="shop-it${lock ? ' lock' : ''}" data-buy="${n}" ${lock ? 'disabled' : ''}>${icon(n)}<small>${lock ? `🔒 Lv ${lv}` : `🪙 ${price}`}</small>${p.inv[n] ? `<i class="cnt">${p.inv[n]}</i>` : ''}</button>`; }).join('')}</div>`;
       L.querySelectorAll('[data-buy]').forEach(b => b.onclick = () => {
         const [n, , price] = SHOP.find(s => s[0] === b.dataset.buy);

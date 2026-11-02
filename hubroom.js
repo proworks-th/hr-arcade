@@ -16,7 +16,8 @@ const HubRoom = (() => {
     ['pc_desk', 16, 4], ['chair_back', 16, 5], ['table_light', 18, 6], ['palm', 21, 8], ['plant_pot', 15, 8],
   ] };
   const kindOf = n => (typeof SHOP_KIND !== 'undefined' && SHOP_KIND[n]) || (/^(window|pic|notice|tv|world|board|door|mirror|black)/.test(n) ? 'w' : /^rug/.test(n) ? 'r' : 'f');
-  const blockedCells = new Set();
+  const GACHA = { x: 5, y: 2 };                 // the capsule machine (drawn by hand, 2 cells wide)
+  const blockedCells = new Set([GACHA.x + ',' + GACHA.y, (GACHA.x + 1) + ',' + GACHA.y]);
   for (const [n, x, y] of ROOM.items) if (kindOf(n) === 'f') for (let i = 0; i < cellsW(n); i++) blockedCells.add((x + i) + ',' + y);
   const free = (x, y) => x >= 0 && x < COLS && y >= TOP && y < ROWS && !blockedCells.has(x + ',' + y);
   function path(fx, fy, tx, ty) {               // BFS on the floor grid; [] when unreachable
@@ -71,6 +72,7 @@ const HubRoom = (() => {
       const p = at(e), cx = Math.floor(p.x / C), cy = Math.floor(p.y / C);
       if (G.sc !== 'lobby') { if (G.sc === 'race') RN && (RN.jump = true); else if (G.sc === 'tug') tugTap(); return; }
       if (cy < TOP && cx >= 9 && cx <= 12 || cx >= STAGE.x0 && cx <= STAGE.x1 && cy >= STAGE.y0 && cy <= STAGE.y1 && e.detail > 1) return partyPicker();
+      if (cy <= GACHA.y && cx >= GACHA.x && cx <= GACHA.x + 1 && typeof Gacha !== 'undefined') return Gacha.open();
       if (cy < TOP && cx >= 6 && cx <= 7 && typeof showRanking === 'function') return showRanking();
       goTo(cx, Math.max(TOP, cy));
     });
@@ -308,6 +310,7 @@ const HubRoom = (() => {
     const list = [];
     for (const [n, x, y] of ROOM.items) { const k = kindOf(n), cx = (x + cellsW(n) / 2) * C;
       if (k === 'w') drawPixAt(ctx, n, cx, TOP * C - 6, 2); else if (k === 'r') drawPixAt(ctx, n, cx, (y + 1) * C, 2); else list.push({ y: y + 1, d: () => drawPixAt(ctx, n, cx, (y + 1) * C, 2) }); }
+    list.push({ y: GACHA.y + 1, d: drawGacha });
     // people: on the stage during a game, otherwise where they walked to
     const L = roster(), chatBy = {}; for (const m of chatLog) if (now() - m.t < 6000) chatBy[m.s] = m.m;
     let slots = null;
@@ -328,12 +331,25 @@ const HubRoom = (() => {
       list.push({ y: y + 1.01, d: () => {
         ctx.fillStyle = 'rgba(43,33,64,.18)'; ctx.beginPath(); ctx.ellipse((x + .5) * C, (y + 1) * C - 2, 11, 4, 0, 0, 7); ctx.fill();
         drawChar(ctx, who, s ? (s.bob ? 'idle_anim' : 'idle_anim') : a.moving ? 'run' : 'idle_anim', s ? s.dir : a.dir, t + (p.j || 0) % 7, (x + .5) * C + (pulling ? (s.dir === 'right' ? -2 : 2) : 0), (y + 1) * C - bounce, 2);
-        tag((x + .5) * C, (y + 1) * C - 66 - bounce, (p.me ? '★ ' : '') + (p.n || '?') + (p.lv && !s ? ` Lv${p.lv}` : ''), p.me);
+        tag((x + .5) * C, (y + 1) * C - 66 - bounce, (p.me ? '★ ' : '') + ((p.me ? (typeof Gacha !== 'undefined' && badgeEmoji(Gacha.eq())) : p.b && typeof badgeEmoji === 'function' && badgeEmoji(p.b)) || '') + (p.n || '?') + (p.lv && !s ? ` Lv${p.lv}` : ''), p.me);
         const said = chatBy[p.id] || (G.sc === 'dance' && p.dj && !p.me && p.da === G.at ? '' : '');
         if (said) bubble((x + .5) * C, (y + 1) * C - 80 - bounce, said);
       } });
     }
     list.sort((a, b) => a.y - b.y).forEach(o => o.d());
+  }
+  // capsule machine: red body, glass dome of coloured capsules, a sign; sparkles when today's free pull is waiting
+  function drawGacha() {
+    const x = GACHA.x * C + 8, w = 2 * C - 16, by = (GACHA.y + 1) * C, free = typeof Gacha !== 'undefined' && Gacha.freeToday();
+    ctx.fillStyle = 'rgba(43,33,64,.18)'; ctx.beginPath(); ctx.ellipse(x + w / 2, by - 2, w / 2, 4, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = '#e8384f'; ctx.strokeStyle = '#2b2140'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.roundRect(x, by - 34, w, 32, 4); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#2b2140'; ctx.fillRect(x + 8, by - 24, 12, 8); ctx.fillStyle = '#ffd23f'; ctx.beginPath(); ctx.arc(x + w - 13, by - 20, 6, 0, 7); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = 'rgba(220,240,255,.9)'; ctx.beginPath(); ctx.arc(x + w / 2, by - 50, 20, Math.PI, 0); ctx.lineTo(x + w / 2 + 20, by - 34); ctx.lineTo(x + w / 2 - 20, by - 34); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ['#ff5c8a', '#3a86ff', '#ffd23f', '#21c07a', '#a06cff', '#ff9f1c'].forEach((c, i) => { ctx.fillStyle = c; ctx.beginPath(); ctx.arc(x + w / 2 - 12 + (i % 3) * 12, by - 40 - Math.floor(i / 3) * 10, 5, 0, 7); ctx.fill(); });
+    ctx.fillStyle = '#2b2140'; ctx.fillRect(x + w / 2 - 22, by - 74, 44, 4);
+    tag(x + w / 2, by - 76, free ? '🎁 กาชาฟรี!' : '🎰 กาชา', free);
+    if (free) { ctx.fillStyle = '#ffd23f'; for (let i = 0; i < 3; i++) { const a = t * 2 + i * 2.1; ctx.fillRect(x + w / 2 + Math.cos(a) * 26 - 2, by - 50 + Math.sin(a) * 18 - 2, 4, 4); } }
   }
   function tag(x, y, text, mine) {
     ctx.font = '600 11px Kanit,"Leelawadee UI",sans-serif'; ctx.textAlign = 'center'; ctx.lineWidth = 3; ctx.strokeStyle = '#fff';
