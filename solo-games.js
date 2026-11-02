@@ -12,7 +12,7 @@ function drawPix(ctx, n, x, y, w, h, flip) {
 function g2canvas(root, W, H) {
   const box = document.createElement('div'); box.className = 'g2box'; root.appendChild(box);
   const cv = document.createElement('canvas'), dpr = Math.min(2, devicePixelRatio || 1);
-  cv.width = W * dpr; cv.height = H * dpr; box.appendChild(cv);
+  cv.width = W * dpr; cv.height = H * dpr; cv.style.setProperty('--ar', W / H); box.appendChild(cv);
   const ctx = cv.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   // pointer position in logical canvas units
   const at = e => { const r = cv.getBoundingClientRect(); return { x: (e.clientX - r.left) * W / r.width, y: (e.clientY - r.top) * H / r.height }; };
@@ -595,4 +595,220 @@ function tossGame(root, api) {
       <p>🌬️ ดูลมจากพัดลมด้านบนด้วย · ลงถังไม่โดนขอบ = <b>SWISH</b> +50 · ครึ่งหลังถังจะเลื่อนไปมา</p>`,
     buttons: [{ label: '🗑️ เริ่มปา!', primary: true, go() { running = true; newThrow(); } }] });
   return { destroy() { removeEventListener('keyup', up); } };
+}
+
+/* =================================================================
+   แอบเล่นมือถือ — hold to slack off on your phone, let go before the boss turns around
+================================================================= */
+function slackGame(root, api) {
+  const W = 720, H = 400, BOSS_Y = 236, ME_X = 360;
+  root.innerHTML = `<div class="hud"><span data-k="hp"></span><span>⭐ <b data-k="sc">0</b></span><span>⏱ <b data-k="t">0</b> วิ</span><span data-k="mul" class="muted"></span>
+    <span class="muted g2tip">กด Space / แตะจอค้าง = แอบเล่นมือถือ · ปล่อย = ทำงาน</span></div>`;
+  const { cv, ctx } = g2canvas(root, W, H), q = k => root.querySelector(`[data-k="${k}"]`), fx = makeFX();
+  let who = store.get('runWho', 'amelia'); if (!MI_PEOPLE.includes(who) || who === 'bob') who = 'amelia';
+  let holding = false, slack = false, streak = 0, score = 0, strikes = 0, time = 0, level = 1, bored = 0, doze = 0, close = 0, running = false, over = false, t = 0, scold = 0, likeT = 0;
+  // the boss patrols the back of the room; 'warn' is the fair tell before 'look'
+  const boss = { x: 140, dir: 1, st: 'walk', t: 2.5, fake: false };
+  const mate = { x: -60, on: false, cool: 12 };   // the snitch coworker, from level 3
+  const lookDur = () => 1.1 + rnd() * (1 + level * .25), warnDur = () => Math.max(.28, .8 - level * .06), speed = () => 60 + level * 14;
+  function hud() { q('hp').textContent = '❤️'.repeat(3 - strikes) + '🖤'.repeat(strikes); q('sc').textContent = fmt(Math.floor(score)); q('t').textContent = Math.floor(time);
+    const m = mult(); q('mul').textContent = slack && m > 1 ? `📱 x${m}` : bored > 70 ? '😪 ง่วงแล้ว…' : ''; }
+  const mult = () => Math.min(5, 1 + Math.floor(streak / 2) * .5);
+  function caught(by) {
+    strikes++; slack = false; streak = 0; bored = 0; doze = 0; scold = 1.4; boss.st = 'pause'; boss.t = 1.6; api.sfx('bad');
+    fx.shake(10, .4); fx.flash(PAL.red, .3); fx.hitstop(.12);
+    fx.text(boss.x, BOSS_Y - 120, by === 'mate' ? 'ฟ้องหัวหน้า!' : 'เห็นนะ!!', { color: PAL.red, size: 34, life: 1.2 });
+    fx.burst(ME_X, 250, { n: 14, colors: [PAL.red, '#fff'], speed: 260, grav: 300, size: 6, life: .5 });
+    hud();
+    if (strikes >= 3 && !over) { over = true; running = false; api.after(1.4, () => api.end(Math.floor(score), `รอด ${Math.floor(time)} วิ · เฉียดฉิว ${close} ครั้ง`, false, { secs: Math.floor(time), close })); }
+  }
+  const down = () => { if (running && !api.paused) holding = true; }, up = () => { holding = false; };
+  cv.addEventListener('pointerdown', e => { e.preventDefault(); down(); }); addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
+  api.onKey(e => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); down(); } });
+  const keyUp = e => { if (e.key === ' ' || e.key === 'Enter') up(); }; addEventListener('keyup', keyUp);
+  function stepBoss(d) {
+    boss.t -= d;
+    if (boss.st === 'walk') {
+      boss.x += boss.dir * speed() * d; if (boss.x < 90 || boss.x > 630) { boss.dir *= -1; boss.x = Math.max(90, Math.min(630, boss.x)); }
+      if (boss.t <= 0) { if (rnd() < .65) { boss.st = 'warn'; boss.t = warnDur(); boss.fake = rnd() < Math.min(.4, .1 + level * .05); api.sfx('tick'); } else { boss.st = 'pause'; boss.t = .5 + rnd(); } }
+    } else if (boss.st === 'pause') { if (boss.t <= 0) { boss.st = 'walk'; boss.t = 1 + rnd() * 2.5; } }
+    else if (boss.st === 'warn') {
+      if (boss.t <= 0) { if (boss.fake) { boss.st = 'walk'; boss.t = .8 + rnd() * 2; boss.dir = rnd() < .5 ? 1 : -1; fx.text(boss.x, BOSS_Y - 110, 'หลอก!', { color: PAL.muted, size: 18 }); }
+        else { boss.st = 'look'; boss.t = lookDur(); } }
+    } else if (boss.st === 'look') { if (boss.t <= 0) { boss.st = 'walk'; boss.t = 1 + rnd() * 2.5; boss.dir = rnd() < .5 ? 1 : -1; } }
+  }
+  function draw() {
+    fx.pre(ctx);
+    officeBG(ctx, W, H, 270, { wall: 'wall_mint', floor: 'floor_herring', windows: [['window_big', 110, 40, 3], ['noticeboard', 360, 70, 3], ['window_big', 610, 40, 3]] });
+    drawPixAt(ctx, 'plant_pot', 40, 270, 3); drawPixAt(ctx, 'shop_shelf', 680, 270, 3);
+    // boss in the back
+    const dirB = boss.st === 'look' || scold > 0 ? 'down' : boss.st === 'warn' ? (Math.floor(t * 14) % 2 ? 'down' : boss.dir > 0 ? 'right' : 'left') : boss.dir > 0 ? 'right' : 'left';
+    drawChar(ctx, 'bob', boss.st === 'walk' ? 'run' : 'idle_anim', dirB, boss.st === 'walk' ? t * .55 : t, boss.x, BOSS_Y + 34, 3, { sx: scold > 0 ? 1.1 : 1, sy: scold > 0 ? 1.1 : 1 });
+    if (boss.st === 'warn') txt(ctx, '?', boss.x + 22, BOSS_Y - 70, 30, PAL.orange, 'center', 800);
+    if (boss.st === 'look') { txt(ctx, '👀', boss.x, BOSS_Y - 76, 22); }
+    if (mate.on) drawChar(ctx, 'alex', 'run', 'right', t, mate.x, BOSS_Y + 40, 3);
+    // my desk: back to the camera while working, turned around with the phone while slacking
+    drawPixAt(ctx, 'pc_desk', ME_X, 318, 4);
+    const sleepy = doze > 0;
+    if (slack && !sleepy) drawChar(ctx, who, 'phone', 'down', t, ME_X, 404, 5, { sy: 1 + Math.sin(t * 6) * .01 });
+    else drawChar(ctx, who, 'idle_anim', sleepy ? 'down' : 'up', t, ME_X, 404, 5, { rot: sleepy ? Math.sin(t * 3) * .12 : 0 });
+    if (sleepy) txt(ctx, 'Zzz', ME_X + 50, 250 - Math.sin(t * 3) * 6, 24, PAL.blue, 'center', 800);
+    // phone screen bubble
+    if (slack) {
+      rrect(ctx, ME_X + 60, 230, 66, 100, 10, PAL.ink); rrect(ctx, ME_X + 65, 236, 56, 86, 6, '#bfe9ff');
+      for (let i = 0; i < 4; i++) { const y = 240 + ((i * 24 + t * 50) % 86); if (y < 316) drawPixAt(ctx, pxa(i % 2 ? 'heart' : 'spark'), ME_X + 80 + (i % 3) * 14, y + 8, 2); }
+    }
+    // meters: boredom
+    rrect(ctx, 20, H - 30, 160, 14, 6, '#fff', PAL.ink); rrect(ctx, 21, H - 29, 158 * bored / 100, 12, 5, bored > 70 ? PAL.red : PAL.blue);
+    txt(ctx, 'ความเบื่อ', 100, H - 42, 13, PAL.ink, 'center', 700);
+    // danger tint when the boss is looking
+    if (boss.st === 'look') { ctx.fillStyle = `rgba(226,48,48,${.12 + Math.sin(t * 12) * .06})`; ctx.fillRect(0, 0, W, 10); ctx.fillRect(0, H - 10, W, 10); ctx.fillRect(0, 0, 10, H); ctx.fillRect(W - 10, 0, 10, H); }
+    fx.post(ctx, W, H);
+  }
+  api.loop(dt => {
+    const d = fx.step(dt); t += dt; scold = Math.max(0, scold - dt);
+    if (running && d) {
+      time += d; level = 1 + Math.floor(time / 20);
+      stepBoss(d);
+      // the snitch walks across from level 3; slacking while she passes behind you = reported
+      if (level >= 3) { if (!mate.on && (mate.cool -= d) <= 0) { mate.on = true; mate.x = -40; }
+        if (mate.on) { mate.x += 150 * d; if (slack && Math.abs(mate.x - ME_X) < 40 && scold <= 0) { mate.on = false; mate.cool = 10 + rnd() * 8; caught('mate'); }
+          if (mate.x > W + 40) { mate.on = false; mate.cool = 8 + rnd() * 10; } } }
+      const was = slack;
+      if (doze > 0) { doze -= d; slack = true; if (doze <= 0) { slack = holding; bored = 30; } }
+      else slack = holding && scold <= 0;
+      if (was && !slack && boss.st === 'warn' && !boss.fake) { close++; score += 20; fx.text(ME_X, 200, 'เฉียดฉิว! +20', { color: PAL.yel, size: 24 }); api.sfx('good'); }
+      if (slack) { streak += d; score += 10 * mult() * d; bored = Math.max(0, bored - 30 * d);
+        if ((likeT -= d) <= 0) { likeT = .45; fx.burst(ME_X + 93, 236, { n: 2, colors: [PAL.pink, PAL.yel], speed: 90, grav: -80, size: 5, shape: 'star', life: .6 }); }
+        if (boss.st === 'look' && scold <= 0) caught('boss'); }
+      else { streak = 0; bored = Math.min(100, bored + (8 + level) * d); if (bored >= 100 && doze <= 0) { doze = 1.6; fx.text(ME_X, 200, 'เผลอหลับ!', { color: PAL.blue, size: 26 }); api.sfx('bad'); } }
+      hud();
+    }
+    draw();
+  });
+  hud(); draw();
+  api.intro({ how: `<p>📱 งานน่าเบื่อ… <b>กดค้าง</b> (Space หรือแตะจอ) เพื่อแอบเล่นมือถือ ยิ่งเล่นต่อเนื่องคะแนนยิ่งคูณ</p>
+      <p>👔 หัวหน้าเดินไปมาอยู่ด้านหลัง ถ้ามี <b>?</b> ขึ้นหัว = กำลังจะหันมา <b>ปล่อยมือให้ทัน!</b> (ปล่อยตอนเสี้ยววินาทีสุดท้าย = เฉียดฉิว +20)</p>
+      <p>😪 ทำงานนานเกินจนแถบความเบื่อเต็ม = เผลอหลับ · โดนจับได้ 3 ครั้ง = จบ · ด่านหลังๆ มีเพื่อนขี้ฟ้องเดินผ่านด้วย</p>
+      <p>👇 เลือกตัวละคร</p>`,
+    buttons: MI_PEOPLE.filter(c => c !== 'bob').map(c => ({ label: `<img class="pxi" src="assets/mi/${c}_phone.png" height="44" alt="${c}" style="display:block">`, primary: c === who,
+      go() { who = c; store.set('runWho', c); running = true; } })) });
+  return { destroy() { removeEventListener('pointerup', up); removeEventListener('keyup', keyUp); } };
+}
+
+/* =================================================================
+   ขบวนไปกินข้าว — snake through the office: pick up coworkers, then lead the line out the door to lunch
+================================================================= */
+function congaGame(root, api) {
+  const C = 32, COLS = 20, ROWS = 13, W = COLS * C, H = ROWS * C, TOP = 2;   // rows 0-1 are the back wall
+  const FURN = [{ n: 'pc_desk', w: 2, h: 1 }, { n: 'plant_pot', w: 1, h: 1 }, { n: 'sofa_grey', w: 3, h: 1 }, { n: 'table_light', w: 2, h: 2 }, { n: 'cabinet_wood', w: 2, h: 1 },
+    { n: 'fridge', w: 1, h: 1 }, { n: 'shop_shelf', w: 2, h: 1 }, { n: 'sofa_red', w: 2, h: 1 }, { n: 'tree', w: 1, h: 1 }];
+  const ROOMS = [['wall_mint', 'floor_herring'], ['wall_yellow', 'floor_wood'], ['wall_pink', 'floor_teal'], ['wall_grey', 'floor_yellow'], ['wall_beige', 'floor_brick']];
+  const DOOR = [9, 10];
+  root.innerHTML = `<div class="hud"><span>🍱 ด่าน <b data-k="lv">1</b></span><span>👥 <b data-k="got">0</b>/<b data-k="need">0</b></span><span>⭐ <b data-k="sc">0</b></span>
+    <span class="muted g2tip">ลูกศร / WASD / ปัดจอ = เลี้ยว · เก็บเพื่อนให้ครบ แล้วพาออกประตูไปกินข้าว</span></div>`;
+  const { cv, ctx } = g2canvas(root, W, H), q = k => root.querySelector(`[data-k="${k}"]`), fx = makeFX();
+  let who = store.get('runWho', 'adam'); if (!MI_PEOPLE.includes(who)) who = 'adam';
+  let level = 0, score = 0, snake = [], dir = [1, 0], queue = [], blocked = new Set(), furn = [], pick1 = null, cake = null, need = 0, got = 0, doorOpen = false;
+  let acc = 0, tick = .18, running = false, over = false, t = 0, room = ROOMS[0], clearing = 0, total = 0, go = false;   // go: the line waits for the first turn
+  const key = (x, y) => x + ',' + y, free = (x, y) => x >= 0 && x < COLS && y >= TOP && y < ROWS && !blocked.has(key(x, y));
+  function hud() { q('lv').textContent = level; q('got').textContent = got; q('need').textContent = need; q('sc').textContent = fmt(score); }
+  function layout() {
+    for (let tries = 0; tries < 40; tries++) {
+      blocked = new Set(); furn = [];
+      const n = Math.min(12, 3 + level);
+      for (let i = 0; i < n * 3 && furn.length < n; i++) {
+        const f = pick(rnd, FURN), x = Math.floor(rnd() * (COLS - f.w)), y = TOP + 1 + Math.floor(rnd() * (ROWS - TOP - f.h - 1));
+        let ok = true; for (let a = -1; a <= f.w; a++) for (let b = -1; b <= f.h; b++) if (blocked.has(key(x + a, y + b))) ok = false;
+        if (y + f.h - 1 >= 10 && x <= 6) ok = false;   // keep the start corridor clear
+        if (!ok) continue; furn.push({ ...f, x, y }); for (let a = 0; a < f.w; a++) for (let b = 0; b < f.h; b++) blocked.add(key(x + a, y + b));
+      }
+      // every free cell (and the door) must be reachable from the start
+      const seen = new Set([key(2, 11)]), st = [[2, 11]];
+      while (st.length) { const [x, y] = st.pop(); for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const k = key(x + dx, y + dy); if (!seen.has(k) && free(x + dx, y + dy)) { seen.add(k); st.push([x + dx, y + dy]); } } }
+      let cells = 0; for (let y = TOP; y < ROWS; y++) for (let x = 0; x < COLS; x++) if (free(x, y)) cells++;
+      if (seen.size === cells) return;
+    }
+  }
+  function spawnPick() {
+    for (let i = 0; i < 200; i++) { const x = Math.floor(rnd() * COLS), y = TOP + Math.floor(rnd() * (ROWS - TOP));
+      if (free(x, y) && !snake.some(s => s.x === x && s.y === y) && !(cake && cake.x === x && cake.y === y)) { pick1 = { x, y, who: pick(rnd, MI_PEOPLE), pop: 1 }; return; } }
+  }
+  function startLevel() {
+    level++; room = ROOMS[(level - 1) % ROOMS.length]; layout(); need = 3 + level * 2; got = 0; doorOpen = false; cake = null;
+    snake = [{ x: 3, y: 11, px: 2, py: 11, who }, { x: 2, y: 11, px: 1, py: 11, who: null }].slice(0, 1); dir = [1, 0]; queue = [];
+    tick = Math.max(.08, .19 - level * .012); acc = 0; go = false; spawnPick(); hud();
+    fx.text(W / 2, H / 2, `ด่าน ${level} — เก็บเพื่อน ${need} คน`, { color: PAL.yel, size: 28, life: 1.6, rise: 10 });
+  }
+  function die(msg) {
+    over = true; running = false; api.sfx('bad'); fx.shake(10, .4); fx.flash(PAL.red, .3); fx.hitstop(.1);
+    fx.text(W / 2, H / 2, msg, { color: PAL.red, size: 30, life: 1.4 });
+    api.after(1.4, () => api.end(score, `ถึงด่าน ${level} · พาเพื่อนไปกินข้าว ${total} คน`, false, { level, total }));
+  }
+  function turn(dx, dy) { if (!go) { go = true; dir = [dx, dy]; queue = []; return; } const last = queue.length ? queue[queue.length - 1] : dir; if (last[0] === -dx && last[1] === -dy || last[0] === dx && last[1] === dy) return; if (queue.length < 2) queue.push([dx, dy]); }
+  function step() {
+    if (queue.length) dir = queue.shift();
+    const h = snake[0], nx = h.x + dir[0], ny = h.y + dir[1];
+    // the open door is in the wall right above the playfield
+    if (doorOpen && ny === TOP - 1 && DOOR.includes(nx)) {
+      const bonus = got * 10 * level + 100; score += bonus; total += got; clearing = 1.2; api.sfx('level');
+      fx.text(W / 2, H / 2 - 30, `ไปกินข้าว! +${bonus}`, { color: PAL.green, size: 32, life: 1.4 }); fx.burst(nx * C, TOP * C, { n: 40, colors: CONFETTI, speed: 360, grav: 500, size: 7, shape: 'paper', life: 1.2 }); fx.flash('#fff', .2);
+      hud(); return;
+    }
+    if (!free(nx, ny)) return die(ny < TOP ? 'ชนผนัง!' : 'ชนโต๊ะ!');
+    if (snake.slice(0, -1).some(s => s.x === nx && s.y === ny)) return die('ชนขบวนตัวเอง!');
+    const grow = pick1 && pick1.x === nx && pick1.y === ny;
+    for (let i = snake.length - 1; i >= 0; i--) { const s = snake[i]; s.px = s.x; s.py = s.y; if (i > 0) { s.x = snake[i - 1].x; s.y = snake[i - 1].y; } }
+    h.x = nx; h.y = ny;
+    if (grow) {
+      const tail = snake[snake.length - 1]; snake.push({ x: tail.px, y: tail.py, px: tail.px, py: tail.py, who: pick1.who, pop: 1 });
+      got++; const p = 10 * level; score += p; api.sfx('good');
+      fx.text(nx * C + C / 2, ny * C - 10, `+${p}`, { color: PAL.yel, size: 22 }); fx.burst(nx * C + C / 2, ny * C + C / 2, { n: 14, colors: CONFETTI, speed: 220, grav: 300, size: 5, shape: 'paper', life: .7 });
+      if (got >= need && !doorOpen) { doorOpen = true; pick1 = null; fx.text(W / 2, 90, '🚪 ประตูเปิดแล้ว! พาไปกินข้าว', { color: PAL.green, size: 24, life: 1.6, rise: 10 }); fx.flash(PAL.yel, .2); api.sfx('level'); }
+      else spawnPick();
+      if (!cake && rnd() < .25) for (let i = 0; i < 50; i++) { const x = Math.floor(rnd() * COLS), y = TOP + Math.floor(rnd() * (ROWS - TOP)); if (free(x, y) && !snake.some(s => s.x === x && s.y === y)) { cake = { x, y, t: 6 }; break; } }
+      hud();
+    }
+    if (cake && cake.x === nx && cake.y === ny) { score += 30 * level; fx.text(nx * C + C / 2, ny * C - 10, `🍰 +${30 * level}`, { color: PAL.pink, size: 22 }); fx.burst(nx * C + C / 2, ny * C + C / 2, { n: 10, colors: [PAL.yel, '#fff'], speed: 200, grav: 0, size: 6, shape: 'star', life: .5 }); api.sfx('good'); cake = null; hud(); }
+  }
+  api.onKey(e => { const m = { ArrowLeft: [-1, 0], a: [-1, 0], ArrowRight: [1, 0], d: [1, 0], ArrowUp: [0, -1], w: [0, -1], ArrowDown: [0, 1], s: [0, 1] }[e.key]; if (m && running) { e.preventDefault(); turn(...m); } });
+  let sw = null;
+  cv.addEventListener('pointerdown', e => { sw = [e.clientX, e.clientY]; });
+  cv.addEventListener('pointerup', e => { if (!sw || !running) return; const dx = e.clientX - sw[0], dy = e.clientY - sw[1]; sw = null; if (Math.max(Math.abs(dx), Math.abs(dy)) < 20) return; Math.abs(dx) > Math.abs(dy) ? turn(Math.sign(dx), 0) : turn(0, Math.sign(dy)); });
+  g2pad(root, [['◀', () => running && turn(-1, 0)], ['▲', () => running && turn(0, -1)], ['▼', () => running && turn(0, 1)], ['▶', () => running && turn(1, 0)]]);
+  const dname = (dx, dy) => dx > 0 ? 'right' : dx < 0 ? 'left' : dy < 0 ? 'up' : 'down';
+  function draw() {
+    fx.pre(ctx);
+    const [wall, floor] = room;
+    officeBG(ctx, W, H, TOP * C, { wall, floor, k: 2, windows: [['window_big', 120, 6, 2], ['pic_land', 230, 14, 2], ['window_big', 520, 6, 2], ['world_map', 420, 12, 2]] });
+    // door to the canteen
+    const dx0 = DOOR[0] * C;
+    if (doorOpen) { ctx.fillStyle = PAL.ink; ctx.fillRect(dx0, 6, 64, TOP * C - 6); ctx.fillStyle = `rgba(255,210,63,${.5 + Math.sin(t * 8) * .3})`; ctx.fillRect(dx0 + 4, 10, 56, TOP * C - 10);
+      txt(ctx, 'โรงอาหาร', dx0 + 32, 26, 13, PAL.ink, 'center', 800); txt(ctx, '▲', dx0 + 32, 48 - Math.abs(Math.sin(t * 6)) * 6, 18, PAL.ink, 'center', 800); }
+    else drawPixAt(ctx, 'door_double', dx0 + 32, TOP * C, 2);
+    // everything with a y gets drawn back-to-front
+    const a = Math.min(1, acc / tick), list = [];
+    for (const f of furn) list.push({ y: f.y + f.h, draw: () => drawPixAt(ctx, f.n, (f.x + f.w / 2) * C, (f.y + f.h) * C, 2) });
+    if (pick1) list.push({ y: pick1.y + 1, draw: () => { drawChar(ctx, pick1.who, 'idle_anim', 'down', t, pick1.x * C + C / 2, (pick1.y + 1) * C, 2, { sx: 1 + pick1.pop * .3, sy: 1 - pick1.pop * .2 }); txt(ctx, '🙋', pick1.x * C + C / 2 + 14, pick1.y * C - 26 - Math.abs(Math.sin(t * 5)) * 4, 16); } });
+    if (cake) list.push({ y: cake.y + 1, draw: () => drawPixAt(ctx, 'cake_straw', cake.x * C + C / 2, (cake.y + 1) * C - 4 - Math.abs(Math.sin(t * 6)) * 3, 3, { alpha: cake.t < 2 ? (Math.floor(t * 8) % 2 ? 1 : .3) : 1 }) });
+    snake.forEach((s, i) => { const x = (s.px + (s.x - s.px) * a) * C + C / 2, y = (s.py + (s.y - s.py) * a + 1) * C, mdx = s.x - s.px, mdy = s.y - s.py;
+      list.push({ y: s.py + (s.y - s.py) * a + 1 + .01, draw: () => drawChar(ctx, s.who || who, over ? 'idle_anim' : 'run', mdx || mdy ? dname(mdx, mdy) : 'right', t + i * .1, x, y, 2,
+        { rot: over ? (i % 2 ? .5 : -.5) : 0, sx: 1 + (s.pop || 0) * .3, sy: 1 - (s.pop || 0) * .25 }) }); });
+    list.sort((p, q2) => p.y - q2.y).forEach(o => o.draw());
+    if (running && !go && clearing <= 0) { rrect(ctx, W / 2 - 150, H - 70, 300, 40, 12, 'rgba(255,255,255,.92)', PAL.ink); txt(ctx, 'กดลูกศร / ปัดจอ เพื่อออกเดิน', W / 2, H - 50, 16, PAL.ink, 'center', 700); }
+    fx.post(ctx, W, H);
+  }
+  api.loop(dt => {
+    const d = fx.step(dt); t += dt;
+    if (pick1) pick1.pop = Math.max(0, pick1.pop - dt * 4); for (const s of snake) if (s.pop) s.pop = Math.max(0, s.pop - dt * 4);
+    if (cake && running && (cake.t -= dt) <= 0) cake = null;
+    if (clearing > 0) { clearing -= dt; if (clearing <= 0 && running) startLevel(); }
+    else if (running && d && go) { acc += d; while (acc >= tick && running && clearing <= 0) { acc -= tick; step(); } }
+    draw();
+  });
+  hud(); draw();
+  api.intro({ how: `<p>🍱 เที่ยงแล้ว! เดินไปชวนเพื่อนที่ยกมือ 🙋 มาต่อแถว ครบจำนวนแล้ว <b>ประตูโรงอาหารด้านบนจะเปิด</b> — พาขบวนเดินออกไปเพื่อผ่านด่าน</p>
+      <p>⌨️ ลูกศร / WASD · มือถือ: ปัดจอหรือใช้ปุ่มใต้จอ · 🍰 เค้กโผล่มาแป๊บเดียว เก็บได้คะแนนพิเศษ</p>
+      <p>⚠️ ชนโต๊ะ ผนัง หรือชนขบวนตัวเอง = จบ · ด่านยิ่งสูง เฟอร์นิเจอร์ยิ่งเยอะ เดินยิ่งเร็ว</p>`,
+    buttons: [{ label: '🍱 ไปกินข้าว!', primary: true, go() { running = true; startLevel(); } }] });
 }

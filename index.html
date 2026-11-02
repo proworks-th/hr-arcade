@@ -78,8 +78,10 @@ a.btn{text-decoration:none;display:inline-flex;align-items:center;gap:6px;color:
 .tips b{background:#ffe9a8;padding:0 4px;border-radius:4px}
 
 /* stage & shared */
-#stage{max-width:1100px;margin:0 auto;padding:12px 16px 100px}
+#stage{--chrome:180px;max-width:1680px;margin:0 auto;padding:12px 16px 40px}
 .game{position:relative}
+#stage:has(.g2pad){--chrome:236px}
+@media (pointer:coarse){#stage{--chrome:250px}#stage:has(.g2pad){--chrome:262px}}
 .hud{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;background:#fff;border:3px solid var(--line);border-radius:14px;padding:8px 12px;margin-bottom:12px;box-shadow:0 4px 0 var(--line);font-size:16px}
 .hud b{font-size:19px}
 .timer{flex:1;min-width:90px;height:14px;border:2px solid var(--line);border-radius:8px;overflow:hidden;background:#eee}
@@ -105,7 +107,7 @@ a.btn{text-decoration:none;display:inline-flex;align-items:center;gap:6px;color:
 
 /* spot the difference */
 .spot-tip{font-size:14px;color:var(--muted);margin:-4px 0 10px}
-.spot-wrap{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.spot-wrap{display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:calc((100dvh - var(--chrome) - 30px) * 8 / 3 + 12px);margin:0 auto}
 @media (max-width:720px){.spot-wrap{grid-template-columns:1fr}}
 .spot-panel{position:relative;aspect-ratio:4/3;container-type:inline-size;border:3px solid var(--line);border-radius:14px;overflow:hidden;cursor:crosshair;user-select:none;-webkit-user-select:none;touch-action:manipulation;
   background:#d3f6ee}
@@ -120,7 +122,7 @@ a.btn{text-decoration:none;display:inline-flex;align-items:center;gap:6px;color:
 
 /* solo games in solo-games.js: fixed-size canvas scaled to fit, button pad under it */
 .g2box{display:flex;justify-content:center}
-.g2box canvas{display:block;width:auto;height:auto;max-width:100%;max-height:calc(100dvh - 230px);border:3px solid var(--line);border-radius:14px;box-shadow:0 6px 0 var(--line);touch-action:none;background:#fdf3e6}
+.g2box canvas{display:block;width:min(100%,calc((100dvh - var(--chrome)) * var(--ar,1.8)));height:auto;aspect-ratio:var(--ar,1.8);border:3px solid var(--line);border-radius:14px;box-shadow:0 6px 0 var(--line);touch-action:none;background:#fdf3e6}
 .g2pad{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:12px}
 .g2pad .btn small{font-size:12px;color:var(--muted)}
 @media (max-width:720px){.g2tip{display:none}}
@@ -183,7 +185,7 @@ a.btn{text-decoration:none;display:inline-flex;align-items:center;gap:6px;color:
 .pt-colors{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}.pt-colors .btn{padding:4px 6px}
 
 /* runner */
-.run-box canvas{display:block;width:100%;max-width:980px;margin:0 auto;aspect-ratio:800/360;border:3px solid var(--line);border-radius:14px;box-shadow:0 6px 0 var(--line);touch-action:none;cursor:pointer;background:#cfeeff;user-select:none;-webkit-user-select:none}
+.run-box canvas{display:block;width:min(100%,calc((100dvh - var(--chrome)) * 800 / 360));margin:0 auto;aspect-ratio:800/360;border:3px solid var(--line);border-radius:14px;box-shadow:0 6px 0 var(--line);touch-action:none;cursor:pointer;background:#cfeeff;user-select:none;-webkit-user-select:none}
 .hud-ic{width:22px;height:22px;vertical-align:-5px}
 .run-tip{font-size:13px}
 @media (max-width:720px){.run-tip{display:none}}
@@ -192,7 +194,7 @@ a.btn{text-decoration:none;display:inline-flex;align-items:center;gap:6px;color:
 /* whack */
 .legend{text-align:center;margin:-2px 0 12px;font-size:15px}
 .legend .e{font-family:var(--emoji)}
-.wgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;max-width:min(520px,calc(100dvh - 260px));margin:0 auto}
+.wgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;max-width:min(760px,calc(100dvh - var(--chrome) - 40px));margin:0 auto}
 .hole{aspect-ratio:1;background:linear-gradient(#e6faf5,#c8eee5);border:3px solid var(--line);border-radius:18px;position:relative;overflow:hidden;cursor:pointer;touch-action:manipulation;user-select:none;-webkit-user-select:none;
   box-shadow:inset 0 -16px 0 rgba(0,0,0,.25)}
 .hole::after{content:"";position:absolute;left:0;right:0;bottom:0;height:26%;background:linear-gradient(#e0a877 0 12%,#c98b5e 12% 80%,#9b6a45 80%);border-top:3px solid var(--line);z-index:2}
@@ -218,7 +220,7 @@ a.btn{text-decoration:none;display:inline-flex;align-items:center;gap:6px;color:
 
 /* stack */
 .stack-box{display:flex;justify-content:center}
-.stack-box canvas{display:block;height:min(560px,calc(100dvh - 210px),calc((100vw - 40px) * 1.5556));aspect-ratio:360/560;border:3px solid var(--line);border-radius:14px;box-shadow:0 6px 0 var(--line);touch-action:manipulation;cursor:pointer;background:#fde7c8}
+.stack-box canvas{display:block;height:min(calc(100dvh - var(--chrome)),calc((100vw - 40px) * 1.5556));aspect-ratio:360/560;border:3px solid var(--line);border-radius:14px;box-shadow:0 6px 0 var(--line);touch-action:manipulation;cursor:pointer;background:#fde7c8}
 
 /* boss screen (fake Excel) */
 #boss{position:fixed;inset:0;z-index:1000;background:#fff;font-family:"Segoe UI",Tahoma,sans-serif;font-size:13px;color:#222;display:flex;flex-direction:column}
@@ -265,7 +267,7 @@ a.btn{text-decoration:none;display:inline-flex;align-items:center;gap:6px;color:
 <div id="toast"></div>
 <div id="boss" hidden></div>
 
-<script src="solo-games.js?v=3"></script>
+<script src="solo-games.js?v=6"></script>
 <script>
 'use strict';
 /* ---------- utils ---------- */
@@ -310,7 +312,7 @@ $('#muteBtn').onclick=()=>{muted=!muted;store.set('muted',muted);renderMute()};
 
 /* ---------- online services (online.js, Firebase): ranking, presence, feed ---------- */
 let onlineMod=null;
-const loadRank=()=>onlineMod||(onlineMod=import('./online.js?v=3'));
+const loadRank=()=>onlineMod||(onlineMod=import('./online.js?v=4'));
 const loadOnline=loadRank;
 const PIX_AVAS=['p_office','p_woffice','p_whealth','p_tech','p_cat','p_dog'];
 const myAva=()=>{const a=store.get('partyAva','p_office');return PIX_AVAS.includes(a)?a:'p_office'};
@@ -338,6 +340,8 @@ const MISSIONS=[
   {id:'stamp10',t:'ปั๊มตรา PERFECT 10 ครั้งในรอบเดียว',g:'stamp',ok:e=>e.game==='stamp'&&e.st.perfect>=10},
   {id:'barista8',t:'บาริสต้า เสิร์ฟถูก 8 แก้ว',g:'barista',ok:e=>e.game==='barista'&&e.st.served>=8},
   {id:'toss5',t:'ปากระดาษลงถัง 5 ลูก',g:'toss',ok:e=>e.game==='toss'&&e.st.made>=5},
+  {id:'slack45',t:'แอบเล่นมือถือรอดจากหัวหน้า 45 วินาที',g:'slack',ok:e=>e.game==='slack'&&e.st.secs>=45},
+  {id:'conga2',t:'พาขบวนไปกินข้าวผ่าน 2 ด่าน',g:'conga',ok:e=>e.game==='conga'&&e.st.level>=3},
 ];
 const thaiDay=(t=Date.now())=>new Date(t+7*3600e3).toISOString().slice(0,10);
 function todayMissions(){
@@ -365,7 +369,7 @@ window.addEventListener('hra-party',e=>recordMission({game:'party',kind:e.detail
 {const q=store.get('pendingMissions',[]);if(q.length){store.set('pendingMissions',[]);setTimeout(()=>q.forEach(recordMission),0)}}
 
 /* ---------- hub live panel renderers (data arrives from Firebase watchers) ---------- */
-const ACT={hub:'อยู่หน้าแรก',party:'อยู่ห้องปาร์ตี้',party3d:'🧊 อยู่ห้อง 3D',busy:'🙈 แอบทำงาน',spot:'🔍 จับผิดภาพ',run:'🏃 วิ่งไปตอกบัตร',whack:'☎️ สายด่วน',stack:'📚 ซ้อนแฟ้ม'};
+const ACT={hub:'อยู่หน้าแรก',party:'อยู่ห้องปาร์ตี้',party3d:'🧊 อยู่ห้อง 3D',busy:'🙈 แอบทำงาน',spot:'🔍 จับผิดภาพ',run:'🏃 วิ่งไปตอกบัตร',whack:'☎️ สายด่วน',stack:'📚 ซ้อนแฟ้ม',tetris:'🖨️ Printer Tetris',stamp:'🔏 ปั๊มตรา',barista:'☕ บาริสต้า',toss:'🗑️ ปากระดาษ',slack:'📱 แอบเล่นมือถือ',conga:'🍱 ขบวนไปกินข้าว'};
 let onlineList=null,feedList=null;
 function renderOnline(){
   const el=document.querySelector('[data-k=onlist]');if(!el)return;
@@ -966,6 +970,8 @@ const GAMES=[
   {id:'stamp',title:'ปั๊มตรารัวๆ',emoji:'🔏',img:'assets/mi/papers.png',color:'#ffd6d6',desc:'ปั๊ม APPROVED ให้ตรงจังหวะสายพาน',time:'1–2 นาที',mount:stampGame},
   {id:'barista',title:'บาริสต้าพักเที่ยง',emoji:'☕',img:'assets/mi/cake_straw.png',color:'#f3dcc0',desc:'ผสมเครื่องดื่มตามออเดอร์ให้ทัน',time:'90 วินาที',mount:baristaGame},
   {id:'toss',title:'ปากระดาษลงถัง',emoji:'🗑️',img:'assets/mi/bin.png',color:'#dff3e4',desc:'ปาก้อนกระดาษ ดูลมพัดลมด้วย',time:'1–2 นาที',mount:tossGame},
+  {id:'slack',title:'แอบเล่นมือถือ',emoji:'📱',img:'assets/mi/amelia_phone.png',color:'#ffe0f0',desc:'กดค้างแอบเล่นมือถือ ปล่อยให้ทันก่อนหัวหน้าหันมา',time:'1–3 นาที',mount:slackGame},
+  {id:'conga',title:'ขบวนไปกินข้าว',emoji:'🍱',img:'assets/mi/adam_down.png',color:'#e0f4d6',desc:'เก็บเพื่อนต่อแถว พาออกประตูไปโรงอาหาร',time:'2–4 นาที',mount:congaGame},
   {id:'stack',title:'ซ้อนแฟ้มเสียดฟ้า',emoji:'📚',img:'assets/mi/books_desk.png',color:'#b8f2c9',desc:'แตะเดียวจบ ซ้อนแฟ้มให้สูงที่สุด ยิ่งเป๊ะยิ่งไปไกล',time:'1–2 นาที',unit:'ชั้น',mount:stackGame},
 ];
 let feedOpen=false;
