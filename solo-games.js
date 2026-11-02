@@ -2,7 +2,7 @@
 // at run time it uses the hub's globals: fmt, rnd, pick, toast. Each game is mount(root, api) like the others.
 'use strict';
 const PIX = {};
-function pix(n) { if (!PIX[n]) { const i = new Image(); i.src = 'assets/pixel/' + n + '.png'; PIX[n] = i; } return PIX[n]; }
+function pix(n) { if (!PIX[n]) { const i = new Image(); i.src = 'assets/mi/' + n + '.png'; PIX[n] = i; } return PIX[n]; }
 function drawPix(ctx, n, x, y, w, h, flip) {
   const im = pix(n); if (!im.complete || !im.naturalWidth) return;
   ctx.imageSmoothingEnabled = false;
@@ -33,13 +33,15 @@ function rrect(ctx, x, y, w, h, r, fill, stroke) {
 
 /* =================================================================
    Shared look + juice (used by every solo game, incl. the older ones in index.html)
-   One art style: 2dPig Pixel Office sprites drawn at whole-number scale on an office backdrop,
-   plus small pixel icons drawn from strings (PXA) where the pack has none.
+   One art style: LimeZu "Modern Interiors" (free, non-commercial) — characters with real animations,
+   wall/floor tiles and furniture drawn at whole-number scale — plus small pixel icons drawn from strings (PXA).
 ================================================================= */
 const PAL = { ink: '#2b2140', wall: '#fdf3e6', wall2: '#f6e2cb', paper: '#fffdf6', floor: '#c98b5e', floor2: '#b77a50', floorLine: '#8f5f3e',
   pink: '#ff5c8a', yel: '#ffd23f', blue: '#3a86ff', green: '#21c07a', red: '#e23030', orange: '#ff9f1c', muted: '#7a6f8c' };
-const PIX_SZ = {bin_blue:[9,14],bin_green:[9,14],bin_red:[9,14],binder_blue:[11,8],binder_green:[11,8],binder_red:[11,8],boss:[13,21],box:[11,8],cabinet:[24,31],cactus:[9,14],calendar:[17,11],chair:[11,22],chair_blue:[11,22],chair_green:[11,22],chair_grey:[11,22],chair_red:[11,22],chair_white:[11,22],chair_yellow:[11,22],clock:[19,6],coffee:[15,19],cooler:[9,17],desk_l:[40,16],desk_s:[26,16],desktop:[7,11],disk:[8,7],door:[16,31],drawer:[26,20],fax:[15,19],flag:[15,19],flag_in:[12,9],flag_uk:[12,9],flag_us:[12,9],goal:[16,31],laptop:[26,26],memo:[6,9],mug:[8,7],p_cat:[16,13],p_dog:[24,11],p_office:[15,23],p_tech:[19,24],p_whealth:[17,23],p_woffice:[17,23],paper:[6,8],pc:[7,11],pic1:[6,8],pic2:[6,8],pic3:[11,8],plant:[14,19],postbox:[9,17],printer:[9,9],robot:[24,11],shelf:[73,24],snack:[24,31],sofa:[33,15],sofa2:[33,16],sofa_blue:[33,16],sofa_green:[33,16],sofa_grey:[33,15],sofa_orange:[33,16],stamp:[11,8],trash:[9,14],vending:[24,34],whitebox:[10,6],window:[26,21],window2:[26,21]};
-
+const MI_PEOPLE = ['adam', 'alex', 'amelia', 'bob'], MI_DIR = { right: 0, up: 1, left: 2, down: 3 };
+// sprite sizes in pixels (DOM scenes need them before the images load)
+const MI_SZ = {adam_down:[16,23],adam_left:[16,23],adam_phone:[16,23],adam_right:[16,23],adam_up:[16,23],alex_down:[16,22],alex_left:[14,22],alex_phone:[15,22],alex_right:[14,22],alex_up:[16,22],amelia_down:[16,22],amelia_left:[14,22],amelia_phone:[16,22],amelia_right:[14,22],amelia_up:[16,22],armchair_dark:[14,14],armchair_dark2:[14,21],armchair_wood:[14,15],armchair_wood2:[14,21],armchair_wood3:[14,14],armchair_wood4:[14,22],armchair_wood5:[14,21],bench_cream:[30,18],bench_pink:[30,18],bin:[9,13],blackboard:[28,23],board_calendar:[31,21],bob_down:[16,22],bob_left:[13,22],bob_phone:[15,22],bob_right:[13,22],bob_up:[16,22],books_desk:[16,22],books_desk2:[16,22],bookshelf:[32,64],box_wood:[15,13],broom:[16,26],cabinet_glass:[27,32],cabinet_plates:[23,31],cabinet_wood:[27,32],cake:[9,8],cake_cream:[9,8],cake_slice:[9,10],cake_straw:[9,9],cans:[28,23],cans_orange:[25,16],chair_back:[12,22],chair_back2:[12,22],chair_beige:[13,21],chair_beige2:[13,21],chair_dark:[13,21],chair_dark2:[13,21],chair_green:[14,23],chair_grey:[10,21],chair_light:[10,21],chair_red:[13,21],chair_red2:[10,21],chair_red3:[13,21],chair_red_side:[10,21],chair_school:[14,16],chair_side_l:[13,25],chair_side_r:[13,25],chair_white:[13,21],chair_white2:[13,21],chair_white3:[10,21],chair_wood_side:[10,21],crate:[15,13],cushion_blue:[13,13],cushion_yellow:[13,13],desk_book:[28,25],desk_book2:[28,22],desk_drawer:[16,21],desk_pair:[25,23],desk_small:[48,20],door:[14,21],door_double:[32,28],dresser:[25,21],filing:[63,28],floorlamp_beige:[13,33],floorlamp_blue:[15,33],floorlamp_blue2:[15,33],floorlamp_red:[15,24],floorlamp_red2:[15,33],floorlamp_white:[15,25],fridge:[16,31],fridge2:[16,31],fridge_wide:[32,32],fruit_basket:[14,18],fruit_bowl:[14,19],fruit_grape:[14,18],fruit_veg:[15,17],globe:[13,21],globe_blue:[13,21],globe_gold:[13,21],jar:[15,16],jar_gold:[15,16],jar_pot:[15,16],jar_white:[15,16],lamp_beige:[12,16],lamp_beige2:[12,18],lamp_blue:[12,17],lamp_blue2:[12,19],lamp_mini:[9,16],lamp_red:[12,17],lamp_red2:[12,19],lamp_white:[12,18],lamp_white2:[12,20],locker:[15,31],mirror_gold:[12,16],mirror_gold2:[12,16],noticeboard:[26,13],palm:[23,31],papers:[14,32],papers2:[15,32],pc_desk:[32,25],pen:[8,13],pencil_cup:[8,13],pic_aqua:[21,14],pic_bird:[13,15],pic_cat:[21,14],pic_fire:[13,15],pic_fish:[21,14],pic_fishblue:[21,14],pic_flower:[13,15],pic_forest:[21,13],pic_hill:[13,15],pic_land:[28,13],pic_long:[22,7],pic_monster:[13,15],pic_robot:[13,15],pic_sunset:[28,13],pizza:[11,11],plant_pot:[14,23],plant_small:[12,14],rug_blue:[24,18],rug_green:[24,18],rug_lblue:[24,18],shelf_plant:[32,20],shelf_white:[21,31],shop_shelf:[32,34],shop_shelf2:[32,34],sofa_blue_s:[22,58],sofa_brown:[48,26],sofa_brown_s:[22,58],sofa_grey:[48,28],sofa_grey_s:[22,58],sofa_lilac_s:[22,58],sofa_red:[32,26],sofa_white:[48,28],table_light:[38,37],table_wood:[38,37],tree:[18,31],tv:[26,18],vanity:[28,30],vanity2:[28,30],wardrobe:[27,39],wardrobe2:[27,39],wardrobe_glass:[27,27],window_big:[28,21],window_frost:[25,15],window_grey:[25,20],window_red:[25,20],window_slide:[38,25],window_small:[12,16],world_map:[32,19]};
+const WALL_COL = {'wall_beige': '#bcb9a9', 'wall_dwood': '#7e6052', 'wall_grey': '#a9acbc', 'wall_mint': '#d3f6ee', 'wall_pink': '#d18c6b', 'wall_red': '#8f5641', 'wall_wood': '#a2784b', 'wall_yellow': '#f0e8a0'};
 // sprite at its own pixel size x k, anchored bottom-centre at (cx, by); sx/sy squash, rot in radians
 function drawPixAt(ctx, n, cx, by, k, o = {}) {
   const im = typeof n === 'string' ? pix(n) : n;
@@ -47,6 +49,14 @@ function drawPixAt(ctx, n, cx, by, k, o = {}) {
   ctx.save(); ctx.imageSmoothingEnabled = false; ctx.translate(cx, by); if (o.rot) ctx.rotate(o.rot);
   ctx.scale((o.flip ? -1 : 1) * (o.sx || 1), o.sy || 1); if (o.alpha != null) ctx.globalAlpha = o.alpha;
   ctx.drawImage(im, -w / 2, -h, w, h); ctx.restore();
+}
+// animated character: anim = idle_anim | run | sit (6 frames per direction) | phone (9 frames, facing the camera)
+function drawChar(ctx, who, anim, dir, t, cx, by, k, o = {}) {
+  const im = pix('chars/' + who + '_' + anim); if (!im.complete || !im.naturalWidth) return;
+  const per = anim === 'phone' ? 9 : 6, f = o.frame ?? Math.floor(t * (anim === 'run' ? 12 : 8)) % per, idx = anim === 'phone' ? f : MI_DIR[dir] * per + f;
+  ctx.save(); ctx.imageSmoothingEnabled = false; ctx.translate(cx, by); if (o.rot) ctx.rotate(o.rot);
+  ctx.scale((o.flip ? -1 : 1) * (o.sx || 1), o.sy || 1); if (o.alpha != null) ctx.globalAlpha = o.alpha;
+  ctx.drawImage(im, idx * 16, 0, 16, 32, -8 * k, -32 * k, 16 * k, 32 * k); ctx.restore();
 }
 // tiny pixel icons from string art: each char is a palette key, '.' = transparent
 const PXA_PAL = { k: '#2b2140', w: '#ffffff', y: '#ffd23f', o: '#c77d0a', r: '#ff4d6d', R: '#b3203a', b: '#4cc3ff', B: '#2266cc', l: '#bfe9ff',
@@ -86,21 +96,28 @@ function pxaURL(key, k = 4) {
   return (PXA_URL[key + k] = c.toDataURL());
 }
 const pxImg = (key, size = 22) => `<img class="pxi" alt="" src="${pxaURL(key)}" height="${size}">`;
-const pixImg = (n, size = 26) => `<img class="pxi" alt="" src="assets/pixel/${n}.png" height="${size}">`;
-// office backdrop: wallpaper stripes, windows, skirting board, plank floor (scroll/wallScroll move them for runners)
-function officeBG(ctx, W, H, floorY, { scroll = 0, wallScroll = 0, windows = [], plank = 18 } = {}) {
-  ctx.fillStyle = PAL.wall; ctx.fillRect(0, 0, W, floorY);
-  ctx.fillStyle = 'rgba(232,207,174,.35)'; for (let x = -(((wallScroll % 48) + 48) % 48); x < W; x += 48) ctx.fillRect(x, 0, 20, floorY);
+const pixImg = (n, size = 26) => `<img class="pxi" alt="" src="assets/mi/${n}.png" height="${size}">`;
+// office backdrop: plain wall in the wallpaper's colour with the wallpaper tile as a band along the bottom,
+// windows/pictures hung on it, and a plank/tile floor (scroll/wallScroll move them for runners)
+const WALL_BASE = {};
+function wallBase(n) {
+  if (WALL_BASE[n]) return WALL_BASE[n]; const im = pix(n); if (!im.complete || !im.naturalWidth) return '#f3efe6';
+  const c = document.createElement('canvas'); c.width = 16; c.height = 32; const g = c.getContext('2d'); g.drawImage(im, 0, 0);
+  const d = g.getImageData(8, 14, 1, 1).data; return (WALL_BASE[n] = `rgb(${d[0]},${d[1]},${d[2]})`);
+}
+function officeBG(ctx, W, H, floorY, { wall = 'wall_mint', floor = 'floor_wood', k = 3, scroll = 0, wallScroll = 0, windows = [] } = {}) {
+  ctx.fillStyle = wallBase(wall); ctx.fillRect(0, 0, W, floorY);
+  ctx.imageSmoothingEnabled = false;
+  const wt = pix(wall), tw = 16 * k, th = 32 * k;
+  if (wt.complete && wt.naturalWidth) for (let x = -(((wallScroll % tw) + tw) % tw); x < W; x += tw) ctx.drawImage(wt, x, floorY - th, tw, th);
   const span = W + 200;
-  for (const [n, x, y, k] of windows) { const wx = (((x - wallScroll) % span) + span) % span - 100; drawPixAt(ctx, n, wx, y + PIX_SZ[n][1] * k, k); }
-  ctx.fillStyle = '#e8cfae'; ctx.fillRect(0, floorY - 10, W, 10); ctx.fillStyle = PAL.ink; ctx.fillRect(0, floorY - 2, W, 2);
-  ctx.fillStyle = PAL.floor; ctx.fillRect(0, floorY, W, H - floorY);
-  ctx.fillStyle = PAL.floorLine;
-  for (let y = floorY + plank, row = 0; y < H + plank; y += plank, row++) {
-    ctx.fillRect(0, y, W, 2); const off = (row % 2 ? 60 : 0) - (((scroll % 120) + 120) % 120);
-    for (let x = off; x < W; x += 120) ctx.fillRect(x, y - plank + 2, 2, plank - 2);
-  }
-  ctx.fillStyle = 'rgba(255,255,255,.12)'; ctx.fillRect(0, floorY, W, 4);
+  for (const [n, x, y, kk] of windows) { const im = pix(n), wx = (((x - wallScroll) % span) + span) % span - 100; drawPixAt(ctx, n, wx, y + (im.naturalHeight || 0) * kk, kk); }
+  const ft = pix(floor);
+  if (ft.complete && ft.naturalWidth) {
+    const fw = ft.naturalWidth * k, fh = ft.naturalHeight * k;
+    for (let y = floorY, row = 0; y < H; y += fh, row++) { const off = -(((scroll + row * fw / 3) % fw + fw) % fw); for (let x = off; x < W; x += fw) ctx.drawImage(ft, x, y, fw, fh); }
+  } else { ctx.fillStyle = PAL.floor; ctx.fillRect(0, floorY, W, H - floorY); }
+  ctx.fillStyle = 'rgba(43,33,64,.25)'; ctx.fillRect(0, floorY, W, 4);
 }
 // particles, pop-up text, screen shake, hit-stop and flashes for canvas games.
 // loop: const d = fx.step(dt) (0 while hit-stopped) · draw: fx.pre(ctx) ... fx.post(ctx, W, H)
@@ -240,8 +257,8 @@ function tetrisGame(root, api) {
   }
   function draw() {
     fx.pre(ctx);
-    officeBG(ctx, W, H, H - 46, { windows: [['window', 340, 160, 3]] });
-    drawPixAt(ctx, 'plant', 372, H - 40, 3);
+    officeBG(ctx, W, H, H - 46, { wall: 'wall_mint', windows: [['window_small', 340, 170, 3]] });
+    drawPixAt(ctx, 'plant_small', 372, H - 40, 3);
     // printer body around the tray
     ctx.fillStyle = PAL.ink; ctx.fillRect(BX - 6, BY - 6, COLS * C + 12, ROWS * C + 12);
     ctx.fillStyle = '#d9dde3'; ctx.fillRect(BX - 4, BY - 4, COLS * C + 8, ROWS * C + 8);
@@ -263,7 +280,7 @@ function tetrisGame(root, api) {
       m.forEach((r, j) => r.forEach((v, i) => { if (v) { ctx.save(); ctx.translate(ox + i * s, oy + j * s); ctx.scale(s / C, s / C); cell(0, 0, next); ctx.restore(); } }));
       txt(ctx, SHAPES[next].n, px + 60, 154, 13, PAL.muted);
     }
-    drawPixAt(ctx, 'printer', px + 60, 262, 7, { sy: 1 + Math.sin(performance.now() / 90) * (running ? .02 : 0) });
+    drawPixAt(ctx, 'pc_desk', px + 60, 266, 3, { sy: 1 + Math.sin(performance.now() / 90) * (running ? .02 : 0) });
     txt(ctx, 'เคลียร์ 4 แถวพร้อมกัน', px + 60, 285, 12, PAL.ink); txt(ctx, '= 800 × เลเวล', px + 60, 302, 12, PAL.pink, 'center', 700);
     fx.post(ctx, W, H);
   }
@@ -336,8 +353,8 @@ function stampGame(root, api) {
   }
   function draw() {
     fx.pre(ctx);
-    officeBG(ctx, W, H, BELT_Y + 42, { windows: [['window', 112, 20, 4], ['window2', 612, 20, 4]] });
-    drawPixAt(ctx, 'plant', 672, BELT_Y + 2, 3); drawPixAt(ctx, 'clock', SX + 170, 40, 3);
+    officeBG(ctx, W, H, BELT_Y + 42, { wall: 'wall_yellow', floor: 'floor_dwood', windows: [['window_big', 112, 28, 3], ['window_grey', 612, 34, 3]] });
+    drawPixAt(ctx, 'plant_pot', 672, BELT_Y - 2, 3); drawPixAt(ctx, 'board_calendar', SX + 180, 100, 3);
     // conveyor: dark belt with moving pixel treads and rollers
     ctx.fillStyle = PAL.ink; ctx.fillRect(0, BELT_Y - 2, W, 40);
     ctx.fillStyle = '#4a4458'; ctx.fillRect(0, BELT_Y, W, 30);
@@ -384,7 +401,6 @@ function baristaGame(root, api) {
   const MENU = [{ n: 'อเมริกาโน่', r: ['shot', 'water'] }, { n: 'ลาเต้', r: ['shot', 'milk'] }, { n: 'ลาเต้เย็น', r: ['shot', 'milk', 'ice'] },
     { n: 'มอคค่า', r: ['shot', 'milk', 'choco'] }, { n: 'โกโก้เย็น', r: ['choco', 'milk', 'ice'] }, { n: 'ชาเย็น', r: ['tea', 'milk', 'ice'] },
     { n: 'ชาร้อน', r: ['tea', 'water'] }, { n: 'เอสเพรสโซ่', r: ['shot'] }];
-  const FACES = ['p_office', 'p_woffice', 'p_whealth', 'p_tech', 'p_cat', 'p_dog'];
   root.innerHTML = `<div class="hud"><div class="timer" data-k="tm"><div data-k="bar"></div></div><span>⏱ <b data-k="t">${TOTAL}</b></span><span>⭐ <b data-k="sc">0</b></span><span data-k="hp"></span></div>`;
   const { cv, ctx, at } = g2canvas(root, W, H), q = k => root.querySelector(`[data-k="${k}"]`), fx = makeFX();
   let slots = [null, null, null], leaving = [], cup = [], time = TOTAL, el = 0, score = 0, served = 0, hearts = 3, next = 1, running = false, over = false, wob = 0, t = 0;
@@ -396,7 +412,7 @@ function baristaGame(root, api) {
   function end() { if (over) return; over = true; running = false; api.end(score, `เสิร์ฟ ${served} แก้ว`, false, { served }); }
   function spawn() { const free = slots.map((s, i) => s ? -1 : i).filter(i => i >= 0); if (!free.length) return;
     const i = pick(rnd, free), m = pick(rnd, el < 25 ? MENU.slice(0, 5) : MENU), pat = Math.max(11, 20 - el * .09);
-    slots[i] = { m, face: pick(rnd, FACES), pat, max: pat, in: 0 }; }
+    slots[i] = { m, face: pick(rnd, MI_PEOPLE), pat, max: pat, in: 0 }; }
   function add(k) {
     if (!running || api.paused) return; if (cup.length >= 4) { fx.text(CUP_X, 270, 'แก้วเต็มแล้ว!', { color: PAL.orange, size: 20 }); fx.shake(2, .1); return; }
     cup.push(k); wob = 1; api.sfx('tick');
@@ -422,11 +438,11 @@ function baristaGame(root, api) {
     else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); serve(null); } else if (e.key === 'Backspace' || e.key === 'Delete') { e.preventDefault(); clear(); } });
   cv.addEventListener('pointerdown', e => { const p = at(e); const i = SLOT_X.findIndex(x => Math.abs(p.x - x) < 90 && p.y < 260); if (i >= 0 && slots[i]) serve(i); });
   g2pad(root, [...ING.map(([k, n]) => [`${pxImg(k, 22)}<small> ${n}</small>`, () => add(k)]), ['🗑️ เท', clear], ['🛎️ เสิร์ฟ', () => serve(null)]]);
-  const person = (face, x, by, o) => drawPixAt(ctx, face, x, by, face === 'p_dog' || face === 'p_cat' ? 4 : 4.4, o);
+  const person = (who, x, by, o, anim = 'idle_anim', dir = 'down') => drawChar(ctx, who, anim, dir, t, x, by, 4, o);
   function draw() {
     fx.pre(ctx);
-    officeBG(ctx, W, H, COUNTER, { windows: [['window', 58, 14, 3], ['window2', 702, 14, 3]] });
-    drawPixAt(ctx, 'vending', 260, COUNTER, 3); drawPixAt(ctx, 'plant', 500, COUNTER, 3);
+    officeBG(ctx, W, H, COUNTER, { wall: 'wall_pink', windows: [['window_red', 58, 30, 3], ['window_red', 702, 30, 3]] });
+    drawPixAt(ctx, 'fridge_wide', 260, COUNTER, 3); drawPixAt(ctx, 'plant_pot', 500, COUNTER, 3);
     slots.forEach((s, i) => {
       if (!s) return; const x = SLOT_X[i], f = s.pat / s.max, hop = (1 - s.in) * 60, angry = f < .3;
       const jit = angry ? (rnd() - .5) * 4 : 0, bob = Math.sin(t * 4 + i) * .025;
@@ -440,12 +456,13 @@ function baristaGame(root, api) {
       ctx.restore();
       if (angry) txt(ctx, '💢', x + 44, 140, 22);
     });
-    for (const l of leaving) person(l.face, l.x + l.t * 160, 238 - Math.abs(Math.sin(l.t * 14)) * 16, { alpha: 1 - l.t, flip: true });
+    for (const l of leaving) person(l.face, l.x + l.t * 160, 238, { alpha: 1 - l.t }, 'run', 'right');
     // counter + machines
     ctx.fillStyle = PAL.ink; ctx.fillRect(0, COUNTER - 2, W, 24); ctx.fillStyle = '#d9a066'; ctx.fillRect(0, COUNTER, W, 18);
     ctx.fillStyle = '#9b6a45'; ctx.fillRect(0, COUNTER + 22, W, H - COUNTER - 22);
     ctx.fillStyle = 'rgba(0,0,0,.12)'; for (let x = 0; x < W; x += 64) ctx.fillRect(x, COUNTER + 22, 2, H);
-    drawPixAt(ctx, 'desktop', 70, 392, 7); drawPixAt(ctx, 'fax', 690, 396, 5);
+    drawPixAt(ctx, 'cans', 80, 396, 3); drawPixAt(ctx, 'fruit_basket', 690, 396, 4);
+    [['cake', 160], ['cake_straw', 196], ['pizza', 570], ['cake_slice', 606]].forEach(([n, x]) => drawPixAt(ctx, n, x, COUNTER + 2, 3));
     // the cup: liquid layers stack up, wobble when something is added
     const cx = CUP_X, top = 300, bot = 402, cw = 84, sq = Math.sin(wob * 20) * wob * .06;
     ctx.save(); ctx.translate(cx, bot); ctx.scale(1 + sq, 1 - sq); ctx.translate(-cx, -bot);
@@ -492,7 +509,7 @@ function tossGame(root, api) {
   const { cv, ctx, at } = g2canvas(root, W, H), q = k => root.querySelector(`[data-k="${k}"]`), fx = makeFX();
   let ball = null, drag = null, wind = 0, throws = 0, made = 0, score = 0, streak = 0, running = false, over = false, binX = 520, aim = -.9, power = 0, charging = false, t = 0, rimHit = false;
   let fanA = 0, binSq = 0, throwSq = 0, trail = [], streaks = [];
-  const BIN_K = 6, BIN_W = 9 * BIN_K, BIN_H = 14 * BIN_K;
+  const BIN_K = 6, BIN_W = 9 * BIN_K, BIN_H = 13 * BIN_K, who = pick(rnd, MI_PEOPLE);
   function newThrow() { wind = throws < 2 ? 0 : (rnd() * 2 - 1) * Math.min(1, .3 + throws * .1); ball = { x: START.x, y: START.y, vx: 0, vy: 0, fly: false, rot: 0 }; rimHit = false; trail = []; }
   function hud() { q('mk').textContent = made; q('th').textContent = throws; q('sc').textContent = fmt(score); q('st').textContent = streak >= 2 ? `🔥 ติดกัน ${streak}` : ''; }
   function launch(vx, vy) { if (!running || !ball || ball.fly || api.paused) return; ball.vx = vx; ball.vy = vy; ball.fly = true; throws++; throwSq = 1; api.sfx('tick'); hud(); }
@@ -524,8 +541,8 @@ function tossGame(root, api) {
   addEventListener('keyup', up);
   function draw() {
     fx.pre(ctx);
-    officeBG(ctx, W, H, FLOOR, { windows: [['window', 285, 30, 4]] });
-    drawPixAt(ctx, 'cabinet', 672, FLOOR, 4); drawPixAt(ctx, 'plant', 210, FLOOR, 3); drawPixAt(ctx, 'calendar', 610, 120, 3);
+    officeBG(ctx, W, H, FLOOR, { wall: 'wall_beige', windows: [['window_big', 285, 40, 4]] });
+    drawPixAt(ctx, 'bookshelf', 672, FLOOR, 3); drawPixAt(ctx, 'plant_pot', 210, FLOOR, 3); drawPixAt(ctx, 'board_calendar', 560, 150, 3);
     // wind: streaks drift across the room, the fan spins with the strength
     ctx.fillStyle = 'rgba(58,134,255,.28)'; for (const s of streaks) ctx.fillRect(s.x, s.y, s.l, 2);
     const fx0 = 440, fy = 50; ctx.fillStyle = PAL.ink; ctx.fillRect(fx0 - 3, fy, 6, 26); ctx.fillRect(fx0 - 16, fy + 24, 32, 6);
@@ -534,10 +551,10 @@ function tossGame(root, api) {
     ctx.fillStyle = PAL.ink; ctx.beginPath(); ctx.arc(0, 0, 4, 0, 7); ctx.fill(); ctx.restore();
     const wl = Math.round(Math.abs(wind) * 5); txt(ctx, wind === 0 ? 'ลม: นิ่ง' : `ลม: ${wind > 0 ? '→'.repeat(wl || 1) : '←'.repeat(wl || 1)}`, 472, 50, 16, PAL.blue, 'left', 700);
     // bin (pixel sprite) with a happy squash when something lands in it
-    drawPixAt(ctx, 'bin_blue', binX, FLOOR, BIN_K, { sx: 1 + binSq * .15, sy: 1 - binSq * .15 });
+    drawPixAt(ctx, 'bin', binX, FLOOR, BIN_K, { sx: 1 + binSq * .15, sy: 1 - binSq * .15 });
     // thrower at a desk
-    drawPixAt(ctx, 'p_office', 64, FLOOR - 4, 3.4, { sx: 1 + throwSq * .12, sy: 1 - throwSq * .1 });
-    drawPixAt(ctx, 'desk_s', 112, FLOOR, 3);
+    drawChar(ctx, who, 'idle_anim', 'right', t, 62, FLOOR, 3.4, { sx: 1 + throwSq * .12, sy: 1 - throwSq * .1 });
+    drawPixAt(ctx, 'desk_drawer', 112, FLOOR, 3);
     // aim guide
     if (ball && !ball.fly) {
       let vx, vy; if (drag) { const dx = START.x - drag.x, dy = START.y - drag.y, l = Math.min(150, Math.hypot(dx, dy)), a = Math.atan2(dy, dx); vx = Math.cos(a) * l * 5.2; vy = Math.sin(a) * l * 5.2; }
