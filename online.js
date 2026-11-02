@@ -90,3 +90,18 @@ export async function pruneChat(){
 export function watchGame(cb){return FIREBASE_CONFIG?onValue(ref(db(),'rooms/_hub/game'),s=>cb(s.val()||{sc:'lobby'})):()=>{}}
 export function txGame(fn){return FIREBASE_CONFIG?runTransaction(ref(db(),'rooms/_hub/game'),fn):Promise.resolve({committed:false})}
 export function watchOffset(cb){if(FIREBASE_CONFIG)onValue(ref(db(),'.info/serverTimeOffset'),s=>cb(s.val()||0))}
+
+/* ---------- office level: every coin anyone earns adds to one shared counter (rooms/_office) ---------- */
+export async function addOffice(n,name){
+  if(!FIREBASE_CONFIG||!(n>0))return null;
+  const D=db();let before=0;n=Math.min(200,Math.round(n));
+  await runTransaction(ref(D,'rooms/_office/pts'),cur=>{before=+cur||0;return before+n});
+  if(name)runTransaction(ref(D,`rooms/_office/by/${nameKey(name)}`),cur=>({n:name.trim().slice(0,20),p:((cur&&cur.p)||0)+n}));
+  return{before,after:before+n};
+}
+export function watchOffice(cb){return FIREBASE_CONFIG?onValue(ref(db(),'rooms/_office/pts'),s=>cb(+s.val()||0)):()=>{}}
+export async function officeBoard(){
+  if(!FIREBASE_CONFIG)return[];
+  const s=await get(ref(db(),'rooms/_office/by'));
+  return Object.entries(s.val()||{}).map(([k,v])=>({k,...v})).sort((a,b)=>b.p-a.p);
+}

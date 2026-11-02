@@ -105,7 +105,8 @@ function wallBase(n) {
   const c = document.createElement('canvas'); c.width = 16; c.height = 32; const g = c.getContext('2d'); g.drawImage(im, 0, 0);
   const d = g.getImageData(8, 14, 1, 1).data; return (WALL_BASE[n] = `rgb(${d[0]},${d[1]},${d[2]})`);
 }
-function officeBG(ctx, W, H, floorY, { wall = 'wall_mint', floor = 'floor_wood', k = 3, scroll = 0, wallScroll = 0, windows = [] } = {}) {
+// background + floor; everything drawn after it stays at full contrast
+function officeBG(ctx, W, H, floorY, { wall = 'wall_mint', floor = 'floor_wood', k = 3, scroll = 0, wallScroll = 0, windows = [], calm = .42 } = {}) {
   ctx.fillStyle = wallBase(wall); ctx.fillRect(0, 0, W, floorY);
   ctx.imageSmoothingEnabled = false;
   const wt = pix(wall), tw = 16 * k, th = 32 * k;
@@ -117,7 +118,9 @@ function officeBG(ctx, W, H, floorY, { wall = 'wall_mint', floor = 'floor_wood',
     const fw = ft.naturalWidth * k, fh = ft.naturalHeight * k;
     for (let y = floorY, row = 0; y < H; y += fh, row++) { const off = -(((scroll + row * fw / 3) % fw + fw) % fw); for (let x = off; x < W; x += fw) ctx.drawImage(ft, x, y, fw, fh); }
   } else { ctx.fillStyle = PAL.floor; ctx.fillRect(0, floorY, W, H - floorY); }
-  ctx.fillStyle = 'rgba(43,33,64,.25)'; ctx.fillRect(0, floorY, W, 4);
+  // calm wash: the room fades back so the things you play with stand out (owner: the scenes were too busy to read)
+  ctx.fillStyle = `rgba(255,249,238,${calm})`; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = 'rgba(43,33,64,.18)'; ctx.fillRect(0, floorY, W, 3);
 }
 // particles, pop-up text, screen shake, hit-stop and flashes for canvas games.
 // loop: const d = fx.step(dt) (0 while hit-stopped) · draw: fx.pre(ctx) ... fx.post(ctx, W, H)
@@ -395,7 +398,7 @@ function stampGame(root, api) {
    Lunch Barista — mix the drink each customer ordered before they lose patience
 ================================================================= */
 function baristaGame(root, api) {
-  const W = 760, H = 420, TOTAL = 90, COUNTER = 262;
+  const W = 760, H = 420, TOTAL = 120, COUNTER = 262;
   // [key, label, liquid colour in the cup]
   const ING = [['shot', 'ช็อต', '#6b3e26'], ['milk', 'นม', '#fffdf6'], ['ice', 'น้ำแข็ง', '#bfe9ff'], ['choco', 'ช็อกโกแลต', '#7a4a2a'], ['water', 'น้ำ', '#9fdcff'], ['tea', 'ชา', '#e0913b']];
   const MENU = [{ n: 'อเมริกาโน่', r: ['shot', 'water'] }, { n: 'ลาเต้', r: ['shot', 'milk'] }, { n: 'ลาเต้เย็น', r: ['shot', 'milk', 'ice'] },
@@ -504,7 +507,7 @@ function baristaGame(root, api) {
    Paper Toss — flick a paper ball into the bin, mind the fan
 ================================================================= */
 function tossGame(root, api) {
-  const W = 720, H = 420, G = 900, FLOOR = 372, THROWS = 10, R = 11, START = { x: 100, y: 300 };
+  const W = 720, H = 420, G = 900, FLOOR = 372, THROWS = 12, R = 11, START = { x: 100, y: 300 };
   root.innerHTML = `<div class="hud"><span>🗑️ ลงถัง <b data-k="mk">0</b>/<b data-k="th">0</b></span><span>⭐ <b data-k="sc">0</b></span><span data-k="st" class="muted"></span><span class="muted g2tip">ลากลูกบอลถอยหลังแล้วปล่อย · หรือ ←→ เล็ง + กด Space ค้างเพื่อออกแรง</span></div>`;
   const { cv, ctx, at } = g2canvas(root, W, H), q = k => root.querySelector(`[data-k="${k}"]`), fx = makeFX();
   let ball = null, drag = null, wind = 0, throws = 0, made = 0, score = 0, streak = 0, running = false, over = false, binX = 520, aim = -.9, power = 0, charging = false, t = 0, rimHit = false;
@@ -572,7 +575,7 @@ function tossGame(root, api) {
     fanA += dt * (1 + Math.abs(wind) * 18) * Math.sign(wind || 1); binSq = Math.max(0, binSq - dt * 4); throwSq = Math.max(0, throwSq - dt * 5);
     if (Math.abs(wind) > .05 && rnd() < Math.abs(wind) * dt * 30) streaks.push({ x: wind > 0 ? -60 : W, y: 90 + rnd() * 230, l: 30 + rnd() * 50 });
     for (const s of streaks) s.x += wind * 420 * dt; streaks = streaks.filter(s => s.x > -80 && s.x < W + 10);
-    if (running && throws >= 5) binX = 520 + Math.sin(t * .9) * 90;   // the bin starts moving halfway through
+    if (running && throws >= 6) binX = 520 + Math.sin(t * .9) * 90;   // the bin starts moving halfway through
     if (charging) power = Math.min(1, power + dt * .8);
     if (ball && ball.fly && d) {
       trail.push({ x: ball.x, y: ball.y }); if (trail.length > 8) trail.shift(); ball.rot += ball.vx * d / R;
@@ -668,7 +671,7 @@ function slackGame(root, api) {
   api.loop(dt => {
     const d = fx.step(dt); t += dt; scold = Math.max(0, scold - dt);
     if (running && d) {
-      time += d; level = 1 + Math.floor(time / 20);
+      time += d; level = 1 + Math.floor(time / 26);
       stepBoss(d);
       // the snitch walks across from level 3; slacking while she passes behind you = reported
       if (level >= 3) { if (!mate.on && (mate.cool -= d) <= 0) { mate.on = true; mate.x = -40; }

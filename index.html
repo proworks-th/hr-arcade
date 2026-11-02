@@ -86,6 +86,7 @@ a.btn{text-decoration:none;display:inline-flex;align-items:center;gap:6px;color:
 .me{display:flex;align-items:center;gap:12px;padding:8px 12px;margin-bottom:12px}
 .me-ava{flex:none;width:48px;height:48px;border:2px solid var(--line);border-radius:12px;background:#f6efe4;display:grid;place-items:center;cursor:pointer;padding:0}
 .me-ava img{height:40px;image-rendering:pixelated}
+.me-ava canvas{height:44px;image-rendering:pixelated;margin-top:-4px}
 .me-main{flex:1;min-width:0;display:grid;gap:2px}
 .me-main input{font:inherit;font-weight:600;font-size:17px;border:none;border-bottom:2px dashed #d9cdbb;outline:none;background:transparent;padding:2px 0;width:100%;max-width:260px}
 .me-main input:focus{border-bottom-color:var(--pri)}
@@ -206,7 +207,26 @@ button.pk:hover{transform:translateY(-2px)}div.pk{cursor:default}.pk b{font-size
 .g-it small{font-size:11px;line-height:1.2}.g-it.no{filter:grayscale(1);opacity:.5}.g-it.no small{color:var(--muted)}
 .g-it.r-r{border-color:#9cc0ff}.g-it.r-l{border-color:#ffcf5c}.g-it.on{background:#fff3c4;border-color:var(--line);box-shadow:0 0 0 2px var(--yel)}
 .feedbox{margin-top:8px}
-@media (pointer:coarse),(hover:none){.chip,.linkbtn{min-height:44px;min-width:44px}}.feedbox h3{font-size:15px;color:var(--muted);margin:0 0 4px;display:flex;align-items:center;gap:8px}
+.shop-it .incart{position:absolute;left:3px;top:2px;font-style:normal;font-size:12px}.office-tools .cart small.bad{color:var(--bad);font-weight:700}
+.me-lv .nx{font-size:11.5px;color:var(--muted);margin-left:6px;white-space:nowrap}.me-lv .nx img{height:12px;image-rendering:pixelated;vertical-align:-1px}
+.unlock{display:flex;flex-wrap:wrap;gap:6px 10px;justify-content:center;align-items:center;margin-top:6px;padding:6px 8px;background:#fff3c4;border:2px dashed var(--line);border-radius:10px;font-size:13.5px}
+.unlock img{height:18px;image-rendering:pixelated;vertical-align:-4px}
+.offpt{display:block;color:var(--muted);margin-top:4px}
+.room-h .off-bar{margin-left:auto;display:flex;align-items:center;gap:6px;font:inherit;font-size:13px;background:#fff;border:2px solid var(--line);border-radius:999px;padding:2px 10px;cursor:pointer;white-space:nowrap}
+.off-bar .xpbar{width:80px}.off-bar small{color:var(--muted)}
+.office-p{max-width:520px}.off-list{list-style:none;padding:0;margin:6px 0;display:grid;gap:4px;max-height:min(42vh,340px);overflow:auto}
+.off-list li{display:grid;grid-template-columns:64px 1fr auto;align-items:center;gap:8px;padding:4px 8px;border:2px solid #e6dccb;border-radius:10px;background:#fff;opacity:.6}
+.off-list li.ok{opacity:1;background:#effbf3}.off-list li.nx{opacity:1;border-color:var(--line);box-shadow:0 0 0 2px var(--yel)}
+.off-list li span{display:flex;gap:2px;justify-content:center}.off-list small{color:var(--muted)}
+.off-top{margin:4px 0 8px;padding-left:22px}.off-top li{padding:2px 0}.off-top li.me b{color:#d6336c}.off-top span{color:var(--muted);font-size:13px}
+.wardrobe{max-width:560px}.wd-prev{display:block;margin:0 auto;width:160px;height:150px;image-rendering:pixelated;background:#f6efe4;border:2px solid var(--line);border-radius:14px}
+.wardrobe h3{margin:10px 0 4px;font-size:15px}.wd-row{display:flex;gap:6px;justify-content:center}
+.wd-who{width:56px;height:56px;border:2px solid #d9cdbb;border-radius:12px;background:#fff;cursor:pointer;padding:0}.wd-who img{height:44px;image-rendering:pixelated}.wd-who.on{border-color:var(--line);background:#fff3c4;box-shadow:0 0 0 2px var(--yel)}
+.wd-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(78px,1fr));gap:6px}
+.wd-it{display:grid;justify-items:center;align-content:center;gap:2px;min-height:62px;padding:6px 2px;font:inherit;background:#fff;border:2px solid #d9cdbb;border-radius:10px;cursor:pointer}
+.wd-it img{height:24px;image-rendering:pixelated}.wd-it span{font-size:18px;color:var(--muted)}.wd-it small{font-size:11px;line-height:1.2}
+.wd-it.no img{filter:grayscale(1) brightness(.7);opacity:.5}.wd-it.no small{color:var(--muted)}.wd-it.on{background:#fff3c4;border-color:var(--line);box-shadow:0 0 0 2px var(--yel)}
+@media (pointer:coarse),(hover:none){.chip,.linkbtn,.room-h .off-bar{min-height:44px;min-width:44px}}.feedbox h3{font-size:15px;color:var(--muted);margin:0 0 4px;display:flex;align-items:center;gap:8px}
 .linkbtn{margin-left:auto;border:none;background:none;font:inherit;font-size:13px;color:var(--blue);cursor:pointer;padding:4px}
 .feedbox .feed li{border-bottom:1px dashed #eadfcd}
 
@@ -419,10 +439,11 @@ button.pk:hover{transform:translateY(-2px)}div.pk{cursor:default}.pk b{font-size
 <div id="toast"></div>
 <div id="boss" hidden></div>
 
-<script src="solo-games.js?v=7"></script>
-<script src="office.js?v=5"></script>
-<script src="gacha.js?v=1"></script>
-<script src="hubroom.js?v=3"></script>
+<script src="solo-games.js?v=8"></script>
+<script src="office.js?v=6"></script>
+<script src="wardrobe.js?v=1"></script>
+<script src="gacha.js?v=2"></script>
+<script src="hubroom.js?v=4"></script>
 <script>
 'use strict';
 /* ---------- utils ---------- */
@@ -467,7 +488,7 @@ $('#muteBtn').onclick=()=>{muted=!muted;store.set('muted',muted);renderMute()};
 
 /* ---------- online services (online.js, Firebase): ranking, presence, feed ---------- */
 let onlineMod=null;
-const loadRank=()=>onlineMod||(onlineMod=import('./online.js?v=7'));
+const loadRank=()=>onlineMod||(onlineMod=import('./online.js?v=8'));
 const loadOnline=loadRank;
 const PIX_AVAS=['p_office','p_woffice','p_whealth','p_tech','p_cat','p_dog'];
 const myAva=()=>{const a=store.get('partyAva','p_office');return PIX_AVAS.includes(a)?a:'p_office'};
@@ -475,7 +496,7 @@ const meWho=()=>MI_PEOPLE.includes(Prog.get().who)?Prog.get().who:'adam';
 const avaSrc=a=>MI_PEOPLE.includes(a)?`assets/mi/${a}_down.png`:`assets/pixel/${PIX_AVAS.includes(a)?a:'p_office'}.png`;
 const myName=()=>store.get('name','').trim();
 let presState='hub';
-function presence(g){if(g)presState=g;loadOnline().then(O=>O.setPresence({n:myName()||'ผู้เล่นปริศนา',a:meWho(),lv:Prog.get().lv,b:Gacha.eq(),g:bossOn?'busy':presState})).catch(()=>{})}
+function presence(g){if(g)presState=g;loadOnline().then(O=>O.setPresence({n:myName()||'ผู้เล่นปริศนา',a:meWho(),lv:Prog.get().lv,b:Gacha.eq(),h:Wardrobe.eq('h'),f:Wardrobe.eq('f'),u:Prog.get().lvT||0,g:bossOn?'busy':presState})).catch(()=>{})}
 function ago(t){const s=Math.max(0,(Date.now()-t)/1000);return s<60?'เมื่อกี้':s<3600?Math.floor(s/60)+' นาทีที่แล้ว':s<86400?Math.floor(s/3600)+' ชม.ที่แล้ว':Math.floor(s/86400)+' วันที่แล้ว'}
 
 /* ---------- daily missions + streak (kept on this device; everyone gets the same 3 missions each day) ---------- */
@@ -512,11 +533,11 @@ function recordMission(e){ // e: {game,score,daily,st,kind}
   if(e.game&&e.game!=='party'&&!s.played.includes(e.game))s.played.push(e.game);
   for(const m of list)if(!s.done.includes(m.id)&&m.ok(e,s)){s.done.push(m.id);fresh.push(m)}
   store.set('missions',s);
-  fresh.forEach(m=>{toast('✅ ภารกิจสำเร็จ: '+m.t+' (+20 🪙)');Prog.give(20,60)});
-  if(e.kind)Prog.give(15,120);
+  fresh.forEach(m=>{toast('✅ ภารกิจสำเร็จ: '+m.t+' (+20 🪙)');Prog.give(20,30)});
+  if(e.kind){Prog.give(30,60);toast('🎉 เล่นปาร์ตี้ +30 🪙')}
   if(fresh.length&&s.done.length>=list.length){
     const k=store.get('streak',{last:'',n:0}),n=k.last===thaiDay()?k.n:k.last===thaiDay(Date.now()-864e5)?k.n+1:1;
-    store.set('streak',{last:thaiDay(),n});toast(`🔥 ภารกิจวันนี้ครบ! ต่อเนื่อง ${n} วัน (+40 🪙)`);Prog.give(40,150);
+    store.set('streak',{last:thaiDay(),n});toast(`🔥 ภารกิจวันนี้ครบ! ต่อเนื่อง ${n} วัน (+40 🪙)`);Prog.give(40,80);
     if(myName())loadOnline().then(O=>O.pushFeed(`✅ ${myName()} ทำภารกิจวันนี้ครบ 🔥 ${n} วันติด`,myName(),meWho())).catch(()=>{});
   }
   renderMissions();
@@ -702,11 +723,13 @@ function startGame(id){
         <div class="score">${fmt(score)}</div><div>${g.unit||'คะแนน'}${extra?' · '+extra:''}</div>
         ${isBest?'<div class="badge">🏆 สถิติใหม่!</div>':`<div class="muted" style="margin-top:6px">สถิติของคุณ: ${fmt(prev)}</div>`}
         ${lastSc!=null&&score>lastSc&&!isBest?`<div class="up">📈 ดีกว่าครั้งก่อน +${fmt(score-lastSc)}</div>`:''}<div class="reward"><b>+${rw.coins} 🪙</b>${mult>1?' <i class="feat-b">×2 เกมแนะนำ</i>':''} · <b>+${rw.xp} XP</b><div class="xpbar big"><i style="width:${rw.ups.length?0:rw.before.xp/needXP(rw.before.lv)*100}%"></i></div>
-          <small>${rw.ups.length?`🎉 เลื่อนขั้นเป็น <b>Lv ${rw.after.lv} · ${Prog.title(rw.after.lv)}</b>!`:`Lv ${rw.after.lv} · ${Prog.title(rw.after.lv)} · อีก ${needXP(rw.after.lv)-rw.after.xp} XP`}</small></div>
+          <small>${rw.ups.length?`🎉 เลื่อนขั้นเป็น <b>Lv ${rw.after.lv} · ${Prog.title(rw.after.lv)}</b>!`:`Lv ${rw.after.lv} · ${Prog.title(rw.after.lv)} · อีก ${needXP(rw.after.lv)-rw.after.xp} XP`}</small>
+          ${unlockHTML(rw)}<small class="offpt">🏢 +${rw.coins} แต้มออฟฟิศ</small></div>
         <div class="rankline" data-a="rk"></div>
         <div class="row"><button class="btn primary" data-a="again">🔁 เล่นอีก</button><button class="btn" data-a="board">🏆 อันดับ</button><button class="btn" data-a="share">📋 อวดในไลน์</button><button class="btn" data-a="home">🏠 หน้าหลัก</button></div></div>`;
       requestAnimationFrame(()=>requestAnimationFrame(()=>{const b=ov.querySelector('.reward .xpbar i');if(b)b.style.width=(rw.after.xp/needXP(rw.after.lv)*100)+'%'}));
       if(rw.ups.length)setTimeout(()=>{const pn=ov.querySelector('.panel');if(pn){const R=pn.getBoundingClientRect();domBurst(pn,R.width/2,R.height/3,{n:40,dist:220,size:10});api.sfx('level')}},350);
+      ov.querySelectorAll('[data-a=dress]').forEach(b=>b.onclick=()=>Wardrobe.open());
       ov.querySelector('[data-a=again]').onclick=()=>startGame(g.id);
       ov.querySelector('[data-a=home]').onclick=goHome;
       ov.querySelector('[data-a=board]').onclick=()=>showRanking(g.id,'d');
@@ -901,7 +924,7 @@ function spotGame(root,api){
     const scene=buildScene(r,level);
     diffs=makeDiffs(r,scene.items,Math.min(4+level,8),level);
     panels.forEach((p,s)=>{renderPanel(p,scene,diffs,s);p.animate([{opacity:0,transform:'scale(.96)'},{opacity:1,transform:'none'}],{duration:300,easing:'ease-out'})});
-    maxT=Math.max(45,85-level*6);time=maxT;done=false;running=true;streak=0;hud();
+    maxT=Math.max(60,105-level*6);time=maxT;done=false;running=true;streak=0;hud();
   }
   function ring(d,cls){for(const p of panels){const m=document.createElement('div');m.className='mark'+(cls?' '+cls:'');
     m.style.left=d.cx+'cqw';m.style.top=d.cy+'cqw';m.style.width=m.style.height=d.rad*2+'cqw';p.appendChild(m);if(cls)setTimeout(()=>m.remove(),1800)}}
@@ -1057,7 +1080,7 @@ function runnerGame(root,api){
 function whackGame(root,api){
   const KEYS=['7','8','9','4','5','6','1','2','3'],ALT=['q','w','e','a','s','d','z','x','c'];
   const legend=`${pixImg('alex_phone',26)}${pixImg('papers',26)} +10 · ${pixImg('papers2',26)} งานด่วน +30 · ${pixImg('cake_slice',22)} +3 วิ · <b>${pixImg('bob_down',26)} หัวหน้า ห้ามตี!</b>`;
-  root.innerHTML=`<div class="hud"><div class="timer" data-k="tm"><div data-k="bar"></div></div><span>⏱ <b data-k="t">40</b></span><span>⭐ <b data-k="sc">0</b></span><span data-k="combo" class="muted"></span></div>
+  root.innerHTML=`<div class="hud"><div class="timer" data-k="tm"><div data-k="bar"></div></div><span>⏱ <b data-k="t">55</b></span><span>⭐ <b data-k="sc">0</b></span><span data-k="combo" class="muted"></span></div>
     <div class="legend">${legend}</div>
     <div class="wgrid">${KEYS.map((k,i)=>`<div class="hole" data-i="${i}"><span class="key">${k}</span><div class="mole"></div></div>`).join('')}</div>`;
   const q=k=>root.querySelector(`[data-k="${k}"]`),grid=root.querySelector('.wgrid');
@@ -1065,7 +1088,7 @@ function whackGame(root,api){
   // art: an animated character sheet (anim) or a still sprite (img)
   const T={phone:{anim:'phone',cap:'โทรมา!',pts:10,life:1.4},paper:{img:'papers',cap:'เอกสาร',pts:10,life:1.5},
     fire:{img:'papers2',cap:'ด่วน!',pts:30,life:.8,hot:1},boss:{anim:'boss',cap:'หัวหน้า',pts:0,life:1.5},coffee:{img:'cake_slice',cap:'+3 วิ',pts:0,life:1}};
-  const TOTAL=40;let time=TOTAL,sc=0,combo=0,best=0,spawnT=.4,el=0,running=false;
+  const TOTAL=55;let time=TOTAL,sc=0,combo=0,best=0,spawnT=.4,el=0,running=false;
   function hud(){q('t').textContent=Math.ceil(time);q('sc').textContent=fmt(sc);q('bar').style.width=Math.min(100,time/TOTAL*100)+'%';q('tm').classList.toggle('low',time<8);
     const m=1+Math.floor(combo/6)*.5;q('combo').textContent=combo>=3?`🔥 คอมโบ ${combo}${m>1?' (x'+m+')':''}`:''}
   function pickType(){const w=[['phone',40],['paper',25],['fire',10+el*.15],['boss',10+el*.45],['coffee',time<15?9:4]];
@@ -1201,10 +1224,10 @@ const GAMES=[
   {id:'dance',title:'Office Audition',emoji:'🕺',img:'assets/3d/chars/previews/character-male-b.png',color:'#ffd6ec',online:true,href:'party3d.html',desc:'เกมเต้นแบบ Audition ในห้อง 3D กดลูกศรตามจังหวะ เต้นพร้อมเพื่อนทั้งห้อง แข่งคะแนนสด',time:'1–2 นาที/เพลง'},
   {id:'spot',title:'จับผิดภาพ',emoji:'🔍',img:'assets/mi/amelia_down.png',color:'#9fd8ff',desc:'หาจุดต่างบนโต๊ะทำงาน ด่านประจำวันเหมือนกันทั้งออฟฟิศ',time:'2–4 นาที',mount:spotGame},
   {id:'run',title:'วิ่งไปตอกบัตร',emoji:'🏃',img:'assets/mi/adam_right.png',color:'#c6f0ff',desc:'เกมวิ่งแนว flash กระโดดข้ามลังกับเก้าอี้ ก้มหลบเครื่องบินกระดาษ ให้ทันก่อน 8:30',time:'1–3 นาที',mount:runnerGame},
-  {id:'whack',title:'สายด่วนถล่มโต๊ะ',emoji:'☎️',img:'assets/mi/alex_phone.png',color:'#ffb3c7',desc:'ตีสาย ตีอีเมล ตีงานด่วน… แต่อย่าเผลอตีหัวหน้า!',time:'40 วินาที',mount:whackGame},
+  {id:'whack',title:'สายด่วนถล่มโต๊ะ',emoji:'☎️',img:'assets/mi/alex_phone.png',color:'#ffb3c7',desc:'ตีสาย ตีอีเมล ตีงานด่วน… แต่อย่าเผลอตีหัวหน้า!',time:'55 วินาที',mount:whackGame},
   {id:'tetris',title:'Printer Tetris',emoji:'🖨️',img:'assets/mi/pc_desk.png',color:'#d6e4ff',desc:'กระดาษไหลจากเครื่องพิมพ์ จัดให้เต็มแถว',time:'2–5 นาที',mount:tetrisGame},
   {id:'stamp',title:'ปั๊มตรารัวๆ',emoji:'🔏',img:'assets/mi/papers.png',color:'#ffd6d6',desc:'ปั๊ม APPROVED ให้ตรงจังหวะสายพาน',time:'1–2 นาที',mount:stampGame},
-  {id:'barista',title:'บาริสต้าพักเที่ยง',emoji:'☕',img:'assets/mi/cake_straw.png',color:'#f3dcc0',desc:'ผสมเครื่องดื่มตามออเดอร์ให้ทัน',time:'90 วินาที',mount:baristaGame},
+  {id:'barista',title:'บาริสต้าพักเที่ยง',emoji:'☕',img:'assets/mi/cake_straw.png',color:'#f3dcc0',desc:'ผสมเครื่องดื่มตามออเดอร์ให้ทัน',time:'2 นาที',mount:baristaGame},
   {id:'toss',title:'ปากระดาษลงถัง',emoji:'🗑️',img:'assets/mi/bin.png',color:'#dff3e4',desc:'ปาก้อนกระดาษ ดูลมพัดลมด้วย',time:'1–2 นาที',mount:tossGame},
   {id:'slack',title:'แอบเล่นมือถือ',emoji:'📱',img:'assets/mi/amelia_phone.png',color:'#ffe0f0',desc:'กดค้างแอบเล่นมือถือ ปล่อยให้ทันก่อนหัวหน้าหันมา',time:'1–3 นาที',mount:slackGame},
   {id:'conga',title:'ขบวนไปกินข้าว',emoji:'🍱',img:'assets/mi/adam_down.png',color:'#e0f4d6',desc:'เก็บเพื่อนต่อแถว พาออกประตูไปโรงอาหาร',time:'2–4 นาที',mount:congaGame},
@@ -1228,18 +1251,26 @@ function showHelp(){
   ov.onclick=e=>{if(e.target===ov||e.target.closest('button'))ov.remove()};document.body.appendChild(ov);
 }
 $('#helpBtn').onclick=showHelp;
+// what reaching new levels gave you (results screen) and what the next title brings (me bar)
+function unlockHTML(rw){if(!rw.ups.length)return'';const ids=Wardrobe.unlockedBetween(rw.before.lv,rw.after.lv),nt=Prog.title(rw.after.lv)!==Prog.title(rw.before.lv);
+  if(!ids.length&&!nt)return'';return`<div class="unlock">${nt?`<span>📜 ฉายาใหม่ <b>${Prog.title(rw.after.lv)}</b></span>`:''}${ids.map(id=>`<span><img src="${Wardrobe.icon(id)}" alt=""> ได้ <b>${ACC[id][1]}</b></span>`).join('')}${ids.length?'<button class="btn sm" data-a="dress">👕 ใส่เลย</button>':''}</div>`}
+function nextHint(lv){const id=Wardrobe.nextUnlock(lv),tl=TITLES.find(([l])=>l>lv);if(!id&&!tl)return'';const at=Math.min(id?ACC[id][2]:99,tl?tl[0]:99);
+  return`<small class="nx bl">ถัดไป Lv ${at}: ${tl&&tl[0]===at?tl[1]:''}${id&&ACC[id][2]===at?` <img src="${Wardrobe.icon(id,2)}" alt="${ACC[id][1]}" title="${ACC[id][1]}">`:''}</small>`}
+// me-bar avatar with the equipped accessories (retries until the sprite sheet has loaded)
+function drawAva(cv,n=0){const x=cv.getContext('2d'),who=meWho();x.clearRect(0,0,40,64);drawChar(x,who,'idle_anim','down',0,20,64,2);
+  for(const sl of['f','h'])drawAcc(x,Wardrobe.eq(sl),who,'idle_anim','down',0,20,64,2);if(n<30&&!pix('chars/'+who+'_idle_anim').complete)setTimeout(()=>drawAva(cv,n+1),100)}
 function renderHub(){
   const solo=GAMES.filter(g=>!g.online),P=Prog.get(),mOpen=store.get('mOpen',false);
   hub.innerHTML=`<section class="me">
-      <button class="me-ava" id="avaBtn" type="button" title="เปลี่ยนตัวละคร" aria-label="เปลี่ยนตัวละคร"><img src="assets/mi/${meWho()}_down.png" alt=""></button>
+      <button class="me-ava" id="avaBtn" type="button" title="แต่งตัว" aria-label="แต่งตัว"><canvas id="avaCv" width="40" height="64"></canvas></button>
       <div class="me-main"><input id="nameIn" maxlength="20" placeholder="ตั้งชื่อเล่นก่อนเล่น ✏️" aria-label="ชื่อเล่น">
-        <div class="me-lv"><b>Lv ${P.lv}</b> ${Prog.title(P.lv)}${Gacha.eq()?` <i class="bdg">${badgeTxt(Gacha.eq())}</i>`:''} <span class="xpbar"><i style="width:${P.xp/needXP(P.lv)*100}%"></i></span></div></div>
+        <div class="me-lv"><b>Lv ${P.lv}</b> ${Prog.title(P.lv)}${Gacha.eq()?` <i class="bdg">${badgeTxt(Gacha.eq())}</i>`:''} <span class="xpbar"><i style="width:${P.xp/needXP(P.lv)*100}%"></i></span>${nextHint(P.lv)}</div></div>
       <span class="me-coins">🪙 ${fmt(P.coins)}</span>
       <button class="btn sm gacha-btn${Gacha.freeToday()?' free':''}" id="gachaBtn" type="button" aria-label="กาชา">🎰<span class="bl"> กาชา</span></button>
       <button class="btn sm" id="officeBtn" type="button" aria-label="ห้องฉัน">🏠<span class="bl"> ห้องฉัน</span></button>
     </section>
     <div class="alerts" data-k="alerts"></div>
-    <div class="room-h"><span class="dot"></span><b>ห้องรวม</b> <span class="muted" data-k="oncount"></span><div class="heads" data-k="onlist"></div></div>
+    <div class="room-h"><span class="dot"></span><b>ห้องรวม</b> <span class="muted" data-k="oncount"></span><div class="heads" data-k="onlist"></div><button class="off-bar" id="offBar" type="button"></button></div>
     <div data-k="room"></div>
     <section class="solo"><div class="sec-h"><h3>เกม</h3><button class="chip" id="mBtn" type="button" aria-expanded="${mOpen}">🎯 ภารกิจวันนี้ <b data-k="mcount">0/3</b> <span data-k="streak"></span> ${mOpen?'▴':'▾'}</button></div>
       <div class="mpanel"${mOpen?'':' hidden'}><ul class="mlist" data-k="mlist"></ul></div>
@@ -1249,8 +1280,9 @@ function renderHub(){
     <section class="feedbox"><h3>ความเคลื่อนไหว <button class="linkbtn" id="feedMore">${feedOpen?'ย่อ':'ดูทั้งหมด'}</button></h3><ul class="feed" data-k="feed"></ul></section>
     <p class="credits">🎨 <a href="https://limezu.itch.io/moderninteriors" target="_blank" rel="noopener">LimeZu Modern Interiors</a> (ฟรี ไม่แสวงหากำไร) · เสียงและ 3D: <a href="https://kenney.nl" target="_blank" rel="noopener">Kenney</a> (CC0) · <a href="https://2dpig.itch.io/pixel-office" target="_blank" rel="noopener">2dPig</a> (CC0)</p>`;
   const ni=$('#nameIn');ni.value=store.get('name','');let nt=0;ni.oninput=()=>{store.set('name',ni.value);clearTimeout(nt);nt=setTimeout(()=>{presence();Prog.sync()},800)};
-  $('#avaBtn').onclick=()=>{const p=Prog.get();p.who=MI_PEOPLE[(MI_PEOPLE.indexOf(meWho())+1)%MI_PEOPLE.length];Prog.put(p);$('#avaBtn img').src=`assets/mi/${p.who}_down.png`;presence()};
-  HubRoom.mount(hub.querySelector('[data-k=room]'));
+  $('#avaBtn').onclick=()=>Wardrobe.open();
+  drawAva($('#avaCv'));
+  HubRoom.mount(hub.querySelector('[data-k=room]'));HubRoom.renderOffice();
   $('#officeBtn').onclick=()=>startGame('office');
   $('#gachaBtn').onclick=()=>Gacha.open();
   $('#mBtn').onclick=()=>{store.set('mOpen',!store.get('mOpen',false));renderHub()};

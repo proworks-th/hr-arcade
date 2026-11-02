@@ -15,10 +15,37 @@ const HubRoom = (() => {
     ['armchair_wood', 0, 5], ['rug_green', 1, 5], ['bench_pink', 1, 7], ['plant_small', 5, 8],
     ['pc_desk', 16, 4], ['chair_back', 16, 5], ['table_light', 18, 6], ['palm', 21, 8], ['plant_pot', 15, 8],
   ] };
+  // office level: everyone's coins fill one shared counter; each level adds furniture to this room for good
+  // [points needed in total, what the room gets, items]
+  const OFFICE = [
+    [0, 'ห้องเริ่มต้น', []],
+    [500, '🖼️ รูปติดผนัง', [['pic_cat', 8, 0], ['pic_flower', 13, 0]]],
+    [1300, '🌿 มุมต้นไม้', [['shelf_plant', 16, 2], ['plant_pot', 3, 8]]],
+    [2500, '🟦 พรมกลางห้อง', [['rug_lblue', 18, 4], ['rug_blue', 2, 3]]],
+    [4000, '📚 ชั้นหนังสือ', [['bookshelf', 12, 2]]],
+    [6000, '🛋️ โซฟาแดง', [['sofa_red', 3, 5]]],
+    [8500, '🪟 หน้าต่างบานใหญ่', [['window_slide', 21, 0]]],
+    [11500, '🧊 ตู้เย็นใหญ่ + ขนม', [['fridge_wide', 0, 3], ['cans', 19, 5]]],
+    [15000, '🎨 แกลเลอรี', [['pic_sunset', 3, 0], ['pic_robot', 9, 0]]],
+    [19000, '🌴 สวนในออฟฟิศ', [['palm', 11, 8], ['tree', 7, 8]]],
+    [24000, '🏆 ลูกโลกทองคำ', [['globe_gold', 17, 8]]],
+  ];
+  function officeLv(pts) {
+    let i = 0; while (i + 1 < OFFICE.length && pts >= OFFICE[i + 1][0]) i++;
+    const extra = i === OFFICE.length - 1 ? Math.floor((pts - OFFICE[i][0]) / 6000) : 0, base = OFFICE[i][0] + extra * 6000;
+    const next = i + 1 < OFFICE.length ? OFFICE[i + 1][0] : base + 6000;
+    return { lv: i + 1 + extra, i, pts, from: base, to: next, cur: { n: OFFICE[i][1] }, next: OFFICE[i + 1] ? { n: OFFICE[i + 1][1], items: OFFICE[i + 1][2] } : null };
+  }
+  let offPts = 0, offI = 0;
   const kindOf = n => (typeof SHOP_KIND !== 'undefined' && SHOP_KIND[n]) || (/^(window|pic|notice|tv|world|board|door|mirror|black)/.test(n) ? 'w' : /^rug/.test(n) ? 'r' : 'f');
   const GACHA = { x: 5, y: 2 };                 // the capsule machine (drawn by hand, 2 cells wide)
-  const blockedCells = new Set([GACHA.x + ',' + GACHA.y, (GACHA.x + 1) + ',' + GACHA.y]);
-  for (const [n, x, y] of ROOM.items) if (kindOf(n) === 'f') for (let i = 0; i < cellsW(n); i++) blockedCells.add((x + i) + ',' + y);
+  const BASE_ITEMS = ROOM.items.slice(), blockedCells = new Set();
+  function setItems(i) {                        // base room + every unlocked office level's furniture
+    ROOM.items = BASE_ITEMS.concat(...OFFICE.slice(1, i + 1).map(o => o[2]));
+    blockedCells.clear(); blockedCells.add(GACHA.x + ',' + GACHA.y); blockedCells.add((GACHA.x + 1) + ',' + GACHA.y);
+    for (const [n, x, y] of ROOM.items) if (kindOf(n) === 'f') for (let k = 0; k < cellsW(n); k++) blockedCells.add((x + k) + ',' + y);
+  }
+  setItems(0);
   const free = (x, y) => x >= 0 && x < COLS && y >= TOP && y < ROWS && !blockedCells.has(x + ',' + y);
   function path(fx, fy, tx, ty) {               // BFS on the floor grid; [] when unreachable
     fx = Math.round(fx); fy = Math.round(fy); if (!free(tx, ty)) return [];
@@ -42,6 +69,7 @@ const HubRoom = (() => {
   /* ---------- state ---------- */
   let el = null, cv, ctx, at, O = null, offset = 0, t = 0, last = 0, started = false;
   const me = walker(10, 8), others = {};       // others[sid] = walker + target
+  const cele = {}, fx = [], banner = {};       // level-up celebrations: seen stamps, confetti, banners by sid
   let people = [], chatLog = [], G = { sc: 'lobby' }, music = null, D = null, TG = null, RN = null, sentT = 0, lastRes = 0;
   const now = () => Date.now() + offset;
   const visible = () => el && el.isConnected && !document.getElementById('hub').hidden;
@@ -301,7 +329,7 @@ const HubRoom = (() => {
   }
   function draw() {
     if (G.sc === 'race') return drawRace();
-    officeBG(ctx, W, H, TOP * C, { wall: ROOM.wall, floor: ROOM.floor, k: 2 });
+    officeBG(ctx, W, H, TOP * C, { wall: ROOM.wall, floor: ROOM.floor, k: 2, calm: .15 });
     // stage
     ctx.save(); ctx.fillStyle = G.sc === 'lobby' || G.sc === 'res' ? 'rgba(255,92,138,.16)' : `hsla(${(t * 90) % 360},80%,65%,.3)`;
     ctx.strokeStyle = 'rgba(255,92,138,.75)'; ctx.setLineDash([6, 4]); ctx.lineWidth = 2;
@@ -330,14 +358,31 @@ const HubRoom = (() => {
       const pulling = G.sc === 'tug' && (p.me ? TG && now() - TG.last < 150 : false);
       list.push({ y: y + 1.01, d: () => {
         ctx.fillStyle = 'rgba(43,33,64,.18)'; ctx.beginPath(); ctx.ellipse((x + .5) * C, (y + 1) * C - 2, 11, 4, 0, 0, 7); ctx.fill();
-        drawChar(ctx, who, s ? (s.bob ? 'idle_anim' : 'idle_anim') : a.moving ? 'run' : 'idle_anim', s ? s.dir : a.dir, t + (p.j || 0) % 7, (x + .5) * C + (pulling ? (s.dir === 'right' ? -2 : 2) : 0), (y + 1) * C - bounce, 2);
+        const an = s ? 'idle_anim' : a.moving ? 'run' : 'idle_anim', dr = s ? s.dir : a.dir, tt = t + (p.j || 0) % 7, px = (x + .5) * C + (pulling ? (s.dir === 'right' ? -2 : 2) : 0), py = (y + 1) * C - bounce;
+        drawChar(ctx, who, an, dr, tt, px, py, 2);
+        for (const sl of ['f', 'h']) drawAcc(ctx, p.me ? Wardrobe.eq(sl) : p[sl], who, an, dr, tt, px, py, 2);
         tag((x + .5) * C, (y + 1) * C - 66 - bounce, (p.me ? '★ ' : '') + ((p.me ? (typeof Gacha !== 'undefined' && badgeEmoji(Gacha.eq())) : p.b && typeof badgeEmoji === 'function' && badgeEmoji(p.b)) || '') + (p.n || '?') + (p.lv && !s ? ` Lv${p.lv}` : ''), p.me);
-        const said = chatBy[p.id] || (G.sc === 'dance' && p.dj && !p.me && p.da === G.at ? '' : '');
+        const bn = banner[p.id] && banner[p.id].until > now() ? banner[p.id].m : '';
+        if (bn && !chatBy[p.id]) { ctx.save(); ctx.globalAlpha = .55 + .45 * Math.sin(t * 6); ctx.fillStyle = '#ffd23f'; for (let i = 0; i < 4; i++) { const an = t * 3 + i * 1.57; ctx.fillRect(px + Math.cos(an) * 18 - 2, py - 30 + Math.sin(an) * 22 - 2, 4, 4); } ctx.restore(); }
+        const said = chatBy[p.id] || bn;
         if (said) bubble((x + .5) * C, (y + 1) * C - 80 - bounce, said);
       } });
     }
     list.sort((a, b) => a.y - b.y).forEach(o => o.d());
+    drawFx();
   }
+  // confetti in room pixels
+  function burst(x, y, n = 40) { const cols = ['#ffd23f', '#ff5c8a', '#3a86ff', '#21c07a', '#fff'];
+    for (let i = 0; i < n; i++) { const a = Math.random() * 6.28, v = 60 + Math.random() * 160; fx.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 120, c: cols[i % 5], l: 1.4 + Math.random() }); } }
+  function drawFx() { for (const f of fx) { ctx.fillStyle = f.c; ctx.fillRect(f.x - 2, f.y - 2, 4, 4); } }
+  function tickFx(dt) { for (const f of fx) { f.x += f.vx * dt; f.y += f.vy * dt; f.vy += 300 * dt; f.l -= dt; } for (let i = fx.length - 1; i >= 0; i--) if (fx[i].l <= 0) fx.splice(i, 1); }
+  // someone levelled up (presence u = when) → confetti + a banner over their head the first time we see them in the room
+  function celebrate(L) {
+    for (const p of L) { const u = p.me ? (Prog.get().lvT || 0) : p.u; if (!u || cele[p.id] === u) continue; cele[p.id] = u;
+      if (Date.now() - u > 600000) continue;
+      const a = p.me ? me : others[p.id]; if (!a) continue; const lv = p.me ? Prog.get().lv : p.lv | 0, nt = Prog.title(lv) !== Prog.title(lv - 1);
+      banner[p.id] = { until: now() + 6000, m: nt ? `🎉 ได้ฉายา ${Prog.title(lv)}!` : `🎉 เลื่อนขั้น Lv ${lv}!` };
+      burst((a.x + .5) * C, (a.y + .2) * C, nt ? 70 : 40); if (visible() && typeof SFX !== 'undefined' && SFX.level) SFX.level(); } }
   // capsule machine: red body, glass dome of coloured capsules, a sign; sparkles when today's free pull is waiting
   function drawGacha() {
     const x = GACHA.x * C + 8, w = 2 * C - 16, by = (GACHA.y + 1) * C, free = typeof Gacha !== 'undefined' && Gacha.freeToday();
@@ -370,8 +415,38 @@ const HubRoom = (() => {
       if (p.x != null && (o.tx !== p.x || o.ty !== p.y)) { o.tx = p.x; o.ty = p.y; o.path = path(o.x, o.y, p.x, p.y); if (!o.path.length) { o.x = p.x; o.y = p.y; } }
       walk(o, dt); }
     if (G.sc === 'race') raceTick(dt);
+    tickFx(dt); if (G.sc === 'lobby') celebrate(roster());
     draw(); host(); renderLog(); renderRes();
     if (G.sc === 'tug' && TG) send({ tp: TG.taps, ta: G.at });
+  }
+  function onOffice(pts) {
+    const o = officeLv(pts), seen = store.get('offLv', 0); offPts = pts;
+    if (o.i !== offI) { offI = o.i; setItems(o.i); }
+    if (seen && o.lv > seen) {                    // the office levelled up since we last looked: everyone gets a gift
+      const p = Prog.get(); p.coins += 20 * (o.lv - seen); store.set('prog', p); Prog.sync();
+      toast(`🏢 ออฟฟิศเลเวลอัป! Lv ${o.lv} · ห้องรวมได้ ${o.cur.n} (+${20 * (o.lv - seen)} 🪙 ของขวัญทุกคน)`);
+      if (visible()) for (let i = 0; i < 5; i++) burst(W * (i + .5) / 5, H * .4, 30);
+    }
+    store.set('offLv', o.lv); renderOffice();
+  }
+  // the office bar above the room (the hub renders an empty #offBar)
+  function renderOffice() {
+    const b = document.getElementById('offBar'); if (!b) return; const o = officeLv(offPts), pc = Math.min(100, (offPts - o.from) / (o.to - o.from) * 100);
+    b.innerHTML = `🏢 <b>ออฟฟิศ Lv ${o.lv}</b><span class="xpbar"><i style="width:${pc}%"></i></span><small>${fmt(offPts - o.from)}/${fmt(o.to - o.from)}${o.next ? ` · ต่อไป ${o.next.n}` : ''}</small>`;
+    b.onclick = officePanel;
+  }
+  function officePanel() {
+    const o = officeLv(offPts), ov = document.createElement('div'); ov.className = 'overlay';
+    const ico = it => it.slice(0, 2).map(([n]) => `<img class="pxi" src="assets/mi/${n}.png" alt="" height="26">`).join('');
+    ov.innerHTML = `<div class="panel popin office-p"><h2>🏢 ออฟฟิศ Lv ${o.lv}</h2>
+      <p class="muted">ทุกเหรียญที่ใครก็ได้หาได้ จะนับเป็นแต้มออฟฟิศด้วย · ครบเป้าแล้วห้องรวมได้ของใหม่ถาวร และทุกคนได้ของขวัญ 20 🪙</p>
+      <ul class="off-list">${OFFICE.slice(1).map((r, i) => `<li class="${i + 1 <= o.i ? 'ok' : i === o.i ? 'nx' : ''}"><span>${ico(r[2])}</span><b>${r[1]}</b><small>${i + 1 <= o.i ? '✅ ได้แล้ว' : `${fmt(r[0])} แต้ม`}</small></li>`).join('')}</ul>
+      <h3>คนช่วยเยอะสุด</h3><ol class="off-top" data-k="top"><li class="muted">กำลังโหลด…</li></ol>
+      <div class="row"><button class="btn primary" data-x>ปิด</button></div></div>`;
+    ov.onclick = e => { if (e.target === ov || e.target.closest('[data-x]')) ov.remove(); };
+    document.body.appendChild(ov);
+    O && O.officeBoard().then(L => { const me = (myName() || '').trim().toLowerCase(), el2 = ov.querySelector('[data-k=top]');
+      el2.innerHTML = L.length ? L.slice(0, 5).map(r => `<li${r.n.trim().toLowerCase() === me ? ' class="me"' : ''}><b>${esc(r.n)}</b> <span>${fmt(r.p)} แต้ม</span></li>`).join('') : '<li class="muted">ยังไม่มีใคร — เล่นเกมสักตาเลย!</li>'; }).catch(() => {});
   }
   function start() {
     if (started) return; started = true;
@@ -380,14 +455,15 @@ const HubRoom = (() => {
     loadOnline().then(M => { O = M; M.watchOffset(v => offset = v); send({}, true);
       M.watchOnline(l => { people = l; for (const id of Object.keys(others)) if (!l.some(p => p.id === id && inRoom(p))) delete others[id]; });
       M.watchChat(l => chatLog = l); M.pruneChat().catch(() => {}); M.watchGame(onGame);
+      M.watchOffice(onOffice);
     }).catch(() => {});
     requestAnimationFrame(frame);
   }
   return {
     // returns the room element (built once, so the hub can re-render around it)
     mount(slot) { if (!el) build(); slot.replaceWith(el); start(); setTimeout(() => cv.dispatchEvent(new Event('resize')), 0); },
-    send: () => send({}, true), picker: () => partyPicker(), get G() { return G; }, invite,
+    send: () => send({}, true), picker: () => partyPicker(), get G() { return G; }, invite, officeLv, renderOffice, officePanel,
     // test hooks
-    _dbg: { me, get D() { return D; }, get TG() { return TG; }, get RN() { return RN; }, tug: () => tugTap(), start: startParty, roster },
+    _dbg: { me, get D() { return D; }, get TG() { return TG; }, get RN() { return RN; }, tug: () => tugTap(), start: startParty, roster, office: onOffice, burst },
   };
 })();

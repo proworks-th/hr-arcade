@@ -6,14 +6,14 @@
 'use strict';
 const GACHA_PRICE = 100, GACHA_10 = 900, PITY = 30;
 const RAR = { c: { th: 'ธรรมดา', col: '#9aa3b5', p: .70, stamp: 1, cost: 6 }, r: { th: 'หายาก', col: '#3a86ff', p: .25, stamp: 3, cost: 18 }, l: { th: 'ตำนาน', col: '#ffb000', p: .05, stamp: 10, cost: 45 } };
-// [id, rarity, kind (b badge · f furniture), label]
+// [id, rarity, kind (b badge · f furniture · a accessory from wardrobe.js), label]
 const GACHA_POOL = [
   ['coffee', 'c', 'b', '☕ สายกาแฟ'], ['clip', 'c', 'b', '📎 มนุษย์คลิปหนีบ'], ['lunch', 'c', 'b', '🍱 นักล่ามื้อเที่ยง'], ['plant', 'c', 'b', '🌱 คนรักต้นไม้'], ['print', 'c', 'b', '🖨️ เพื่อนเครื่องปริ้น'], ['nap', 'c', 'b', '😴 นักงีบมืออาชีพ'],
-  ['cushion_blue', 'c', 'f'], ['cushion_yellow', 'c', 'f'], ['plant_small', 'c', 'f'], ['cake_straw', 'c', 'f'], ['pizza', 'c', 'f'], ['fruit_basket', 'c', 'f'],
+  ['cushion_blue', 'c', 'f'], ['cushion_yellow', 'c', 'f'], ['plant_small', 'c', 'f'], ['cake_straw', 'c', 'f'], ['pizza', 'c', 'f'], ['fruit_basket', 'c', 'f'], ['beanie', 'c', 'a'], ['sprout', 'c', 'a'],
   ['flash', 'r', 'b', '⚡ สายด่วนพิเศษ'], ['dj', 'r', 'b', '🎧 DJ ออฟฟิศ'], ['hero', 'r', 'b', '🦸 ฮีโร่ปิดงาน'], ['brain', 'r', 'b', '🧠 สมองเพชร'],
-  ['palm', 'r', 'f'], ['floorlamp_blue', 'r', 'f'], ['sofa_white', 'r', 'f'], ['tv', 'r', 'w'], ['pic_aqua', 'r', 'w'],
+  ['palm', 'r', 'f'], ['floorlamp_blue', 'r', 'f'], ['sofa_white', 'r', 'f'], ['tv', 'r', 'w'], ['pic_aqua', 'r', 'w'], ['bunny', 'r', 'a'],
   ['vip', 'l', 'b', '👑 VIP'], ['rainbow', 'l', 'b', '🌈 ตำนานพักเที่ยง'], ['diamond', 'l', 'b', '💎 เพชรแห่งแผนก'],
-  ['globe_gold', 'l', 'f'], ['jar_gold', 'l', 'f'], ['mirror_gold', 'l', 'w'],
+  ['globe_gold', 'l', 'f'], ['jar_gold', 'l', 'f'], ['mirror_gold', 'l', 'w'], ['tiara', 'l', 'a'],
 ];
 const GACHA_ONLY = new Set(['globe_gold', 'jar_gold', 'mirror_gold']);
 const BADGES = Object.fromEntries(GACHA_POOL.filter(x => x[2] === 'b').map(x => [x[0], x]));
@@ -31,6 +31,7 @@ const Gacha = (() => {
     const L = GACHA_POOL.filter(x => x[1] === rar), it = L[Math.floor(Math.random() * L.length)], [id, , kind] = it;
     let dup = false;
     if (kind === 'b') { dup = !!g.badges[id]; g.badges[id] = (g.badges[id] || 0) + 1; if (dup) g.stamps += RAR[rar].stamp; else if (!g.eq) g.eq = id; }
+    else if (kind === 'a') { p.acc = Object.assign({ h: '', f: '', own: {} }, p.acc || {}); dup = !!p.acc.own[id]; p.acc.own[id] = 1; if (dup) g.stamps += RAR[rar].stamp; else if (!p.acc.h) p.acc.h = id; }
     else p.inv[id] = (p.inv[id] || 0) + 1;
     return { it, rar, dup };
   }
@@ -46,9 +47,9 @@ const Gacha = (() => {
   }
   const FURN_TH = { cushion_blue: 'เบาะสีฟ้า', cushion_yellow: 'เบาะสีเหลือง', plant_small: 'ต้นไม้จิ๋ว', cake_straw: 'เค้กสตรอว์เบอร์รี', pizza: 'พิซซ่า', fruit_basket: 'ตะกร้าผลไม้',
     palm: 'ต้นปาล์ม', floorlamp_blue: 'โคมไฟตั้งพื้นสีฟ้า', sofa_white: 'โซฟาขาว', tv: 'ทีวีจอแบน', pic_aqua: 'ภาพตู้ปลา', globe_gold: 'ลูกโลกทองคำ', jar_gold: 'โถทองคำ', mirror_gold: 'กระจกทองคำ' };
-  const label = it => it[2] === 'b' ? it[3] : (FURN_TH[it[0]] || it[0]);
-  const plain = it => it[2] === 'b' ? it[3].split(' ').slice(1).join(' ') : label(it);
-  const art = (it, big) => it[2] === 'b' ? `<span class="gb-emo${big ? ' big' : ''}">${badgeEmoji(it[0])}</span>` : `<img class="pxi" src="assets/mi/${it[0]}.png" alt="" style="height:${big ? 56 : 30}px">`;
+  const label = it => it[2] === 'b' ? it[3] : it[2] === 'a' ? '👒 ' + ACC[it[0]][1] : (FURN_TH[it[0]] || it[0]);
+  const plain = it => it[2] === 'b' ? it[3].split(' ').slice(1).join(' ') : it[2] === 'a' ? ACC[it[0]][1] : label(it);
+  const art = (it, big) => it[2] === 'b' ? `<span class="gb-emo${big ? ' big' : ''}">${badgeEmoji(it[0])}</span>` : it[2] === 'a' ? `<img class="pxi" src="${Wardrobe.icon(it[0])}" alt="" style="height:${big ? 40 : 22}px">` : `<img class="pxi" src="assets/mi/${it[0]}.png" alt="" style="height:${big ? 56 : 30}px">`;
 
   function open() {
     const ov = document.createElement('div'); ov.className = 'overlay';
@@ -78,7 +79,7 @@ const Gacha = (() => {
           setTimeout(draw, res.length > 1 ? 4800 : 2900);
         });
       } else {
-        const owned = GACHA_POOL.filter(x => x[2] === 'b' ? g.badges[x[0]] : (p.inv[x[0]] || p.room.items.some(it => it[0] === x[0])));
+        const owned = GACHA_POOL.filter(x => x[2] === 'b' ? g.badges[x[0]] : x[2] === 'a' ? p.acc && p.acc.own && p.acc.own[x[0]] : (p.inv[x[0]] || p.room.items.some(it => it[0] === x[0])));
         B.innerHTML = `<p>สะสมแล้ว <b>${owned.length}/${GACHA_POOL.length}</b> (${Math.round(owned.length / GACHA_POOL.length * 100)}%) · แสตมป์ <b>${g.stamps}</b> 🎫</p>
           <p class="muted" style="font-size:13px;margin:0 0 6px">แตะป้ายที่มีเพื่อติดข้างชื่อ · ป้ายที่ยังไม่มี แลกด้วยแสตมป์ได้</p>
           <div class="g-book">${GACHA_POOL.map(x => { const has = owned.includes(x), b = x[2] === 'b', on = b && g.eq === x[0];
