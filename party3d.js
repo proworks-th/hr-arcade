@@ -53,13 +53,30 @@ function seqFor(st,bar){
 }
 const danceSlot=i=>({x:-3+(i%5)*1.5,z:.7+Math.floor(i/5)*1.4});
 
-/* ---------- แข่งเก้าอี้ล้อเลื่อน: loop track around a desk island, 3 laps, coffee = boost, trash cans = spin out ---------- */
-const LAPS=3,RACE_MAX=150000,RACE_GRACE=20000;
-// driving direction: start on the south lane heading east, then up the east lane, west along the north lane, down the west lane
-const HAZARDS=[{x:2.6,z:3.1},{x:-2.8,z:-2.9},{x:6.1,z:-1.3},{x:-6.2,z:1.4},{x:5.4,z:2.2}];
-const CUPS=[{x:0,z:3.7},{x:-5.9,z:-2.2},{x:6.2,z:-3.2},{x:0,z:-3.5},{x:-6.4,z:3.3}].map(c=>({...c,t:0}));
+/* ---------- แข่งเก้าอี้ล้อเลื่อน: chairs drive themselves round a loop track, one button = hop.
+   Hop over trash-can hurdles (hit = spin out), hop to grab the floating coffee (= boost). 3 laps. ---------- */
+const LAPS=3,RACE_MAX=90000,RACE_GRACE=12000,RACE_V=4,BOOST_V=6;
+// rounded-rectangle track around the desk island, 3 lanes (-1 inner … 1 outer); u = 0…1 per lap from the start line,
+// driving east along the south straight, north up the east side, west along the top, south down the west side
+const lanePath=l=>({hx:5.9+l*.7,hz:3+l*.65,rc:1.6+l*.65});
+const PC=(({hx,hz,rc})=>4*(hx-rc)+4*(hz-rc)+2*Math.PI*rc)(lanePath(0)); // centre-lane lap length: every lane advances u at the same rate
+function trackPt(u,l){
+  const {hx,hz,rc}=lanePath(l),a=hx-rc,b=hz-rc,q=Math.PI/2*rc,segs=[[a,(s)=>({x:s,z:hz})],[q,s=>arc(a,b,Math.PI/2-s/rc)],[2*b,s=>({x:hx,z:b-s})],
+    [q,s=>arc(a,-b,-s/rc)],[2*a,s=>({x:a-s,z:-hz})],[q,s=>arc(-a,-b,-Math.PI/2-s/rc)],[2*b,s=>({x:-hx,z:-b+s})],[q,s=>arc(-a,b,-Math.PI-s/rc)],[a,s=>({x:-a+s,z:hz})]];
+  function arc(cx,cz,ang){return{x:cx+rc*Math.cos(ang),z:cz+rc*Math.sin(ang)}}
+  const P=4*a+4*b+4*q;let s=(((u%1)+1)%1)*P;
+  for(const [len,f] of segs){if(s<=len)return f(s);s-=len}
+  return{x:0,z:hz};
+}
+const HAZARDS=[],CUPS=[];
+for(const [u,lanes] of [[.12,[-1,0,1]],[.25,[-1,1]],[.37,[0]],[.5,[-1,0,1]],[.62,[0,1]],[.74,[-1]],[.86,[-1,0,1]]])for(const l of lanes)HAZARDS.push({u,l,...trackPt(u,l)});
+for(const [u,lanes] of [[.18,[0]],[.31,[-1,0,1]],[.56,[1]],[.68,[-1]],[.8,[0,1]]])for(const l of lanes)CUPS.push({u,l,t:0,...trackPt(u,l)});
+
+/* ---------- ชักเย่อ: two teams by join order, everyone mashes Space; a lone player pulls against the boss bot ---------- */
+const TUG_MS=30000,TUG_GOAL=28,TUG_Z=2.4;
+const botTaps=s=>s<=0?0:3.6*s+.04*s*s; // taps so far after s seconds (3.6/s rising to 6/s): steady mashing (~5/s) wins
+let TG=null,tugG=null,tugMove=null;
 const SEAT_Y=.36,CHAIR_TURN=0; // rider height on the seat; model yaw so the backrest is behind the rider
-const raceSlot=i=>({x:-1.1-Math.floor(i/2)*1.15,z:1.9+(i%2)*1.5});
 let RC=null,chairs=new Map(),cupMeshes=[];
 async function buildRace(){
   const jobs=[];
@@ -76,13 +93,18 @@ async function buildRace(){
   line.rotation.x=-Math.PI/2;line.position.set(0,.015,2.75);scene.add(line);groups.race.push(line);line.visible=false;
   // direction arrows on the floor
   const am=new THREE.MeshBasicMaterial({color:'#ffd23f',transparent:true,opacity:.8}),tri=new THREE.Shape();tri.moveTo(0,.45);tri.lineTo(.32,-.3);tri.lineTo(-.32,-.3);tri.closePath();
-  for(const [x,z,h] of [[-3.5,2.6,Math.PI/2],[3.8,2.6,Math.PI/2],[6.3,1,Math.PI],[6.3,-2.2,Math.PI],[2.5,-2.4,-Math.PI/2],[-2.2,-2.4,-Math.PI/2],[-6.3,-1.4,0],[-6.3,.9,0]]){
-    const m=new THREE.Mesh(new THREE.ShapeGeometry(tri),am);m.rotation.x=-Math.PI/2;m.rotation.z=h;m.position.set(x,.014,z);scene.add(m);groups.race.push(m);m.visible=false}
+  for(const u of [.06,.21,.43,.55,.66,.79,.93]){const p=trackPt(u,0),q=trackPt(u+.004,0);
+    const m=new THREE.Mesh(new THREE.ShapeGeometry(tri),am);m.rotation.x=-Math.PI/2;m.rotation.z=Math.atan2(p.x-q.x,p.z-q.z);m.position.set(p.x,.014,p.z);scene.add(m);groups.race.push(m);m.visible=false}
+  // lane edges so the track reads at a glance
+  const em=new THREE.MeshBasicMaterial({color:'#fff',transparent:true,opacity:.55});
+  for(const l of [-1.5,-.5,.5,1.5])for(let i=0;i<120;i++){const u=i/120;if(Math.abs(l)<1&&i%2)continue;const p=trackPt(u,l),q=trackPt(u+1/120,l);
+    const d=new THREE.Mesh(new THREE.PlaneGeometry(.06,Math.hypot(q.x-p.x,q.z-p.z)),em);d.rotation.x=-Math.PI/2;d.rotation.z=Math.atan2(q.x-p.x,q.z-p.z);
+    d.position.set((p.x+q.x)/2,.013,(p.z+q.z)/2);scene.add(d);groups.race.push(d);d.visible=false}
   // coffee cups = boost pickups
   for(const cp of CUPS){const g=new THREE.Group(),body=new THREE.Mesh(new THREE.CylinderGeometry(.16,.12,.3,16),new THREE.MeshStandardMaterial({color:'#fff'})),
     top=new THREE.Mesh(new THREE.CylinderGeometry(.165,.165,.04,16),new THREE.MeshStandardMaterial({color:'#6b3e26'})),
     sleeve=new THREE.Mesh(new THREE.CylinderGeometry(.162,.14,.12,16),new THREE.MeshStandardMaterial({color:'#c98b5e'}));
-    top.position.y=.17;g.add(body,top,sleeve);g.position.set(cp.x,.35,cp.z);scene.add(g);groups.race.push(g);g.visible=false;cupMeshes.push(g)}
+    top.position.y=.17;g.add(body,top,sleeve);g.position.set(cp.x,1.05,cp.z);scene.add(g);groups.race.push(g);g.visible=false;cupMeshes.push(g)}
 }
 function setRaceScene(on){for(const o of groups.lobby)o.visible=!on;for(const o of groups.race)o.visible=on}
 // one chair model per racer; the promise is cached so concurrent frames never create duplicates
@@ -94,34 +116,27 @@ function chairFor(key){
     return o}));
   return chairs.get(key);
 }
-const raceProgress=(x,z,prev)=>{ // unwrapped progress in radians; laps = progress / 2π, finish line at angle π/2 (south)
-  const th=Math.atan2(z,x);if(prev==null)return-(th-Math.PI/2);
-  let d=-(th-prev.th);d=Math.atan2(Math.sin(d),Math.cos(d));return prev.prog+d;
-};
 function raceTick(t,dt){
-  const st=(t-S.at)/1000;me.y=0;me.a='sit';
-  if(!RC)return;
-  if(st<0||RC.fin){RC.v*=Math.pow(.05,dt);}
-  else{
-    // controls: arrows/WASD = tank steering; joystick = point where to drive
-    let thr=(keys.u?1:0)-(keys.dn?1:0),steer=(keys.r?1:0)-(keys.l?1:0);
-    const jl=Math.hypot(joy.x,joy.y);
-    if(jl>.2){const target=Math.atan2(joy.x,joy.y);let d=target-me.r;d=Math.atan2(Math.sin(d),Math.cos(d));steer=-Math.max(-1,Math.min(1,d*2));thr=jl}
-    if(RC.spin>0){RC.spin-=dt;me.r+=dt*11;thr=0;steer=0}
-    const max=RC.boost>0?9:6.2;RC.boost=Math.max(0,RC.boost-dt);
-    if(thr>0)RC.v=Math.min(max,RC.v+7*thr*dt);else if(thr<0)RC.v=Math.max(-2.5,RC.v-9*dt);else RC.v*=Math.pow(.25,dt);
-    me.r-=steer*2.7*Math.min(1,Math.abs(RC.v)/2)*Math.sign(RC.v||1)*dt;
-  }
-  // grazing a wall slides along it; only a head-on hit (both axes blocked) bounces you back
-  const nx=me.x+Math.sin(me.r)*RC.v*dt,nz=me.z+Math.cos(me.r)*RC.v*dt;let hits=0;
-  if(!blocked(nx,me.z))me.x=nx;else hits++;if(!blocked(me.x,nz))me.z=nz;else hits++;
-  if(hits===2&&Math.abs(RC.v)>1){RC.v*=-.35;music.blip('bad')}else if(hits===1)RC.v*=Math.pow(.4,dt);
-  // after a spin you get a moment of immunity so you can drive away instead of spinning forever
-  RC.imm=Math.max(0,(RC.imm||0)-dt);
-  for(const h of HAZARDS)if(RC.spin<=0&&RC.imm<=0&&Math.hypot(me.x-h.x,me.z-h.z)<.62){RC.spin=.9;RC.imm=2;RC.v*=.3;toast('🗑️ ชนถังขยะ หมุนติ้ว!');music.blip('bad')}
-  CUPS.forEach((c,i)=>{const ready=t>c.t;cupMeshes[i]&&(cupMeshes[i].visible=raceScene()&&ready,cupMeshes[i].rotation.y=t/500);
-    if(ready&&st>=0&&Math.hypot(me.x-c.x,me.z-c.z)<.6){c.t=t+6000;RC.boost=2.2;toast('☕ กาแฟ! เร่งความเร็ว');music.blip('perfect')}});
-  const pr=raceProgress(me.x,me.z,RC.pp);RC.pp={th:Math.atan2(me.z,me.x),prog:pr};RC.prog=pr;
+  const st=(t-S.at)/1000;me.a='sit';
+  if(!RC){jumpPress=false;return}
+  const go=st>=0&&!RC.fin;
+  // the only control: hop (Space / button) — over trash cans, up to the coffee
+  if(jumpPress&&go&&me.y<=0){me.vy=5.4;music.blip('ok')}jumpPress=false;
+  me.vy-=15*dt;me.y=Math.max(0,me.y+me.vy*dt);if(me.y===0)me.vy=0;
+  if(RC.spin>0)RC.spin-=dt;
+  RC.boost=Math.max(0,RC.boost-dt);RC.imm=Math.max(0,RC.imm-dt);
+  const target=!go?0:RC.spin>0?1:RC.boost>0?BOOST_V:RACE_V;
+  RC.v+=(target-RC.v)*Math.min(1,dt*(go?2.5:6));
+  RC.u+=RC.v*dt/PC;
+  const p=trackPt(RC.u,RC.lane),q=trackPt(RC.u+.004,RC.lane);
+  me.x=p.x;me.z=p.z;me.r=Math.atan2(q.x-p.x,q.z-p.z)+(RC.spin>0?RC.spin*12:0);
+  const um=((RC.u%1)+1)%1,near=(a,m)=>Math.abs(um-a)*PC<m;
+  if(go)for(const h of HAZARDS)if(h.l===RC.lane&&RC.imm<=0&&me.y<.3&&near(h.u,.42)){
+    RC.spin=.8;RC.imm=1.4;RC.v*=.25;me.vy=3;toast('🗑️ ชนถังขยะ! กด Space กระโดดข้าม');music.blip('bad')}
+  CUPS.forEach((c,i)=>{const mine=c.l===RC.lane,ready=t>c.t;
+    if(cupMeshes[i]){cupMeshes[i].visible=raceScene()&&ready;cupMeshes[i].rotation.y=t/500;cupMeshes[i].scale.setScalar(mine?1:.7)}
+    if(mine&&ready&&go&&me.y>.45&&near(c.u,.6)){c.t=t+8000;RC.boost=1.8;toast('☕ กาแฟ! เร่งความเร็ว');music.blip('perfect')}});
+  const pr=RC.u*2*Math.PI;RC.prog=pr;
   const lap=Math.min(LAPS,Math.max(1,Math.floor(pr/(2*Math.PI))+1));
   if(lap>RC.lap&&!RC.fin){RC.lap=lap;toast(lap===LAPS?'🔔 รอบสุดท้าย!':`รอบ ${lap}/${LAPS}`)}
   if(!RC.fin&&pr>=LAPS*2*Math.PI){RC.fin=Math.round(t-S.at);music.blip('perfect');toast(`🏁 เข้าเส้นชัย ${(RC.fin/1000).toFixed(1)} วิ`)}
@@ -134,7 +149,7 @@ function raceStandings(){
 }
 function raceHud(t,st){
   const cnt=$('#count');
-  if(st<0){cnt.hidden=false;cnt.innerHTML=`<b>${Math.ceil(-st)}</b><span>🪑 แข่งเก้าอี้ ${LAPS} รอบ — ↑ เร่ง · ↓ เบรก/ถอย · ← → เลี้ยว (มือถือ: ลากจอยไปทางที่จะไป) · ☕ = เร่ง · 🗑️ = หมุน</span>`}
+  if(st<0){cnt.hidden=false;cnt.innerHTML=`<b>${Math.ceil(-st)}</b><span>🪑 เก้าอี้วิ่งเอง ${LAPS} รอบ — กด <b style="font-size:inherit">Space</b> กระโดดข้าม 🗑️ · กระโดดเก็บ ☕ = เร่ง</span>`}
   else if(st<1){cnt.hidden=false;cnt.innerHTML='<b>GO!</b>'}else cnt.hidden=true;
   const rows=raceStandings(),me_i=rows.findIndex(r=>r.id===me.id),el=$('#khud');el.hidden=false;
   el.innerHTML=`<div class="kt">🪑 รอบ ${RC?RC.lap:1}/${LAPS} · อันดับ ${me_i+1}/${rows.length} · ⏱ ${fmtT(Math.max(0,RC&&RC.fin?RC.fin:t-S.at))}${RC&&RC.boost>0?' · ☕ BOOST':''}</div>`+
@@ -143,6 +158,60 @@ function raceHud(t,st){
 function startRace(){
   const t=now(),at=t+LEAD_MS;
   runTransaction(ref(db,R+'/s'),cur=>{if(cur&&cur.sc&&cur.sc!=='lobby')return;return{sc:'race',at,by:me.n}});
+}
+
+/* ---------- ชักเย่อ ---------- */
+function startTug(){
+  const t=now(),at=t+LEAD_MS;
+  runTransaction(ref(db,R+'/s'),cur=>{if(cur&&cur.sc&&cur.sc!=='lobby')return;return{sc:'tug',at,by:me.n}});
+}
+function buildTug(){
+  tugG=new THREE.Group();tugMove=new THREE.Group();tugG.add(tugMove);
+  const rope=new THREE.Mesh(new THREE.CylinderGeometry(.05,.05,11,10),new THREE.MeshStandardMaterial({color:'#c8a165'}));
+  rope.rotation.z=Math.PI/2;rope.position.y=.5;rope.castShadow=hi;
+  const flag=new THREE.Mesh(new THREE.BoxGeometry(.1,.42,.04),new THREE.MeshStandardMaterial({color:'#ff4d4d'}));flag.position.y=.3;
+  tugMove.add(rope,flag);
+  const line=(x,c,w)=>{const m=new THREE.Mesh(new THREE.PlaneGeometry(w,2),new THREE.MeshBasicMaterial({color:c,transparent:true,opacity:.8}));
+    m.rotation.x=-Math.PI/2;m.position.set(x,.013,0);tugG.add(m)};
+  line(0,'#ffffff',.08);line(-2,'#3a86ff',.14);line(2,'#ff5c8a',.14);
+  tugG.position.z=TUG_Z;tugG.visible=false;scene.add(tugG);
+}
+// team 0 = left (blue), team 1 = right (pink), alternating by join order so teams stay even
+function tugTeams(){
+  const all={...players};if(me.id&&!all[me.id])all[me.id]={n:me.n,c:me.c,j:me.j};
+  const A=[],B=[];
+  Object.entries(all).sort((a,b)=>a[1].j-b[1].j||(a[0]<b[0]?-1:1)).forEach(([id,p],i)=>
+    (i%2?B:A).push({id,n:p.n,c:p.c,tp:id===me.id?(TG?TG.taps:0):(p.ta===S.at?p.tp||0:0)}));
+  return{A,B,bot:B.length===0};
+}
+// rope position: average taps of the left team minus the right team (or the boss bot); ±TUG_GOAL wins
+function tugState(t){
+  const T=tugTeams(),s=(t-S.at)/1000,avg=L=>L.length?L.reduce((a,b)=>a+b.tp,0)/L.length:0;
+  const b=T.bot?botTaps(Math.min(s,TUG_MS/1000)):avg(T.B);
+  return{T,d:avg(T.A)-b,bot:Math.round(b),k:Math.max(-1,Math.min(1,(avg(T.A)-b)/TUG_GOAL))};
+}
+function tugTap(){
+  const t=now();if(!TG||t<S.at||t>S.at+TUG_MS||t-TG.last<45)return;
+  TG.taps++;TG.last=t;me.busy=.15;music.blip('ok');
+}
+function tugTick(t,dt){
+  const {T,k}=tugState(t),team=T.A.some(x=>x.id===me.id)?0:1,L=team?T.B:T.A,i=Math.max(0,L.findIndex(x=>x.id===me.id));
+  const off=-k*2,side=team?1:-1,tx=off+side*(1+i*.85);
+  me.x+=(tx-me.x)*Math.min(1,dt*10);me.z+=(TUG_Z+(i%2?.18:-.18)-me.z)*Math.min(1,dt*10);me.y=0;me.r=team?-Math.PI/2:Math.PI/2;
+  me.busy=Math.max(0,me.busy-dt);me.a=me.busy>0?'pick-up':'holding-both';
+  tugHud(t,T,k);
+}
+function tugHud(t,T,k){
+  const st=(t-S.at)/1000,cnt=$('#count');
+  if(st<0){cnt.hidden=false;cnt.innerHTML=`<b>${Math.ceil(-st)}</b><span>🪢 ชักเย่อ — รัว <b style="font-size:inherit">Space</b> (หรือปุ่ม 💪 ดึง!) ให้เชือกเข้าฝั่งเรา${T.bot?' · คุณสู้กับหัวหน้า!':''}</span>`}
+  else if(st<1){cnt.hidden=false;cnt.innerHTML='<b>ดึง!</b>'}else cnt.hidden=true;
+  const left=Math.max(0,Math.ceil(TUG_MS/1000-Math.max(0,st))),mine=T.A.some(x=>x.id===me.id)?'ซ้าย 🟦':'ขวา 🟥';
+  const el=$('#dpanel');el.hidden=false;
+  el.innerHTML=`<div class="tugbar"><span>🟦 ซ้าย</span><div class="tb"><i style="left:${50-k*50}%"></i></div><span>ขวา 🟥</span></div>
+    <div class="dstat">คุณอยู่ทีม${mine} · 💪 ${TG?TG.taps:0} ครั้ง · ⏱ ${left} วิ</div>`;
+  const row=(L,c)=>L.map(x=>`<div class="tk${x.id===me.id?' meK':''}"><b>${c} ${esc(x.n)}</b><span>💪 ${x.tp}</span></div>`).join('');
+  const sb=$('#khud');sb.hidden=false;
+  sb.innerHTML=row(T.A,'🟦')+(T.bot?`<div class="tk"><b>🟥 หัวหน้า 🤖</b><span>💪 ${Math.round(botTaps(Math.min(st,TUG_MS/1000)))}</span></div>`:row(T.B,'🟥'));
 }
 
 /* ---------- renderer, scene, locked camera ---------- */
@@ -260,6 +329,7 @@ const KM={ArrowLeft:'l',a:'l',A:'l',ArrowRight:'r',d:'r',D:'r',ArrowUp:'u',w:'u'
 let actPress=false;
 const DKEY={ArrowLeft:'l',ArrowUp:'u',ArrowRight:'r',ArrowDown:'d',a:'l',w:'u',d:'r',s:'d',A:'l',W:'u',D:'r',S:'d',4:'l',8:'u',6:'r',2:'d'};
 addEventListener('keydown',e=>{if(e.target.closest&&e.target.closest('input'))return;
+  if(S.sc==='tug'&&(e.key===' '||e.key==='Enter')){e.preventDefault();if(!e.repeat)tugTap();return}
   if(S.sc==='dance'&&D){if(DKEY[e.key]&&!e.repeat){e.preventDefault();danceKey(DKEY[e.key]);return}
     if((e.key===' '||e.key==='Control')&&!e.repeat){e.preventDefault();danceSpace();return}}
   if(KM[e.key]){keys[KM[e.key]]=1;e.preventDefault()}else if(e.key===' '){if(!e.repeat)jumpPress=true;e.preventDefault()}
@@ -311,10 +381,14 @@ function onState(st){
   if(st.sc==='res'&&prev==='kitchen')queueMission('kitchen'); // round I was in has ended: the hub counts it as a mission
   if(st.sc==='res'&&prev==='dance'&&D)queueMission('dance');
   if(st.sc==='res'&&prev==='race'&&RC)queueMission('chair');
-  if(st.sc==='race'&&(!RC||RC.at!==st.at)){ // line up on the grid by join order
-    const order=Object.entries(players).sort((a,b)=>a[1].j-b[1].j).map(([id])=>id),sl=raceSlot(Math.max(0,order.indexOf(me.id)));
-    me.x=sl.x;me.z=sl.z;me.r=Math.PI/2;RC={at:st.at,v:0,lap:1,prog:0,pp:null,fin:0,boost:0,spin:0};CUPS.forEach(c=>c.t=0);
+  if(st.sc==='res'&&prev==='tug'&&TG)queueMission('tug');
+  if(st.sc==='race'&&(!RC||RC.at!==st.at)){ // grid by join order: lanes inner/centre/outer, later rows a little behind the line
+    const order=Object.entries(players).sort((a,b)=>a[1].j-b[1].j).map(([id])=>id),i=Math.max(0,order.indexOf(me.id));
+    RC={at:st.at,u:-.015-Math.floor(i/3)*.03,lane:[0,-1,1][i%3],v:0,lap:1,prog:0,fin:0,boost:0,spin:0,imm:0};
+    const p=trackPt(RC.u,RC.lane);me.x=p.x;me.z=p.z;me.y=0;me.vy=0;me.r=Math.PI/2;CUPS.forEach(c=>c.t=0);
   }
+  if(st.sc==='tug'&&(!TG||TG.at!==st.at))TG={at:st.at,taps:0,last:0};
+  if(st.sc==='lobby')TG=null;
   const wasRace=raceScene();
   if(st.sc==='dance'&&(!D||D.at!==st.at)){
     D={at:st.at,bar:-1,seq:[],idx:0,judged:true,score:0,combo:0,maxc:0,cnt:{PERFECT:0,GREAT:0,COOL:0,BAD:0,MISS:0},last:null,wrongT:0,done:false};
@@ -410,6 +484,16 @@ function host(t,dt){
         if(r.committed&&list[0]&&list[0].fin)push(ref(db,'rooms/_hub/feed'),{m:`🪑 ${list[0].n} ชนะแข่งเก้าอี้ล้อเลื่อน (${fmtT(list[0].fin)}) จาก ${list.length} คน`,n:list[0].n,a:'',t})});
     }
   }
+  if(S.sc==='tug'&&t>S.at){
+    const {T,d}=tugState(t);
+    if(Math.abs(d)>=TUG_GOAL||t>S.at+TUG_MS){
+      const at=S.at,win=d>0?'A':d<0?'B':'',res=[...T.A.map(x=>({n:x.n,c:x.c,tp:x.tp,tm:'A'})),...T.B.map(x=>({n:x.n,c:x.c,tp:x.tp,tm:'B'}))];
+      runTransaction(ref(db,R+'/s'),cur=>{if(!cur||cur.sc!=='tug'||cur.at!==at)return;return{sc:'res',g:'tug',win,bot:T.bot,res,at:t}}).then(r=>{
+        if(!r.committed||!win||(T.bot&&win==='B'))return;
+        const names=(win==='A'?T.A:T.B).map(x=>x.n).join(', ');
+        push(ref(db,'rooms/_hub/feed'),{m:T.bot?`🪢 ${names} ดึงชักเย่อชนะหัวหน้า!`:`🪢 ทีม ${names} ชนะชักเย่อ (${T.A.length} vs ${T.B.length})`,n:'',a:'',t})});
+    }
+  }
   if(S.sc==='res'&&t>S.at+RES_MS){const at=S.at;runTransaction(ref(db,R+'/s'),cur=>{if(!cur||cur.sc!=='res'||cur.at!==at)return;return{sc:'lobby'}})}
 }
 function hostKitchen(t,dt){
@@ -451,17 +535,33 @@ function kitchenTarget(t){
 }
 function renderBar(){
   const b=$('#bar');
-  if(S.sc==='lobby')b.innerHTML=`<button class="btn primary" id="startR">🪑 แข่งเก้าอี้</button><button class="btn" id="startK">🍳 เริ่มครัวเอกสาร</button>${SONGS.map((g,i)=>`<button class="btn" data-song="${i}">🕺 ${g.th} <small class="muted">(${g.level})</small></button>`).join('')}<span class="muted">ใครกดก็ได้ ทุกคนในห้องเล่นด้วยกัน</span>`;
-  else b.innerHTML=`<span class="muted">${S.sc==='kitchen'?'🍳 ครัวเอกสาร — หยิบกระดาษ → กรอก/ปั๊ม/ให้หัวหน้าเซ็น → ส่งให้ตรงใบงาน':S.sc==='dance'?'🕺 Office Audition — ลูกศร / WASD / 4 8 6 2 ตามให้ครบ แล้ว Space ตรงจังหวะที่ 4':S.sc==='race'?'🪑 แข่งเก้าอี้ล้อเลื่อน — ↑ เร่ง ↓ เบรก ← → เลี้ยว · เก็บ ☕ เร่งความเร็ว · ระวัง 🗑️':'📊 สรุปผล'}${S.by?' · เริ่มโดย '+esc(S.by):''}</span>`;
-  const s=$('#startK');if(s)s.onclick=startKitchen;
+  // lobby = pick a game: every game uses one or two buttons, everyone plays their own lane at once, nobody is knocked out
+  if(S.sc==='lobby')b.innerHTML=`<div class="pick">
+      <div class="pk"><b>🕺 เต้น</b><small>กดลูกศรตาม แล้ว Space ตรงจังหวะ</small><span class="songs">${SONGS.map((g,i)=>`<button class="btn sm" data-song="${i}">${g.level}</button>`).join('')}</span></div>
+      <button class="pk" id="startT" type="button"><b>🪢 ชักเย่อ</b><small>รัว Space ให้ไวที่สุด · คนเดียวก็เล่นได้ (สู้หัวหน้า)</small><span class="btn sm primary">เริ่ม</span></button>
+      <button class="pk" id="startR" type="button"><b>🪑 แข่งเก้าอี้</b><small>เก้าอี้วิ่งเอง กด Space กระโดดข้ามถังขยะ</small><span class="btn sm primary">เริ่ม</span></button>
+    </div><span class="muted">ใครกดก็ได้ ทุกคนในห้องเล่นด้วยกัน · ระหว่างรอ เดินเล่นด้วยลูกศรได้</span>`;
+  else b.innerHTML=`<span class="muted">${S.sc==='kitchen'?'🍳 ครัวเอกสาร':S.sc==='dance'?'🕺 เต้น — ลูกศรตามให้ครบ แล้ว Space ตรงจังหวะที่ 4':S.sc==='race'?'🪑 แข่งเก้าอี้ — Space กระโดด':S.sc==='tug'?'🪢 ชักเย่อ — รัว Space':'📊 สรุปผล'}${S.by?' · เริ่มโดย '+esc(S.by):''}</span>`;
+  const st=$('#startT');if(st)st.onclick=startTug;
   const sr=$('#startR');if(sr)sr.onclick=startRace;
   b.querySelectorAll('[data-song]').forEach(x=>x.onclick=()=>startDance(+x.dataset.song));
-  $('#dpad').hidden=S.sc!=='dance';
+  renderPad();
+}
+// on-screen buttons for the current game (mouse and touch)
+function renderPad(){
+  const d=$('#dpad'),k=S.sc;d.hidden=!['dance','race','tug'].includes(k);if(d.dataset.k===k)return;d.dataset.k=k;
+  d.innerHTML=k==='dance'?'<button class="btn" data-d="l">←</button><button class="btn" data-d="u">↑</button><button class="btn" data-d="d">↓</button><button class="btn" data-d="r">→</button><button class="btn primary" data-d="sp">SPACE</button>'
+    :k==='race'?'<button class="btn primary wide" data-d="jump">⤒ กระโดด <small>(Space)</small></button>':k==='tug'?'<button class="btn primary wide" data-d="tug">💪 ดึง! <small>(Space)</small></button>':'';
 }
 function renderRes(){
   const el=$('#res');if(S.sc!=='res'){el.hidden=true;return}
   if(S.g==='chair'){const m=['🥇','🥈','🥉'];el.hidden=false;
     el.innerHTML=`<div class="panel"><h2>🪑 แข่งเก้าอี้ล้อเลื่อน</h2><ol class="rank">${(S.res||[]).map((r,i)=>`<li><img src="assets/3d/chars/previews/character-${CHARS.includes(r.c)?r.c:'female-a'}.png" alt=""><b>${esc(r.n)}</b><span>${r.fin?`${m[i]||'#'+(i+1)} ${fmtT(r.fin)}`:`ยังไม่เข้าเส้นชัย (รอบ ${r.lap}/${LAPS})`}</span></li>`).join('')}</ol><p class="muted">กลับห้องรวมใน 10 วินาที</p></div>`;return}
+  if(S.g==='tug'){const all=S.res||[],mvp=all.reduce((a,b)=>b.tp>(a?a.tp:-1)?b:a,null),mine=TG&&all.find(r=>r.n===me.n);
+    const head=!S.win?'🤝 เสมอ!':S.bot?(S.win==='A'?'🎉 ชนะหัวหน้า!':'😅 หัวหน้าชนะ ลองใหม่!'):`🎉 ทีม${S.win==='A'?'ซ้าย 🟦':'ขวา 🟥'}ชนะ!`;
+    const li=r=>`<li><img src="assets/3d/chars/previews/character-${CHARS.includes(r.c)?r.c:'female-a'}.png" alt=""><b>${r.tm==='A'?'🟦':'🟥'} ${esc(r.n)}</b><span>💪 ${r.tp}${r===mvp&&r.tp>0&&all.length>1?' ⭐MVP':''}</span></li>`;
+    el.hidden=false;el.innerHTML=`<div class="panel"><h2>🪢 ชักเย่อ</h2><div style="font-size:30px;font-weight:800">${head}</div><ol class="rank" style="list-style:none;padding:0">${all.map(li).join('')}</ol>
+      ${mine?`<p>คุณรัวไป ${mine.tp} ครั้ง</p>`:''}<p class="muted">กลับห้องรวมใน 10 วินาที</p></div>`;return}
   if(S.g==='dance'){const m=['🥇','🥈','🥉'];el.hidden=false;
     el.innerHTML=`<div class="panel"><h2>🕺 Office Audition</h2><p class="muted">${esc(songOf(S).th)}</p><ol class="rank">${(S.res||[]).map((r,i)=>`<li><img src="assets/3d/chars/previews/character-${CHARS.includes(r.c)?r.c:'female-a'}.png" alt=""><b>${esc(r.n)}</b><span>${m[i]||'#'+(i+1)} ${r.ds} · คอมโบ ${r.mc}</span></li>`).join('')}</ol>${D?`<p>ของคุณ: Perfect ${D.cnt.PERFECT} · Great ${D.cnt.GREAT} · Cool ${D.cnt.COOL} · Bad ${D.cnt.BAD} · Miss ${D.cnt.MISS}</p>`:''}<p class="muted">กลับห้องรวมใน 10 วินาที</p></div>`;return}
   const stars=S.score>=400?'⭐⭐⭐':S.score>=220?'⭐⭐':S.score>=90?'⭐':'💀';
@@ -470,7 +570,7 @@ function renderRes(){
 }
 function kitchenHud(t){
   const el=$('#khud');
-  if(S.sc==='dance'||S.sc==='race')return;$('#dpanel').hidden=true;
+  if(S.sc==='dance'||S.sc==='race'||S.sc==='tug')return;$('#dpanel').hidden=true;
   if(S.sc!=='kitchen'||!K){el.hidden=true;$('#count').hidden=true;return}
   if(t<S.at){$('#count').hidden=false;$('#count').innerHTML=`<b>${Math.ceil((S.at-t)/1000)}</b><span>หยิบกระดาษ → กรอก / ปั๊มตรา / ให้หัวหน้าเซ็น → ส่งให้ตรงใบงาน</span>`}else $('#count').hidden=true;
   el.hidden=false;
@@ -490,6 +590,7 @@ function send(t){
   if(!meRef||t-sendT<100)return;
   const o={n:me.n,c:me.c,j:me.j,x:+me.x.toFixed(2),z:+me.z.toFixed(2),y:+me.y.toFixed(2),r:+me.r.toFixed(2),a:me.a,e:me.e,et:me.et,wk:me.wk,v:vis};
   if(S.sc==='race'&&RC){o.rp=+RC.prog.toFixed(2);o.rf=RC.fin||0}
+  if(S.sc==='tug'&&TG){o.tp=TG.taps;o.ta=S.at}
   if(S.sc==='dance'&&D){o.ds=D.score;o.dc=D.combo;o.dmc=D.maxc;if(D.last){o.dj=D.last.j;o.djt=D.last.t}}
   const s=JSON.stringify(o);if(s===last&&t-sendT<4000)return;sendT=t;last=s;set(meRef,o);
 }
@@ -507,9 +608,9 @@ function frame(){
     if(kit&&!frozen){tg=kitchenTarget(t);if(actPress&&tg){push(ref(db,R+'/ki'),{pid:me.id,st:tg,t})}
       const s=KST.find(s=>s.id===tg);me.wk=keys.e&&s&&WORK[s.t]?s.id:''}else me.wk='';
     actPress=false;jumpPress=S.sc==='dance'?false:jumpPress;
-    if(S.sc==='dance')danceTick(t,dt);else if(S.sc==='race')raceTick(t,dt);else step(dt,frozen);
+    if(S.sc==='dance')danceTick(t,dt);else if(S.sc==='race')raceTick(t,dt);else if(S.sc==='tug')tugTick(t,dt);else step(dt,frozen);
     myAv.o.position.set(me.x,me.y,me.z);
-    if(raceScene()){chairFor('me').then(c=>{c.visible=true;c.position.set(me.x,0,me.z);c.rotation.y=me.r});myAv.o.position.y=SEAT_Y}myAv.o.rotation.y=me.r;myAv.play(me.a);myAv.mixer.update(dt);
+    if(raceScene()){chairFor('me').then(c=>{c.visible=true;c.position.set(me.x,me.y,me.z);c.rotation.y=me.r});myAv.o.position.y=SEAT_Y+me.y}myAv.o.rotation.y=me.r;myAv.play(me.a);myAv.mixer.update(dt);
     const myJ=S.sc==='dance'&&D&&D.last&&t-D.last.t<1200?D.last.j+(D.combo>1?' x'+D.combo:''):'';
     placeTag(myTag,me.x,me.y,me.z,me.n+' ★',me.e,me.et,t,kit?badges(K.h&&K.h[me.id]):myJ);send(t);
     if(db&&hostId()===me.id)host(t,dt);else intents.length=0;
@@ -524,12 +625,18 @@ function frame(){
       placeTag(bossTag,b.x,0,b.z,tg==='boss'?'หัวหน้า ✒️ กด E ให้เซ็น':'หัวหน้า ✒️ เซ็นเอกสาร','',0,t)}
       else placeTag(bossTag,5.2,0,-3.4,'🗓 หัวหน้าไปประชุม','',0,t)}}
   kitchenHud(t);
+  // tug-of-war: rope follows the score; a lone player pulls against the boss
+  const tugOn=S.sc==='tug'||(S.sc==='res'&&S.g==='tug');
+  if(tugG){tugG.visible=tugOn;if(S.sc==='tug'){const g=tugState(t);tugMove.position.x+=(-g.k*2-tugMove.position.x)*Math.min(1,dt*8);
+    if(boss&&g.T.bot){boss.o.visible=true;boss.o.position.set(tugMove.position.x+1,0,TUG_Z);boss.o.rotation.y=-Math.PI/2;boss.play('holding-both');boss.mixer.update(dt);
+      bossTag.hidden=false;placeTag(bossTag,tugMove.position.x+1,0,TUG_Z,'หัวหน้า 🤖','',0,t)}}
+    else if(S.sc!=='res')tugMove.position.x=0}
   if(K&&K.ev&&K.ev.t!==lastEv){lastEv=K.ev.t;if(t-K.ev.t<3000&&K.ev.m)toast(K.ev.m)}
   for(const [id,o] of Object.entries(others)){const p=players[id];if(!p)continue;
     o.x+=(p.x-o.x)*Math.min(1,dt*10);o.z+=(p.z-o.z)*Math.min(1,dt*10);o.y+=((p.y||0)-o.y)*Math.min(1,dt*12);
     let dr=(p.r||0)-o.r;dr=Math.atan2(Math.sin(dr),Math.cos(dr));o.r+=dr*Math.min(1,dt*10);
     if(o.av){o.av.o.position.set(o.x,o.y,o.z);o.av.o.rotation.y=o.r;o.av.play(p.a||'idle');o.av.mixer.update(dt)}
-    if(raceScene()&&o.av){o.av.o.position.y=SEAT_Y;chairFor(id).then(c=>{c.visible=true;c.position.set(o.x,0,o.z);c.rotation.y=o.r})}
+    if(raceScene()&&o.av){o.av.o.position.y=SEAT_Y+o.y;chairFor(id).then(c=>{c.visible=true;c.position.set(o.x,o.y,o.z);c.rotation.y=o.r})}
     if(S.sc==='dance'&&o.av)o.av.o.position.y=Math.abs(Math.sin((t-S.at)/1000*Math.PI*songOf(S).bpm/60))*.08;
     placeTag(o.tag,o.x,o.y,o.z,p.n,p.e,p.et,t,kit?badges(K.h&&K.h[id]):S.sc==='dance'&&p.dj&&t-p.djt<1200?p.dj+(p.dc>1?' x'+p.dc:''):'')}
   // disco floor flashes on the beat during the dance
@@ -544,7 +651,7 @@ function frame(){
 function joinPanel(){
   let c=store.get('avatar3d',CHARS[Math.floor(Math.random()*CHARS.length)]);
   const ov=document.createElement('div');ov.className='overlay';
-  ov.innerHTML=`<div class="panel"><h2>🧊 ห้องรวม 3D</h2><p class="muted">เลือกตัวละครแล้วเข้าห้อง — กล้องล็อกมุมเดียว ทุกคนเห็นห้องเหมือนกัน</p>
+  ov.innerHTML=`<div class="panel"><h2>🎉 ห้องปาร์ตี้</h2><p class="muted">เลือกตัวละครแล้วเข้าห้อง เลือกเกมเล่นพร้อมเพื่อนได้เลย</p>
     <label class="field">ชื่อเล่น <input maxlength="12" value="${esc(store.get('name',''))}" placeholder="เช่น พล"></label>
     <div class="avas">${CHARS.map(k=>`<button class="${k===c?'on':''}" data-c="${k}"><img src="assets/3d/chars/previews/character-${k}.png" alt=""></button>`).join('')}</div>
     <div style="margin-top:14px"><button class="btn primary" data-go>🚪 เข้าห้อง</button></div></div>`;
@@ -570,11 +677,12 @@ async function join(n,c){
   addEventListener('pagehide',()=>remove(meRef));
   boss=await makeAvatar('male-f');boss.o.visible=false;bossTag=tagFor({},false);bossTag.hidden=true;
   // show up as "in the 3D room" in the hub's online box
-  import('./online.js?v=3').then(O=>O.setPresence({n,a:store.get('partyAva','p_office'),g:'party3d'})).catch(()=>{});
+  import('./online.js?v=3').then(O=>O.setPresence({n,a:(store.get('prog',{})||{}).who||'adam',lv:(store.get('prog',{})||{}).lv||0,g:'party3d'})).catch(()=>{});
 }
 
 // ?debug exposes state for local testing
-if(location.search.includes('debug'))window.__p3={me,keys,get K(){return K},get S(){return S},get players(){return players},get D(){return D},get RC(){return RC},raceObs,blocked:(x,z)=>blocked(x,z),dkey:k=>danceKey(k),dspace:()=>danceSpace(),now:()=>now(),press:()=>{actPress=true},tick:()=>frame()};
-document.querySelectorAll('#dpad [data-d]').forEach(b=>b.addEventListener('pointerdown',e=>{e.preventDefault();b.dataset.d==='sp'?danceSpace():danceKey(b.dataset.d)}));
+if(location.search.includes('debug'))window.__p3={me,keys,get K(){return K},get S(){return S},get players(){return players},get D(){return D},get RC(){return RC},get TG(){return TG},tug:()=>tugTap(),startTug:()=>startTug(),startRace:()=>startRace(),raceObs,blocked:(x,z)=>blocked(x,z),dkey:k=>danceKey(k),dspace:()=>danceSpace(),now:()=>now(),press:()=>{actPress=true},tick:()=>frame()};
+$('#dpad').addEventListener('pointerdown',e=>{const b=e.target.closest('[data-d]');if(!b)return;e.preventDefault();const d=b.dataset.d;
+  if(d==='jump')jumpPress=true;else if(d==='tug')tugTap();else if(d==='sp')danceSpace();else danceKey(d)});
 $('#mute').textContent=music.muted?'🔇':'🔊';$('#mute').onclick=()=>{music.muted=!music.muted;store.set('muted3d',music.muted);$('#mute').textContent=music.muted?'🔇':'🔊'};
-Promise.all([buildRoom(),buildRace()]).catch(e=>console.error(e)).finally(()=>{buildStations();buildDisco();renderBar();$('#loading').remove();requestAnimationFrame(frame);joinPanel()});
+Promise.all([buildRoom(),buildRace()]).catch(e=>console.error(e)).finally(()=>{buildStations();buildDisco();buildTug();renderBar();$('#loading').remove();requestAnimationFrame(frame);joinPanel()});

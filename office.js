@@ -109,7 +109,7 @@ function officeMount(root, api) {
   const roomBox = root.querySelector('.office-room'), { cv, ctx, at } = g2canvas(roomBox, RCOLS * RC, RROWS * RC);
   roomBox.insertBefore(cv.parentNode, roomBox.firstChild);
   const q = k => root.querySelector(`[data-k="${k}"]`), fx = makeFX();
-  let p = Prog.get(), tab = 'shop', placing = null, moving = -1, sel = -1, hover = null, visit = null, t = 0, pops = {};
+  let p = Prog.get(), tab = window.officeTab || 'shop', placing = null, moving = -1, sel = -1, hover = null, visit = null, t = 0, pops = {};
   const walker = roomWalker(p.who); walker.ctx = ctx;
   const view = () => visit ? visit.room : p.room;
   function save() { Prog.put(p); }

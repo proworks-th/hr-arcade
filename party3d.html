@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>ห้องรวม 3D · HR Arcade</title>
+<title>ห้องปาร์ตี้ · HR Arcade</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧊</text></svg>">
 <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;600;800&display=swap" rel="stylesheet">
 <script>window.HRA_IMPORTS={"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}</script>
@@ -65,6 +65,15 @@ main{max-width:1200px;margin:0 auto;padding:12px 16px 40px}
 .judge small{font-size:20px}.judge .why{display:block;font-size:14px;color:var(--ink)}
 .tk.meK{background:#ffe2ef}
 .dpad{display:flex;gap:8px;justify-content:center;margin-top:10px}.dpad .btn{min-width:56px;height:52px;font-size:22px}
+.dpad .btn.wide{min-width:min(360px,90%);height:64px;font-size:26px}.dpad .btn small{font-size:14px;opacity:.8}
+.pick{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;width:100%}
+@media (max-width:700px){.pick{grid-template-columns:1fr}}
+.pk{display:flex;flex-direction:column;align-items:flex-start;gap:4px;text-align:left;font:inherit;color:inherit;background:#fff;border:2px solid var(--line);border-radius:14px;box-shadow:0 3px 0 var(--line);padding:10px 12px;cursor:pointer}
+button.pk:hover{transform:translateY(-2px)}div.pk{cursor:default}
+.pk b{font-size:18px}.pk small{color:var(--muted);font-size:13px;flex:1}.pk .songs{display:flex;gap:6px}
+.tugbar{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.9);border:3px solid var(--line);border-radius:14px;padding:6px 10px;font-weight:800}
+.tugbar .tb{flex:1;position:relative;height:14px;border-radius:8px;background:linear-gradient(90deg,#3a86ff 0 50%,#ff5c8a 50% 100%);border:2px solid var(--line)}
+.tugbar .tb i{position:absolute;top:-7px;width:8px;height:24px;margin-left:-4px;background:#ff4d4d;border:2px solid var(--line);border-radius:3px;transition:left .1s}
 .rank{text-align:left;padding-left:20px}.rank li{display:flex;align-items:center;gap:8px;margin:4px 0}.rank img{width:28px;height:28px;object-fit:contain}.rank span{margin-left:auto}
 /* touch screens: every control at least 44×44 */
 @media (pointer:coarse),(hover:none){.btn,.btn.sm{min-height:44px;min-width:44px}.field input{min-height:44px}.side a{display:inline-block;padding:12px 0}}
@@ -94,7 +103,7 @@ main{max-width:1200px;margin:0 auto;padding:12px 16px 40px}
 </style>
 </head>
 <body>
-<header class="top"><a class="btn sm" href="./">🏠 หน้าหลัก</a><h1>🧊 ห้องรวม 3D <span class="muted" style="font-size:14px">(ทดลอง)</span></h1><button class="btn sm" id="mute">🔊</button><button class="btn sm" id="gfx">✨ กราฟิกสูง</button></header>
+<header class="top"><a class="btn sm" href="./">🏠 หน้าหลัก</a><h1>🎉 ห้องปาร์ตี้</h1><button class="btn sm" id="mute">🔊</button><button class="btn sm" id="gfx">✨ กราฟิกสูง</button></header>
 <main>
   <div class="wrap">
     <div>
@@ -106,10 +115,10 @@ main{max-width:1200px;margin:0 auto;padding:12px 16px 40px}
       <div class="bar" id="emotes"></div>
     </div>
     <aside class="side"><h3>👥 ในห้องตอนนี้</h3><ul id="plist"></ul>
-      <p>⬅️⬆️⬇️➡️ / WASD เดิน · Space กระโดด · E ใช้งาน (กดค้าง = ทำงาน) · 1-8 อีโมจิ<br>🪑 แข่งเก้าอี้: ↑ เร่ง ↓ เบรก ← → เลี้ยว · มือถือลากจอยไปทางที่จะไป<br>🕺 Audition: ลูกศรตามให้ครบ แล้ว Space ตอนเข็มถึงเส้นดำ (จังหวะที่ 4) · ลูกศรแดง = กดกลับด้าน<br>กล้องล็อกมุมเดียวกันทุกคน — ทุกคนเห็นห้องเหมือนกัน</p>
+      <p>🕺 <b>เต้น</b> ลูกศรตามให้ครบ แล้ว Space ตอนเข็มถึงเส้นดำ · ลูกศรแดง = กดกลับด้าน<br>🪢 <b>ชักเย่อ</b> รัว Space<br>🪑 <b>แข่งเก้าอี้</b> Space กระโดด<br>ระหว่างรอ: ลูกศร/WASD เดิน · 1-8 อีโมจิ</p>
       <p class="credits">🎨 โมเดล 3D (CC0):<a href="https://kenney.nl/assets/mini-characters" target="_blank" rel="noopener">Kenney Mini Characters</a><a href="https://kenney.nl/assets/furniture-kit" target="_blank" rel="noopener">Kenney Furniture Kit</a></p></aside>
   </div>
 </main>
-<script type="module" src="party3d.js?v=10"></script>
+<script type="module" src="party3d.js?v=11"></script>
 </body>
 </html>

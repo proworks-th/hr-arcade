@@ -80,6 +80,50 @@ a.btn{text-decoration:none;display:inline-flex;align-items:center;gap:6px;color:
 /* stage & shared */
 #stage{--chrome:180px;max-width:1680px;margin:0 auto;padding:12px 16px 40px}
 .game{position:relative}
+/* hub v2: three calm sections — me, party, games (+ a quiet feed) */
+#hub{max-width:1040px}
+#hub .me,#hub .party,#hub .scard,#hub .mpanel{background:#fff;border:2px solid var(--line);border-radius:14px;box-shadow:0 3px 0 var(--line)}
+.me{display:flex;align-items:center;gap:12px;padding:8px 12px;margin-bottom:12px}
+.me-ava{flex:none;width:48px;height:48px;border:2px solid var(--line);border-radius:12px;background:#f6efe4;display:grid;place-items:center;cursor:pointer;padding:0}
+.me-ava img{height:40px;image-rendering:pixelated}
+.me-main{flex:1;min-width:0;display:grid;gap:2px}
+.me-main input{font:inherit;font-weight:600;font-size:17px;border:none;border-bottom:2px dashed #d9cdbb;outline:none;background:transparent;padding:2px 0;width:100%;max-width:260px}
+.me-main input:focus{border-bottom-color:var(--pri)}
+.me-lv{font-size:13px;color:var(--muted);display:flex;align-items:center;gap:6px;white-space:nowrap}.me-lv b{color:var(--ink)}
+.me-lv .xpbar{width:110px;height:8px;border-width:1.5px}
+.me-coins{font-weight:700;white-space:nowrap}
+.party{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 14px;margin-bottom:18px;flex-wrap:wrap}
+.party-l{display:flex;align-items:center;gap:10px;min-width:0;flex-wrap:wrap}
+.heads{display:flex;flex-wrap:wrap;gap:6px}
+.head{display:flex;align-items:center;gap:4px;background:#f6efe4;border-radius:999px;padding:2px 10px 2px 4px;font-size:13px}
+.head.me{background:#fff3c4}.head img{height:24px;image-rendering:pixelated}
+.party-r{display:flex;align-items:center;gap:10px}.party-r .btn{font-size:17px}.party-r .btn small{font-size:12px;font-weight:400}
+.sec-h{display:flex;align-items:center;gap:10px;margin-bottom:10px}.sec-h h3{margin:0;font-size:18px}
+.chip{margin-left:auto;font:inherit;font-size:14px;background:#fff;border:2px solid var(--line);border-radius:999px;padding:3px 12px;cursor:pointer}
+.chip.all{background:#e0f4d6}
+.mpanel{padding:4px 12px;margin-bottom:12px}.mpanel .mlist li:last-child{border-bottom:none}
+#hub .solo-grid{grid-template-columns:repeat(5,1fr);gap:10px}
+@media (max-width:900px){#hub .solo-grid{grid-template-columns:repeat(3,1fr)}}
+@media (max-width:520px){#hub .solo-grid{grid-template-columns:repeat(3,1fr);gap:8px}.me-coins{display:none}.party-r small{display:none}
+  #hub .scard{padding:8px 4px}#hub .scard .em{width:48px;height:48px}#hub .scard .em img{width:38px;height:38px}#hub .scard b{font-size:13px;line-height:1.25}
+  .me-lv .xpbar{width:56px}.me{gap:8px}}
+.me-main{overflow:hidden}
+#hub .scard{display:flex;flex-direction:column;align-items:center;text-align:center;gap:4px;padding:12px 8px 10px}
+#hub .scard:active{box-shadow:0 1px 0 var(--line)}
+#hub .scard .em{width:64px;height:64px;border:none;border-radius:16px}
+#hub .scard .em img{width:48px;height:48px}
+#hub .scard b{font-size:15px}#hub .scard small{font-size:12px}
+.head>span{display:grid;line-height:1.15}.head i{font-style:normal;font-size:11px;color:var(--muted)}
+.crew{margin-top:8px}.crew h3{font-size:15px;color:var(--muted);margin:0 0 6px;display:flex;align-items:center;gap:8px}
+.crew-list{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;scrollbar-width:thin}
+.crew-it{flex:none;display:flex;align-items:center;gap:6px;background:#fff;border:2px solid #e6dccb;border-radius:12px;padding:4px 10px 4px 6px}
+.crew-it.me{border-color:var(--line);background:#fff3c4}.crew-it img{height:28px;image-rendering:pixelated}
+.crew-it>span{display:grid;line-height:1.2}.crew-it b{font-size:13px}.crew-it small{font-size:11.5px;color:var(--muted);white-space:nowrap}
+.feedbox{margin-top:8px}
+@media (pointer:coarse),(hover:none){.chip,.linkbtn{min-height:44px;min-width:44px}}.feedbox h3{font-size:15px;color:var(--muted);margin:0 0 4px;display:flex;align-items:center;gap:8px}
+.linkbtn{margin-left:auto;border:none;background:none;font:inherit;font-size:13px;color:var(--blue);cursor:pointer;padding:4px}
+.feedbox .feed li{border-bottom:1px dashed #eadfcd}
+
 .profbar{display:flex;align-items:center;gap:10px;flex:1 1 300px;max-width:460px;margin-left:auto;padding:5px 10px;background:#fff;border:3px solid var(--line);border-radius:16px;box-shadow:0 5px 0 var(--line);cursor:pointer;font:inherit;text-align:left}
 .profbar:active{transform:translateY(3px);box-shadow:0 2px 0 var(--line)}
 .pb-main{flex:1;display:grid;gap:4px;min-width:0}.pb-coins{font-weight:700;white-space:nowrap}
@@ -278,8 +322,8 @@ a.btn{text-decoration:none;display:inline-flex;align-items:center;gap:6px;color:
 <header class="top">
   <button class="btn" id="homeBtn" hidden aria-label="หน้าแรก">🏠<span class="lbl"> หน้าแรก</span></button>
   <h1>🕹️ <span>ห้องพักสมอง · HR Arcade</span></h1>
-  <button class="btn" id="rankBtn" aria-label="อันดับ">🏆<span class="lbl"> อันดับ</span></button>
-  <button class="btn" id="helpBtn" aria-label="วิธีเล่น">❓<span class="lbl"> วิธีเล่น</span></button>
+  <button class="btn icon" id="rankBtn" title="อันดับ" aria-label="อันดับ">🏆</button>
+  <button class="btn icon" id="helpBtn" title="วิธีเล่น" aria-label="วิธีเล่น">❓</button>
   <button class="btn icon" id="muteBtn" title="เปิด/ปิดเสียง" aria-label="เปิด/ปิดเสียง">🔊</button>
   <!-- boss key lives in the sticky header so it never covers game content -->
   <button class="btn" id="bossBtn" title="หัวหน้ามา! (Esc)" aria-label="หนีหัวหน้า (Esc)">🙈<span class="lbl"> หัวหน้ามา! <kbd>Esc</kbd></span></button>
@@ -290,7 +334,7 @@ a.btn{text-decoration:none;display:inline-flex;align-items:center;gap:6px;color:
 <div id="boss" hidden></div>
 
 <script src="solo-games.js?v=7"></script>
-<script src="office.js?v=1"></script>
+<script src="office.js?v=3"></script>
 <script>
 'use strict';
 /* ---------- utils ---------- */
@@ -339,9 +383,11 @@ const loadRank=()=>onlineMod||(onlineMod=import('./online.js?v=5'));
 const loadOnline=loadRank;
 const PIX_AVAS=['p_office','p_woffice','p_whealth','p_tech','p_cat','p_dog'];
 const myAva=()=>{const a=store.get('partyAva','p_office');return PIX_AVAS.includes(a)?a:'p_office'};
+const meWho=()=>MI_PEOPLE.includes(Prog.get().who)?Prog.get().who:'adam';
+const avaSrc=a=>MI_PEOPLE.includes(a)?`assets/mi/${a}_down.png`:`assets/pixel/${PIX_AVAS.includes(a)?a:'p_office'}.png`;
 const myName=()=>store.get('name','').trim();
 let presState='hub';
-function presence(g){if(g)presState=g;loadOnline().then(O=>O.setPresence({n:myName()||'ผู้เล่นปริศนา',a:myAva(),lv:Prog.get().lv,g:bossOn?'busy':presState})).catch(()=>{})}
+function presence(g){if(g)presState=g;loadOnline().then(O=>O.setPresence({n:myName()||'ผู้เล่นปริศนา',a:meWho(),lv:Prog.get().lv,g:bossOn?'busy':presState})).catch(()=>{})}
 function ago(t){const s=Math.max(0,(Date.now()-t)/1000);return s<60?'เมื่อกี้':s<3600?Math.floor(s/60)+' นาทีที่แล้ว':s<86400?Math.floor(s/3600)+' ชม.ที่แล้ว':Math.floor(s/86400)+' วันที่แล้ว'}
 
 /* ---------- daily missions + streak (kept on this device; everyone gets the same 3 missions each day) ---------- */
@@ -354,10 +400,9 @@ const MISSIONS=[
   {id:'whack20',t:'ทำคอมโบ 20 ในสายด่วนถล่มโต๊ะ',g:'whack',ok:e=>e.game==='whack'&&e.st.combo>=20},
   {id:'stack20',t:'ซ้อนแฟ้มให้ถึง 20 ชั้น',g:'stack',ok:e=>e.game==='stack'&&e.st.floors>=20},
   {id:'stack3',t:'วางแฟ้มเป๊ะ 3 ครั้งในรอบเดียว',g:'stack',ok:e=>e.game==='stack'&&e.st.perfects>=3},
-  {id:'race',t:'ลงแข่งวิ่งในห้องปาร์ตี้ 1 รอบ',g:'party',ok:e=>e.kind==='race'},
-  {id:'kitchen',t:'ช่วยทีมในครัวเอกสาร 1 รอบ',g:'party',ok:e=>e.kind==='kitchen'},
-  {id:'dance',t:'เต้น Office Audition ในห้อง 3D ให้จบ 1 เพลง',g:'party',ok:e=>e.kind==='dance'},
-  {id:'chair',t:'แข่งเก้าอี้ล้อเลื่อนในห้อง 3D 1 รอบ',g:'party',ok:e=>e.kind==='chair'},
+  {id:'tug',t:'เล่นชักเย่อในห้องปาร์ตี้ 1 รอบ',g:'party',ok:e=>e.kind==='tug'},
+  {id:'dance',t:'เต้นในห้องปาร์ตี้ให้จบ 1 เพลง',g:'party',ok:e=>e.kind==='dance'},
+  {id:'chair',t:'แข่งเก้าอี้ในห้องปาร์ตี้ 1 รอบ',g:'party',ok:e=>e.kind==='chair'},
   {id:'mix3',t:'เล่นเกมเดี่ยวให้ครบ 3 เกม',g:'any',ok:(e,m)=>m.played.length>=3},
   {id:'tetris10',t:'Printer Tetris เคลียร์ 10 แถว',g:'tetris',ok:e=>e.game==='tetris'&&e.st.lines>=10},
   {id:'stamp10',t:'ปั๊มตรา PERFECT 10 ครั้งในรอบเดียว',g:'stamp',ok:e=>e.game==='stamp'&&e.st.perfect>=10},
@@ -384,7 +429,7 @@ function recordMission(e){ // e: {game,score,daily,st,kind}
   if(fresh.length&&s.done.length>=list.length){
     const k=store.get('streak',{last:'',n:0}),n=k.last===thaiDay()?k.n:k.last===thaiDay(Date.now()-864e5)?k.n+1:1;
     store.set('streak',{last:thaiDay(),n});toast(`🔥 ภารกิจวันนี้ครบ! ต่อเนื่อง ${n} วัน (+40 🪙)`);Prog.give(40,150);
-    if(myName())loadOnline().then(O=>O.pushFeed(`✅ ${myName()} ทำภารกิจวันนี้ครบ 🔥 ${n} วันติด`,myName(),myAva())).catch(()=>{});
+    if(myName())loadOnline().then(O=>O.pushFeed(`✅ ${myName()} ทำภารกิจวันนี้ครบ 🔥 ${n} วันติด`,myName(),meWho())).catch(()=>{});
   }
   renderMissions();
 }
@@ -393,30 +438,44 @@ window.addEventListener('hra-party',e=>recordMission({game:'party',kind:e.detail
 {const q=store.get('pendingMissions',[]);if(q.length){store.set('pendingMissions',[]);setTimeout(()=>q.forEach(recordMission),0)}}
 
 /* ---------- hub live panel renderers (data arrives from Firebase watchers) ---------- */
-const ACT={hub:'อยู่หน้าแรก',office:'🏠 แต่งออฟฟิศ',party:'อยู่ห้องปาร์ตี้',party3d:'🧊 อยู่ห้อง 3D',busy:'🙈 แอบทำงาน',spot:'🔍 จับผิดภาพ',run:'🏃 วิ่งไปตอกบัตร',whack:'☎️ สายด่วน',stack:'📚 ซ้อนแฟ้ม',tetris:'🖨️ Printer Tetris',stamp:'🔏 ปั๊มตรา',barista:'☕ บาริสต้า',toss:'🗑️ ปากระดาษ',slack:'📱 แอบเล่นมือถือ',conga:'🍱 ขบวนไปกินข้าว'};
+const ACT={hub:'อยู่หน้าแรก',office:'🏠 แต่งออฟฟิศ',party:'อยู่ห้องปาร์ตี้',party3d:'🎉 อยู่ห้องปาร์ตี้',busy:'🙈 แอบทำงาน',spot:'🔍 จับผิดภาพ',run:'🏃 วิ่งไปตอกบัตร',whack:'☎️ สายด่วน',stack:'📚 ซ้อนแฟ้ม',tetris:'🖨️ Printer Tetris',stamp:'🔏 ปั๊มตรา',barista:'☕ บาริสต้า',toss:'🗑️ ปากระดาษ',slack:'📱 แอบเล่นมือถือ',conga:'🍱 ขบวนไปกินข้าว'};
 let onlineList=null,feedList=null;
 function renderOnline(){
   const el=document.querySelector('[data-k=onlist]');if(!el)return;
   if(!onlineList){el.innerHTML='<span class="muted">กำลังเชื่อมต่อ…</span>';return}
-  const L=onlineList.slice().sort((a,b)=>(b.me-a.me)||((b.g==='party')-(a.g==='party')));
-  document.querySelector('[data-k=oncount]').textContent=`${L.length} คน`;
-  el.innerHTML=L.length?L.map(p=>`<span class="onp${p.me?' me':''}"><img src="assets/pixel/${PIX_AVAS.includes(p.a)?p.a:'p_office'}.png" width="30" height="30" alt=""><span><b>${esc(p.n)}${p.me?' (คุณ)':''}${p.lv?` <i class="lvb">Lv${p.lv}</i>`:''}</b><small>${ACT[p.g]||'กำลังเล่น'}</small></span></span>`).join(''):'<span class="muted">ยังไม่มีใคร</span>';
-  const inParty=L.filter(p=>p.g==='party').length,b=document.getElementById('joinParty');
-  if(b)b.textContent=inParty?`🎉 เข้าร่วมเลย (${inParty} คนในห้อง)`:'🎉 เข้าห้องปาร์ตี้';
+  const L=onlineList.slice().sort((a,b)=>(b.me-a.me)||((b.g==='party3d')-(a.g==='party3d')));
+  document.querySelector('[data-k=oncount]').textContent=`${L.length} คนออนไลน์`;
+  el.innerHTML=L.slice(0,8).map(p=>`<span class="head${p.me?' me':''}" title="${esc(p.n)} · ${ACT[p.g]||'กำลังเล่น'}"><img src="${avaSrc(p.a)}" alt=""><span><small>${esc(p.n)}${p.g==='party3d'?' 🎉':''}</small>${p.lv?`<i>Lv${p.lv} ${Prog.title(p.lv)}</i>`:''}</span></span>`).join('')
+    +(L.length>8?`<span class="muted">+${L.length-8}</span>`:'');
+  const inParty=L.filter(p=>p.g==='party3d').length,b=document.getElementById('joinParty');
+  if(b)b.innerHTML=inParty?`🎉 เข้าร่วม <small>(${inParty} คนในห้อง)</small>`:'🎉 เข้าห้องปาร์ตี้';
 }
 function renderFeed(){
   const el=document.querySelector('[data-k=feed]');if(!el)return;
   if(!feedList){el.innerHTML='<li class="muted">กำลังโหลด…</li>';return}
   const L=feedOpen?feedList:feedList.slice(0,3);
-  el.innerHTML=L.length?L.map(f=>`<li>${f.a?`<img src="assets/pixel/${PIX_AVAS.includes(f.a)?f.a:'p_office'}.png" width="22" height="22" alt="">`:'<span>📣</span>'}<span>${esc(f.m)}</span><span class="ago">${f.t?ago(f.t):''}</span></li>`).join(''):'<li class="muted">ยังเงียบอยู่ — เล่นสักเกมแล้วชื่อคุณจะขึ้นตรงนี้</li>';
+  el.innerHTML=L.length?L.map(f=>`<li>${f.a?`<img src="${avaSrc(f.a)}" height="22" alt="">`:'<span>📣</span>'}<span>${esc(f.m)}</span><span class="ago">${f.t?ago(f.t):''}</span></li>`).join(''):'<li class="muted">ยังเงียบอยู่ — เล่นสักเกมแล้วชื่อคุณจะขึ้นตรงนี้</li>';
 }
 function renderMissions(){
   const el=document.querySelector('[data-k=mlist]');if(!el)return;
-  const s=mState(),list=todayMissions(),n=streakNow();
-  document.querySelector('[data-k=streak]').textContent=`🔥 ${n} วันติด · ${s.done.filter(id=>list.some(m=>m.id===id)).length}/3`;
+  const s=mState(),list=todayMissions(),n=streakNow(),done=s.done.filter(id=>list.some(m=>m.id===id)).length;
+  document.querySelector('[data-k=mcount]').textContent=`${done}/3`;
+  document.querySelector('[data-k=streak]').textContent=n?`🔥${n}`:'';
+  document.querySelector('#mBtn').classList.toggle('all',done>=3);
   el.innerHTML=list.map(m=>{const d=s.done.includes(m.id),g=m.g==='any'?null:m.g;
     return`<li class="${d?'done':''}"><span class="ck">${d?'✅':'⬜'}</span><span>${m.t}</span>${!d&&g?`<button class="btn sm go" data-go="${g}">เล่น</button>`:''}</li>`}).join('');
-  el.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>{if(b.dataset.go==='party')partyAutoJoin=true;startGame(b.dataset.go)});
+  el.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>{if(b.dataset.go==='party')location.href='party3d.html';else startGame(b.dataset.go)});
+}
+let crewList=null,crewT=0;
+function renderCrew(){
+  const el=document.querySelector('[data-k=crew]');if(!el)return;
+  const me=(store.get('name','')||'').trim().toLowerCase();
+  const draw=()=>{const L=(crewList||[]).slice().sort((a,b)=>(b.lv|0)-(a.lv|0)||(b.t||0)-(a.t||0)).slice(0,10);
+    el.innerHTML=crewList==null?'<span class="muted">กำลังโหลด…</span>':L.length?L.map(r=>`<span class="crew-it${(r.n||'').trim().toLowerCase()===me?' me':''}"><img src="${avaSrc(r.who)}" alt=""><span><b>${esc(r.n||'?')}</b><small>Lv${r.lv|0} · ${Prog.title(r.lv|0||1)}</small></span></span>`).join('')
+      :'<span class="muted">ยังไม่มีใคร — ตั้งชื่อเล่นแล้วเล่นสักเกม ชื่อคุณจะขึ้นตรงนี้</span>'};
+  draw();
+  if(Date.now()-crewT<60000)return;crewT=Date.now();
+  loadOnline().then(O=>O.listProfiles(40)).then(L=>{crewList=L;draw()}).catch(()=>{crewList=crewList||[];draw()});
 }
 let partyAutoJoin=false,liveStarted=false;
 function startLive(){
@@ -511,8 +570,8 @@ function startGame(id){
       const send=nm=>{rk.textContent='⏳ กำลังส่งคะแนนเข้าอันดับ…';
         loadRank().then(async R=>{const res=await R.submit(g.id,nm,score,extra,Prog.get().lv);const rows=await R.board(g.id,'d'),i=rows.findIndex(r=>r.k===R.nameKey(nm));
           rk.innerHTML=i<0?'ส่งคะแนนแล้ว':`🏆 อันดับวันนี้ของคุณ: <b>#${i+1}</b> จาก ${rows.length} คน${res&&res.d?'':' <span class="muted">(ยังไม่ชนะสถิติวันนี้ของตัวเอง)</span>'}`;
-          if(res&&res.d&&i===0)R.pushFeed(`👑 ${nm} ขึ้นที่ 1 วันนี้ ${g.emoji} ${g.title} (${fmt(score)}${g.unit?' '+g.unit:''})`,nm,myAva());
-          else if(res&&res.d&&i>0&&i<3)R.pushFeed(`⚡ ${nm} ติดอันดับ ${i+1} วันนี้ ${g.emoji} ${g.title}`,nm,myAva())})
+          if(res&&res.d&&i===0)R.pushFeed(`👑 ${nm} ขึ้นที่ 1 วันนี้ ${g.emoji} ${g.title} (${fmt(score)}${g.unit?' '+g.unit:''})`,nm,meWho());
+          else if(res&&res.d&&i>0&&i<3)R.pushFeed(`⚡ ${nm} ติดอันดับ ${i+1} วันนี้ ${g.emoji} ${g.title}`,nm,meWho())})
           .catch(()=>{rk.textContent='ส่งคะแนนเข้าอันดับไม่ได้ (เน็ตหลุด?)'})};
       if(g.id==='spot'&&!daily)rk.innerHTML='<span class="muted">โหมดสุ่มด่านไม่นับอันดับ — เล่นด่านประจำวันเพื่อลงอันดับ</span>';
       else if(score>0){const nm=store.get('name','').trim();
@@ -1019,34 +1078,34 @@ function showHelp(){
 }
 $('#helpBtn').onclick=showHelp;
 function renderHub(){
-  const solo=GAMES.filter(g=>!g.online);
-  hub.innerHTML=`<section class="hero"><div><h2>พักสมอง <span>2 นาที</span></h2><p>เล่นสั้นๆ แล้วกลับไปลุยงานต่อ · ${todayTH}</p></div>
-    <button class="profbar" id="officeBtn" type="button"><img class="pxi" src="assets/mi/${MI_PEOPLE.includes(Prog.get().who)?Prog.get().who:'adam'}_down.png" height="32" alt="">
-      <span class="pb-main"><b>Lv ${Prog.get().lv} · ${Prog.title(Prog.get().lv)}</b><span class="xpbar"><i style="width:${Prog.get().xp/needXP(Prog.get().lv)*100}%"></i></span></span>
-      <span class="pb-coins">🪙 ${fmt(Prog.get().coins)}</span><span class="btn sm primary">🏠 แต่งห้อง</span></button>
-    <label class="namebox"><button class="ava-btn" id="avaBtn" type="button" title="เปลี่ยนตัวละคร" aria-label="เปลี่ยนตัวละคร"><img src="assets/pixel/${myAva()}.png" width="30" height="30" alt=""></button><input id="nameIn" maxlength="20" placeholder="ชื่อเล่นของคุณ"></label></section>
-    <section class="hubtop">
-      <div class="box party-hero"><h3><span class="dot"></span>ออนไลน์ตอนนี้ <span class="muted" data-k="oncount"></span></h3><div class="onlist" data-k="onlist"></div>
-        <div class="cta"><div><button class="btn primary big" id="joinParty">🎉 เข้าห้องปาร์ตี้</button><small class="muted">แข่งวิ่ง · ครัวเอกสาร (2D)</small></div>
-          <div><a class="btn big" href="party3d.html">🧊 ห้อง 3D · 🕺 เต้น · 🪑 แข่ง</a><small class="champ" data-champ="dance"></small></div></div></div>
-      <div class="box"><h3>🎯 ภารกิจวันนี้ <span class="streak" data-k="streak"></span></h3><ul class="mlist" data-k="mlist"></ul></div>
+  const solo=GAMES.filter(g=>!g.online),P=Prog.get(),mOpen=store.get('mOpen',false);
+  hub.innerHTML=`<section class="me">
+      <button class="me-ava" id="avaBtn" type="button" title="เปลี่ยนตัวละคร" aria-label="เปลี่ยนตัวละคร"><img src="assets/mi/${meWho()}_down.png" alt=""></button>
+      <div class="me-main"><input id="nameIn" maxlength="20" placeholder="ตั้งชื่อเล่นก่อนเล่น ✏️" aria-label="ชื่อเล่น">
+        <div class="me-lv"><b>Lv ${P.lv}</b> ${Prog.title(P.lv)} <span class="xpbar"><i style="width:${P.xp/needXP(P.lv)*100}%"></i></span></div></div>
+      <span class="me-coins">🪙 ${fmt(P.coins)}</span>
+      <button class="btn sm" id="officeBtn" type="button">🏠 ห้องฉัน</button>
     </section>
-    <section class="solo"><h3>🎮 เกมเดี่ยว · เล่น 1–3 นาที</h3><div class="solo-grid">${solo.map(g=>`<button class="scard" data-g="${g.id}"><div class="em" style="--c:${g.color}">${g.img?`<img src="${g.img}" alt="">`:g.emoji}</div>
-      <b>${g.title}</b><small>⏱ ${g.time} · 🏆 ${fmt(store.get('best_'+g.id,0))}${g.unit?' '+g.unit:''}</small><div class="champ" data-champ="${g.id}"></div></button>`).join('')}</div></section>
-    <section class="box feedbox"><h3>⚡ ความเคลื่อนไหว <button class="btn sm" id="feedMore">${feedOpen?'ย่อ':'ดูทั้งหมด'}</button></h3><ul class="feed" data-k="feed"></ul></section>
-    <p class="credits">🎨 ภาพเกมเดี่ยว: <a href="https://limezu.itch.io/moderninteriors" target="_blank" rel="noopener">LimeZu Modern Interiors</a> (เวอร์ชันฟรี ใช้แบบไม่แสวงหากำไร) · เสียง: <a href="https://kenney.nl" target="_blank" rel="noopener">Kenney.nl</a> (CC0) · ภาพโหมดออนไลน์: <a href="https://2dpig.itch.io/pixel-office" target="_blank" rel="noopener">2dPig Pixel Office</a> (CC0) · 3D: Kenney (CC0)</p>`;
-  const ni=$('#nameIn');ni.value=store.get('name','');let nt=0;ni.oninput=()=>{store.set('name',ni.value);clearTimeout(nt);nt=setTimeout(()=>presence(),800)};
-  $('#avaBtn').onclick=()=>{const a=PIX_AVAS[(PIX_AVAS.indexOf(myAva())+1)%PIX_AVAS.length];store.set('partyAva',a);$('#avaBtn img').src=`assets/pixel/${a}.png`;presence()};
-  $('#joinParty').onclick=()=>{partyAutoJoin=true;startGame('party')};
+    <section class="party">
+      <div class="party-l"><span class="dot"></span><b data-k="oncount">…</b><div class="heads" data-k="onlist"></div></div>
+      <div class="party-r"><button class="btn primary" id="joinParty">🎉 เข้าห้องปาร์ตี้</button><small class="muted">เต้น · ชักเย่อ · แข่งเก้าอี้</small></div>
+    </section>
+    <section class="solo"><div class="sec-h"><h3>เกม</h3><button class="chip" id="mBtn" type="button" aria-expanded="${mOpen}">🎯 ภารกิจวันนี้ <b data-k="mcount">0/3</b> <span data-k="streak"></span> ${mOpen?'▴':'▾'}</button></div>
+      <div class="mpanel"${mOpen?'':' hidden'}><ul class="mlist" data-k="mlist"></ul></div>
+      <div class="solo-grid">${solo.map(g=>{const b=store.get('best_'+g.id,0);return`<button class="scard" data-g="${g.id}" title="${g.desc}"><span class="em" style="--c:${g.color}"><img src="${g.img}" alt=""></span>
+        <b>${g.title}</b><small>${b?`🏆 ${fmt(b)}${g.unit?' '+g.unit:''}`:g.time}</small></button>`}).join('')}</div></section>
+    <section class="crew"><h3>เพื่อนร่วมออฟฟิศ <button class="linkbtn" id="crewMore">ดูห้องเพื่อน</button></h3><div class="crew-list" data-k="crew"></div></section>
+    <section class="feedbox"><h3>ความเคลื่อนไหว <button class="linkbtn" id="feedMore">${feedOpen?'ย่อ':'ดูทั้งหมด'}</button></h3><ul class="feed" data-k="feed"></ul></section>
+    <p class="credits">🎨 <a href="https://limezu.itch.io/moderninteriors" target="_blank" rel="noopener">LimeZu Modern Interiors</a> (ฟรี ไม่แสวงหากำไร) · เสียงและ 3D: <a href="https://kenney.nl" target="_blank" rel="noopener">Kenney</a> (CC0) · <a href="https://2dpig.itch.io/pixel-office" target="_blank" rel="noopener">2dPig</a> (CC0)</p>`;
+  const ni=$('#nameIn');ni.value=store.get('name','');let nt=0;ni.oninput=()=>{store.set('name',ni.value);clearTimeout(nt);nt=setTimeout(()=>{presence();Prog.sync()},800)};
+  $('#avaBtn').onclick=()=>{const p=Prog.get();p.who=MI_PEOPLE[(MI_PEOPLE.indexOf(meWho())+1)%MI_PEOPLE.length];Prog.put(p);$('#avaBtn img').src=`assets/mi/${p.who}_down.png`;presence()};
+  $('#joinParty').onclick=()=>{location.href='party3d.html'};
   $('#officeBtn').onclick=()=>startGame('office');
+  $('#mBtn').onclick=()=>{store.set('mOpen',!store.get('mOpen',false));renderHub()};
   $('#feedMore').onclick=()=>{feedOpen=!feedOpen;$('#feedMore').textContent=feedOpen?'ย่อ':'ดูทั้งหมด';renderFeed()};
-  presence('hub');startLive();renderOnline();renderFeed();renderMissions();
+  $('#crewMore').onclick=()=>{window.officeTab='friends';startGame('office');window.officeTab=null};
+  presence('hub');startLive();renderOnline();renderFeed();renderMissions();renderCrew();
   hub.querySelectorAll('.scard').forEach(c=>c.onclick=()=>startGame(c.dataset.g));
-  loadRank().then(R=>Promise.all(Object.keys(R.RANK_GAMES).map(async id=>{
-    const el=hub.querySelector(`[data-champ="${id}"]`);if(!el)return;
-    const top=(await R.board(id,'d'))[0],g=GAMES.find(x=>x.id===id);
-    el.textContent=top?`🥇 ${top.n} · ${fmt(top.s)}${g.unit?' '+g.unit:''}`:'🥇 แชมป์วันนี้ยังว่าง!';
-  }))).catch(()=>{});
 }
 renderHub();
 // test-mode hook for verify/run.py (absent for normal visits)
