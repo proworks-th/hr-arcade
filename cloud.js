@@ -64,7 +64,7 @@ const Cloud = {
   },
   boot() {
     loadOnline().then(O => O.account().then(A => {
-      Cloud.acct = A;
+      Cloud.acct = A; Cloud.err = A ? '' : O.authErr();
       if (!A) return Cloud.bootPin(O);
       // shared computer: the last person's sign-in ended with the browser, so their progress must not carry over
       const owner = store.get('owner', '');
@@ -186,7 +186,10 @@ const Cloud = {
         }
         const i = B.querySelector('.pin'); if (i) { i.focus(); i.onkeydown = e => { if (e.key === 'Enter') B.querySelector('[data-a=go]').click(); }; }
       });
-    }).catch(() => { B.innerHTML = '<p class="muted">ต่อคลาวด์ไม่ได้ (เน็ตหลุด?) ลองใหม่อีกครั้ง</p>'; });
+    }).catch(() => { B.innerHTML = '<p class="muted">ต่อคลาวด์ไม่ได้ (เน็ตหลุด?) ลองใหม่อีกครั้ง</p>'; })
+      .then(() => { if (!Cloud.err || !B.isConnected) return;   // why the Google account option is missing
+        B.insertAdjacentHTML('beforeend', `<p class="muted cloud-note">ระบบบัญชี Google ยังใช้ไม่ได้ (${esc(Cloud.err)}) <button class="linkbtn" type="button" data-a="retry">ลองใหม่</button></p>`);
+        B.querySelector('[data-a=retry]').onclick = () => { close(); Cloud.booted = false; Cloud.boot(); setTimeout(() => Cloud.open(), 1500); }; });
   },
 };
 

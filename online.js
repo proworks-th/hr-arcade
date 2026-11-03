@@ -145,13 +145,16 @@ export async function getCloud(k){if(!FIREBASE_CONFIG)return null;const s=await 
 // auth is loaded on demand so the rest of the online features never wait on it
 const AU=()=>import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js');
 const acct=u=>u&&{uid:u.uid,guest:!!u.isAnonymous,email:u.email||''};
-// current account, signing in as a guest when there is none; null when sign-in is off in the console (or offline)
+// current account, signing in as a guest when there is none; null when sign-in is off in the console (or offline),
+// with the reason kept for authErr()
+let authE='';
+export const authErr=()=>authE;
 export async function account(){
   if(!FIREBASE_CONFIG)return null;
   try{const M=await AU(),a=M.getAuth(app());
     const u=await new Promise(r=>{const off=M.onAuthStateChanged(a,u=>{off();r(u)})});
-    return acct(u||(await M.signInAnonymously(a)).user);
-  }catch(e){return null}
+    authE='';return acct(u||(await M.signInAnonymously(a)).user);
+  }catch(e){authE=(e&&(e.code||e.message))||'unknown';return null}
 }
 // shared computer: forget the sign-in when the browser closes
 export async function setShared(on){const M=await AU();await M.setPersistence(M.getAuth(app()),on?M.browserSessionPersistence:M.browserLocalPersistence)}

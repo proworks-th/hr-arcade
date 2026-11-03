@@ -500,7 +500,7 @@ button.pk:hover{transform:translateY(-2px)}div.pk{cursor:default}.pk b{font-size
 <script src="hubroom.js?v=6"></script>
 <script src="tower.js?v=3"></script>
 <script src="farm.js?v=4"></script>
-<script src="cloud.js?v=4"></script>
+<script src="cloud.js?v=5"></script>
 <script>
 'use strict';
 /* ---------- utils ---------- */
@@ -547,7 +547,7 @@ $('#muteBtn').onclick=()=>{muted=!muted;store.set('muted',muted);renderMute()};
 
 /* ---------- online services (online.js, Firebase): ranking, presence, feed ---------- */
 let onlineMod=null;
-const loadRank=()=>onlineMod||(onlineMod=import('./online.js?v=14'));
+const loadRank=()=>onlineMod||(onlineMod=import('./online.js?v=15'));
 const loadOnline=loadRank;
 const PIX_AVAS=['p_office','p_woffice','p_whealth','p_tech','p_cat','p_dog'];
 const myAva=()=>{const a=store.get('partyAva','p_office');return PIX_AVAS.includes(a)?a:'p_office'};

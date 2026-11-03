@@ -26,7 +26,7 @@ th{color:var(--muted);font-weight:600;border-bottom:2px solid #eee2cf}tr+tr td{b
 <div id="out"><p class="muted">กำลังโหลด…</p></div>
 </main>
 <script type="module">
-import {stats} from './online.js?v=14';
+import {stats} from './online.js?v=15';
 const NAMES={spot:'จับผิดภาพ',run:'วิ่งไปตอกบัตร',whack:'สายด่วนถล่มโต๊ะ',stack:'ซ้อนแฟ้มเสียดฟ้า',tetris:'Printer Tetris',stamp:'ปั๊มตรารัวๆ',
   barista:'บาริสต้าพักเที่ยง',toss:'ปากระดาษลงถัง',slack:'แอบเล่นมือถือ',conga:'ขบวนไปกินข้าว',dance:'Office Audition'};
 const out=document.getElementById('out'),esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
