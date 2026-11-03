@@ -72,7 +72,13 @@ export async function listProfiles(n=40){
   return Object.entries(snap.val()||{}).map(([k,v])=>({k,...v,room:{wall:'wall_mint',floor:'floor_wood',...(v.room||{}),items:(v.room&&v.room.items)||[]}}))
     .sort((a,b)=>(b.t||0)-(a.t||0)).slice(0,n);
 }
-export function like(ownerKey,fromName){return FIREBASE_CONFIG?set(ref(db(),`rooms/_like/${ownerKey}/${nameKey(fromName)}`),1):Promise.resolve()}
+// resolves true only for a first like from this person (the weekly "ห้องยอดไลก์" award counts those)
+export async function like(ownerKey,fromName){
+  if(!FIREBASE_CONFIG)return false;
+  const r=ref(db(),`rooms/_like/${ownerKey}/${nameKey(fromName)}`);
+  if((await get(r)).exists())return false;
+  await set(r,1);return true;
+}
 export async function likeCount(ownerKey){if(!FIREBASE_CONFIG)return 0;const s=await get(ref(db(),`rooms/_like/${ownerKey}`));return Object.keys(s.val()||{}).length}
 
 /* ---------- ห้องรวม: chat, the shared party-game state and the server clock ---------- */
@@ -131,6 +137,43 @@ export async function deliver(wk,crop,n,goal,name){
   return took;
 }
 export function watchCanteen(wk,cb){return FIREBASE_CONFIG?onValue(ref(db(),`rooms/_canteen/${wk}`),s=>cb(s.val()||{})):()=>{}}
+/* ---------- cloud save: rooms/_save/{nameKey}={h:pinHash,d:{key:json},lt,lv,c,n,t} ---------- */
+export function saveCloud(k,v){return FIREBASE_CONFIG?set(ref(db(),`rooms/_save/${k}`),{...v,t:serverTimestamp()}):Promise.resolve()}
+export async function getCloud(k){if(!FIREBASE_CONFIG)return null;const s=await get(ref(db(),`rooms/_save/${k}`));return s.val()}
+
+/* ---------- anonymous usage stats: rooms/_stat/{day}={u:{anonId:1},g:{game:plays},f:farmOpens} ---------- */
+export function stat(kind,id){
+  if(!FIREBASE_CONFIG)return;
+  const D=db(),b=`rooms/_stat/${buckets().d}`,k=String(id||'').replace(/[.#$\[\]\/]/g,'_').slice(0,16);
+  if(kind==='u')return set(ref(D,`${b}/u/${k}`),1);
+  return runTransaction(ref(D,kind==='g'?`${b}/g/${k}`:`${b}/${kind}`),c=>(+c||0)+1);
+}
+export async function stats(){if(!FIREBASE_CONFIG)return{};const s=await get(ref(db(),'rooms/_stat'));return s.val()||{}}
+
+/* ---------- weekly office awards: rooms/_wk/{week}/{cat}/{nameKey}={n,v} ---------- */
+export function wkAdd(cat,name,n){
+  if(!FIREBASE_CONFIG||!name||!(n>0))return;
+  return runTransaction(ref(db(),`rooms/_wk/${buckets().w}/${cat}/${nameKey(name)}`),cur=>({n:name.trim().slice(0,20),v:((cur&&cur.v)||0)+Math.min(500,Math.round(n))}));
+}
+// {cat:[{k,n,v}] best first} for one week; "rec" = most #1 spots on that week's game boards, "cant" = canteen deliveries
+export async function weekAwards(w){
+  if(!FIREBASE_CONFIG)return{};
+  const D=db(),out={},rows=o=>Object.entries(o||{}).map(([k,x])=>({k,n:x.n,v:x.v})).filter(x=>x.v>0).sort((a,b)=>b.v-a.v);
+  const [wk,cant,...boards]=await Promise.all([get(ref(D,`rooms/_wk/${w}`)),get(ref(D,`rooms/_canteen/${w}/by`)),...Object.keys(RANK_GAMES).map(g=>get(ref(D,`rooms/_rank/${g}/w/${w}`)))]);
+  Object.entries(wk.val()||{}).forEach(([c,o])=>{if(c[0]!=='_')out[c]=rows(o)});
+  out.cant=rows(Object.fromEntries(Object.entries(cant.val()||{}).map(([k,x])=>[k,{n:x.n,v:x.p}])));
+  const rec={};
+  boards.forEach(s=>{const top=Object.entries(s.val()||{}).sort((a,b)=>b[1].s-a[1].s||a[1].t-b[1].t)[0];
+    if(top){const r=rec[top[0]]||(rec[top[0]]={n:top[1].n,v:0});r.v++}});
+  out.rec=rows(rec);
+  return out;
+}
+// true for exactly one caller per week, so the announcement goes to the feed once
+export async function wkAnnounce(w){
+  if(!FIREBASE_CONFIG)return false;
+  const r=await runTransaction(ref(db(),`rooms/_wk/${w}/_a`),cur=>cur?undefined:1);
+  return r.committed;
+}
 export function watchOffice(cb){return FIREBASE_CONFIG?onValue(ref(db(),'rooms/_office/pts'),s=>cb(+s.val()||0)):()=>{}}
 export async function officeBoard(){
   if(!FIREBASE_CONFIG)return[];

@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>สถิติการใช้งาน · HR Arcade</title>
+<script src="verify/testmode.js"></script>
+<style>
+:root{--bg:#fff4e6;--ink:#2b2140;--muted:#7a6f8c;--pri:#ff5c8a;--ok:#21c07a;--blue:#3a86ff}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:Kanit,"Leelawadee UI",Tahoma,sans-serif}
+main{max-width:860px;margin:0 auto;padding:20px 16px 40px}
+h1{font-size:24px;margin:0 0 4px}h2{font-size:17px;margin:24px 0 8px}
+.muted{color:var(--muted);font-size:13px}a{color:var(--blue)}
+.kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:14px}
+.kpi div{background:#fff;border:2px solid #eee2cf;border-radius:12px;padding:10px 14px}.kpi b{display:block;font-size:26px}.kpi span{font-size:13px;color:var(--muted)}
+.box{background:#fff;border:2px solid #eee2cf;border-radius:12px;padding:6px 14px;overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:14px}th,td{padding:6px 4px;text-align:right;white-space:nowrap}th:first-child,td:first-child{text-align:left}
+th{color:var(--muted);font-weight:600;border-bottom:2px solid #eee2cf}tr+tr td{border-top:1px dashed #eee2cf}
+.bar{display:grid;grid-template-columns:150px 1fr 48px;gap:8px;align-items:center;font-size:14px;padding:4px 0}
+.bar i{display:block;height:12px;border-radius:6px;background:var(--pri)}.bar b{text-align:right}
+</style>
+</head>
+<body>
+<main>
+<h1>📊 สถิติการใช้งาน</h1>
+<p class="muted">ไม่ระบุตัวตน: นับจากรหัสสุ่มของแต่ละเบราว์เซอร์ ไม่เก็บชื่อ · 14 วันล่าสุด · <a href="./">← กลับไปเล่น</a></p>
+<div id="out"><p class="muted">กำลังโหลด…</p></div>
+</main>
+<script type="module">
+import {stats} from './online.js?v=13';
+const NAMES={spot:'จับผิดภาพ',run:'วิ่งไปตอกบัตร',whack:'สายด่วนถล่มโต๊ะ',stack:'ซ้อนแฟ้มเสียดฟ้า',tetris:'Printer Tetris',stamp:'ปั๊มตรารัวๆ',
+  barista:'บาริสต้าพักเที่ยง',toss:'ปากระดาษลงถัง',slack:'แอบเล่นมือถือ',conga:'ขบวนไปกินข้าว',dance:'Office Audition'};
+const out=document.getElementById('out'),esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const day=k=>new Date(+k.slice(0,4),+k.slice(4,6)-1,+k.slice(6,8)).toLocaleDateString('th-TH',{weekday:'short',day:'numeric',month:'short'});
+stats().then(all=>{
+  const days=Object.keys(all).sort().slice(-14).reverse();
+  if(!days.length){out.innerHTML='<p class="muted">ยังไม่มีข้อมูล — จะเริ่มนับตั้งแต่มีคนเปิดเว็บ</p>';return}
+  const sum=o=>Object.values(o||{}).reduce((a,b)=>a+(+b||0),0),users=new Set(),games={};
+  days.forEach(d=>{Object.keys(all[d].u||{}).forEach(u=>users.add(u));Object.entries(all[d].g||{}).forEach(([g,n])=>games[g]=(games[g]||0)+n)});
+  const plays=sum(games),farm=days.reduce((a,d)=>a+(+all[d].f||0),0),top=Object.entries(games).sort((a,b)=>b[1]-a[1]),max=top.length?top[0][1]:1;
+  out.innerHTML=`<div class="kpi"><div><b>${users.size}</b><span>คนที่เข้ามา (14 วัน)</span></div><div><b>${Object.keys(all[days[0]].u||{}).length}</b><span>คนเข้ามา${day(days[0])}</span></div>
+      <div><b>${plays}</b><span>รอบที่เล่นเกม</span></div><div><b>${farm}</b><span>ครั้งที่เปิดฟาร์ม</span></div></div>
+    <h2>รายวัน</h2><div class="box"><table><tr><th>วัน</th><th>คน</th><th>รอบเกม</th><th>เปิดฟาร์ม</th></tr>
+      ${days.map(d=>`<tr><td>${day(d)}</td><td>${Object.keys(all[d].u||{}).length}</td><td>${sum(all[d].g)}</td><td>${+all[d].f||0}</td></tr>`).join('')}</table></div>
+    <h2>เกมยอดนิยม</h2><div class="box">${top.map(([g,n])=>`<div class="bar"><span>${esc(NAMES[g]||g)}</span><i style="width:${n/max*100}%"></i><b>${n}</b></div>`).join('')||'<p class="muted">ยังไม่มีใครเล่น</p>'}</div>`;
+}).catch(()=>{out.innerHTML='<p class="muted">โหลดไม่ได้ (เน็ตหลุด?)</p>'});
+</script>
+</body>
+</html>

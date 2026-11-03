@@ -126,6 +126,7 @@ function farmMount(root, api) {
   root.innerHTML = `<div class="hud office-hud farm-hud"><span data-k="title"></span><button class="farm-wx" data-k="wx" type="button"></button><span class="farm-coins" data-k="coinBox">🪙 <b data-k="coins">0</b></span></div>
     <div class="office farm"><div class="office-room"><div class="office-tools" data-k="tools"></div></div>
     <div class="box office-side"><div class="rk-tabs" data-k="tabs"></div><div class="office-list" data-k="list"></div></div></div>`;
+  Stats.hit('f');
   const W = 640, H = 360, box = root.querySelector('.office-room'), { cv, ctx, at } = g2canvas(box, W, H);
   box.insertBefore(cv.parentNode, box.firstChild);
   const q = k => root.querySelector(`[data-k="${k}"]`), fx = makeFX(), nm = myName(), myKey = keyOf(nm), mySig = sigOf(myKey);
@@ -210,7 +211,7 @@ function farmMount(root, api) {
   function harvest(i, quiet) {
     const pl = f.plots[i], c = CROPS[pl.c], m = MUT_AT(pl, fwMine(i)), key = pl.c + (m ? '.' + m : ''), xp = Math.round((c[3] - c[2]) / 3) + 1;
     const b = f.book[pl.c] || (f.book[pl.c] = [0, 0]); b[0]++; if (m) { b[1] = (b[1] || 0) + 1; (b[3] = b[3] || {})[m] = 1; }
-    f.bag[key] = (f.bag[key] || 0) + 1;
+    f.bag[key] = (f.bag[key] || 0) + 1; Awards.add('farm', 1);
     f.plots[i] = null; delete f.fw[i];
     clearW(i);
     const pp = Prog.get(); pp.farm = f; store.set('prog', pp);
@@ -264,7 +265,7 @@ function farmMount(root, api) {
     if (d.n >= GIFT_DAY) { toast(`วันนี้ส่งครบ ${GIFT_DAY} ชิ้นแล้ว พรุ่งนี้ส่งใหม่ได้`); return; }
     fresh(); if (!f.bag[key]) return;
     f.bag[key]--; if (!f.bag[key]) delete f.bag[key]; save();
-    O.sendGift(to.k, nm, key).then(() => { d.n++; store.set('giftD', d); api.sfx('good'); toast(`🎁 ส่ง${bagName(key)}ให้ ${to.nm} แล้ว`); render(); })
+    O.sendGift(to.k, nm, key).then(() => { d.n++; Awards.add('help', 1); store.set('giftD', d); api.sfx('good'); toast(`🎁 ส่ง${bagName(key)}ให้ ${to.nm} แล้ว`); render(); })
       .catch(() => { fresh(); f.bag[key] = (f.bag[key] || 0) + 1; save(); toast('ส่งไม่สำเร็จ (เน็ตหลุด?)'); render(); });
   }
   // friends: water their growing crops (one 💧 per crop per person, small thank-you coins for the waterer)
@@ -279,6 +280,7 @@ function farmMount(root, api) {
     walkTo(i); api.sfx('tick'); splash(i);
     O.water(visit.k, i, nm, pl.t).then(() => {
       const d = store.get('farmWD', { d: '', n: 0 }), day = new Date().toDateString(); if (d.d !== day) { d.d = day; d.n = 0; }
+      Awards.add('help', 1);
       if (d.n < FRIEND_WATER_DAY) { d.n++; store.set('farmWD', d); Prog.give(2, 1); pop(i, '💧 +2 🪙', PAL.blue); } else pop(i, '💧 ขอบคุณ!', PAL.blue);
       render();
     }).catch(() => { delete visit.w[i][myKey]; toast('รดน้ำไม่สำเร็จ (เน็ตหลุด?)'); });

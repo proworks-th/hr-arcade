@@ -121,9 +121,9 @@ const Tower = (() => {
       ctx.strokeStyle = mine ? '#ffd23f' : '#5d4037'; ctx.lineWidth = mine ? 4 : 2; ctx.strokeRect(x + 1, y + 1, w - 2, FH - 2);
       // name plate
       ctx.fillStyle = mine ? '#ffd23f' : '#2b2140'; ctx.fillRect(x, y + FH, w, PLATE);
-      const bdg = r.b && typeof badgeEmoji === 'function' ? badgeEmoji(r.b) + ' ' : '';
-      txt(ctx, `${p ? '🟢 ' : ''}${bdg}${r.n} · Lv ${r.lv | 0}`, x + w / 2, y + FH + PLATE / 2, 11, mine ? '#2b2140' : '#fff', 'center', 700);
-      regions.push({ x, y, w, h: FH + PLATE, kind: 'room', r, tip: `${r.n} · Lv ${r.lv | 0} ${r.ti || ''}${p ? ' · ออนไลน์อยู่' : ''} — กดเพื่อเข้าไปดูห้อง` });
+      const bdg = r.b && typeof badgeEmoji === 'function' ? badgeEmoji(r.b) + ' ' : '', aw = typeof Awards !== 'undefined' ? Awards.badge(r.k) : '';
+      txt(ctx, `${p ? '🟢 ' : ''}${aw ? '🏅' + aw + ' ' : ''}${bdg}${r.n} · Lv ${r.lv | 0}`, x + w / 2, y + FH + PLATE / 2, 11, mine ? '#2b2140' : '#fff', 'center', 700);
+      regions.push({ x, y, w, h: FH + PLATE, kind: 'room', r, tip: `${r.n} · Lv ${r.lv | 0} ${r.ti || ''}${p ? ' · ออนไลน์อยู่' : ''}${aw ? ' · 🏅 ' + Awards.tip(r.k) : ''} — กดเพื่อเข้าไปดูห้อง` });
       // farm balcony hangs under the name plate, exactly the apartment's width; no farm row yet = empty pots
       if (typeof Farm !== 'undefined') { const fk = r.k || key(r.n), fr = farms[fk] || null, by = y + FH + PLATE;
         Farm.drawBalcony(ctx, fr, x, by, w, now, t);

@@ -18,7 +18,7 @@ const Prog = {
     const p = store.get('prog', null);
     return p || { xp: 0, lv: 1, coins: 60, inv: {}, styles: ['wall_mint', 'floor_wood'], room: JSON.parse(JSON.stringify(STARTER)), who: 'adam', likesClaimed: 0 };
   },
-  put(p) { store.set('prog', p); Prog.sync(); },
+  put(p) { store.set('prog', p); Prog.sync(); if (typeof Cloud !== 'undefined') Cloud.touch(); },
   title: lv => TITLES.reduce((t, [l, n]) => lv >= l ? n : t, TITLES[0][1]),
   // add coins and XP; returns what happened so the caller can show it
   give(coins, xp) {
@@ -27,7 +27,7 @@ const Prog = {
     while (p.xp >= needXP(p.lv)) { p.xp -= needXP(p.lv); p.lv++; p.coins += 30; ups.push(p.lv); }
     if (ups.length) p.lvT = Date.now();          // the shared room celebrates this when you walk back in
     Prog.put(p);
-    if (coins > 0) Prog.office(coins);
+    if (coins > 0) { Prog.office(coins); if (typeof Awards !== 'undefined') Awards.add('coin', coins); }
     if (ups.length) {
       const lv = ups[ups.length - 1], nm = myName();
       toast(`🎉 เลื่อนขั้น! Lv ${lv} · ${Prog.title(lv)} (+${30 * ups.length} 🪙)`);
@@ -226,7 +226,7 @@ function officeMount(root, api) {
   function like() {
     const nm = myName(); if (!nm) { toast('ตั้งชื่อเล่นที่หน้าแรกก่อนนะ'); return; }
     if (visit.n.trim().toLowerCase() === nm.trim().toLowerCase()) { toast('กดถูกใจห้องตัวเองไม่ได้ 😆'); return; }
-    loadOnline().then(O => O.like(visit.k, nm).then(() => O.likeCount(visit.k))).then(n => { const s = q('likes'); if (s) s.textContent = `(${n})`; toast('👍 ส่งกำลังใจแล้ว!'); }).catch(() => {});
+    loadOnline().then(O => O.like(visit.k, nm).then(first => { if (first && typeof Awards !== 'undefined') Awards.add('like', 1, visit.n); return O.likeCount(visit.k); })).then(n => { const s = q('likes'); if (s) s.textContent = `(${n})`; toast('👍 ส่งกำลังใจแล้ว!'); }).catch(() => {});
     for (let i = 0; i < 6; i++) fx.burst(RW * RC / 2, RROWS * RC / 2, { n: 3, colors: [PAL.pink, '#fff'], speed: 220, grav: -60, size: 7, shape: 'star', life: 1 });
     api.sfx('good');
   }
