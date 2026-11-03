@@ -123,7 +123,7 @@ const Farm = {
 const MUT_AT = (pl, fw = 0) => WEATHER[weatherAt(ripeAt(pl, fw))][3];
 
 function farmMount(root, api) {
-  root.innerHTML = `<div class="hud office-hud"><span data-k="title"></span><span class="farm-wx" data-k="wx"></span><span class="muted farm-info" data-k="info"></span><span class="farm-coins">🪙 <b data-k="coins">0</b></span></div>
+  root.innerHTML = `<div class="hud office-hud farm-hud"><span data-k="title"></span><button class="farm-wx" data-k="wx" type="button"></button><span class="farm-coins" data-k="coinBox">🪙 <b data-k="coins">0</b></span></div>
     <div class="office farm"><div class="office-room"><div class="office-tools" data-k="tools"></div></div>
     <div class="box office-side"><div class="rk-tabs" data-k="tabs"></div><div class="office-list" data-k="list"></div></div></div>`;
   const W = 640, H = 360, box = root.querySelector('.office-room'), { cv, ctx, at } = g2canvas(box, W, H);
@@ -232,7 +232,7 @@ function farmMount(root, api) {
     if (n) { save(); render(); } }
   function sell(key, all) { fresh(); const keys = key ? [key] : Object.keys(f.bag); let c = 0, n = 0;
     for (const k of keys) { const cnt = all || !key ? f.bag[k] || 0 : Math.min(1, f.bag[k] || 0); if (!cnt) continue; c += bagPrice(k) * cnt; n += cnt; f.bag[k] -= cnt; if (!f.bag[k]) delete f.bag[k]; }
-    if (!n) return; save(); Prog.give(c, 0); api.sfx('good'); toast(`💰 ขาย ${n} ชิ้น +${fmt(c)} 🪙`); render(); }
+    if (!n) return; save(); Prog.give(c, 0); api.sfx('good'); fly(c); toast(`💰 ขาย ${n} ชิ้น +${fmt(c)} 🪙`); render(); }
   function buySprinkler() { fresh(); p = Prog.get(); const [price, lv] = SPRINKLER;
     if (p.lv < lv) { toast(`ปลดล็อกสปริงเกอร์ที่ Lv ${lv}`); return; }
     if (p.coins < price) { toast(`เหรียญไม่พอ ขาดอีก 🪙 ${fmt(price - p.coins)}`); return; }
@@ -249,12 +249,12 @@ function farmMount(root, api) {
       if (!took) { toast('ครบแล้ว ขอบคุณที่ช่วย 🍱'); return; }
       fresh(); let left = took, c = 0;
       for (const k of keys) { const u = Math.min(left, f.bag[k] || 0); f.bag[k] -= u; if (!f.bag[k]) delete f.bag[k]; c += Math.round(bagPrice(k) * CANTEEN_BONUS) * u; left -= u; if (!left) break; }
-      save(); Prog.give(c, 0); api.sfx('good'); toast(`🍱 ส่ง${CROPS[id][0]} ${took} ชิ้น +${fmt(c)} 🪙`); render();
+      save(); Prog.give(c, 0); api.sfx('good'); fly(c); toast(`🍱 ส่ง${CROPS[id][0]} ${took} ชิ้น +${fmt(c)} 🪙`); render();
     }).catch(() => toast('ส่งไม่สำเร็จ (เน็ตหลุด?)'));
   }
   function claimCanteen() {
     const k = 'cant_' + wk(); if (store.get(k, false)) return; store.set(k, true);
-    Prog.give(CANTEEN_REWARD, 20); api.sfx('level'); toast(`🎉 รางวัลโรงอาหารสัปดาห์นี้ +${CANTEEN_REWARD} 🪙`); list(); hud();
+    Prog.give(CANTEEN_REWARD, 20); api.sfx('level'); fly(CANTEEN_REWARD); toast(`🎉 รางวัลโรงอาหารสัปดาห์นี้ +${CANTEEN_REWARD} 🪙`); list(); hud();
   }
   // gifts: one item to a friend, claimed when they next open the farm
   function gift(key) {
@@ -297,28 +297,38 @@ function farmMount(root, api) {
   }
   function wxHud(now) {
     const w = wxWindow(now), W0 = WEATHER[w.id], nx = nextSpecial(now);
-    const s = w.id !== 'clear' ? `${W0[1]} <b>${W0[0]}</b> อีก ${Math.ceil((w.to - now) / 60e3)} น. · ผักที่สุกตอนนี้กลายเป็น<b>${MUT[W0[3]][0]}</b> ×${W0[4]}`
-      : `${W0[1]} ${W0[0]}${nx ? ` · ถัดไป ${WEATHER[nx.id][1]} ${WEATHER[nx.id][0]} ${hhmm(nx.from)}` : ''}`;
-    const el = q('wx'); if (el.innerHTML !== s) { el.innerHTML = s; el.classList.toggle('on', w.id !== 'clear'); }
+    const s = w.id !== 'clear' ? `${W0[1]} <b>${W0[0]}</b> ${Math.ceil((w.to - now) / 60e3)} น.` : `${W0[1]} ${nx ? `ถัดไป ${WEATHER[nx.id][1]} ${hhmm(nx.from)}` : W0[0]}`;
+    const el = q('wx'); if (el.innerHTML !== s) { el.innerHTML = s; el.classList.toggle('on', w.id !== 'clear');
+      el.title = w.id !== 'clear' ? `${W0[0]}ถึง ${hhmm(w.to)} · ผักที่สุกช่วงนี้กลายเป็น${MUT[W0[3]][0]} ขายได้ ×${W0[4]}`
+        : `ตอนนี้${W0[0]}${nx ? ` · ${WEATHER[nx.id][0]} ${hhmm(nx.from)}–${hhmm(nx.to)} ผักที่สุกช่วงนั้นขายได้ ×${WEATHER[nx.id][4]}` : ''}`; }
   }
   function tools() {
     const el = q('tools');
     if (visit) { el.innerHTML = `<span class="muted">แตะต้นที่ยังไม่สุกเพื่อรดน้ำ ช่วยเพื่อนให้โตเร็วขึ้น 15%</span><button class="btn" data-a="back">← กลับสวนฉัน</button>`;
       el.querySelector('[data-a=back]').onclick = back; return; }
-    const now = Date.now(), ripe = Farm.ready(f, now), empty = Array.from({ length: nMine() }, (_, i) => !f.plots[i]).filter(Boolean).length,
-      dry = f.plots.filter((pl, i) => pl && !pl.w && fwMine(i) < WATER_MAX && now < ripeAt(pl, fwMine(i))).length, bn = bagN();
-    el.innerHTML = `<button class="btn${ripe ? ' primary' : ''}" data-a="all" ${ripe ? '' : 'disabled'}>🧺 เก็บ${ripe ? ` ${ripe}` : ''}</button>
-      <button class="btn" data-a="plant" ${empty ? '' : 'disabled'}>${pxImg('crop_' + seed, 18)} ปลูกที่ว่าง${empty ? ` ${empty}` : ''}</button>
-      ${f.spr ? '' : `<button class="btn" data-a="water" ${dry ? '' : 'disabled'}>💧 รดน้ำ${dry ? ` ${dry}` : ''}</button>`}
-      <button class="btn${bn && !ripe ? ' primary' : ''}" data-a="sell" ${bn ? '' : 'disabled'}>💰 ขายหมด${bn ? ` +${fmt(bagValue())}` : ''}</button>`;
-    el.querySelector('[data-a=all]').onclick = harvestAll; el.querySelector('[data-a=plant]').onclick = plantAll;
-    const wb = el.querySelector('[data-a=water]'); if (wb) wb.onclick = waterAll; el.querySelector('[data-a=sell]').onclick = () => sell();
+    const s = smart(Date.now()); toolSig = s.html;
+    el.innerHTML = s.fn ? `<button class="btn primary farm-cta" data-a="go">${s.html}</button>` : `<span class="farm-idle">${s.html}</span>`;
+    if (s.fn) el.querySelector('[data-a=go]').onclick = s.fn;
+  }
+  // the one thing worth doing next (harvest, replant, sell, water) — or a quiet countdown when there is nothing to do
+  let toolSig = '';
+  function smart(now) {
+    const ripe = Farm.ready(f, now), empty = Array.from({ length: nMine() }, (_, i) => !f.plots[i]).filter(Boolean).length, bn = bagN(),
+      dry = f.plots.filter((pl, i) => pl && !pl.w && fwMine(i) < WATER_MAX && now < ripeAt(pl, fwMine(i))).length;
+    if (ripe) return { html: `🧺 เก็บทั้งหมด ${ripe}`, fn: harvestAll };
+    if (empty && Prog.get().coins >= CROPS[seed][2]) return { html: `${pxImg('crop_' + seed, 20)} ปลูก${CROPS[seed][0]} ${empty} แปลง`, fn: plantAll };
+    if (bn) return { html: `💰 ขายตะกร้า +${fmt(bagValue())}`, fn: () => sell() };
+    if (dry && !f.spr) return { html: `💧 รดน้ำ ${dry} ต้น`, fn: waterAll };
+    const next = f.plots.map((pl, i) => pl ? ripeAt(pl, fwMine(i)) : Infinity).reduce((a, b) => Math.min(a, b), Infinity);
+    return { html: next < Infinity ? `ผักต้นถัดไปสุกใน ${mmss(next - now)} · ไปเล่นเกมก่อนก็ได้` : 'เลือกเมล็ดทางขวา แล้วแตะแปลงเพื่อปลูก' };
   }
   function list() {
     const T = q('tabs'), L = q('list'), bn = bagN();
-    T.innerHTML = [['seed', 'ปลูก'], ['bag', `ตะกร้า${bn ? ` <i class="tab-n">${bn}</i>` : ''}`], ['cant', '🍱 โรงอาหาร'], ['friends', 'เพื่อน'], ['book', 'สมุด']]
-      .map(([k, n]) => `<button class="btn${tab === k ? ' on' : ''}" data-t="${k}">${n}</button>`).join('');
+    const top = { cant: 'bag', book: 'seed' }[tab] || tab, backTo = to => `<button class="linkbtn farm-back" data-t="${to}">← กลับ</button>`;
+    T.innerHTML = [['seed', 'ปลูก'], ['bag', `ตะกร้า${bn ? ` <i class="tab-n">${bn}</i>` : ''}`], ['friends', 'เพื่อน']]
+      .map(([k, n]) => `<button class="btn${top === k ? ' on' : ''}" data-t="${k}">${n}</button>`).join('');
     T.querySelectorAll('[data-t]').forEach(b => b.onclick = () => { tab = b.dataset.t; list(); });
+    L.onclick = e => { const b = e.target.closest('[data-t]'); if (b) { tab = b.dataset.t; api.sfx('tick'); list(); } };
     if (tab === 'seed') {
       const nr = nextRoom(), seedBtn = id => { const c = CROPS[id], lock = !okSeed(id);
         return `<button class="shop-it${seed === id ? ' on' : ''}${lock ? ' lock' : ''}" data-seed="${id}" ${lock ? 'disabled' : ''} title="${c[0]}">${pxImg('crop_' + id, 30)}<b>${c[0]}</b>
@@ -332,14 +342,17 @@ function farmMount(root, api) {
           ${nr ? '<button class="btn sm" data-a="room">📐 ขยายห้อง</button>' : ''}
           <div><b>💧 สปริงเกอร์</b><small class="muted">${f.spr ? 'ติดแล้ว ผักที่ปลูกใหม่ได้น้ำเอง' : 'รดน้ำให้ทุกต้นที่ปลูกใหม่ ไม่ต้องกดเอง'}</small></div>
           ${f.spr ? '<span class="muted">✓</span>' : `<button class="btn sm" data-a="spr" ${p.lv < SPRINKLER[1] ? 'disabled' : ''}>${p.lv < SPRINKLER[1] ? `🔒 Lv ${SPRINKLER[1]}` : `🪙 ${SPRINKLER[0]}`}</button>`}
-        </div>`;
+        </div>
+        <button class="farm-card" data-t="book"><span>📖 <b>สมุดผัก</b> <small class="muted">${Object.keys(f.book).filter(id => CROPS[id]).length}/${Object.keys(CROPS).length} อย่าง</small></span><i>›</i></button>`;
       L.querySelectorAll('[data-seed]').forEach(b => b.onclick = () => { seed = b.dataset.seed; store.set('farmSeed', seed); api.sfx('tick'); tools(); list(); });
       const rb = L.querySelector('[data-a=room]'); if (rb) rb.onclick = growRoom;
       const sb = L.querySelector('[data-a=spr]'); if (sb) sb.onclick = buySprinkler;
     } else if (tab === 'bag') {
       const keys = Object.keys(f.bag).filter(k => CROPS[k.split('.')[0]]).sort((a, b) => bagPrice(b) - bagPrice(a));
-      if (!keys.length) { L.innerHTML = '<p class="muted farm-empty">ตะกร้าว่าง · ผักที่เก็บจะมาอยู่ที่นี่ ขาย ส่งโรงอาหาร หรือส่งให้เพื่อนก็ได้</p>'; return; }
-      L.innerHTML = `<div class="gift-to">🎁 ส่งให้ <select data-k="giftTo"><option value="">เลือกเพื่อน…</option></select></div>
+      const g = canteenGoal(wk()), got = (cant && cant.got) || {}, cg = g.reduce((a, [id, n]) => a + Math.min(n, got[id] || 0), 0), ct = g.reduce((a, [, n]) => a + n, 0);
+      const card = `<button class="farm-card" data-t="cant"><span>🍱 <b>ออเดอร์โรงอาหาร</b> <small class="muted">สัปดาห์นี้ ${cg}/${ct}</small><span class="xpbar"><i style="width:${cg / ct * 100}%"></i></span></span><i>›</i></button>`;
+      if (!keys.length) { L.innerHTML = card + '<p class="muted farm-empty">ตะกร้าว่าง · ผักที่เก็บจะมาอยู่ที่นี่</p>'; return; }
+      L.innerHTML = card + `<div class="gift-to">🎁 ส่งให้ <select data-k="giftTo"><option value="">เลือกเพื่อน…</option></select></div>
         <ul class="farm-ls farm-bag">${keys.map(k => `<li>${cropURL(k, 26)}<span class="bag-n"><b>${bagName(k)} <i>×${f.bag[k]}</i></b><small>ชิ้นละ ${bagPrice(k)} 🪙</small></span>
           <button class="btn sm" data-sell="${k}">ขาย</button><button class="btn sm" data-gift="${k}" title="ส่งให้เพื่อน 1 ชิ้น">🎁</button></li>`).join('')}</ul>`;
       L.querySelectorAll('[data-sell]').forEach(b => b.onclick = () => sell(b.dataset.sell, true));
@@ -350,7 +363,7 @@ function farmMount(root, api) {
     } else if (tab === 'cant') {
       const g = canteenGoal(wk()), got = (cant && cant.got) || {}, done = g.every(([id, n]) => (got[id] || 0) >= n), by = Object.values((cant && cant.by) || {}).sort((a, b) => b.p - a.p);
       const mine = cant && cant.by && cant.by[myKey], claimed = store.get('cant_' + wk(), false);
-      L.innerHTML = `<p class="muted farm-tip">ออเดอร์ของทั้งออฟฟิศ สัปดาห์นี้ ช่วยกันส่งให้ครบ · ส่งได้ราคาดีกว่าขาย 20% · ครบแล้วคนที่ช่วยได้ ${CANTEEN_REWARD} 🪙</p>
+      L.innerHTML = backTo('bag') + `<p class="muted farm-tip">ออเดอร์ของทั้งออฟฟิศ สัปดาห์นี้ ช่วยกันส่งให้ครบ · ส่งได้ราคาดีกว่าขาย 20% · ครบแล้วคนที่ช่วยได้ ${CANTEEN_REWARD} 🪙</p>
         <ul class="farm-ls cant">${g.map(([id, n]) => { const have = Object.entries(f.bag).filter(([k]) => k.split('.')[0] === id).reduce((a, [, c]) => a + c, 0), v = Math.min(n, got[id] || 0);
           return `<li>${pxImg('crop_' + id, 26)}<div class="cant-m"><b>${CROPS[id][0]}</b> <span class="muted">${v}/${n}</span><span class="xpbar"><i style="width:${v / n * 100}%"></i></span></div>
             ${v >= n ? '<span class="ok">✓</span>' : `<button class="btn sm" data-dl="${id}" ${have ? '' : 'disabled'}>${have ? `ส่ง ${have}` : 'ไม่มีในตะกร้า'}</button>`}</li>`; }).join('')}</ul>
@@ -361,7 +374,7 @@ function farmMount(root, api) {
     } else if (tab === 'book') {
       const own = id => f.book[id] && (f.book[id][0] || f.book[id][2]), row = id => { const b = f.book[id], c = CROPS[id], muts = Object.keys((b && b[3]) || {});
         return `<li class="${own(id) ? '' : 'none'}">${own(id) ? pxImg('crop_' + id, 24) : '❔'} <b>${own(id) ? c[0] : '???'}</b> <span class="muted">${own(id) ? `เก็บ ${fmt(b[0] || 0)}${b[2] ? ` · ได้จากเพื่อน ${b[2]}` : ''}` : SIG.includes(id) ? 'ขอจากเพื่อน' : `Lv ${c[4]}`}</span>${muts.map(m => ` <i class="mut mut-${m}">${MUT[m][0]}</i>`).join('')}</li>`; };
-      L.innerHTML = `<p class="muted farm-tip">ผัก ${VEG.filter(own).length}/${VEG.length} · ผลไม้ประจำตัว ${SIG.filter(own).length}/${SIG.length} · ผักที่สุกตอนฝนตก แดดทอง หรือรุ้ง จะกลายพันธุ์</p>
+      L.innerHTML = backTo('seed') + `<p class="muted farm-tip">ผัก ${VEG.filter(own).length}/${VEG.length} · ผลไม้ประจำตัว ${SIG.filter(own).length}/${SIG.length} · ผักที่สุกตอนฝนตก แดดทอง หรือรุ้ง จะกลายพันธุ์</p>
         <ul class="farm-ls farm-book">${VEG.map(row).join('')}</ul><h4 class="sz-h">⭐ ผลไม้ประจำตัว</h4><ul class="farm-ls farm-book">${SIG.map(row).join('')}</ul>`;
     } else {
       L.innerHTML = '<p class="muted">กำลังโหลดสวนเพื่อน…</p>';
@@ -377,9 +390,10 @@ function farmMount(root, api) {
 
   /* ---------- input ---------- */
   function plotAt(e) { const { x, y } = at(e); for (let i = 0; i < 10; i++) { const r = plotRect(i); if (x >= r.x && x < r.x + r.w && y >= r.y - 40 && y < r.y + r.h) return i; } return -1; }
-  cv.addEventListener('pointermove', e => { hover = plotAt(e); cv.style.cursor = hover >= 0 && (hover < nPlots() || (!visit && hover === nPlots())) ? 'pointer' : 'default'; });
+  cv.addEventListener('pointermove', e => { const P = at(e); hover = onBasket(P.x, P.y) ? 99 : plotAt(e); if (hover === 99) { cv.style.cursor = 'pointer'; return; } cv.style.cursor = hover >= 0 && (hover < nPlots() || (!visit && hover === nPlots())) ? 'pointer' : 'default'; });
   cv.addEventListener('pointerleave', () => { hover = -1; });
   cv.addEventListener('pointerdown', e => {
+    const P = at(e); if (onBasket(P.x, P.y)) { tab = 'bag'; api.sfx('tick'); list(); return; }
     const i = plotAt(e); if (i < 0) return;
     if (i >= nPlots()) { if (!visit && i === nPlots()) growRoom(); return; }
     if (visit) { waterFriend(i); return; }
@@ -444,17 +458,35 @@ function farmMount(root, api) {
       ctx.fillStyle = '#9ee6b8'; ctx.fillRect(r.x + 16, r.y - 22, (r.w - 32) * Math.max(0, Math.min(1, frac)), 12);
       txt(ctx, mmss(left) + (wxR[3] ? ' ' + wxR[1] : ''), r.x + r.w / 2, r.y - 16, 11, PAL.ink, 'center', 700); }
   }
+  const BK = { x: 616, y: 222 };
+  function basket() {
+    const n = bagN(), h = hover === 99, { x, y } = BK;
+    ctx.strokeStyle = '#6b3e26'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y - 2, 13, Math.PI, 0); ctx.stroke();
+    const top = Object.keys(f.bag).filter(k => CROPS[k.split('.')[0]]).sort((a, b) => bagPrice(b) - bagPrice(a))[0];
+    if (top) { const [id, m] = top.split('.'), im = cropImg(id, m); ctx.drawImage(im, Math.round(x - im.width), Math.round(y + 2 - im.height * 2), im.width * 2, im.height * 2); }
+    rrect(ctx, x - 18, y - 2, 36, 20, 6, h ? '#e0a96a' : '#c98d52', '#6b3e26');
+    ctx.fillStyle = '#a5683f'; for (let k = -12; k <= 12; k += 8) ctx.fillRect(x + k, y + 2, 2, 12);
+    if (n) { rrect(ctx, x + 6, y - 30, 24, 16, 8, '#ff5c8a', PAL.ink); txt(ctx, String(n), x + 18, y - 22, 11, '#fff', 'center', 700); }
+  }
+  const onBasket = (x, y) => !visit && Math.abs(x - BK.x) < 24 && y > BK.y - 32 && y < BK.y + 22;
+  // page position of a canvas point (coins fly from there to the HUD)
+  const pagePt = (x, y) => { const R = cv.getBoundingClientRect(); return [R.left + x / W * R.width, R.top + y / H * R.height]; };
+  const fly = (n, x = BK.x, y = BK.y) => { if (n > 0 && typeof flyCoins === 'function') flyCoins(...pagePt(x, y), q('coinBox'), n); };
   function info(now) {
-    const el = q('info'); if (!el) return; let s = '';
+    let s = '';
     if (hover >= 0 && hover < nPlots()) { const pl = plots()[hover];
       if (!pl) s = visit ? 'แปลงว่าง' : `แตะเพื่อปลูก${CROPS[seed][0]} (${CROPS[seed][2]} 🪙)`;
       else { const fw = fwOf(hover), left = ripeAt(pl, fw) - now, by = visit ? null : Object.values(myWaters[hover] || {}).filter(v => v.s === pl.t).map(v => v.n), wxR = WEATHER[weatherAt(ripeAt(pl, fw))];
         s = `${CROPS[pl.c][0]} · ${left <= 0 ? (visit ? 'สุกแล้ว' : 'แตะเพื่อเก็บ') : `สุก ${hhmm(ripeAt(pl, fw))}${wxR[3] ? ` ตอน${wxR[0]} → ${MUT[wxR[3]][0]}` : ''}`}${(pl.w ? 1 : 0) + fw ? ` · 💧×${Math.min(WATER_MAX, (pl.w ? 1 : 0) + fw)}` : left > 0 && !visit ? ' · แตะเพื่อรดน้ำ' : ''}${by && by.length ? ` (${by.join(', ')} รดให้)` : ''}`; } }
     else if (hover === nPlots() && !visit && nextRoom()) s = 'ขยายห้องในออฟฟิศของฉัน แปลงผักเพิ่มตาม';
-    else if (!visit) { const ripe = Farm.ready(f, now); s = ripe ? `พร้อมเก็บ ${ripe} แปลง` : f.plots.some(Boolean) ? 'ผักกำลังโต ไปเล่นเกมก่อนก็ได้' : 'เลือกเมล็ดแล้วแตะแปลงเพื่อปลูก'; }
-    if (el.textContent !== s) el.textContent = s;
+    else if (hover === 99) s = bagN() ? `ตะกร้า ${bagN()} ชิ้น · มูลค่า ${fmt(bagValue())} 🪙` : 'ตะกร้าว่าง';
+    else if (visit) s = `แตะต้นที่ยังไม่สุก รดน้ำช่วย ${visit.nm} ให้โตเร็วขึ้น 15%`;
+    return s;
   }
-  let sig = '';
+  function tip(s) {
+    ctx.font = '600 13px Kanit, sans-serif'; const w = ctx.measureText(s).width + 24, x = W / 2 - w / 2, y = H - 30;
+    rrect(ctx, x, y, w, 24, 12, 'rgba(43,33,64,.86)'); txt(ctx, s, W / 2, y + 12, 13, '#fff');
+  }
   const off = api.loop(dt => {
     t += dt; const d = fx.step(dt), now = Date.now(), wx = wxWindow(now).id;
     if (Math.abs(me.tx - me.x) > 1) { me.x += Math.sign(me.tx - me.x) * Math.min(160 * d, Math.abs(me.tx - me.x)); me.dir = me.tx > me.x ? 'right' : 'left'; } else me.dir = 'down';
@@ -465,11 +497,13 @@ function farmMount(root, api) {
     if (!visit) { drawAcc(ctx, Wardrobe.eq('f'), me.who, anim, me.dir, t, me.x, AISLE + 14, 2); drawAcc(ctx, Wardrobe.eq('h'), me.who, anim, me.dir, t, me.x, AISLE + 14, 2); }
     if (me.act > 0) { me.act -= dt; ctx.drawImage(pxa('can'), me.x + 10, AISLE - 40, 30, 24); }
     for (let i = 5; i < 10; i++) bed(i, now);
+    if (!visit) basket();
     weatherFX(wx);
     fx.post(ctx, W, H);
-    info(now); wxHud(now);
-    // refresh the buttons when a crop ripens
-    const s = visit ? 'v' : `${Farm.ready(f, now)}`; if (s !== sig) { sig = s; if (!visit) tools(); }
+    const hs = info(now); if (hs) tip(hs);
+    wxHud(now);
+    // keep the smart button current (crops ripen, the countdown ticks)
+    if (!visit && smart(now).html !== toolSig) tools();
   });
   render();
   if (/[?&]test=1/.test(location.search)) window.__farm = { get f() { return f; }, harvestAll, harvest, fwMine, ripeAt };

@@ -207,13 +207,27 @@ button.pk:hover{transform:translateY(-2px)}div.pk{cursor:default}.pk b{font-size
 .g-it small{font-size:11px;line-height:1.2}.g-it.no{filter:grayscale(1);opacity:.5}.g-it.no small{color:var(--muted)}
 .g-it.r-r{border-color:#9cc0ff}.g-it.r-l{border-color:#ffcf5c}.g-it.on{background:#fff3c4;border-color:var(--line);box-shadow:0 0 0 2px var(--yel)}
 .feedbox{margin-top:8px}
-.farm-btn{position:relative}.farm-n{position:absolute;top:-6px;right:-6px;min-width:18px;height:18px;border-radius:9px;background:var(--green,#21c07a);color:#fff;font-style:normal;font-size:11px;font-weight:700;line-height:18px;padding:0 4px;border:2px solid var(--line)}
+.farm-btn{position:relative}.farm-n{position:absolute;top:0;right:4px;min-width:18px;height:18px;border-radius:9px;background:var(--green,#21c07a);color:#fff;font-style:normal;font-size:11px;font-weight:700;line-height:18px;padding:0 4px;border:2px solid var(--line)}
 .farm .shop-it b{font-size:13px}.farm-tip{font-size:13px;margin:4px 0}.farm-plot{width:100%;margin-top:10px}
 .farm-book li{display:flex;align-items:center;gap:6px;flex-wrap:wrap}.farm-book li.none{opacity:.5}
+.fly-coin{position:fixed;z-index:999;pointer-events:none;font-style:normal;font-size:18px;margin:-10px 0 0 -10px}
+.bump{animation:bump .28s ease-out}@keyframes bump{50%{transform:scale(1.18)}}
+.farm-hud{flex-wrap:nowrap}.farm-hud [data-k=title]{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.farm-coins{font-weight:700;white-space:nowrap;display:inline-block}
+.farm-wx{font:inherit;font-size:13px;cursor:help}
+.farm .office-tools{justify-content:center;min-height:52px}.farm-cta{font-size:17px;padding:10px 28px;min-width:260px}.farm-idle{color:var(--muted);font-size:14px}
+.farm-card{display:flex;align-items:center;gap:8px;width:100%;margin:2px 0 10px;padding:8px 12px;font:inherit;font-size:14px;text-align:left;background:#fff;border:2px solid #e6dccb;border-radius:12px;cursor:pointer}
+.farm-card:hover{border-color:var(--line)}.farm-card>span{flex:1;display:grid;gap:3px}.farm-card .xpbar{max-width:none;height:7px;border-width:1.5px}.farm-card>i{font-style:normal;font-size:20px;color:var(--muted)}
+.farm-back{margin:0 0 4px;padding:2px 0}
+@media (pointer:coarse),(hover:none){.farm-wx{min-height:44px}}
+.me-nav{display:flex;gap:2px;margin-left:auto}.me-nav button{min-height:46px;min-width:46px}.me-nav button{position:relative;display:grid;justify-items:center;gap:0;padding:4px 10px;border:none;background:none;border-radius:10px;font:inherit;font-size:20px;line-height:1.1;cursor:pointer}
+.me-nav button:hover{background:#f3ecdf}.me-nav .bl{font-size:12px;color:var(--muted)}.me-nav .gacha-btn.free::after{content:'';position:absolute;top:4px;right:10px;width:8px;height:8px;border-radius:50%;background:var(--pink)}
+.me-coins{padding-left:12px;border-left:2px solid #eee2cf;font-size:18px}
+.play-cta{order:3;margin-left:auto;padding:6px 16px}.play-cta small{font-weight:600;opacity:.85}
+.res-h{font-size:18px;margin:0 0 4px}.res-cta{font-size:18px;padding:10px 34px}.res-links{display:flex;justify-content:center;gap:4px;margin-top:8px}.res-links .linkbtn{margin:0;color:var(--muted)}
 .farm .rk-tabs{flex-wrap:nowrap;gap:4px}.farm .rk-tabs .btn{padding:4px 8px;font-size:13px;white-space:nowrap}
 .mut{font-style:normal;font-size:11px;font-weight:700;padding:0 6px;border-radius:8px;border:1.5px solid var(--line)}.mut-w{background:#bfe9ff}.mut-g{background:#ffe08a}.mut-r{background:linear-gradient(90deg,#ffd6ec,#fff3b0,#c8f5dc,#cfe8ff)}
 .farm-wx{font-size:13px;padding:2px 10px;border-radius:12px;background:#fff;border:2px solid var(--line);white-space:nowrap}.farm-wx.on{background:#fff3cf}
-.farm-info{flex:1 1 220px;min-width:0;font-size:13px}
+.me-nav .gacha-btn.free{background:none;animation:none}
 .tab-n{font-style:normal;font-size:11px;background:var(--pink);color:#fff;border-radius:8px;padding:0 5px;margin-left:2px}
 .farm-gear{display:grid;grid-template-columns:1fr auto;gap:8px 10px;align-items:center}.farm-gear div{display:grid}.farm-gear small{font-size:12px}
 .farm-ls{list-style:none;padding:0;margin:6px 0;display:grid;gap:4px}.farm-ls li{display:flex;align-items:center;gap:8px;padding:5px 8px;border:2px solid #e6dccb;border-radius:10px;background:#fff;font-size:14px}
@@ -476,7 +490,7 @@ button.pk:hover{transform:translateY(-2px)}div.pk{cursor:default}.pk b{font-size
 <script src="gacha.js?v=2"></script>
 <script src="hubroom.js?v=5"></script>
 <script src="tower.js?v=2"></script>
-<script src="farm.js?v=2"></script>
+<script src="farm.js?v=3"></script>
 <script>
 'use strict';
 /* ---------- utils ---------- */
@@ -752,14 +766,15 @@ function startGame(id){
       api.sfx('over');
       const bk='best_'+g.id,prev=store.get(bk,0),isBest=score>prev;if(isBest)store.set(bk,score);
       const ov=document.createElement('div');ov.className='overlay';
-      ov.innerHTML=`<div class="panel popin"><div class="big">${g.emoji}</div><h2>จบเกม!</h2>
-        <div class="score">${fmt(score)}</div><div>${g.unit||'คะแนน'}${extra?' · '+extra:''}</div>
-        ${isBest?'<div class="badge">🏆 สถิติใหม่!</div>':`<div class="muted" style="margin-top:6px">สถิติของคุณ: ${fmt(prev)}</div>`}
-        ${lastSc!=null&&score>lastSc&&!isBest?`<div class="up">📈 ดีกว่าครั้งก่อน +${fmt(score-lastSc)}</div>`:''}<div class="reward"><b>+${rw.coins} 🪙</b>${mult>1?' <i class="feat-b">×2 เกมแนะนำ</i>':''} · <b>+${rw.xp} XP</b><div class="xpbar big"><i style="width:${rw.ups.length?0:rw.before.xp/needXP(rw.before.lv)*100}%"></i></div>
+      window.pendingFly=rw.coins;
+      ov.innerHTML=`<div class="panel popin res"><h2 class="res-h">${g.emoji} ${g.title}</h2>
+        <div class="score">${fmt(score)}</div><div class="muted">${g.unit||'คะแนน'}${extra?' · '+extra:''}</div>
+        ${isBest?'<div class="badge">🏆 สถิติใหม่!</div>':lastSc!=null&&score>lastSc?`<div class="up">📈 ดีกว่าครั้งก่อน +${fmt(score-lastSc)}</div>`:`<div class="muted" style="margin-top:6px">สถิติของคุณ ${fmt(prev)}</div>`}
+        <div class="rankline" data-a="rk"></div><div class="reward"><b>+${rw.coins} 🪙</b>${mult>1?' <i class="feat-b">×2 เกมแนะนำ</i>':''} · <b>+${rw.xp} XP</b><div class="xpbar big"><i style="width:${rw.ups.length?0:rw.before.xp/needXP(rw.before.lv)*100}%"></i></div>
           <small>${rw.ups.length?`🎉 เลื่อนขั้นเป็น <b>Lv ${rw.after.lv} · ${Prog.title(rw.after.lv)}</b>!`:`Lv ${rw.after.lv} · ${Prog.title(rw.after.lv)} · อีก ${needXP(rw.after.lv)-rw.after.xp} XP`}</small>
-          ${unlockHTML(rw)}<small class="offpt">🏢 +${rw.coins} แต้มออฟฟิศ</small></div>
-        <div class="rankline" data-a="rk"></div>
-        <div class="row"><button class="btn primary" data-a="again">🔁 เล่นอีก</button><button class="btn" data-a="board">🏆 อันดับ</button><button class="btn" data-a="share">📋 อวดในไลน์</button><button class="btn" data-a="home">🏠 หน้าหลัก</button></div></div>`;
+          ${unlockHTML(rw)}</div>
+        <div class="row"><button class="btn primary res-cta" data-a="again">🔁 เล่นอีกรอบ</button></div>
+        <div class="res-links"><button class="linkbtn" data-a="board">🏆 อันดับ</button><button class="linkbtn" data-a="share">📋 อวดในไลน์</button><button class="linkbtn" data-a="home">🏠 หน้าแรก</button></div></div>`;
       requestAnimationFrame(()=>requestAnimationFrame(()=>{const b=ov.querySelector('.reward .xpbar i');if(b)b.style.width=(rw.after.xp/needXP(rw.after.lv)*100)+'%'}));
       if(rw.ups.length)setTimeout(()=>{const pn=ov.querySelector('.panel');if(pn){const R=pn.getBoundingClientRect();domBurst(pn,R.width/2,R.height/3,{n:40,dist:220,size:10});api.sfx('level')}},350);
       ov.querySelectorAll('[data-a=dress]').forEach(b=>b.onclick=()=>Wardrobe.open());
@@ -796,6 +811,15 @@ function startGame(id){
 function stopGame(){
   if(current){current.mine.forEach(f=>loops.delete(f));current.inst&&current.inst.destroy&&current.inst.destroy();current=null}
   paused=false;const p=$('#pauseOv');p&&p.remove();
+}
+// a few coins fly from (x,y) into the coin counter `to`, which then bumps — feedback for every payout
+function flyCoins(x,y,to,n){
+  if(!to||!(n>0)||matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+  const T=to.getBoundingClientRect(),k=Math.min(8,Math.max(3,Math.round(n/25)));
+  for(let i=0;i<k;i++){const c=document.createElement('i');c.className='fly-coin';c.textContent='🪙';c.style.left=x+'px';c.style.top=y+'px';document.body.appendChild(c);
+    const dx=T.left+T.width/2-x,dy=T.top+T.height/2-y,sx=(Math.random()-.5)*80;
+    c.animate([{transform:'translate(0,0) scale(.6)',opacity:0},{transform:`translate(${sx}px,-30px) scale(1.1)`,opacity:1,offset:.25},{transform:`translate(${dx}px,${dy}px) scale(.7)`,opacity:.9}],
+      {duration:650+i*70,easing:'cubic-bezier(.5,0,.7,1)'}).onfinish=()=>{c.remove();to.classList.remove('bump');void to.offsetWidth;to.classList.add('bump')}}
 }
 function goHome(){stopGame();stage.hidden=true;stage.innerHTML='';hub.hidden=false;$('#homeBtn').hidden=true;renderHub()}
 $('#homeBtn').onclick=goHome;
@@ -1365,15 +1389,17 @@ function renderHub(){
       <button class="me-ava" id="avaBtn" type="button" title="แต่งตัว" aria-label="แต่งตัว"><canvas id="avaCv" width="40" height="64"></canvas></button>
       <div class="me-main"><input id="nameIn" maxlength="20" placeholder="ตั้งชื่อเล่นก่อนเล่น ✏️" aria-label="ชื่อเล่น">
         <div class="me-lv"><b>Lv ${P.lv}</b> ${Prog.title(P.lv)}${Gacha.eq()?` <i class="bdg">${badgeTxt(Gacha.eq())}</i>`:''} <span class="xpbar"><i style="width:${P.xp/needXP(P.lv)*100}%"></i></span>${nextHint(P.lv)}</div></div>
+      <nav class="me-nav" aria-label="ของฉัน">
+        <button class="gacha-btn${Gacha.freeToday()?' free':''}" id="gachaBtn" type="button" aria-label="กาชา">🎰<span class="bl">กาชา</span></button>
+        <button id="officeBtn" type="button" aria-label="ห้องฉัน">🏠<span class="bl">ห้องฉัน</span></button>
+        <button class="farm-btn" id="farmBtn" type="button" aria-label="ฟาร์ม">🌱<span class="bl">ฟาร์ม</span><i class="farm-n" data-k="farmN" hidden></i></button>
+      </nav>
       <span class="me-coins">🪙 ${fmt(P.coins)}</span>
-      <button class="btn sm gacha-btn${Gacha.freeToday()?' free':''}" id="gachaBtn" type="button" aria-label="กาชา">🎰<span class="bl"> กาชา</span></button>
-      <button class="btn sm" id="officeBtn" type="button" aria-label="ห้องฉัน">🏠<span class="bl"> ห้องฉัน</span></button>
-      <button class="btn sm farm-btn" id="farmBtn" type="button" aria-label="ฟาร์ม">🌱<span class="bl"> ฟาร์ม</span><i class="farm-n" data-k="farmN" hidden></i></button>
     </section>
     <div class="alerts" data-k="alerts"></div>
     <div class="room-h"><span class="seg"><button class="on" data-view="room" type="button">🏠 ห้องรวม</button><button data-view="tower" type="button">🏢 ตึกออฟฟิศ</button></span><span class="dot"></span><span class="muted" data-k="oncount"></span><div class="heads" data-k="onlist"></div><button class="off-bar" id="offBar" type="button"></button></div>
     <div data-k="room"></div><div data-k="tower"></div>
-    <section class="solo"><div class="sec-h"><h3>เกม</h3><button class="chip" id="mBtn" type="button" aria-expanded="${mOpen}">🎯 ภารกิจวันนี้ <b data-k="mcount">0/3</b> <span data-k="streak"></span> ${mOpen?'▴':'▾'}</button></div>
+    <section class="solo"><div class="sec-h"><h3>เกม</h3><button class="btn primary play-cta" id="playFeat" type="button">▶ เล่น${GAMES.find(g=>g.id===featuredId()).title} <small>🪙×2</small></button><button class="chip" id="mBtn" type="button" aria-expanded="${mOpen}">🎯 ภารกิจวันนี้ <b data-k="mcount">0/3</b> <span data-k="streak"></span> ${mOpen?'▴':'▾'}</button></div>
       <div class="mpanel"${mOpen?'':' hidden'}><ul class="mlist" data-k="mlist"></ul></div>
       <div class="solo-grid">${solo.map(g=>{const b=store.get('best_'+g.id,0),ft=g.id===featuredId();return`<button class="scard${ft?' feat':''}" data-g="${g.id}" title="${g.desc}">${ft?'<i class="feat-b">⭐ วันนี้ 🪙×2</i>':''}<span class="em" style="--c:${g.color}"><img src="${g.img}" alt=""></span>
         <b>${g.title}</b><small>${b?`🏆 ${fmt(b)}${g.unit?' '+g.unit:''}`:g.time}</small></button>`}).join('')}</div></section>
@@ -1388,6 +1414,8 @@ function renderHub(){
   $('#officeBtn').onclick=()=>startGame('office');
   $('#farmBtn').onclick=()=>startGame('farm');farmBadge();
   $('#gachaBtn').onclick=()=>Gacha.open();
+  $('#playFeat').onclick=()=>startGame(featuredId());
+  if(window.pendingFly){const n=window.pendingFly;window.pendingFly=0;requestAnimationFrame(()=>flyCoins(innerWidth/2,innerHeight*.45,hub.querySelector('.me-coins'),n))}
   $('#mBtn').onclick=()=>{store.set('mOpen',!store.get('mOpen',false));renderHub()};
   $('#feedMore').onclick=()=>{feedOpen=!feedOpen;$('#feedMore').textContent=feedOpen?'ย่อ':'ดูทั้งหมด';renderFeed()};
   $('#crewMore').onclick=()=>{window.officeTab='friends';startGame('office');window.officeTab=null};
