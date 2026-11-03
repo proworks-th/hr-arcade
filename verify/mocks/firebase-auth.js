@@ -1,5 +1,5 @@
 // Test-mode stand-in for firebase-auth: the signed-in user lives in localStorage (survives reloads like the real one),
-// "Google" is a fake account — window.__mockGoogle = {email} picks which; window.__mockAuthOff = guest sign-in disabled.
+// "Google" is a fake account — window.__mockGoogle = {email} picks which; window.__mockAuthOff (or localStorage mock_auth_off, which survives the reload) = guest sign-in disabled.
 const K = 'mock_auth', G = 'mock_google';
 const load = k => { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } };
 const save = (k, v) => v == null ? localStorage.removeItem(k) : localStorage.setItem(k, JSON.stringify(v));
@@ -12,7 +12,7 @@ export function onAuthStateChanged(a, cb) { subs.push(cb); setTimeout(() => cb(c
 export const browserLocalPersistence = 'local', browserSessionPersistence = 'session';
 export async function setPersistence() {}
 export async function signInAnonymously() {
-  if (window.__mockAuthOff) throw err('auth/operation-not-allowed');
+  if (window.__mockAuthOff || localStorage.getItem('mock_auth_off')) throw err('auth/operation-not-allowed');
   cur = { uid: 'anon-' + Math.random().toString(36).slice(2, 8), isAnonymous: true, email: null }; emit(); return { user: cur };
 }
 export class GoogleAuthProvider { static credentialFromError(e) { return e.cred || null; } }

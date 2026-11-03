@@ -500,7 +500,7 @@ button.pk:hover{transform:translateY(-2px)}div.pk{cursor:default}.pk b{font-size
 <script src="hubroom.js?v=6"></script>
 <script src="tower.js?v=3"></script>
 <script src="farm.js?v=4"></script>
-<script src="cloud.js?v=5"></script>
+<script src="cloud.js?v=6"></script>
 <script>
 'use strict';
 /* ---------- utils ---------- */
@@ -1410,7 +1410,7 @@ function renderHub(){
       </nav>
       <span class="me-coins">🪙 ${fmt(P.coins)}</span>
     </section>
-    <div class="alerts" data-k="calert"></div><div class="alerts" data-k="alerts"></div>
+    <div class="alerts" data-k="alerts"></div>
     <div class="room-h"><span class="seg"><button class="on" data-view="room" type="button">🏠 ห้องรวม</button><button data-view="tower" type="button">🏢 ตึกออฟฟิศ</button></span><span class="dot"></span><span class="muted" data-k="oncount"></span><div class="heads" data-k="onlist"></div><button class="off-bar" id="offBar" type="button"></button></div>
     <div data-k="room"></div><div data-k="tower"></div>
     <section class="solo"><div class="sec-h"><h3>เกม</h3><button class="btn primary play-cta" id="playFeat" type="button">▶ เล่น${GAMES.find(g=>g.id===featuredId()).title} <small>🪙×2</small></button><button class="chip" id="mBtn" type="button" aria-expanded="${mOpen}">🎯 ภารกิจวันนี้ <b data-k="mcount">0/3</b> <span data-k="streak"></span> ${mOpen?'▴':'▾'}</button></div>
@@ -1421,7 +1421,7 @@ function renderHub(){
     <section class="awards"><h3>🏆 รางวัลออฟฟิศ <small>ประกาศผลทุกวันจันทร์</small><button class="linkbtn" id="awShare" type="button" hidden>📋 อวดในไลน์</button></h3><div class="aw-grid" data-k="aw"></div></section>
     <section class="feedbox"><h3>ความเคลื่อนไหว <button class="linkbtn" id="feedMore">${feedOpen?'ย่อ':'ดูทั้งหมด'}</button></h3><ul class="feed" data-k="feed"></ul></section>
     <p class="credits">🎨 <a href="https://limezu.itch.io/moderninteriors" target="_blank" rel="noopener">LimeZu Modern Interiors</a> (ฟรี ไม่แสวงหากำไร) · เสียงและ 3D: <a href="https://kenney.nl" target="_blank" rel="noopener">Kenney</a> (CC0) · <a href="https://2dpig.itch.io/pixel-office" target="_blank" rel="noopener">2dPig</a> (CC0)</p>`;
-  const ni=$('#nameIn');ni.value=store.get('name','');let nt=0;ni.oninput=()=>{store.set('name',ni.value);clearTimeout(nt);nt=setTimeout(()=>{presence();Prog.sync();Cloud.checkName()},800)};
+  const ni=$('#nameIn');ni.value=store.get('name','');let nt=0;ni.oninput=()=>{store.set('name',ni.value);clearTimeout(nt);nt=setTimeout(()=>{presence();Prog.sync()},800)};
   $('#avaBtn').onclick=()=>Wardrobe.open();
   drawAva($('#avaCv'));
   HubRoom.mount(hub.querySelector('[data-k=room]'));HubRoom.renderOffice();Tower.mount(hub.querySelector('[data-k=tower]'));
@@ -1430,7 +1430,7 @@ function renderHub(){
   $('#farmBtn').onclick=()=>startGame('farm');farmBadge();
   $('#gachaBtn').onclick=()=>Gacha.open();
   $('#cloudBtn').onclick=()=>Cloud.open();
-  Awards.mount(hub.querySelector('[data-k=aw]'));if(Cloud.booted)Cloud.checkName();
+  Awards.mount(hub.querySelector('[data-k=aw]'));
   $('#playFeat').onclick=()=>startGame(featuredId());
   if(window.pendingFly){const n=window.pendingFly;window.pendingFly=0;requestAnimationFrame(()=>flyCoins(innerWidth/2,innerHeight*.45,hub.querySelector('.me-coins'),n))}
   $('#mBtn').onclick=()=>{store.set('mOpen',!store.get('mOpen',false));renderHub()};
