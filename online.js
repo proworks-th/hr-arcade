@@ -114,6 +114,23 @@ export function water(owner,i,from,s){return FIREBASE_CONFIG?set(ref(db(),`rooms
 export async function getWaters(owner){if(!FIREBASE_CONFIG)return{};const s=await get(ref(db(),`rooms/_farmw/${owner}`));return s.val()||{}}
 export function watchWaters(owner,cb){return FIREBASE_CONFIG?onValue(ref(db(),`rooms/_farmw/${owner}`),s=>cb(s.val()||{})):()=>{}}
 export function clearWaters(owner,i){if(FIREBASE_CONFIG)remove(ref(db(),`rooms/_farmw/${owner}/${i}`))}
+// gifts: rooms/_gift/{toKey}/{pushId}={f:fromName,c:basketKey,t}; taken (read + removed) when the receiver opens the farm
+export function sendGift(toKey,from,c){return FIREBASE_CONFIG?push(ref(db(),`rooms/_gift/${toKey}`),{f:String(from).trim().slice(0,20),c:String(c).slice(0,8),t:serverTimestamp()}):Promise.resolve()}
+export async function takeGifts(me){
+  if(!FIREBASE_CONFIG)return[];
+  const s=await get(ref(db(),`rooms/_gift/${me}`)),out=[];
+  s.forEach(c=>{const v=c.val();if(v&&v.c){out.push(v);remove(c.ref)}});
+  return out;
+}
+// canteen board: rooms/_canteen/{week}={got:{crop:n},by:{key:{n,p}}}; returns how many were accepted (never past the goal)
+export async function deliver(wk,crop,n,goal,name){
+  if(!FIREBASE_CONFIG)return 0;
+  const D=db();let took=0;
+  await runTransaction(ref(D,`rooms/_canteen/${wk}/got/${crop}`),cur=>{took=Math.max(0,Math.min(n,goal-(+cur||0)));return took?(+cur||0)+took:undefined});
+  if(took)await runTransaction(ref(D,`rooms/_canteen/${wk}/by/${nameKey(name)}`),cur=>({n:name.trim().slice(0,20),p:((cur&&cur.p)||0)+took}));
+  return took;
+}
+export function watchCanteen(wk,cb){return FIREBASE_CONFIG?onValue(ref(db(),`rooms/_canteen/${wk}`),s=>cb(s.val()||{})):()=>{}}
 export function watchOffice(cb){return FIREBASE_CONFIG?onValue(ref(db(),'rooms/_office/pts'),s=>cb(+s.val()||0)):()=>{}}
 export async function officeBoard(){
   if(!FIREBASE_CONFIG)return[];

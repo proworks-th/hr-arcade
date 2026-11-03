@@ -200,7 +200,7 @@ function officeMount(root, api) {
     } else if (tab === 'style') {
       const curW = roomW(p.room);
       L.innerHTML = `<h4 class="sz-h">📐 ขยายห้อง <small class="muted">ตอนนี้กว้าง ${curW} ช่อง</small></h4><div class="sz-row">${ROOM_SIZES.filter(z => z[0] > curW).map(([w, price, lv]) => { const lock = p.lv < lv, tr = tryW === w;
-        return `<button class="shop-it sz${tr ? ' on' : ''}${lock ? ' lock' : ''}" data-size="${w}" ${lock ? 'disabled' : ''}><b>↔ ${w} ช่อง</b><small>${lock ? `🔒 Lv ${lv}` : tr ? `🛒 ลองอยู่ · 🪙 ${fmt(price)}` : `👀 🪙 ${fmt(price)}`}</small></button>`; }).join('') || '<span class="muted">ห้องใหญ่สุดแล้ว 🎉</span>'}</div>
+        return `<button class="shop-it sz${tr ? ' on' : ''}${lock ? ' lock' : ''}" data-size="${w}" ${lock ? 'disabled' : ''}><b>↔ ${w} ช่อง</b><small class="muted">🌱 ${typeof Farm !== 'undefined' ? Farm.plotsFor(w) : ''} แปลงผัก</small><small>${lock ? `🔒 Lv ${lv}` : tr ? `🛒 ลองอยู่ · 🪙 ${fmt(price)}` : `👀 🪙 ${fmt(price)}`}</small></button>`; }).join('') || '<span class="muted">ห้องใหญ่สุดแล้ว 🎉</span>'}</div>
         <h4 class="sz-h">🎨 ผนัง / พื้น</h4><div class="shop-grid">${STYLES.map(([n, price, lv]) => { const own = p.styles.includes(n), lock = p.lv < lv, on = p.room.wall === n || p.room.floor === n;
         const tr = tryStyle.wall === n || tryStyle.floor === n;
         return `<button class="shop-it style${on || tr ? ' on' : ''}${lock && !own ? ' lock' : ''}" data-style="${n}" ${lock && !own ? 'disabled' : ''}><span class="sw" style="background-image:url(assets/mi/${n}.png)"></span><small>${tr ? `🛒 ลองอยู่ · 🪙 ${price}` : on ? '✓ ใช้อยู่' : own ? 'ใช้' : lock ? `🔒 Lv ${lv}` : `👀 🪙 ${price}`}</small></button>`; }).join('')}</div>`;

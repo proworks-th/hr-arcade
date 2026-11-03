@@ -15,9 +15,12 @@ const Tower = (() => {
     [8, '🌿 สวนลอยฟ้า', { wall: 'wall_mint', floor: 'floor_teal', items: [['palm', 3, 6], ['tree', 9, 7], ['palm', 16, 5], ['bench_pink', 22, 7], ['bench_cream', 28, 7], ['tree', 35, 6], ['palm', 41, 7], ['plant_pot', 47, 8], ['shelf_plant', 12, 3], ['shelf_plant', 32, 3], ['window_slide', 24, 0], ['fruit_grape', 26, 8]] }],
     [10, '🎮 ห้องเกม', { wall: 'wall_grey', floor: 'floor_rwood', items: [['pc_desk', 4, 5], ['pc_desk', 10, 5], ['pc_desk', 16, 5], ['chair_red', 5, 6], ['chair_red', 11, 6], ['chair_red', 17, 6], ['tv', 28, 0], ['sofa_grey', 26, 7], ['blackboard', 40, 0], ['globe_gold', 36, 7], ['floorlamp_white', 44, 6], ['rug_blue', 28, 6]] }],
   ];
-  let el = null, cv, ctx, wrap, O = null, profiles = null, people = [], t = 0, last = 0, started = false, zoom = 1, H = 600, regions = [], hover = null, loadedAt = 0;
+  let el = null, cv, ctx, wrap, O = null, profiles = null, people = [], t = 0, last = 0, started = false, zoom = 1, H = 600, regions = [], hover = null, loadedAt = 0, farms = {};
   const cache = {};                               // room thumbnails: key → { c: canvas, sig, ok }
   const lc = s => String(s || '').trim().toLowerCase();
+  // farm balcony under each apartment (farm.js may load later, so read its height lazily)
+  const BAL = () => typeof Farm !== 'undefined' && Farm.BALCONY_H || 24, AFLOOR = () => FLOOR + BAL();
+  const key = n => O && O.nameKey ? O.nameKey(n) : (n || '').trim().toLowerCase().replace(/[.#$\[\]\/]/g, '_').slice(0, 24) || '_';
   const visible = () => el && el.isConnected && !el.hidden && !document.getElementById('hub').hidden;
 
   /* ---------- layout ---------- */
@@ -32,7 +35,7 @@ const Tower = (() => {
     const specials = SPECIAL.filter(s => off.lv >= s[0]), next = SPECIAL.find(s => off.lv < s[0]);
     return { off, floors, specials: specials.slice().reverse(), next };
   }
-  function size(Lo) { return TOPM + ROOF + (Lo.specials.length + Lo.floors.length) * FLOOR + LOBBY + GROUND; }
+  function size(Lo) { return TOPM + ROOF + Lo.specials.length * FLOOR + Lo.floors.length * AFLOOR() + LOBBY + GROUND; }
 
   /* ---------- room thumbnails (drawn once with the office kit, redrawn until every sprite has loaded) ---------- */
   function thumb(key, room, cols) {
@@ -89,9 +92,9 @@ const Tower = (() => {
       rrect(ctx, cx - 200, base - 26, 130, 7, 3, '#e6dccb'); rrect(ctx, cx - 200, base - 26, 130 * pc, 7, 3, '#21c07a');
       regions.push({ x: cx - 210, y: base - 124, w: 270, h: 110, kind: 'crane', tip: `กำลังสร้าง ${next[1]} · ${Math.round(pc * 100)}% (ถึงออฟฟิศ Lv ${next[0]})` }); }
   }
-  function floorFrame(y) {
-    brick(BX, y, SIDE, FLOOR); brick(BX + BW - SIDE, y, SIDE, FLOOR);
-    ctx.fillStyle = '#8d6e63'; ctx.fillRect(BX, y + FLOOR - SLAB, BW, SLAB); ctx.fillStyle = '#6d4c41'; ctx.fillRect(BX, y + FLOOR - SLAB, BW, 2);
+  function floorFrame(y, fh = FLOOR) {
+    brick(BX, y, SIDE, fh); brick(BX + BW - SIDE, y, SIDE, fh);
+    ctx.fillStyle = '#8d6e63'; ctx.fillRect(BX, y + fh - SLAB, BW, SLAB); ctx.fillStyle = '#6d4c41'; ctx.fillRect(BX, y + fh - SLAB, BW, 2);
   }
   function special(y, s) {
     floorFrame(y); const c = thumb('sp' + s[0], s[2], 50);
@@ -101,8 +104,8 @@ const Tower = (() => {
     regions.push({ x: BX + SIDE, y, w: IW, h: FH + PLATE, kind: 'special', tip: `${s[1]} — ชั้นส่วนกลางของทุกคน ปลดล็อกจากออฟฟิศเลเวล` });
   }
   function apartments(y, row, fi) {
-    floorFrame(y);
-    ctx.fillStyle = '#efe4d2'; ctx.fillRect(BX + SIDE, y, IW, FH + PLATE);       // corridor wall behind / between the units
+    const bh = BAL(), now = Date.now(); floorFrame(y, AFLOOR());
+    ctx.fillStyle = '#efe4d2'; ctx.fillRect(BX + SIDE, y, IW, FH + PLATE + bh);  // corridor wall behind / between the units
     const me = lc(myName()), on = {}; for (const p of people) on[lc(p.n)] = p;
     let x = BX + SIDE;
     row.forEach(({ r, w }, i) => {
@@ -121,6 +124,10 @@ const Tower = (() => {
       const bdg = r.b && typeof badgeEmoji === 'function' ? badgeEmoji(r.b) + ' ' : '';
       txt(ctx, `${p ? '🟢 ' : ''}${bdg}${r.n} · Lv ${r.lv | 0}`, x + w / 2, y + FH + PLATE / 2, 11, mine ? '#2b2140' : '#fff', 'center', 700);
       regions.push({ x, y, w, h: FH + PLATE, kind: 'room', r, tip: `${r.n} · Lv ${r.lv | 0} ${r.ti || ''}${p ? ' · ออนไลน์อยู่' : ''} — กดเพื่อเข้าไปดูห้อง` });
+      // farm balcony hangs under the name plate, exactly the apartment's width; no farm row yet = empty pots
+      if (typeof Farm !== 'undefined') { const fk = r.k || key(r.n), fr = farms[fk] || null, by = y + FH + PLATE;
+        Farm.drawBalcony(ctx, fr, x, by, w, now, t);
+        regions.push({ x, y: by, w, h: bh, kind: 'balcony', r, k: fk, tip: `${r.n} · ${Farm.balconyInfo(fr, now)} — กดเพื่อไปที่ฟาร์ม` }); }
       x += w + GAP;
     });
     // vacant units fill the rest of the floor
@@ -148,7 +155,7 @@ const Tower = (() => {
     sky();
     let y = TOPM; roof(y, Lo); y += ROOF;
     for (const s of Lo.specials) { special(y, s); y += FLOOR; }
-    Lo.floors.forEach((row, i) => { apartments(y, row, i); y += FLOOR; });
+    Lo.floors.forEach((row, i) => { apartments(y, row, i); y += AFLOOR(); });
     lobby(y, people.filter(p => p.g === 'hub').length); y += LOBBY;
     ctx.fillStyle = night() ? '#2f4a2a' : '#7cc46a'; ctx.fillRect(0, y, W, GROUND); ctx.fillStyle = '#6b6f7a'; ctx.fillRect(0, y + 14, W, 18);
     ctx.fillStyle = '#fff'; for (let x = (t * 20) % 60 - 60; x < W; x += 60) ctx.fillRect(x, y + 22, 30, 2);
@@ -172,6 +179,7 @@ const Tower = (() => {
     cv.addEventListener('pointerleave', () => { hover = null; tip.hidden = true; });
     cv.addEventListener('click', e => { const g = hit(e); if (!g) return;
       if (g.kind === 'room') { window.officeVisit = g.r; window.officeTab = 'friends'; startGame('office'); window.officeTab = null; }
+      else if (g.kind === 'balcony') { if (g.k !== key(myName())) window.farmVisit = g.k; startGame('farm'); }
       else if (g.kind === 'lobby') setView('room');
       else if (g.kind === 'crane' && typeof HubRoom !== 'undefined') HubRoom.officePanel();
       else toast(g.tip); });
@@ -183,7 +191,11 @@ const Tower = (() => {
     if (!g) { if (say) toast('ยังไม่มีห้องในตึก — ตั้งชื่อเล่นที่แถบบนแล้วเล่นสักเกม ห้องจะย้ายเข้ามาเอง'); return; }
     const k = cv.getBoundingClientRect().height / H; wrap.scrollTo({ top: g.y * k - 80, left: Math.max(0, g.x * k - 120), behavior: say ? 'smooth' : 'auto' });
   }
-  function load() { loadOnline().then(M => M.listProfiles(80)).then(L => { profiles = L; loadedAt = performance.now(); }).catch(() => { profiles = profiles || []; }); }
+  function load() {
+    loadOnline().then(M => M.listProfiles(80)).then(L => { profiles = L; loadedAt = performance.now(); }).catch(() => { profiles = profiles || []; });
+    // farms come separately so a farm error never blocks the building
+    loadOnline().then(M => M.listFarms ? M.listFarms() : []).then(F => { const m = {}; for (const f of F || []) if (f && f.k) m[f.k] = f; farms = m; }).catch(() => {});
+  }
   function frame(ts) {
     requestAnimationFrame(frame);
     const dt = Math.min(.05, (ts - last) / 1000 || 0); last = ts; if (!visible()) return; t += dt; draw();

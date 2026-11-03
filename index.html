@@ -209,7 +209,18 @@ button.pk:hover{transform:translateY(-2px)}div.pk{cursor:default}.pk b{font-size
 .feedbox{margin-top:8px}
 .farm-btn{position:relative}.farm-n{position:absolute;top:-6px;right:-6px;min-width:18px;height:18px;border-radius:9px;background:var(--green,#21c07a);color:#fff;font-style:normal;font-size:11px;font-weight:700;line-height:18px;padding:0 4px;border:2px solid var(--line)}
 .farm .shop-it b{font-size:13px}.farm-tip{font-size:13px;margin:4px 0}.farm-plot{width:100%;margin-top:10px}
-.farm-book li{display:flex;align-items:center;gap:6px}.farm-book li.none{opacity:.5}.farm-book .gold{font-style:normal;color:#c77d0a;font-weight:700}
+.farm-book li{display:flex;align-items:center;gap:6px;flex-wrap:wrap}.farm-book li.none{opacity:.5}
+.farm .rk-tabs{flex-wrap:nowrap;gap:4px}.farm .rk-tabs .btn{padding:4px 8px;font-size:13px;white-space:nowrap}
+.mut{font-style:normal;font-size:11px;font-weight:700;padding:0 6px;border-radius:8px;border:1.5px solid var(--line)}.mut-w{background:#bfe9ff}.mut-g{background:#ffe08a}.mut-r{background:linear-gradient(90deg,#ffd6ec,#fff3b0,#c8f5dc,#cfe8ff)}
+.farm-wx{font-size:13px;padding:2px 10px;border-radius:12px;background:#fff;border:2px solid var(--line);white-space:nowrap}.farm-wx.on{background:#fff3cf}
+.farm-info{flex:1 1 220px;min-width:0;font-size:13px}
+.tab-n{font-style:normal;font-size:11px;background:var(--pink);color:#fff;border-radius:8px;padding:0 5px;margin-left:2px}
+.farm-gear{display:grid;grid-template-columns:1fr auto;gap:8px 10px;align-items:center}.farm-gear div{display:grid}.farm-gear small{font-size:12px}
+.farm-ls{list-style:none;padding:0;margin:6px 0;display:grid;gap:4px}.farm-ls li{display:flex;align-items:center;gap:8px;padding:5px 8px;border:2px solid #e6dccb;border-radius:10px;background:#fff;font-size:14px}
+.farm-ls .btn.sm{padding:3px 10px;flex:none}.bag-n{flex:1;min-width:0;display:grid;line-height:1.25}.bag-n i{font-style:normal;color:var(--muted);font-weight:400}.bag-n small{color:var(--muted);font-size:12px}.cant-m{flex:1;display:grid;gap:2px}.cant-m .xpbar{max-width:none;height:8px}.cant .ok{color:#21a35f;font-weight:700}
+.gift-to{display:flex;align-items:center;gap:6px;margin:2px 0 8px;font-size:14px}.gift-to select{flex:1;font:inherit;padding:4px 6px;border:2px solid var(--line);border-radius:8px}
+.fr-sig{font-size:12px;color:var(--muted);margin-left:auto}.farm-empty{padding:18px 6px;text-align:center}
+.wd-it.buy{border-color:var(--yel)}.wd-it.buy b{color:var(--line)}.wd-it.short{opacity:.6;cursor:default}.wd-it.short b{color:var(--muted)}
 .seg{display:inline-flex;border:2px solid var(--line);border-radius:999px;overflow:hidden;background:#fff}
 .seg button{font:inherit;font-weight:700;font-size:14px;border:0;background:none;padding:4px 12px;cursor:pointer;color:var(--ink)}.seg button.on{background:var(--yel)}
 @media (pointer:coarse),(hover:none){.seg button{min-height:44px}}
@@ -460,12 +471,12 @@ button.pk:hover{transform:translateY(-2px)}div.pk{cursor:default}.pk b{font-size
 <div id="boss" hidden></div>
 
 <script src="solo-games.js?v=10"></script>
-<script src="office.js?v=8"></script>
-<script src="wardrobe.js?v=1"></script>
+<script src="office.js?v=9"></script>
+<script src="wardrobe.js?v=2"></script>
 <script src="gacha.js?v=2"></script>
 <script src="hubroom.js?v=5"></script>
-<script src="tower.js?v=1"></script>
-<script src="farm.js?v=1"></script>
+<script src="tower.js?v=2"></script>
+<script src="farm.js?v=2"></script>
 <script>
 'use strict';
 /* ---------- utils ---------- */
@@ -510,7 +521,7 @@ $('#muteBtn').onclick=()=>{muted=!muted;store.set('muted',muted);renderMute()};
 
 /* ---------- online services (online.js, Firebase): ranking, presence, feed ---------- */
 let onlineMod=null;
-const loadRank=()=>onlineMod||(onlineMod=import('./online.js?v=11'));
+const loadRank=()=>onlineMod||(onlineMod=import('./online.js?v=12'));
 const loadOnline=loadRank;
 const PIX_AVAS=['p_office','p_woffice','p_whealth','p_tech','p_cat','p_dog'];
 const myAva=()=>{const a=store.get('partyAva','p_office');return PIX_AVAS.includes(a)?a:'p_office'};
@@ -1331,7 +1342,7 @@ function showHelp(){
     <p>🚶 <b>ห้องรวม</b>: คลิกพื้นหรือกดลูกศรเพื่อเดิน · Enter แล้วพิมพ์คุย · กด 🎉 เล่นปาร์ตี้ = ทุกคนในห้องเล่นด้วยกัน (เต้น / ชักเย่อ / วิ่งไปตอกบัตร) · 🔗 ชวน = คัดลอกลิงก์ไปแปะในไลน์</p>
     <p>🎰 <b>กาชา</b>: ตู้หน้าห้องรวม หมุนฟรีวันละครั้ง · ได้ป้ายติดข้างชื่อ กับเฟอร์นิเจอร์ชุดทอง (มีแต่ในตู้) · ป้ายซ้ำได้แสตมป์ไว้แลกป้ายที่อยากได้</p>
     <p>⭐ <b>เกมแนะนำวันนี้</b> ได้เหรียญ ×2 — เปลี่ยนทุกวัน ทุกคนได้เกมเดียวกัน</p>
-    <p>🌱 <b>ฟาร์มดาดฟ้า</b>: ปลูกผัก (3 นาที – 3 ชม.) แล้วกลับมาเก็บเมื่อว่าง · ผักไม่มีวันเหี่ยว ไม่ต้องรีบ · รดน้ำ = โตเร็วขึ้น 15% · ไปรดน้ำสวนเพื่อนได้ด้วย</p>
+    <p>🌱 <b>ฟาร์มดาดฟ้า</b>: ปลูกผัก (3 นาที – 3 ชม.) เก็บใส่ตะกร้าเมื่อว่าง แล้วขาย ส่งโรงอาหาร หรือส่งให้เพื่อน · ผักไม่มีวันเหี่ยว · ขยายห้อง = แปลงเพิ่ม (4 → 10) · ผักที่สุกตอนฝนตก แดดทอง หรือรุ้ง จะกลายพันธุ์ ขายได้แพงขึ้น · ทุกคนมีผลไม้ประจำตัว 1 อย่างที่ปลูกได้คนเดียว</p>
     <p>🏠 <b>ออฟฟิศของฉัน</b>: ทุกเกมและภารกิจได้ 🪙 กับ XP · เลเวลขึ้นได้ฉายาใหม่และปลดล็อกของ · เอาเหรียญไปซื้อเฟอร์นิเจอร์แต่งห้อง เพื่อนเข้ามาดูและกดถูกใจได้ (ถูกใจ 1 ครั้ง = +5 🪙)</p>
     <div class="row"><button class="btn primary">เข้าใจแล้ว</button></div></div>`;
   ov.onclick=e=>{if(e.target===ov||e.target.closest('button'))ov.remove()};document.body.appendChild(ov);
@@ -1339,7 +1350,7 @@ function showHelp(){
 $('#helpBtn').onclick=showHelp;
 // what reaching new levels gave you (results screen) and what the next title brings (me bar)
 function unlockHTML(rw){if(!rw.ups.length)return'';const ids=Wardrobe.unlockedBetween(rw.before.lv,rw.after.lv),nt=Prog.title(rw.after.lv)!==Prog.title(rw.before.lv);
-  if(!ids.length&&!nt)return'';return`<div class="unlock">${nt?`<span>📜 ฉายาใหม่ <b>${Prog.title(rw.after.lv)}</b></span>`:''}${ids.map(id=>`<span><img src="${Wardrobe.icon(id)}" alt=""> ได้ <b>${ACC[id][1]}</b></span>`).join('')}${ids.length?'<button class="btn sm" data-a="dress">👕 ใส่เลย</button>':''}</div>`}
+  if(!ids.length&&!nt)return'';return`<div class="unlock">${nt?`<span>📜 ฉายาใหม่ <b>${Prog.title(rw.after.lv)}</b></span>`:''}${ids.map(id=>`<span><img src="${Wardrobe.icon(id)}" alt=""> ซื้อได้แล้ว <b>${ACC[id][1]}</b> · 🪙 ${fmt(Wardrobe.price(id))}</span>`).join('')}${ids.length?'<button class="btn sm" data-a="dress">👕 ไปซื้อ</button>':''}</div>`}
 function nextHint(lv){const id=Wardrobe.nextUnlock(lv),tl=TITLES.find(([l])=>l>lv);if(!id&&!tl)return'';const at=Math.min(id?ACC[id][2]:99,tl?tl[0]:99);
   return`<small class="nx bl">ถัดไป Lv ${at}: ${tl&&tl[0]===at?tl[1]:''}${id&&ACC[id][2]===at?` <img src="${Wardrobe.icon(id,2)}" alt="${ACC[id][1]}" title="${ACC[id][1]}">`:''}</small>`}
 // me-bar avatar with the equipped accessories (retries until the sprite sheet has loaded)
