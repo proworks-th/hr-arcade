@@ -8,6 +8,7 @@
     var dir=new URL('mocks/',document.currentScript.src).href,root=new URL('../',document.currentScript.src).href;
     map.imports['https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js']=dir+'firebase-app.js';
     map.imports['https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js']=dir+'firebase-database.js';
+    map.imports['https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js']=dir+'firebase-auth.js';
     map.imports[root+'firebase-config.js']=dir+'firebase-config.js';
     window.__TEST__=true;
   }

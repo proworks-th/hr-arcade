@@ -7,7 +7,7 @@ import {FIREBASE_CONFIG} from './firebase-config.js';
 // max = sanity cap so an obviously broken score can't take the board
 export const RANK_GAMES={spot:{max:30000},run:{max:200000},whack:{max:6000},stack:{max:400},dance:{max:400000},tetris:{max:2000000},stamp:{max:200000},barista:{max:30000},toss:{max:3000},slack:{max:200000},conga:{max:100000}};
 export const PERIODS={d:'วันนี้',w:'สัปดาห์นี้',a:'ตลอดกาล'};
-const db=()=>getDatabase(getApps().find(a=>a.name==='hub')||initializeApp(FIREBASE_CONFIG,'hub'));
+const app=()=>getApps().find(a=>a.name==='hub')||initializeApp(FIREBASE_CONFIG,'hub'),db=()=>getDatabase(app());
 // Thai calendar: day resets at midnight ICT, week starts Monday
 const ymd=d=>`${d.getUTCFullYear()}${String(d.getUTCMonth()+1).padStart(2,'0')}${String(d.getUTCDate()).padStart(2,'0')}`;
 export function buckets(t=Date.now()){const d=new Date(t+7*3600e3),mon=new Date(d.getTime()-((d.getUTCDay()+6)%7)*864e5);return{d:ymd(d),w:ymd(mon),a:'all'}}
@@ -140,6 +140,36 @@ export function watchCanteen(wk,cb){return FIREBASE_CONFIG?onValue(ref(db(),`roo
 /* ---------- cloud save: rooms/_save/{nameKey}={h:pinHash,d:{key:json},lt,lv,c,n,t} ---------- */
 export function saveCloud(k,v){return FIREBASE_CONFIG?set(ref(db(),`rooms/_save/${k}`),{...v,t:serverTimestamp()}):Promise.resolve()}
 export async function getCloud(k){if(!FIREBASE_CONFIG)return null;const s=await get(ref(db(),`rooms/_save/${k}`));return s.val()}
+
+/* ---------- accounts: everyone plays as an anonymous guest until they link Google (same uid, nothing moves) ---------- */
+// auth is loaded on demand so the rest of the online features never wait on it
+const AU=()=>import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js');
+const acct=u=>u&&{uid:u.uid,guest:!!u.isAnonymous,email:u.email||''};
+// current account, signing in as a guest when there is none; null when sign-in is off in the console (or offline)
+export async function account(){
+  if(!FIREBASE_CONFIG)return null;
+  try{const M=await AU(),a=M.getAuth(app());
+    const u=await new Promise(r=>{const off=M.onAuthStateChanged(a,u=>{off();r(u)})});
+    return acct(u||(await M.signInAnonymously(a)).user);
+  }catch(e){return null}
+}
+// shared computer: forget the sign-in when the browser closes
+export async function setShared(on){const M=await AU();await M.setPersistence(M.getAuth(app()),on?M.browserSessionPersistence:M.browserLocalPersistence)}
+// link Google to the current guest; when that Google account already belongs to another save, sign in to that one instead
+// → {acct, switched}
+export async function google(){
+  const M=await AU(),a=M.getAuth(app()),p=new M.GoogleAuthProvider();
+  if(a.currentUser&&a.currentUser.isAnonymous){
+    try{return{acct:acct((await M.linkWithPopup(a.currentUser,p)).user),switched:false}}
+    catch(e){if(e.code!=='auth/credential-already-in-use')throw e;
+      return{acct:acct((await M.signInWithCredential(a,M.GoogleAuthProvider.credentialFromError(e))).user),switched:true}}
+  }
+  return{acct:acct((await M.signInWithPopup(a,p)).user),switched:true};
+}
+export async function logout(){const M=await AU();await M.signOut(M.getAuth(app()))}
+// saves by account: rooms/_usave/{uid}={d:{key:json},lt,lv,c,n,t}
+export function saveUser(uid,v){return FIREBASE_CONFIG?set(ref(db(),`rooms/_usave/${uid}`),{...v,t:serverTimestamp()}):Promise.resolve()}
+export async function getUser(uid){if(!FIREBASE_CONFIG)return null;const s=await get(ref(db(),`rooms/_usave/${uid}`));return s.val()}
 
 /* ---------- anonymous usage stats: rooms/_stat/{day}={u:{anonId:1},g:{game:plays},f:farmOpens} ---------- */
 export function stat(kind,id){

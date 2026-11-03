@@ -125,7 +125,7 @@ const HubRoom = (() => {
     O.chat(m, myName(), myWho());
   }
   function invite() {
-    const txt = `🎉 มาเล่นด้วยกันที่ห้องพักสมอง! ${G.sc !== 'lobby' && G.sc !== 'res' ? '(' + GAME_TH[G.sc] + ' กำลังเล่นอยู่) ' : ''}👉 ${location.href.split(/[?#]/)[0]}?join=room`;
+    const txt = `🎉 มาเล่นด้วยกันที่ห้องพักสมอง! ${G.sc !== 'lobby' && G.sc !== 'res' ? '(' + GAME_TH[G.sc] + ' กำลังเล่นอยู่) ' : ''}👉 ${shareURL('&join=room')}`;
     (navigator.clipboard ? navigator.clipboard.writeText(txt) : Promise.reject()).then(() => toast('📋 คัดลอกลิงก์แล้ว ไปแปะในไลน์กลุ่มได้เลย')).catch(() => prompt('คัดลอกข้อความนี้', txt));
   }
   function onKey(e) {

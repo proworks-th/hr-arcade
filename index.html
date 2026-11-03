@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <!-- ?test=1 swaps Firebase for in-memory mocks (verify/); does nothing for normal visits -->
-<script src="verify/testmode.js"></script>
+<script src="verify/testmode.js?v=2"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ห้องพักสมอง · HR Arcade</title>
 <link rel="icon" id="favicon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🕹️</text></svg>">
@@ -225,7 +225,9 @@ button.pk:hover{transform:translateY(-2px)}div.pk{cursor:default}.pk b{font-size
 .play-cta{order:3;margin-left:auto;padding:6px 16px}.play-cta small{font-weight:600;opacity:.85}
 .me-nav .cloud-btn.dot::after{content:'';position:absolute;top:4px;right:10px;width:8px;height:8px;border-radius:50%;background:var(--pink)}
 .cloud p{max-width:380px;margin:8px auto}.cloud .pin{display:block;margin:10px auto;width:150px;padding:6px;font:inherit;font-size:28px;letter-spacing:10px;text-align:center;border:2px solid var(--line);border-radius:12px}
-.cloud-note{font-size:12px;max-width:340px;margin:8px auto 0}.cloud .linkbtn{margin-top:4px}
+.cloud-note{font-size:12px;max-width:340px;margin:8px auto 0}.cloud-warn{max-width:360px;margin:8px auto;padding:8px 12px;background:#fff3cd;border-radius:10px;font-size:14px}
+.cloud-chk{display:flex;gap:8px;align-items:flex-start;max-width:360px;margin:12px auto;font-size:14px;text-align:left;cursor:pointer}.cloud-chk input{margin-top:4px}
+.alert-a{display:flex;align-items:center;gap:4px;flex-shrink:0}.onb .linkbtn{display:block;margin:8px auto 0}.cloud .linkbtn{margin-top:4px}
 .awards{margin-top:8px}.awards h3{font-size:15px;color:var(--muted);margin:0 0 6px;display:flex;align-items:center;gap:8px}.awards h3 small{font-weight:500;font-size:12px}.awards h3 .linkbtn{margin-left:auto}
 .aw-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(300px,calc(50% - 4px)),1fr));gap:8px}@media (max-width:520px){.aw{padding:8px;gap:6px}.aw-em{font-size:22px}}
 .aw{display:flex;gap:10px;align-items:center;padding:8px 12px;background:#fff;border:2px solid #eee2cf;border-radius:12px}.aw.won{border-color:#ffd23f;background:#fffbe8}
@@ -495,10 +497,10 @@ button.pk:hover{transform:translateY(-2px)}div.pk{cursor:default}.pk b{font-size
 <script src="office.js?v=10"></script>
 <script src="wardrobe.js?v=2"></script>
 <script src="gacha.js?v=2"></script>
-<script src="hubroom.js?v=5"></script>
+<script src="hubroom.js?v=6"></script>
 <script src="tower.js?v=3"></script>
 <script src="farm.js?v=4"></script>
-<script src="cloud.js?v=2"></script>
+<script src="cloud.js?v=4"></script>
 <script>
 'use strict';
 /* ---------- utils ---------- */
@@ -514,6 +516,8 @@ const NOW=new Date();
 const todayKey=`${NOW.getFullYear()}${String(NOW.getMonth()+1).padStart(2,'0')}${String(NOW.getDate()).padStart(2,'0')}`;
 const todayTH=NOW.toLocaleDateString('th-TH',{day:'numeric',month:'short'});
 function toast(msg){const d=document.createElement('div');d.textContent=msg;$('#toast').appendChild(d);setTimeout(()=>d.remove(),1900)}
+// links pasted into LINE open in its built-in browser, where Google sign-in is blocked; this flag makes LINE use the real one
+const shareURL=(q='')=>location.origin+location.pathname+'?openExternalBrowser=1'+q;
 async function copyText(t){
   try{await navigator.clipboard.writeText(t);return true}catch(e){
     const ta=document.createElement('textarea');ta.value=t;document.body.appendChild(ta);ta.select();
@@ -543,7 +547,7 @@ $('#muteBtn').onclick=()=>{muted=!muted;store.set('muted',muted);renderMute()};
 
 /* ---------- online services (online.js, Firebase): ranking, presence, feed ---------- */
 let onlineMod=null;
-const loadRank=()=>onlineMod||(onlineMod=import('./online.js?v=13'));
+const loadRank=()=>onlineMod||(onlineMod=import('./online.js?v=14'));
 const loadOnline=loadRank;
 const PIX_AVAS=['p_office','p_woffice','p_whealth','p_tech','p_cat','p_dog'];
 const myAva=()=>{const a=store.get('partyAva','p_office');return PIX_AVAS.includes(a)?a:'p_office'};
@@ -672,12 +676,13 @@ function onboarding(){
     <div class="onb-who">${MI_PEOPLE.map(w=>`<button type="button" data-w="${w}" class="${w===who?'on':''}"><img src="assets/mi/${w}_down.png" alt="${w}"></button>`).join('')}</div>
     <input maxlength="20" placeholder="ชื่อเล่น เช่น พล" aria-label="ชื่อเล่น">
     <ul class="onb-tips"><li>🚶 คลิกพื้นในห้องเพื่อเดิน</li><li>💬 พิมพ์คุยกับเพื่อนด้านล่างห้อง</li><li>🎉 กด "เล่นปาร์ตี้" เล่นพร้อมกันทั้งห้อง</li><li>🎮 เกมเดี่ยวอยู่ใต้ห้อง เล่นได้เหรียญไปแต่งห้อง</li></ul>
-    <div class="row"><button class="btn primary big" data-go>เข้าห้องเลย</button></div></div>`;
+    <div class="row"><button class="btn primary big" data-go>เข้าห้องเลย</button></div>
+    <button class="linkbtn" type="button" data-g>เคยเล่นแล้ว? เข้าด้วย Google</button></div>`;
   ov.querySelectorAll('[data-w]').forEach(b=>b.onclick=()=>{who=b.dataset.w;ov.querySelectorAll('[data-w]').forEach(x=>x.classList.toggle('on',x===b))});
   const inp=ov.querySelector('input'),go=()=>{const n=inp.value.trim();if(!n){inp.focus();inp.classList.add('err');return}
     store.set('name',n);store.set('onboarded',true);const p=Prog.get();p.who=who;Prog.put(p);ov.remove();renderHub();presence();
     toast(`ยินดีต้อนรับ ${n}! ลองพิมพ์ทักเพื่อนในห้องดู 👋`)};
-  ov.querySelector('[data-go]').onclick=go;inp.onkeydown=e=>{if(e.key==='Enter')go()};
+  ov.querySelector('[data-go]').onclick=go;ov.querySelector('[data-g]').onclick=()=>Cloud.google();inp.onkeydown=e=>{if(e.key==='Enter')go()};
   document.body.appendChild(ov);setTimeout(()=>inp.focus(),50);
 }
 /* ---------- "someone passed you" alerts: compare today's boards with the rank I saw after my last game ---------- */
@@ -807,7 +812,7 @@ function startGame(id){
           const inp=rk.querySelector('input');rk.querySelector('button').onclick=()=>{const v=inp.value.trim();if(!v)return;store.set('name',v);send(v)}}}
       ov.querySelector('[data-a=share]').onclick=async()=>{
         const name=store.get('name','').trim();
-        const txt=`🕹️ HR Arcade ${todayTH} — ${g.title}${daily?' (ด่านประจำวัน)':''}\n${name?name+': ':''}${fmt(score)} ${g.unit||'คะแนน'}${extra?' · '+extra:''}${isBest?' 🏆':''}\nใครแน่มาสู้ 👉 ${location.href.split('#')[0]}`;
+        const txt=`🕹️ HR Arcade ${todayTH} — ${g.title}${daily?' (ด่านประจำวัน)':''}\n${name?name+': ':''}${fmt(score)} ${g.unit||'คะแนน'}${extra?' · '+extra:''}${isBest?' 🏆':''}\nใครแน่มาสู้ 👉 ${shareURL()}`;
         toast(await copyText(txt)?'คัดลอกแล้ว ไปวางในไลน์ได้เลย 📋':'คัดลอกไม่ได้ 😢');
       };
       root.appendChild(ov);
@@ -1401,11 +1406,11 @@ function renderHub(){
         <button class="gacha-btn${Gacha.freeToday()?' free':''}" id="gachaBtn" type="button" aria-label="กาชา">🎰<span class="bl">กาชา</span></button>
         <button id="officeBtn" type="button" aria-label="ห้องฉัน">🏠<span class="bl">ห้องฉัน</span></button>
         <button class="farm-btn" id="farmBtn" type="button" aria-label="ฟาร์ม">🌱<span class="bl">ฟาร์ม</span><i class="farm-n" data-k="farmN" hidden></i></button>
-        <button class="cloud-btn${Cloud.nudge()?' dot':''}" id="cloudBtn" type="button" aria-label="เซฟขึ้นคลาวด์" title="${Cloud.link()?'เซฟอัตโนมัติอยู่':'เซฟความคืบหน้าขึ้นคลาวด์'}">${Cloud.link()?'☁️':'💾'}<span class="bl">เซฟ</span></button>
+        <button class="cloud-btn${Cloud.nudge()?' dot':''}" id="cloudBtn" type="button" aria-label="เซฟ" title="${Cloud.title()}">☁️<span class="bl">เซฟ</span></button>
       </nav>
       <span class="me-coins">🪙 ${fmt(P.coins)}</span>
     </section>
-    <div class="alerts" data-k="alerts"></div>
+    <div class="alerts" data-k="calert"></div><div class="alerts" data-k="alerts"></div>
     <div class="room-h"><span class="seg"><button class="on" data-view="room" type="button">🏠 ห้องรวม</button><button data-view="tower" type="button">🏢 ตึกออฟฟิศ</button></span><span class="dot"></span><span class="muted" data-k="oncount"></span><div class="heads" data-k="onlist"></div><button class="off-bar" id="offBar" type="button"></button></div>
     <div data-k="room"></div><div data-k="tower"></div>
     <section class="solo"><div class="sec-h"><h3>เกม</h3><button class="btn primary play-cta" id="playFeat" type="button">▶ เล่น${GAMES.find(g=>g.id===featuredId()).title} <small>🪙×2</small></button><button class="chip" id="mBtn" type="button" aria-expanded="${mOpen}">🎯 ภารกิจวันนี้ <b data-k="mcount">0/3</b> <span data-k="streak"></span> ${mOpen?'▴':'▾'}</button></div>
@@ -1416,7 +1421,7 @@ function renderHub(){
     <section class="awards"><h3>🏆 รางวัลออฟฟิศ <small>ประกาศผลทุกวันจันทร์</small><button class="linkbtn" id="awShare" type="button" hidden>📋 อวดในไลน์</button></h3><div class="aw-grid" data-k="aw"></div></section>
     <section class="feedbox"><h3>ความเคลื่อนไหว <button class="linkbtn" id="feedMore">${feedOpen?'ย่อ':'ดูทั้งหมด'}</button></h3><ul class="feed" data-k="feed"></ul></section>
     <p class="credits">🎨 <a href="https://limezu.itch.io/moderninteriors" target="_blank" rel="noopener">LimeZu Modern Interiors</a> (ฟรี ไม่แสวงหากำไร) · เสียงและ 3D: <a href="https://kenney.nl" target="_blank" rel="noopener">Kenney</a> (CC0) · <a href="https://2dpig.itch.io/pixel-office" target="_blank" rel="noopener">2dPig</a> (CC0)</p>`;
-  const ni=$('#nameIn');ni.value=store.get('name','');let nt=0;ni.oninput=()=>{store.set('name',ni.value);clearTimeout(nt);nt=setTimeout(()=>{presence();Prog.sync()},800)};
+  const ni=$('#nameIn');ni.value=store.get('name','');let nt=0;ni.oninput=()=>{store.set('name',ni.value);clearTimeout(nt);nt=setTimeout(()=>{presence();Prog.sync();Cloud.checkName()},800)};
   $('#avaBtn').onclick=()=>Wardrobe.open();
   drawAva($('#avaCv'));
   HubRoom.mount(hub.querySelector('[data-k=room]'));HubRoom.renderOffice();Tower.mount(hub.querySelector('[data-k=tower]'));
@@ -1425,7 +1430,7 @@ function renderHub(){
   $('#farmBtn').onclick=()=>startGame('farm');farmBadge();
   $('#gachaBtn').onclick=()=>Gacha.open();
   $('#cloudBtn').onclick=()=>Cloud.open();
-  Awards.mount(hub.querySelector('[data-k=aw]'));
+  Awards.mount(hub.querySelector('[data-k=aw]'));if(Cloud.booted)Cloud.checkName();
   $('#playFeat').onclick=()=>startGame(featuredId());
   if(window.pendingFly){const n=window.pendingFly;window.pendingFly=0;requestAnimationFrame(()=>flyCoins(innerWidth/2,innerHeight*.45,hub.querySelector('.me-coins'),n))}
   $('#mBtn').onclick=()=>{store.set('mOpen',!store.get('mOpen',false));renderHub()};
