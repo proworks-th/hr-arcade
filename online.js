@@ -99,6 +99,21 @@ export async function addOffice(n,name){
   if(name)runTransaction(ref(D,`rooms/_office/by/${nameKey(name)}`),cur=>({n:name.trim().slice(0,20),p:((cur&&cur.p)||0)+n}));
   return{before,after:before+n};
 }
+/* ---------- ฟาร์มดาดฟ้า: public copy of each garden + friends' water ---------- */
+const cleanPlot=x=>x&&x.c?{c:String(x.c).slice(0,6),t:+x.t||0,w:x.w?1:0}:0;
+export function saveFarm(name,f){
+  if(!FIREBASE_CONFIG||!name)return;
+  return set(ref(db(),`rooms/_farm/${nameKey(name)}`),{nm:name.trim().slice(0,20),who:String(f.who||'adam').slice(0,10),n:Math.min(10,f.n|0),plots:Array.from({length:Math.min(10,f.n|0)},(_,i)=>cleanPlot((f.plots||[])[i])),t:serverTimestamp()});
+}
+export async function listFarms(){
+  if(!FIREBASE_CONFIG)return[];
+  const s=await get(ref(db(),'rooms/_farm'));
+  return Object.entries(s.val()||{}).map(([k,v])=>({k,...v,plots:(v.plots||[]).map(x=>x||null)})).sort((a,b)=>(b.t||0)-(a.t||0)).slice(0,60);
+}
+export function water(owner,i,from,s){return FIREBASE_CONFIG?set(ref(db(),`rooms/_farmw/${owner}/${i}/${nameKey(from)}`),{n:String(from).trim().slice(0,20),s}):Promise.resolve()}
+export async function getWaters(owner){if(!FIREBASE_CONFIG)return{};const s=await get(ref(db(),`rooms/_farmw/${owner}`));return s.val()||{}}
+export function watchWaters(owner,cb){return FIREBASE_CONFIG?onValue(ref(db(),`rooms/_farmw/${owner}`),s=>cb(s.val()||{})):()=>{}}
+export function clearWaters(owner,i){if(FIREBASE_CONFIG)remove(ref(db(),`rooms/_farmw/${owner}/${i}`))}
 export function watchOffice(cb){return FIREBASE_CONFIG?onValue(ref(db(),'rooms/_office/pts'),s=>cb(+s.val()||0)):()=>{}}
 export async function officeBoard(){
   if(!FIREBASE_CONFIG)return[];

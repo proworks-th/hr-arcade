@@ -181,7 +181,7 @@ button.pk:hover{transform:translateY(-2px)}div.pk{cursor:default}.pk b{font-size
 .onb input{font:inherit;font-size:18px;width:100%;max-width:300px;border:3px solid var(--line);border-radius:12px;padding:8px 12px;text-align:center}
 .onb input.err{border-color:var(--bad)}
 .onb-tips{text-align:left;font-size:14px;margin:12px auto 4px;padding-left:20px;max-width:340px;color:var(--muted)}
-.me{flex-wrap:nowrap}@media (max-width:520px){.me .bl{display:none}}
+.me{flex-wrap:nowrap}@media (max-width:520px){.me .bl{display:none}.me{flex-wrap:wrap}.me-main{flex:1 1 calc(100% - 64px)}.me>.btn{flex:1}}
 .gacha-btn.free{background:var(--yel);animation:gpulse 1.2s ease-in-out infinite alternate}@keyframes gpulse{to{transform:scale(1.06)}}
 .bdg{font-style:normal;font-size:11.5px;background:#fff3c4;border:1.5px solid var(--line);border-radius:8px;padding:0 6px;color:var(--ink)}
 .gacha{max-width:620px}
@@ -207,6 +207,9 @@ button.pk:hover{transform:translateY(-2px)}div.pk{cursor:default}.pk b{font-size
 .g-it small{font-size:11px;line-height:1.2}.g-it.no{filter:grayscale(1);opacity:.5}.g-it.no small{color:var(--muted)}
 .g-it.r-r{border-color:#9cc0ff}.g-it.r-l{border-color:#ffcf5c}.g-it.on{background:#fff3c4;border-color:var(--line);box-shadow:0 0 0 2px var(--yel)}
 .feedbox{margin-top:8px}
+.farm-btn{position:relative}.farm-n{position:absolute;top:-6px;right:-6px;min-width:18px;height:18px;border-radius:9px;background:var(--green,#21c07a);color:#fff;font-style:normal;font-size:11px;font-weight:700;line-height:18px;padding:0 4px;border:2px solid var(--line)}
+.farm .shop-it b{font-size:13px}.farm-tip{font-size:13px;margin:4px 0}.farm-plot{width:100%;margin-top:10px}
+.farm-book li{display:flex;align-items:center;gap:6px}.farm-book li.none{opacity:.5}.farm-book .gold{font-style:normal;color:#c77d0a;font-weight:700}
 .seg{display:inline-flex;border:2px solid var(--line);border-radius:999px;overflow:hidden;background:#fff}
 .seg button{font:inherit;font-weight:700;font-size:14px;border:0;background:none;padding:4px 12px;cursor:pointer;color:var(--ink)}.seg button.on{background:var(--yel)}
 @media (pointer:coarse),(hover:none){.seg button{min-height:44px}}
@@ -462,6 +465,7 @@ button.pk:hover{transform:translateY(-2px)}div.pk{cursor:default}.pk b{font-size
 <script src="gacha.js?v=2"></script>
 <script src="hubroom.js?v=5"></script>
 <script src="tower.js?v=1"></script>
+<script src="farm.js?v=1"></script>
 <script>
 'use strict';
 /* ---------- utils ---------- */
@@ -506,7 +510,7 @@ $('#muteBtn').onclick=()=>{muted=!muted;store.set('muted',muted);renderMute()};
 
 /* ---------- online services (online.js, Firebase): ranking, presence, feed ---------- */
 let onlineMod=null;
-const loadRank=()=>onlineMod||(onlineMod=import('./online.js?v=10'));
+const loadRank=()=>onlineMod||(onlineMod=import('./online.js?v=11'));
 const loadOnline=loadRank;
 const PIX_AVAS=['p_office','p_woffice','p_whealth','p_tech','p_cat','p_dog'];
 const myAva=()=>{const a=store.get('partyAva','p_office');return PIX_AVAS.includes(a)?a:'p_office'};
@@ -1312,6 +1316,7 @@ const GAMES=[
   {id:'slack',title:'แอบเล่นมือถือ',emoji:'📱',img:'assets/mi/amelia_phone.png',color:'#ffe0f0',desc:'กดค้างแอบเล่นมือถือ ปล่อยให้ทันก่อนหัวหน้าหันมา',time:'1–3 นาที',mount:slackGame},
   {id:'conga',title:'ขบวนไปกินข้าว',emoji:'🍱',img:'assets/mi/adam_down.png',color:'#e0f4d6',desc:'เก็บเพื่อนต่อแถว พาออกประตูไปโรงอาหาร',time:'2–4 นาที',mount:congaGame},
   {id:'office',title:'ออฟฟิศของฉัน',emoji:'🏠',online:true,mount:officeMount},
+  {id:'farm',title:'ฟาร์มดาดฟ้า',emoji:'🌱',online:true,mount:farmMount},
   {id:'stack',title:'ซ้อนแฟ้มเสียดฟ้า',emoji:'📚',img:'assets/mi/books_desk.png',color:'#b8f2c9',desc:'แตะเดียวจบ ซ้อนแฟ้มให้สูงที่สุด ยิ่งเป๊ะยิ่งไปไกล',time:'1–2 นาที',unit:'ชั้น',mount:stackGame},
 ];
 let feedOpen=false;
@@ -1326,6 +1331,7 @@ function showHelp(){
     <p>🚶 <b>ห้องรวม</b>: คลิกพื้นหรือกดลูกศรเพื่อเดิน · Enter แล้วพิมพ์คุย · กด 🎉 เล่นปาร์ตี้ = ทุกคนในห้องเล่นด้วยกัน (เต้น / ชักเย่อ / วิ่งไปตอกบัตร) · 🔗 ชวน = คัดลอกลิงก์ไปแปะในไลน์</p>
     <p>🎰 <b>กาชา</b>: ตู้หน้าห้องรวม หมุนฟรีวันละครั้ง · ได้ป้ายติดข้างชื่อ กับเฟอร์นิเจอร์ชุดทอง (มีแต่ในตู้) · ป้ายซ้ำได้แสตมป์ไว้แลกป้ายที่อยากได้</p>
     <p>⭐ <b>เกมแนะนำวันนี้</b> ได้เหรียญ ×2 — เปลี่ยนทุกวัน ทุกคนได้เกมเดียวกัน</p>
+    <p>🌱 <b>ฟาร์มดาดฟ้า</b>: ปลูกผัก (3 นาที – 3 ชม.) แล้วกลับมาเก็บเมื่อว่าง · ผักไม่มีวันเหี่ยว ไม่ต้องรีบ · รดน้ำ = โตเร็วขึ้น 15% · ไปรดน้ำสวนเพื่อนได้ด้วย</p>
     <p>🏠 <b>ออฟฟิศของฉัน</b>: ทุกเกมและภารกิจได้ 🪙 กับ XP · เลเวลขึ้นได้ฉายาใหม่และปลดล็อกของ · เอาเหรียญไปซื้อเฟอร์นิเจอร์แต่งห้อง เพื่อนเข้ามาดูและกดถูกใจได้ (ถูกใจ 1 ครั้ง = +5 🪙)</p>
     <div class="row"><button class="btn primary">เข้าใจแล้ว</button></div></div>`;
   ov.onclick=e=>{if(e.target===ov||e.target.closest('button'))ov.remove()};document.body.appendChild(ov);
@@ -1339,6 +1345,9 @@ function nextHint(lv){const id=Wardrobe.nextUnlock(lv),tl=TITLES.find(([l])=>l>l
 // me-bar avatar with the equipped accessories (retries until the sprite sheet has loaded)
 function drawAva(cv,n=0){const x=cv.getContext('2d'),who=meWho();x.clearRect(0,0,40,64);drawChar(x,who,'idle_anim','down',0,20,64,2);
   for(const sl of['f','h'])drawAcc(x,Wardrobe.eq(sl),who,'idle_anim','down',0,20,64,2);if(n<30&&!pix('chars/'+who+'_idle_anim').complete)setTimeout(()=>drawAva(cv,n+1),100)}
+// ripe crops waiting in your garden: a quiet number on the farm button, never a popup
+function farmBadge(){const b=hub.querySelector('[data-k=farmN]');if(!b)return;const n=Farm.ready();b.hidden=!n;b.textContent=n}
+setInterval(()=>{if(!hub.hidden)farmBadge()},20000);
 function renderHub(){
   const solo=GAMES.filter(g=>!g.online),P=Prog.get(),mOpen=store.get('mOpen',false);
   hub.innerHTML=`<section class="me">
@@ -1348,6 +1357,7 @@ function renderHub(){
       <span class="me-coins">🪙 ${fmt(P.coins)}</span>
       <button class="btn sm gacha-btn${Gacha.freeToday()?' free':''}" id="gachaBtn" type="button" aria-label="กาชา">🎰<span class="bl"> กาชา</span></button>
       <button class="btn sm" id="officeBtn" type="button" aria-label="ห้องฉัน">🏠<span class="bl"> ห้องฉัน</span></button>
+      <button class="btn sm farm-btn" id="farmBtn" type="button" aria-label="ฟาร์ม">🌱<span class="bl"> ฟาร์ม</span><i class="farm-n" data-k="farmN" hidden></i></button>
     </section>
     <div class="alerts" data-k="alerts"></div>
     <div class="room-h"><span class="seg"><button class="on" data-view="room" type="button">🏠 ห้องรวม</button><button data-view="tower" type="button">🏢 ตึกออฟฟิศ</button></span><span class="dot"></span><span class="muted" data-k="oncount"></span><div class="heads" data-k="onlist"></div><button class="off-bar" id="offBar" type="button"></button></div>
@@ -1365,6 +1375,7 @@ function renderHub(){
   HubRoom.mount(hub.querySelector('[data-k=room]'));HubRoom.renderOffice();Tower.mount(hub.querySelector('[data-k=tower]'));
   hub.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>Tower.setView(b.dataset.view));
   $('#officeBtn').onclick=()=>startGame('office');
+  $('#farmBtn').onclick=()=>startGame('farm');farmBadge();
   $('#gachaBtn').onclick=()=>Gacha.open();
   $('#mBtn').onclick=()=>{store.set('mOpen',!store.get('mOpen',false));renderHub()};
   $('#feedMore').onclick=()=>{feedOpen=!feedOpen;$('#feedMore').textContent=feedOpen?'ย่อ':'ดูทั้งหมด';renderFeed()};

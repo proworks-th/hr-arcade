@@ -118,7 +118,20 @@ def office(page, base, shot):
     shot('office')
 
 
-SCREENS = {'office': office, 'hub': hub, 'spot': solo('spot'), 'run': solo('run'), 'whack': solo('whack'), 'stack': solo('stack', 600),
+def farm(page, base, shot):
+    page.goto(base + '/index.html?test=1')
+    page.wait_for_function('window.__app', timeout=3000)
+    page.evaluate("localStorage.setItem('hra_name', JSON.stringify('ทดสอบ'))")
+    page.click('#farmBtn')
+    page.wait_for_selector('.farm .shop-grid', timeout=3000)
+    page.mouse.click(*page.evaluate("(()=>{const r=document.querySelector('.farm canvas').getBoundingClientRect();return [r.left+r.width*.15,r.top+r.height*.4]})()"))
+    page.wait_for_timeout(700)
+    if canvas_blank(page, '.farm canvas'):
+        raise AssertionError('farm canvas is blank')
+    shot('farm')
+
+
+SCREENS = {'office': office, 'farm': farm, 'hub': hub, 'spot': solo('spot'), 'run': solo('run'), 'whack': solo('whack'), 'stack': solo('stack', 600),
            'tetris': solo('tetris'), 'stamp': solo('stamp'), 'barista': solo('barista', 2500), 'toss': solo('toss'), 'slack': solo('slack', 2000), 'conga': solo('conga', 2000),
            'party': party2d}
 
