@@ -19,6 +19,8 @@ th{color:var(--muted);font-weight:600;border-bottom:2px solid #eee2cf}tr+tr td{b
 .bar i{display:block;height:12px;border-radius:6px;background:var(--pri)}.bar b{text-align:right}
 td.w{width:40%}td.w i{display:block;height:10px;border-radius:5px;background:var(--pri);min-width:2px}
 .low{color:#c2410c;font-weight:600}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px}.cols h3{font-size:14px;margin:8px 0 4px;color:var(--muted)}
+td.w.in i{background:var(--ok)}td.w.out i{background:var(--blue)}
 </style>
 </head>
 <body>
@@ -28,21 +30,28 @@ td.w{width:40%}td.w i{display:block;height:10px;border-radius:5px;background:var
 <div id="out"><p class="muted">กำลังโหลด…</p></div>
 </main>
 <script type="module">
-import {stats} from './online.js?v=16';
+import {stats} from './online.js?v=17';
 const NAMES={spot:'จับผิดภาพ',run:'วิ่งไปตอกบัตร',whack:'สายด่วนถล่มโต๊ะ',stack:'ซ้อนแฟ้มเสียดฟ้า',tetris:'Printer Tetris',stamp:'ปั๊มตรารัวๆ',
   barista:'บาริสต้าพักเที่ยง',toss:'ปากระดาษลงถัง',slack:'แอบเล่นมือถือ',conga:'ขบวนไปกินข้าว',dance:'Office Audition',
   party:'ปาร์ตี้ออนไลน์',party3d:'ห้องรวม 3D',office:'ออฟฟิศของฉัน',farm:'ฟาร์มดาดฟ้า'};
 const ENDLESS=new Set(['farm','office','party','party3d']); // no game-over, so no finish rate
+const CROP={bok:'ผักบุ้ง',let:'ผักสลัด',car:'แครอท',tom:'มะเขือเทศ',chi:'พริก',cor:'ข้าวโพด',pum:'ฟักทอง',wat:'แตงโม',
+  mgo:'มะม่วง',mgs:'มังคุด',lyc:'ลิ้นจี่',ram:'เงาะ',coc:'มะพร้าว',dur:'ทุเรียน'};
+const SRC={sell:'🧺 ขายผัก',canteen:'🍱 โรงอาหาร',help:'💧 รดน้ำให้เพื่อน',like:'👍 คนถูกใจห้อง',mission:'✅ ภารกิจรายวัน',streak:'🔥 ภารกิจครบวัน',
+  party:'🎉 ปาร์ตี้',level:'⬆️ โบนัสเลื่อนขั้น',office:'🏢 ออฟฟิศเลเวลอัป',other:'อื่น ๆ'};
+const SINK={seed:'🌱 เมล็ดพันธุ์',sprinkler:'💦 สปริงเกอร์',gacha:'🎰 กาชา',wardrobe:'👕 ชุด/เครื่องประดับ',furniture:'🪑 ของแต่งห้อง'};
 const FEAT={room:'🚶 ห้องรวม',tower:'🏢 ตึกออฟฟิศ',chat:'💬 ส่งแชท',wardrobe:'👕 แต่งตัว',gacha:'🎰 กาชา',cloud:'☁️ หน้าเซฟ',boss:'🙈 ปุ่มหัวหน้ามา'};
-const out=document.getElementById('out'),esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmt=n=>Math.round(+n||0).toLocaleString('th-TH'),out=document.getElementById('out'),esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const day=k=>new Date(+k.slice(0,4),+k.slice(4,6)-1,+k.slice(6,8)).toLocaleDateString('th-TH',{weekday:'short',day:'numeric',month:'short'});
 stats().then(all=>{
   const days=Object.keys(all).sort().slice(-14).reverse();
   if(!days.length){out.innerHTML='<p class="muted">ยังไม่มีข้อมูล — จะเริ่มนับตั้งแต่มีคนเปิดเว็บ</p>';return}
-  const sum=o=>Object.values(o||{}).reduce((a,b)=>a+(+b||0),0),users=new Set(),games={},gT={},starts={},opens={},ppl={};
+  const sum=o=>Object.values(o||{}).reduce((a,b)=>a+(+b||0),0),users=new Set(),games={},gT={},starts={},opens={},ppl={},eco={},bal={};
   days.forEach(d=>{const D=all[d];Object.keys(D.u||{}).forEach(u=>users.add(u));
     for(const [src,to] of [[D.g,games],[D.s,starts],[D.o,opens]])Object.entries(src||{}).forEach(([k,n])=>to[k]=(to[k]||0)+(+n||0));
     if(D.s)Object.entries(D.g||{}).forEach(([k,n])=>gT[k]=(gT[k]||0)+(+n||0)); // finishes on days that also counted starts
+    Object.entries(D.e||{}).forEach(([k,n])=>eco[k]=(eco[k]||0)+(+n||0));
+    Object.entries(D.w||{}).forEach(([a,v])=>{if(!bal[a]||d>bal[a].d)bal[a]={...v,d}});
     Object.entries(D.p||{}).forEach(([k,ids])=>{ppl[k]=ppl[k]||new Set();Object.keys(ids||{}).forEach(i=>ppl[k].add(i))})});
   const plays=sum(games),farm=days.reduce((a,d)=>a+(+all[d].f||0),0),np=k=>ppl[k]?ppl[k].size:0;
   const since=Object.keys(all).sort().find(d=>all[d].s||all[d].o);
@@ -53,6 +62,29 @@ stats().then(all=>{
   const gRows=gids.map(k=>`<tr><td>${esc(NAMES[k]||k)}</td><td class="w"><i style="width:${np(k)/gmax*100}%"></i></td><td>${np(k)||'–'}</td><td>${starts[k]||'–'}</td><td>${ENDLESS.has(k)?'–':games[k]||'–'}</td><td>${ENDLESS.has(k)?'–':pct(gT[k]||0,starts[k]||0)}</td></tr>`).join('');
   const fids=Object.keys(FEAT).sort((a,b)=>np(b)-np(a)||(opens[b]||0)-(opens[a]||0)),fmax=Math.max(1,...fids.map(np));
   const fRows=fids.map(k=>`<tr><td>${FEAT[k]}</td><td class="w"><i style="width:${np(k)/fmax*100}%"></i></td><td>${np(k)||'–'}</td><td>${opens[k]||'–'}</td></tr>`).join('');
+  const pick=(pre,names)=>Object.entries(eco).filter(([k])=>k.startsWith(pre)).map(([k,n])=>[k.slice(pre.length),n]).sort((a,b)=>b[1]-a[1])
+    .map(([k,n])=>[names[k]||('🎮 '+(NAMES[k]||k)),n]);
+  const eSince=Object.keys(all).sort().find(d=>all[d].e||all[d].w);
+  const ins=pick('in_',SRC),outs=pick('out_',SINK),tin=ins.reduce((a,x)=>a+x[1],0),tout=outs.reduce((a,x)=>a+x[1],0);
+  const rows=(list,cls)=>{const m=Math.max(1,...list.map(x=>x[1]));return list.map(([k,n])=>`<tr><td>${esc(k)}</td><td class="w ${cls}"><i style="width:${n/m*100}%"></i></td><td>${fmt(n)}</td></tr>`).join('')||'<tr><td class="muted" colspan="3">ยังไม่มี</td></tr>'};
+  const bs=Object.values(bal),med=a=>{if(!a.length)return 0;const s=[...a].sort((x,y)=>x-y);return s[Math.floor(s.length/2)]};
+  const lvB=[[1,2],[3,5],[6,9],[10,14],[15,999]].map(([a,b])=>[b>99?`Lv ${a}+`:`Lv ${a}–${b}`,bs.filter(x=>x.l>=a&&x.l<=b).length]);
+  const crops=Object.entries(eco).filter(([k])=>k.startsWith('h_')).map(([k,n])=>[CROP[k.slice(2)]||k.slice(2),n]).sort((a,b)=>b[1]-a[1]);
+  const farmK=[['ปลูก',eco.plant],['เก็บเกี่ยว',eco.harvest],['กลายพันธุ์ ✨',eco.mutant],['ขาย (ชิ้น)',eco.sold],['ส่งโรงอาหาร (ชิ้น)',eco.canteen_n],['ส่งของขวัญ',eco.gift],['รดน้ำให้เพื่อน',eco.water]];
+  const ev=[['เลื่อนขั้น',eco.lvup],['ภารกิจสำเร็จ',eco.mission],['ทำภารกิจครบวัน',eco.streak],['หมุนกาชาฟรี',eco.pull_free],['หมุนกาชาจ่ายเหรียญ',eco.pull]];
+  const kv=l=>l.map(([k,n])=>`<tr><td>${k}</td><td>${n?fmt(n):'–'}</td></tr>`).join('');
+  const econ=`<h2>💰 เหรียญ</h2>
+    <p class="muted">เข้า − ออก = เหรียญที่ค้างอยู่ในมือคนเพิ่มขึ้น ถ้าบวกเยอะต่อเนื่อง แปลว่าของน่าซื้อน้อยไป${eSince?` · นับตั้งแต่${day(eSince)}`:' · ยังไม่มีข้อมูล (เพิ่งเริ่มนับ)'}</p>
+    <div class="kpi"><div><b>${fmt(tin)}</b><span>เหรียญเข้า</span></div><div><b>${fmt(tout)}</b><span>เหรียญออก (ใช้จ่าย)</span></div>
+      <div><b>${tin-tout>=0?'+':''}${fmt(tin-tout)}</b><span>ส่วนต่าง</span></div><div><b>${fmt(med(bs.map(x=>x.c)))}</b><span>เหรียญในมือ (ค่ากลาง ${bs.length} คน)</span></div></div>
+    <div class="cols"><div><h3>ได้เหรียญจาก</h3><div class="box"><table>${rows(ins,'in')}</table></div></div>
+      <div><h3>ใช้เหรียญกับ</h3><div class="box"><table>${rows(outs,'out')}</table></div></div></div>
+    <h2>🌱 ฟาร์ม</h2>
+    <div class="cols"><div><h3>กิจกรรม</h3><div class="box"><table>${kv(farmK)}</table></div></div>
+      <div><h3>ผักที่เก็บมากสุด</h3><div class="box"><table>${rows(crops,'in')}</table></div></div></div>
+    <h2>⭐ อื่น ๆ</h2>
+    <div class="cols"><div><h3>เหตุการณ์</h3><div class="box"><table>${kv(ev)}</table></div></div>
+      <div><h3>เลเวลของผู้เล่น (ล่าสุดของแต่ละเบราว์เซอร์)</h3><div class="box"><table>${rows(lvB.filter(x=>x[1]),'out')}</table></div></div></div>`;
   out.innerHTML=`<div class="kpi"><div><b>${users.size}</b><span>คนที่เข้ามา (14 วัน)</span></div><div><b>${Object.keys(all[days[0]].u||{}).length}</b><span>คนเข้ามา${day(days[0])}</span></div>
       <div><b>${plays}</b><span>รอบที่เล่นเกมจบ</span></div><div><b>${farm}</b><span>ครั้งที่เปิดฟาร์ม</span></div></div>
     <h2>แต่ละเกม</h2>
@@ -60,6 +92,7 @@ stats().then(all=>{
     <div class="box"><table><tr><th>เกม</th><th></th><th>คน</th><th>เปิด</th><th>เล่นจบ</th><th>จบ %</th></tr>${gRows||'<tr><td colspan="6" class="muted">ยังไม่มีใครเล่น</td></tr>'}</table></div>
     <h2>ส่วนอื่นของเว็บ</h2>
     <div class="box"><table><tr><th>ส่วน</th><th></th><th>คน</th><th>ครั้ง</th></tr>${fRows}</table></div>
+    ${econ}
     <h2>รายวัน</h2><div class="box"><table><tr><th>วัน</th><th>คน</th><th>เปิดเกม</th><th>เล่นจบ</th><th>เปิดฟาร์ม</th></tr>
       ${days.map(d=>`<tr><td>${day(d)}</td><td>${Object.keys(all[d].u||{}).length}</td><td>${all[d].s?sum(all[d].s):'–'}</td><td>${sum(all[d].g)}</td><td>${+all[d].f||0}</td></tr>`).join('')}</table></div>`;
 }).catch(()=>{out.innerHTML='<p class="muted">โหลดไม่ได้ (เน็ตหลุด?)</p>'});

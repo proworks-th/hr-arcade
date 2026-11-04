@@ -175,11 +175,13 @@ export function saveUser(uid,v){return FIREBASE_CONFIG?set(ref(db(),`rooms/_usav
 export async function getUser(uid){if(!FIREBASE_CONFIG)return null;const s=await get(ref(db(),`rooms/_usave/${uid}`));return s.val()}
 
 /* ---------- anonymous usage stats: rooms/_stat/{day}={u:{anonId:1},g:{game:finished plays},s:{game:starts},
-   o:{feature:opens},p:{feature or game:{anonId:1}},f:farmOpens} ---------- */
-export function stat(kind,id,aid){
+   o:{feature:opens},p:{feature or game:{anonId:1}},f:farmOpens,e:{in_src|out_sink|event:amount},w:{anonId:{l,c,b}}} ---------- */
+export function stat(kind,id,aid,n=1){
   if(!FIREBASE_CONFIG)return;
   const D=db(),b=`rooms/_stat/${buckets().d}`,cl=x=>String(x||'').replace(/[.#$\[\]\/]/g,'_').slice(0,16),k=cl(id);
   if(kind==='u')return set(ref(D,`${b}/u/${k}`),1);
+  if(kind==='w')return set(ref(D,`${b}/w/${cl(aid)}`),id);              // id = {l:level,c:coins,b:basket items}
+  if(kind==='e')return runTransaction(ref(D,`${b}/e/${k}`),c=>(+c||0)+(+n||0)); // economy counter, n = amount
   if((kind==='s'||kind==='o')&&aid)set(ref(D,`${b}/p/${k}/${cl(aid)}`),1);
   return runTransaction(ref(D,kind==='g'||kind==='s'||kind==='o'?`${b}/${kind}/${k}`:`${b}/${kind}`),c=>(+c||0)+1);
 }

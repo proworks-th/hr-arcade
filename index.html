@@ -494,13 +494,13 @@ button.pk:hover{transform:translateY(-2px)}div.pk{cursor:default}.pk b{font-size
 <div id="boss" hidden></div>
 
 <script src="solo-games.js?v=10"></script>
-<script src="office.js?v=10"></script>
-<script src="wardrobe.js?v=3"></script>
-<script src="gacha.js?v=3"></script>
-<script src="hubroom.js?v=7"></script>
+<script src="office.js?v=11"></script>
+<script src="wardrobe.js?v=4"></script>
+<script src="gacha.js?v=4"></script>
+<script src="hubroom.js?v=8"></script>
 <script src="tower.js?v=3"></script>
-<script src="farm.js?v=4"></script>
-<script src="cloud.js?v=7"></script>
+<script src="farm.js?v=5"></script>
+<script src="cloud.js?v=8"></script>
 <script>
 'use strict';
 /* ---------- utils ---------- */
@@ -547,7 +547,7 @@ $('#muteBtn').onclick=()=>{muted=!muted;store.set('muted',muted);renderMute()};
 
 /* ---------- online services (online.js, Firebase): ranking, presence, feed ---------- */
 let onlineMod=null;
-const loadRank=()=>onlineMod||(onlineMod=import('./online.js?v=16'));
+const loadRank=()=>onlineMod||(onlineMod=import('./online.js?v=17'));
 const loadOnline=loadRank;
 const PIX_AVAS=['p_office','p_woffice','p_whealth','p_tech','p_cat','p_dog'];
 const myAva=()=>{const a=store.get('partyAva','p_office');return PIX_AVAS.includes(a)?a:'p_office'};
@@ -592,11 +592,11 @@ function recordMission(e){ // e: {game,score,daily,st,kind}
   if(e.game&&e.game!=='party'&&!s.played.includes(e.game))s.played.push(e.game);
   for(const m of list)if(!s.done.includes(m.id)&&m.ok(e,s)){s.done.push(m.id);fresh.push(m)}
   store.set('missions',s);
-  fresh.forEach(m=>{toast('✅ ภารกิจสำเร็จ: '+m.t+' (+20 🪙)');Prog.give(20,30)});
-  if(e.kind){Prog.give(30,60);toast('🎉 เล่นปาร์ตี้ +30 🪙')}
+  fresh.forEach(m=>{toast('✅ ภารกิจสำเร็จ: '+m.t+' (+20 🪙)');Prog.give(20,30,'mission');Stats.econ('mission')});
+  if(e.kind){Prog.give(30,60,'party');toast('🎉 เล่นปาร์ตี้ +30 🪙')}
   if(fresh.length&&s.done.length>=list.length){
     const k=store.get('streak',{last:'',n:0}),n=k.last===thaiDay()?k.n:k.last===thaiDay(Date.now()-864e5)?k.n+1:1;
-    store.set('streak',{last:thaiDay(),n});toast(`🔥 ภารกิจวันนี้ครบ! ต่อเนื่อง ${n} วัน (+40 🪙)`);Prog.give(40,80);
+    store.set('streak',{last:thaiDay(),n});toast(`🔥 ภารกิจวันนี้ครบ! ต่อเนื่อง ${n} วัน (+40 🪙)`);Prog.give(40,80,'streak');Stats.econ('streak');
     if(myName())loadOnline().then(O=>O.pushFeed(`✅ ${myName()} ทำภารกิจวันนี้ครบ 🔥 ${n} วันติด`,myName(),meWho())).catch(()=>{});
   }
   renderMissions();

@@ -21,12 +21,13 @@ const Prog = {
   put(p) { store.set('prog', p); Prog.sync(); if (typeof Cloud !== 'undefined') Cloud.touch(); },
   title: lv => TITLES.reduce((t, [l, n]) => lv >= l ? n : t, TITLES[0][1]),
   // add coins and XP; returns what happened so the caller can show it
-  give(coins, xp) {
+  give(coins, xp, src = 'other') {
     const p = Prog.get(), before = { lv: p.lv, xp: p.xp }, ups = [];
     p.coins += coins; p.xp += xp;
     while (p.xp >= needXP(p.lv)) { p.xp -= needXP(p.lv); p.lv++; p.coins += 30; ups.push(p.lv); }
     if (ups.length) p.lvT = Date.now();          // the shared room celebrates this when you walk back in
     Prog.put(p);
+    if (typeof Stats !== 'undefined') { if (coins > 0) Stats.econ('in_' + src, coins); if (ups.length) { Stats.econ('in_level', 30 * ups.length); Stats.econ('lvup', ups.length); Stats.snap(); } }
     if (coins > 0) { Prog.office(coins); if (typeof Awards !== 'undefined') Awards.add('coin', coins); }
     if (ups.length) {
       const lv = ups[ups.length - 1], nm = myName();
@@ -36,7 +37,7 @@ const Prog = {
     }
     return { coins, xp, ups, before, after: { lv: p.lv, xp: p.xp } };
   },
-  award(game, score, mult = 1) { const c = Math.max(2, Math.min(60, Math.round(score / (PROG_NORM[game] || 20)))); return Prog.give(c * mult, c * 3 + 10); },
+  award(game, score, mult = 1) { const c = Math.max(2, Math.min(60, Math.round(score / (PROG_NORM[game] || 20)))); return Prog.give(c * mult, c * 3 + 10, game); },
   // every coin earned also counts for the whole office (shared office level → the hub room gets new furniture)
   office(n) {
     const nm = myName(), lvOf = typeof HubRoom !== 'undefined' ? HubRoom.officeLv : null;
@@ -172,7 +173,7 @@ function officeMount(root, api) {
   }
   function buyCart() {
     const c = cartCost(); if (c > p.coins) { toast(`เหรียญไม่พอ ขาดอีก 🪙 ${fmt(c - p.coins)} — เอาบางชิ้นออก หรือไปเล่นเกมก่อน`); domShake(q('tools'), 5); return; }
-    p = Prog.get(); p.coins -= c; p.room.items.push(...trial.map(it => it.slice()));
+    p = Prog.get(); p.coins -= c; typeof Stats !== 'undefined' && Stats.econ('out_furniture', c); p.room.items.push(...trial.map(it => it.slice()));
     for (const [slot, n] of Object.entries(tryStyle)) { if (!p.styles.includes(n)) p.styles.push(n); p.room[slot] = n; }
     if (tryW) p.room.w = tryW;
     trial.forEach((it, i) => pops[p.room.items.length - trial.length + i] = 1);
@@ -280,7 +281,7 @@ function officeMount(root, api) {
   // likes on my room turn into coins (5 each), claimed when I open the office
   const nm = myName();
   if (nm) loadOnline().then(O => O.likeCount(O.nameKey(nm))).then(n => { const pp = Prog.get(), fresh = n - (pp.likesClaimed || 0);
-    if (fresh > 0) { pp.likesClaimed = n; store.set('prog', pp); Prog.give(5 * fresh, 0); toast(`👍 มีคนถูกใจห้องคุณ ${fresh} ครั้ง! +${5 * fresh} 🪙`); hud(); list(); } }).catch(() => {});
+    if (fresh > 0) { pp.likesClaimed = n; store.set('prog', pp); Prog.give(5 * fresh, 0, 'like'); toast(`👍 มีคนถูกใจห้องคุณ ${fresh} ครั้ง! +${5 * fresh} 🪙`); hud(); list(); } }).catch(() => {});
   Prog.sync(); hud(); tools(); list();
   return { destroy() { if (cartN()) toast('🛒 ของที่ลองไว้ยังไม่ได้ซื้อ — ตะกร้าถูกล้างแล้ว'); Prog.sync(); } };
 }

@@ -39,6 +39,7 @@ const Gacha = (() => {
     const p = Prog.get(), cost = free ? 0 : n === 10 ? GACHA_10 : GACHA_PRICE * n;
     if (p.coins < cost) { toast('เหรียญไม่พอ — ไปเล่นเกมหาเหรียญก่อน 🪙'); return null; }
     p.coins -= cost; if (free) state(p).free = thaiDay();
+    if (typeof Stats !== 'undefined') { Stats.econ('out_gacha', cost); Stats.econ(free ? 'pull_free' : 'pull', n); }
     const out = []; for (let i = 0; i < n; i++) out.push(roll(p, n === 10 && i === n - 1 && !out.some(o => o.rar !== 'c')));
     Prog.put(p);
     const leg = out.find(o => o.rar === 'l'), nm = myName();

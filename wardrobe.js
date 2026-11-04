@@ -63,7 +63,7 @@ const Wardrobe = (() => {
   function buy(id) {
     mig(); const p = Prog.get(), a = st(p), A = ACC[id], c = price(id);
     if (!A || !c || owns(p, id) || p.lv < A[2] || p.coins < c) return false;
-    p.coins -= c; a.own[id] = 1; a[A[0]] = id; Prog.put(p);
+    p.coins -= c; typeof Stats !== 'undefined' && Stats.econ('out_wardrobe', c); a.own[id] = 1; a[A[0]] = id; Prog.put(p);
     if (typeof SFX !== 'undefined' && SFX.level) SFX.level();
     toast(`👕 ซื้อ ${A[1]} แล้ว`); return true;
   }

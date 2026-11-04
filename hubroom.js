@@ -423,7 +423,7 @@ const HubRoom = (() => {
     const o = officeLv(pts), seen = store.get('offLv', 0); offPts = pts;
     if (o.i !== offI) { offI = o.i; setItems(o.i); }
     if (seen && o.lv > seen) {                    // the office levelled up since we last looked: everyone gets a gift
-      const p = Prog.get(); p.coins += 20 * (o.lv - seen); store.set('prog', p); Prog.sync();
+      const p = Prog.get(); p.coins += 20 * (o.lv - seen); store.set('prog', p); Prog.sync(); typeof Stats !== 'undefined' && Stats.econ('in_office', 20 * (o.lv - seen));
       toast(`🏢 ออฟฟิศเลเวลอัป! Lv ${o.lv} · ห้องรวมได้ ${o.cur.n} (+${20 * (o.lv - seen)} 🪙 ของขวัญทุกคน)`);
       if (visible()) for (let i = 0; i < 5; i++) burst(W * (i + .5) / 5, H * .4, 30);
     }

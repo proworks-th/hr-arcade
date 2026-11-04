@@ -196,7 +196,7 @@ function farmMount(root, api) {
     const c = CROPS[id]; p = Prog.get();
     if (!okSeed(id)) { toast(SIG.includes(id) ? `${c[0]}เป็นผลไม้ประจำตัวของคนอื่น` : `ปลดล็อก${c[0]}ที่ Lv ${c[4]}`); return false; }
     if (p.coins < c[2]) { if (!quiet) toast(`เหรียญไม่พอซื้อเมล็ด${c[0]} (🪙 ${c[2]})`); return false; }
-    p.coins -= c[2]; store.set('prog', p);
+    p.coins -= c[2]; store.set('prog', p); typeof Stats !== 'undefined' && Stats.econ('out_seed', c[2]); typeof Stats !== 'undefined' && Stats.econ('plant');
     f.plots[i] = { c: id, t: Date.now(), w: f.spr ? 1 : 0 }; delete f.fw[i];
     clearW(i);
     if (!quiet) { walkTo(i); api.sfx('tick'); pop(i, `−${c[2]} 🪙`, PAL.green); }
@@ -212,6 +212,7 @@ function farmMount(root, api) {
     const pl = f.plots[i], c = CROPS[pl.c], m = MUT_AT(pl, fwMine(i)), key = pl.c + (m ? '.' + m : ''), xp = Math.round((c[3] - c[2]) / 3) + 1;
     const b = f.book[pl.c] || (f.book[pl.c] = [0, 0]); b[0]++; if (m) { b[1] = (b[1] || 0) + 1; (b[3] = b[3] || {})[m] = 1; }
     f.bag[key] = (f.bag[key] || 0) + 1; Awards.add('farm', 1);
+    if (typeof Stats !== 'undefined') { Stats.econ('harvest'); Stats.econ('h_' + pl.c); if (m) Stats.econ('mutant'); }
     f.plots[i] = null; delete f.fw[i];
     clearW(i);
     const pp = Prog.get(); pp.farm = f; store.set('prog', pp);
@@ -233,11 +234,11 @@ function farmMount(root, api) {
     if (n) { save(); render(); } }
   function sell(key, all) { fresh(); const keys = key ? [key] : Object.keys(f.bag); let c = 0, n = 0;
     for (const k of keys) { const cnt = all || !key ? f.bag[k] || 0 : Math.min(1, f.bag[k] || 0); if (!cnt) continue; c += bagPrice(k) * cnt; n += cnt; f.bag[k] -= cnt; if (!f.bag[k]) delete f.bag[k]; }
-    if (!n) return; save(); Prog.give(c, 0); api.sfx('good'); fly(c); toast(`💰 ขาย ${n} ชิ้น +${fmt(c)} 🪙`); render(); }
+    if (!n) return; save(); typeof Stats !== 'undefined' && Stats.econ('sold', n); Prog.give(c, 0, 'sell'); api.sfx('good'); fly(c); toast(`💰 ขาย ${n} ชิ้น +${fmt(c)} 🪙`); render(); }
   function buySprinkler() { fresh(); p = Prog.get(); const [price, lv] = SPRINKLER;
     if (p.lv < lv) { toast(`ปลดล็อกสปริงเกอร์ที่ Lv ${lv}`); return; }
     if (p.coins < price) { toast(`เหรียญไม่พอ ขาดอีก 🪙 ${fmt(price - p.coins)}`); return; }
-    p.coins -= price; store.set('prog', p); f.spr = 1; api.sfx('level'); toast('💧 ติดสปริงเกอร์แล้ว ผักที่ปลูกใหม่ได้น้ำเองทุกต้น'); save(); render(); }
+    p.coins -= price; store.set('prog', p); typeof Stats !== 'undefined' && Stats.econ('out_sprinkler', price); f.spr = 1; api.sfx('level'); toast('💧 ติดสปริงเกอร์แล้ว ผักที่ปลูกใหม่ได้น้ำเองทุกต้น'); save(); render(); }
   function growRoom() { window.officeTab = 'style'; startGame('office'); window.officeTab = null; }
 
   // canteen: deliver basket items toward this week's shared order (pays a bit more than selling)
@@ -250,12 +251,12 @@ function farmMount(root, api) {
       if (!took) { toast('ครบแล้ว ขอบคุณที่ช่วย 🍱'); return; }
       fresh(); let left = took, c = 0;
       for (const k of keys) { const u = Math.min(left, f.bag[k] || 0); f.bag[k] -= u; if (!f.bag[k]) delete f.bag[k]; c += Math.round(bagPrice(k) * CANTEEN_BONUS) * u; left -= u; if (!left) break; }
-      save(); Prog.give(c, 0); api.sfx('good'); fly(c); toast(`🍱 ส่ง${CROPS[id][0]} ${took} ชิ้น +${fmt(c)} 🪙`); render();
+      save(); typeof Stats !== 'undefined' && Stats.econ('canteen_n', took); Prog.give(c, 0, 'canteen'); api.sfx('good'); fly(c); toast(`🍱 ส่ง${CROPS[id][0]} ${took} ชิ้น +${fmt(c)} 🪙`); render();
     }).catch(() => toast('ส่งไม่สำเร็จ (เน็ตหลุด?)'));
   }
   function claimCanteen() {
     const k = 'cant_' + wk(); if (store.get(k, false)) return; store.set(k, true);
-    Prog.give(CANTEEN_REWARD, 20); api.sfx('level'); fly(CANTEEN_REWARD); toast(`🎉 รางวัลโรงอาหารสัปดาห์นี้ +${CANTEEN_REWARD} 🪙`); list(); hud();
+    Prog.give(CANTEEN_REWARD, 20, 'canteen'); api.sfx('level'); fly(CANTEEN_REWARD); toast(`🎉 รางวัลโรงอาหารสัปดาห์นี้ +${CANTEEN_REWARD} 🪙`); list(); hud();
   }
   // gifts: one item to a friend, claimed when they next open the farm
   function gift(key) {
@@ -265,7 +266,7 @@ function farmMount(root, api) {
     if (d.n >= GIFT_DAY) { toast(`วันนี้ส่งครบ ${GIFT_DAY} ชิ้นแล้ว พรุ่งนี้ส่งใหม่ได้`); return; }
     fresh(); if (!f.bag[key]) return;
     f.bag[key]--; if (!f.bag[key]) delete f.bag[key]; save();
-    O.sendGift(to.k, nm, key).then(() => { d.n++; Awards.add('help', 1); store.set('giftD', d); api.sfx('good'); toast(`🎁 ส่ง${bagName(key)}ให้ ${to.nm} แล้ว`); render(); })
+    O.sendGift(to.k, nm, key).then(() => { d.n++; typeof Stats !== 'undefined' && Stats.econ('gift'); Awards.add('help', 1); store.set('giftD', d); api.sfx('good'); toast(`🎁 ส่ง${bagName(key)}ให้ ${to.nm} แล้ว`); render(); })
       .catch(() => { fresh(); f.bag[key] = (f.bag[key] || 0) + 1; save(); toast('ส่งไม่สำเร็จ (เน็ตหลุด?)'); render(); });
   }
   // friends: water their growing crops (one 💧 per crop per person, small thank-you coins for the waterer)
@@ -280,8 +281,8 @@ function farmMount(root, api) {
     walkTo(i); api.sfx('tick'); splash(i);
     O.water(visit.k, i, nm, pl.t).then(() => {
       const d = store.get('farmWD', { d: '', n: 0 }), day = new Date().toDateString(); if (d.d !== day) { d.d = day; d.n = 0; }
-      Awards.add('help', 1);
-      if (d.n < FRIEND_WATER_DAY) { d.n++; store.set('farmWD', d); Prog.give(2, 1); pop(i, '💧 +2 🪙', PAL.blue); } else pop(i, '💧 ขอบคุณ!', PAL.blue);
+      Awards.add('help', 1); typeof Stats !== 'undefined' && Stats.econ('water');
+      if (d.n < FRIEND_WATER_DAY) { d.n++; store.set('farmWD', d); Prog.give(2, 1, 'help'); pop(i, '💧 +2 🪙', PAL.blue); } else pop(i, '💧 ขอบคุณ!', PAL.blue);
       render();
     }).catch(() => { delete visit.w[i][myKey]; toast('รดน้ำไม่สำเร็จ (เน็ตหลุด?)'); });
   }
