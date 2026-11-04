@@ -52,6 +52,7 @@ const Gacha = (() => {
   const art = (it, big) => it[2] === 'b' ? `<span class="gb-emo${big ? ' big' : ''}">${badgeEmoji(it[0])}</span>` : it[2] === 'a' ? `<img class="pxi" src="${Wardrobe.icon(it[0])}" alt="" style="height:${big ? 40 : 22}px">` : `<img class="pxi" src="assets/mi/${it[0]}.png" alt="" style="height:${big ? 56 : 30}px">`;
 
   function open() {
+    typeof Stats !== 'undefined' && Stats.open('gacha');
     const ov = document.createElement('div'); ov.className = 'overlay';
     ov.innerHTML = `<div class="panel popin gacha"><h2>🎰 ตู้กาชาปอง</h2><div class="rk-tabs" data-k="tabs"></div><div data-k="body"></div><div class="row"><button class="btn" data-x>ปิด</button></div></div>`;
     ov.onclick = e => { if (e.target === ov || e.target.closest('[data-x]')) { ov.remove(); if (typeof renderHub === 'function' && !document.getElementById('hub').hidden) renderHub(); } };

@@ -73,6 +73,7 @@ const Wardrobe = (() => {
   const nextUnlock = lv => Object.keys(ACC).filter(id => ACC[id][2] > lv).sort((a, b) => ACC[a][2] - ACC[b][2])[0];
 
   function open() {
+    typeof Stats !== 'undefined' && Stats.open('wardrobe');
     mig(); const ov = document.createElement('div'); ov.className = 'overlay';
     ov.innerHTML = `<div class="panel popin wardrobe"><h2>👕 แต่งตัว</h2><canvas class="wd-prev" width="160" height="150"></canvas>
       <div data-k="body"></div><div class="row"><button class="btn primary" data-x>เสร็จแล้ว</button></div></div>`;

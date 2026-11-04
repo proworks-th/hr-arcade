@@ -17,6 +17,8 @@ table{width:100%;border-collapse:collapse;font-size:14px}th,td{padding:6px 4px;t
 th{color:var(--muted);font-weight:600;border-bottom:2px solid #eee2cf}tr+tr td{border-top:1px dashed #eee2cf}
 .bar{display:grid;grid-template-columns:150px 1fr 48px;gap:8px;align-items:center;font-size:14px;padding:4px 0}
 .bar i{display:block;height:12px;border-radius:6px;background:var(--pri)}.bar b{text-align:right}
+td.w{width:40%}td.w i{display:block;height:10px;border-radius:5px;background:var(--pri);min-width:2px}
+.low{color:#c2410c;font-weight:600}
 </style>
 </head>
 <body>
@@ -26,22 +28,40 @@ th{color:var(--muted);font-weight:600;border-bottom:2px solid #eee2cf}tr+tr td{b
 <div id="out"><p class="muted">กำลังโหลด…</p></div>
 </main>
 <script type="module">
-import {stats} from './online.js?v=15';
+import {stats} from './online.js?v=16';
 const NAMES={spot:'จับผิดภาพ',run:'วิ่งไปตอกบัตร',whack:'สายด่วนถล่มโต๊ะ',stack:'ซ้อนแฟ้มเสียดฟ้า',tetris:'Printer Tetris',stamp:'ปั๊มตรารัวๆ',
-  barista:'บาริสต้าพักเที่ยง',toss:'ปากระดาษลงถัง',slack:'แอบเล่นมือถือ',conga:'ขบวนไปกินข้าว',dance:'Office Audition'};
+  barista:'บาริสต้าพักเที่ยง',toss:'ปากระดาษลงถัง',slack:'แอบเล่นมือถือ',conga:'ขบวนไปกินข้าว',dance:'Office Audition',
+  party:'ปาร์ตี้ออนไลน์',party3d:'ห้องรวม 3D',office:'ออฟฟิศของฉัน',farm:'ฟาร์มดาดฟ้า'};
+const ENDLESS=new Set(['farm','office','party','party3d']); // no game-over, so no finish rate
+const FEAT={room:'🚶 ห้องรวม',tower:'🏢 ตึกออฟฟิศ',chat:'💬 ส่งแชท',wardrobe:'👕 แต่งตัว',gacha:'🎰 กาชา',cloud:'☁️ หน้าเซฟ',boss:'🙈 ปุ่มหัวหน้ามา'};
 const out=document.getElementById('out'),esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const day=k=>new Date(+k.slice(0,4),+k.slice(4,6)-1,+k.slice(6,8)).toLocaleDateString('th-TH',{weekday:'short',day:'numeric',month:'short'});
 stats().then(all=>{
   const days=Object.keys(all).sort().slice(-14).reverse();
   if(!days.length){out.innerHTML='<p class="muted">ยังไม่มีข้อมูล — จะเริ่มนับตั้งแต่มีคนเปิดเว็บ</p>';return}
-  const sum=o=>Object.values(o||{}).reduce((a,b)=>a+(+b||0),0),users=new Set(),games={};
-  days.forEach(d=>{Object.keys(all[d].u||{}).forEach(u=>users.add(u));Object.entries(all[d].g||{}).forEach(([g,n])=>games[g]=(games[g]||0)+n)});
-  const plays=sum(games),farm=days.reduce((a,d)=>a+(+all[d].f||0),0),top=Object.entries(games).sort((a,b)=>b[1]-a[1]),max=top.length?top[0][1]:1;
+  const sum=o=>Object.values(o||{}).reduce((a,b)=>a+(+b||0),0),users=new Set(),games={},gT={},starts={},opens={},ppl={};
+  days.forEach(d=>{const D=all[d];Object.keys(D.u||{}).forEach(u=>users.add(u));
+    for(const [src,to] of [[D.g,games],[D.s,starts],[D.o,opens]])Object.entries(src||{}).forEach(([k,n])=>to[k]=(to[k]||0)+(+n||0));
+    if(D.s)Object.entries(D.g||{}).forEach(([k,n])=>gT[k]=(gT[k]||0)+(+n||0)); // finishes on days that also counted starts
+    Object.entries(D.p||{}).forEach(([k,ids])=>{ppl[k]=ppl[k]||new Set();Object.keys(ids||{}).forEach(i=>ppl[k].add(i))})});
+  const plays=sum(games),farm=days.reduce((a,d)=>a+(+all[d].f||0),0),np=k=>ppl[k]?ppl[k].size:0;
+  const since=Object.keys(all).sort().find(d=>all[d].s||all[d].o);
+  // games: everything that was started or finished, most people first (games with no start data yet fall back to plays)
+  const gids=[...new Set([...Object.keys(games),...Object.keys(starts)])].sort((a,b)=>np(b)-np(a)||(games[b]||0)-(games[a]||0));
+  const gmax=Math.max(1,...gids.map(np));
+  const pct=(g,s)=>{if(!s)return'–';const v=Math.min(100,Math.round(g/s*100));return `<span class="${v<40?'low':''}">${v}%</span>`};
+  const gRows=gids.map(k=>`<tr><td>${esc(NAMES[k]||k)}</td><td class="w"><i style="width:${np(k)/gmax*100}%"></i></td><td>${np(k)||'–'}</td><td>${starts[k]||'–'}</td><td>${ENDLESS.has(k)?'–':games[k]||'–'}</td><td>${ENDLESS.has(k)?'–':pct(gT[k]||0,starts[k]||0)}</td></tr>`).join('');
+  const fids=Object.keys(FEAT).sort((a,b)=>np(b)-np(a)||(opens[b]||0)-(opens[a]||0)),fmax=Math.max(1,...fids.map(np));
+  const fRows=fids.map(k=>`<tr><td>${FEAT[k]}</td><td class="w"><i style="width:${np(k)/fmax*100}%"></i></td><td>${np(k)||'–'}</td><td>${opens[k]||'–'}</td></tr>`).join('');
   out.innerHTML=`<div class="kpi"><div><b>${users.size}</b><span>คนที่เข้ามา (14 วัน)</span></div><div><b>${Object.keys(all[days[0]].u||{}).length}</b><span>คนเข้ามา${day(days[0])}</span></div>
-      <div><b>${plays}</b><span>รอบที่เล่นเกม</span></div><div><b>${farm}</b><span>ครั้งที่เปิดฟาร์ม</span></div></div>
-    <h2>รายวัน</h2><div class="box"><table><tr><th>วัน</th><th>คน</th><th>รอบเกม</th><th>เปิดฟาร์ม</th></tr>
-      ${days.map(d=>`<tr><td>${day(d)}</td><td>${Object.keys(all[d].u||{}).length}</td><td>${sum(all[d].g)}</td><td>${+all[d].f||0}</td></tr>`).join('')}</table></div>
-    <h2>เกมยอดนิยม</h2><div class="box">${top.map(([g,n])=>`<div class="bar"><span>${esc(NAMES[g]||g)}</span><i style="width:${n/max*100}%"></i><b>${n}</b></div>`).join('')||'<p class="muted">ยังไม่มีใครเล่น</p>'}</div>`;
+      <div><b>${plays}</b><span>รอบที่เล่นเกมจบ</span></div><div><b>${farm}</b><span>ครั้งที่เปิดฟาร์ม</span></div></div>
+    <h2>แต่ละเกม</h2>
+    <p class="muted">คน = จำนวนเบราว์เซอร์ที่เปิดเกมนั้น · จบ % ต่ำ = เปิดแล้วเลิกกลางทาง${since?` · นับคนกับการเปิดตั้งแต่${day(since)}`:' · ยังไม่มีข้อมูลการเปิด (เพิ่งเริ่มนับ)'}</p>
+    <div class="box"><table><tr><th>เกม</th><th></th><th>คน</th><th>เปิด</th><th>เล่นจบ</th><th>จบ %</th></tr>${gRows||'<tr><td colspan="6" class="muted">ยังไม่มีใครเล่น</td></tr>'}</table></div>
+    <h2>ส่วนอื่นของเว็บ</h2>
+    <div class="box"><table><tr><th>ส่วน</th><th></th><th>คน</th><th>ครั้ง</th></tr>${fRows}</table></div>
+    <h2>รายวัน</h2><div class="box"><table><tr><th>วัน</th><th>คน</th><th>เปิดเกม</th><th>เล่นจบ</th><th>เปิดฟาร์ม</th></tr>
+      ${days.map(d=>`<tr><td>${day(d)}</td><td>${Object.keys(all[d].u||{}).length}</td><td>${all[d].s?sum(all[d].s):'–'}</td><td>${sum(all[d].g)}</td><td>${+all[d].f||0}</td></tr>`).join('')}</table></div>`;
 }).catch(()=>{out.innerHTML='<p class="muted">โหลดไม่ได้ (เน็ตหลุด?)</p>'});
 </script>
 </body>

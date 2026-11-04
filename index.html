@@ -495,12 +495,12 @@ button.pk:hover{transform:translateY(-2px)}div.pk{cursor:default}.pk b{font-size
 
 <script src="solo-games.js?v=10"></script>
 <script src="office.js?v=10"></script>
-<script src="wardrobe.js?v=2"></script>
-<script src="gacha.js?v=2"></script>
-<script src="hubroom.js?v=6"></script>
+<script src="wardrobe.js?v=3"></script>
+<script src="gacha.js?v=3"></script>
+<script src="hubroom.js?v=7"></script>
 <script src="tower.js?v=3"></script>
 <script src="farm.js?v=4"></script>
-<script src="cloud.js?v=6"></script>
+<script src="cloud.js?v=7"></script>
 <script>
 'use strict';
 /* ---------- utils ---------- */
@@ -547,7 +547,7 @@ $('#muteBtn').onclick=()=>{muted=!muted;store.set('muted',muted);renderMute()};
 
 /* ---------- online services (online.js, Firebase): ranking, presence, feed ---------- */
 let onlineMod=null;
-const loadRank=()=>onlineMod||(onlineMod=import('./online.js?v=15'));
+const loadRank=()=>onlineMod||(onlineMod=import('./online.js?v=16'));
 const loadOnline=loadRank;
 const PIX_AVAS=['p_office','p_woffice','p_whealth','p_tech','p_cat','p_dog'];
 const myAva=()=>{const a=store.get('partyAva','p_office');return PIX_AVAS.includes(a)?a:'p_office'};
@@ -749,7 +749,7 @@ requestAnimationFrame(frame);
 
 const hub=$('#hub'),stage=$('#stage');
 function startGame(id){
-  const g=GAMES.find(x=>x.id===id);
+  const g=GAMES.find(x=>x.id===id);Stats.hit('s',id);
   presence(id);
   stopGame();
   hub.hidden=true;stage.hidden=false;$('#homeBtn').hidden=false;stage.innerHTML='';window.scrollTo(0,0);
@@ -960,7 +960,7 @@ function buildWord(r,file){
 let bossType=null;
 function toggleBoss(force){
   const on=force===undefined?!bossOn:force;if(on===bossOn)return;
-  bossOn=on;
+  bossOn=on;if(on)Stats.open('boss');
   presence();
   if(on){buildBoss();$('#boss').hidden=false;
     try{actx&&actx.suspend()}catch(e){}}
@@ -1425,7 +1425,7 @@ function renderHub(){
   $('#avaBtn').onclick=()=>Wardrobe.open();
   drawAva($('#avaCv'));
   HubRoom.mount(hub.querySelector('[data-k=room]'));HubRoom.renderOffice();Tower.mount(hub.querySelector('[data-k=tower]'));
-  hub.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>Tower.setView(b.dataset.view));
+  hub.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>{Tower.setView(b.dataset.view);Stats.open(b.dataset.view)});
   $('#officeBtn').onclick=()=>startGame('office');
   $('#farmBtn').onclick=()=>startGame('farm');farmBadge();
   $('#gachaBtn').onclick=()=>Gacha.open();

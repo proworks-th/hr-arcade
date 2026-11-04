@@ -97,6 +97,7 @@ const Cloud = {
     return { ov, B, close };
   },
   open() {
+    Stats.open('cloud');
     const A = Cloud.acct, { B, close } = Cloud.sheet('☁️ เซฟของคุณ');
     if (!Cloud.signed()) {
       B.innerHTML = `<p>เข้าด้วยบัญชี Google แล้วตัวละครจะเซฟไว้กับบัญชีให้อัตโนมัติ เปิดเครื่องไหนก็ได้ตัวเดิม</p>
@@ -161,10 +162,11 @@ const Cloud = {
   },
 };
 
-/* ---------- anonymous stats: a random id per browser (never the name), plays per game, farm visits ---------- */
+/* ---------- anonymous stats: a random id per browser (never the name); game starts + finished plays, feature opens ---------- */
 const Stats = {
   aid() { let a = store.get('aid', ''); if (!a) { a = Math.random().toString(36).slice(2, 10); store.set('aid', a); } return a; },
-  hit(kind, id) { loadOnline().then(O => O.stat(kind, id)).catch(() => {}); },
+  hit(kind, id) { loadOnline().then(O => O.stat(kind, id, Stats.aid())).catch(() => {}); },
+  open(feature) { Stats.hit('o', feature); },
   boot() { Stats.hit('u', Stats.aid()); },
 };
 

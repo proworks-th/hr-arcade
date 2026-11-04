@@ -174,12 +174,14 @@ export async function logout(){const M=await AU();await M.signOut(M.getAuth(app(
 export function saveUser(uid,v){return FIREBASE_CONFIG?set(ref(db(),`rooms/_usave/${uid}`),{...v,t:serverTimestamp()}):Promise.resolve()}
 export async function getUser(uid){if(!FIREBASE_CONFIG)return null;const s=await get(ref(db(),`rooms/_usave/${uid}`));return s.val()}
 
-/* ---------- anonymous usage stats: rooms/_stat/{day}={u:{anonId:1},g:{game:plays},f:farmOpens} ---------- */
-export function stat(kind,id){
+/* ---------- anonymous usage stats: rooms/_stat/{day}={u:{anonId:1},g:{game:finished plays},s:{game:starts},
+   o:{feature:opens},p:{feature or game:{anonId:1}},f:farmOpens} ---------- */
+export function stat(kind,id,aid){
   if(!FIREBASE_CONFIG)return;
-  const D=db(),b=`rooms/_stat/${buckets().d}`,k=String(id||'').replace(/[.#$\[\]\/]/g,'_').slice(0,16);
+  const D=db(),b=`rooms/_stat/${buckets().d}`,cl=x=>String(x||'').replace(/[.#$\[\]\/]/g,'_').slice(0,16),k=cl(id);
   if(kind==='u')return set(ref(D,`${b}/u/${k}`),1);
-  return runTransaction(ref(D,kind==='g'?`${b}/g/${k}`:`${b}/${kind}`),c=>(+c||0)+1);
+  if((kind==='s'||kind==='o')&&aid)set(ref(D,`${b}/p/${k}/${cl(aid)}`),1);
+  return runTransaction(ref(D,kind==='g'||kind==='s'||kind==='o'?`${b}/${kind}/${k}`:`${b}/${kind}`),c=>(+c||0)+1);
 }
 export async function stats(){if(!FIREBASE_CONFIG)return{};const s=await get(ref(db(),'rooms/_stat'));return s.val()||{}}
 

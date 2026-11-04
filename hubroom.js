@@ -122,7 +122,7 @@ const HubRoom = (() => {
   function sayIt(m) {
     m = String(m || '').trim(); if (!m || !O) return;
     if (!myName()) { toast('✏️ ตั้งชื่อเล่นก่อนนะ แล้วค่อยคุย'); document.getElementById('nameIn')?.focus(); return; }
-    O.chat(m, myName(), myWho());
+    O.chat(m, myName(), myWho()); typeof Stats !== 'undefined' && Stats.open('chat');
   }
   function invite() {
     const txt = `🎉 มาเล่นด้วยกันที่ห้องพักสมอง! ${G.sc !== 'lobby' && G.sc !== 'res' ? '(' + GAME_TH[G.sc] + ' กำลังเล่นอยู่) ' : ''}👉 ${shareURL('&join=room')}`;
