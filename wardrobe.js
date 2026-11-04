@@ -1,6 +1,7 @@
 // "แต่งตัว" — accessories drawn as pixel art on top of the LimeZu characters, so progress shows on you in the shared room.
 // Title levels make most of them buyable with coins; a few only come from the capsule machine (gacha.js puts them in its pool).
-// Classic script after office.js, before gacha.js (uses PXA_PAL, MI_PEOPLE, drawChar, Prog, store, toast).
+// Classic script after office.js, before gacha.js (uses PXA_PAL, MI_PEOPLE, drawChar, Prog, store, toast; DYE/dyePal from season-art.js).
+// An equipped accessory travels as "id" or "id~c" (c = DYE colour index), so other players see the colour too.
 'use strict';
 // id → [slot (h head · f face), Thai name, unlock level (0 = gacha only), art rows, overlap rows into the head]
 const ACC = {
@@ -21,17 +22,25 @@ const ACC = {
   bunny:   ['h', 'หูกระต่าย', 0, ['.kk....kk.', 'kmmk..kmmk', 'kmpk..kpmk', 'kmpk..kpmk', 'kmpk..kpmk', 'kmmk..kmmk', '.kmk..kmk.'], 2],
   lotus:   ['h', 'ปิ่นดอกบัว', 0, ['....k....', '...kwk...', '.k.kpk.k.', 'kpkpppkRk', '.kpppRRk.', '..kgGGk..'], 2, 2],
   santa:   ['h', 'หมวกซานต้า', 0, ['...........kk.', '..........kwsk', '......kkkkRkk.', '.....krrrRRk..', '....krrrrRk...', '...krrrrrRRk..', '..krrrrrrrRk..', '.kwwwwwwwwwssk', '.kwswwswwswssk', '..kkkkkkkkkkk.'], 4],
+  straw: ['h', 'หมวกสาน', 3, ['.....kkkkkk.....', '....kyyyyytk....', '....krrrrrRk....', '.kkkyyyyyyytkkk.', 'kyyyyyyyyyyytttk', '.kkkkkkkkkkkkkk.'], 3],
+  bow: ['h', 'โบว์ผูกผม', 5, ['.kk.....kk.', 'krrkk.kkrRk', 'krwrrkrrrRk', 'krrRkrkRrRk', '.kkk...kkk.'], 2, 4],
+  mask: ['f', 'หน้ากากอนามัย', 7, ['............', '............', '............', '.kkkkkkkkkk.', 'kllllllllllk', 'kbbbbbbbbbbk', '.kllllllllk.', '..kkkkkkkk..'], 0],
+  nurse: ['h', 'หมวกพยาบาล', 9, ['..kkkkkkkk..', '.kmmmmmmmmk.', '.kBBBBBBBBk.', 'kmmmmmmmmmmk', 'kmmmmmmmmmsk', 'kkkkkkkkkkkk'], 2],
   tiara:   ['h', 'มงกุฎเพชร', 0, ['.....b.....', '....kbk....', '.k.kbwbk.k.', 'kbkkbbbkkbk', 'ksssssssssk', '.kkkkkkkkkk'], 2],
 };
 const ACC_GACHA = ['beanie', 'sprout', 'bunny', 'tiara'];
 const ACC_LADDER = { lotus: 'พ.ย.', santa: 'ธ.ค.' };   // only from the season pass (office.js)
 // coin price of each level-gated accessory (buyable once your level reaches ACC[id][2]; gacha-only ones have none)
-const ACC_PRICE = { cap: 60, flower: 120, glasses: 180, phones: 250, party: 300, cat: 360, shades: 420, chef: 500, tophat: 600, laurel: 750, crown: 1000, halo: 1500 };
+const ACC_PRICE = { straw: 90, bow: 140, mask: 160, nurse: 220, cap: 60, flower: 120, glasses: 180, phones: 250, party: 300, cat: 360, shades: 420, chef: 500, tophat: 600, laurel: 750, crown: 1000, halo: 1500 };
+// palette letters each accessory lets you recolour → DYE shade (0 light · 1 mid · 2 dark)
+const ACC_DYE = {cap:{r:1,R:2},flower:{p:1},glasses:{l:0},phones:{B:1},party:{p:1},cat:{c:2,p:1},chef:{S:1},tophat:{r:1},beanie:{b:1,B:2},bunny:{p:1},santa:{r:1,R:2},straw:{r:1,R:2},bow:{r:1,R:2},mask:{l:0,b:1},nurse:{B:1}};
+const accSplit = v => { const [id, c] = String(v || '').split('~'); return [id, +c || 0]; };
+const accPal = (id, c) => typeof dyePal === 'function' ? dyePal(PXA_PAL, ACC_DYE[id], c) : PXA_PAL;
 // head-top row inside the 16×32 frame (adam is a pixel taller) and the 1-px bob of the idle / run cycles
 const HEAD_TOP = { adam: 9 }, BOB_IDLE = [0, 0, 1, 1, 0, 0], BOB_RUN = [0, 1, 0, 0, 1, 0];
 // draw one accessory on a character drawn with the same arguments by drawChar
-function drawAcc(ctx, id, who, anim, dir, t, cx, by, k) {
-  const a = ACC[id]; if (!a || (a[0] === 'f' && dir === 'up')) return;
+function drawAcc(ctx, v, who, anim, dir, t, cx, by, k) {
+  const [id, dc] = accSplit(v), a = ACC[id], pal = accPal(id, dc); if (!a || (a[0] === 'f' && dir === 'up')) return;
   const f = Math.floor(t * (anim === 'run' ? 12 : 8)) % 6, bob = anim === 'run' ? (dir === 'down' ? 1 - BOB_RUN[f] : BOB_RUN[f]) : BOB_IDLE[f];
   const top = (HEAD_TOP[who] || 10) + bob, rows = a[3], wpx = rows[0].length;
   let x0 = cx - wpx * k / 2 + (a[5] || 0) * k, y0;
@@ -39,18 +48,20 @@ function drawAcc(ctx, id, who, anim, dir, t, cx, by, k) {
   else y0 = by - (32 - top + rows.length - a[4]) * k + (id === 'halo' ? Math.sin(t * 3) * k : 0);
   const flip = dir === 'left' && id === 'cap';
   for (let r = 0; r < rows.length; r++) for (let c = 0; c < wpx; c++) { const ch = rows[r][flip ? wpx - 1 - c : c]; if (ch === '.') continue;
-    ctx.fillStyle = PXA_PAL[ch] || '#000'; ctx.fillRect(Math.round(x0 + c * k), Math.round(y0 + r * k), k, k); }
+    ctx.fillStyle = pal[ch] || '#000'; ctx.fillRect(Math.round(x0 + c * k), Math.round(y0 + r * k), k, k); }
 }
 const Wardrobe = (() => {
   const icons = {};
   // small PNG of an accessory alone (for lists, the gacha book and the results screen)
-  function icon(id, k = 3) {
-    const key = id + k; if (icons[key]) return icons[key];
-    const rows = ACC[id][3], c = document.createElement('canvas'); c.width = rows[0].length * k; c.height = rows.length * k;
-    const x = c.getContext('2d'); rows.forEach((r, y) => [...r].forEach((ch, i) => { if (ch !== '.') { x.fillStyle = PXA_PAL[ch]; x.fillRect(i * k, y * k, k, k); } }));
+  function icon(v, k = 3) {
+    const key = v + '@' + k; if (icons[key]) return icons[key];
+    const [id, dc] = accSplit(v), pal = accPal(id, dc), rows = ACC[id][3], c = document.createElement('canvas'); c.width = rows[0].length * k; c.height = rows.length * k;
+    const x = c.getContext('2d'); rows.forEach((r, y) => [...r].forEach((ch, i) => { if (ch !== '.') { x.fillStyle = pal[ch]; x.fillRect(i * k, y * k, k, k); } }));
     return (icons[key] = c.toDataURL());
   }
-  const st = p => (p.acc = Object.assign({ h: '', f: '', own: {} }, p.acc || {}));
+  // fills in missing fields in place (never swaps p.acc for a new object, or edits made through an earlier st(p) would be lost)
+  const st = p => { const a = p.acc || (p.acc = {}); for (const [k, v] of [['h', ''], ['f', ''], ['own', {}], ['col', {}]]) if (a[k] == null) a[k] = v; return a; };
+  const withCol = (a, id) => id && a.col && a.col[id] ? `${id}~${a.col[id]}` : id;
   // once: level accessories that used to be free at your level stay yours (they now cost coins)
   function mig() {
     if (store.get('accMig', 0)) return; store.set('accMig', 1);
@@ -70,7 +81,7 @@ const Wardrobe = (() => {
     if (typeof SFX !== 'undefined' && SFX.level) SFX.level();
     toast(`👕 ซื้อ ${A[1]} แล้ว`); return true;
   }
-  const eq = slot => { mig(); const p = Prog.get(), id = st(p)[slot]; return owns(p, id) ? id : ''; };
+  const eq = slot => { mig(); const p = Prog.get(), a = st(p), id = a[slot]; return owns(p, id) ? withCol(a, id) : ''; };
   // accessories unlocked by reaching levels in (from, to]
   const unlockedBetween = (from, to) => Object.keys(ACC).filter(id => ACC[id][2] > from && ACC[id][2] <= to);
   const nextUnlock = lv => Object.keys(ACC).filter(id => ACC[id][2] > lv).sort((a, b) => ACC[a][2] - ACC[b][2])[0];
@@ -95,12 +106,20 @@ const Wardrobe = (() => {
       const p = Prog.get(), a = st(p);
       const tile = id => { const A = ACC[id], has = owns(p, id), on = a[A[0]] === id, c = price(id), sell = !has && A[2] && p.lv >= A[2];
         if (sell) return `<button class="wd-it buy${p.coins < c ? ' short' : ''}"${p.coins < c ? ' disabled' : ''} data-a="${id}" title="${A[1]}"><img src="${icon(id)}" alt=""><small>${A[1]}</small><small><b>${p.coins < c ? `ขาด ${fmt(c - p.coins)} 🪙` : `🪙 ${fmt(c)} ซื้อ`}</b></small></button>`;
-        return `<button class="wd-it${has ? '' : ' no'}${on ? ' on' : ''}" data-a="${id}" title="${A[1]}"><img src="${icon(id)}" alt=""><small>${has ? A[1] : A[2] ? `🔒 Lv ${A[2]}` : ACC_LADDER[id] ? '🎫 Pass' : '🎰 กาชา'}</small></button>`; };
+        return `<button class="wd-it${has ? '' : ' no'}${on ? ' on' : ''}" data-a="${id}" title="${A[1]}"><img src="${icon(has ? withCol(a, id) : id)}" alt=""><small>${has ? A[1] : A[2] ? `🔒 Lv ${A[2]}` : ACC_LADDER[id] ? '🎫 Pass' : '🎰 กาชา'}</small></button>`; };
+      const dyeRow = slot => { const id = a[slot]; if (!id || !owns(p, id) || !ACC_DYE[id] || typeof DYE === 'undefined') return '';
+        const cur = a.col[id] || 0;
+        return `<div class="dye-row" role="group" aria-label="สี${ACC[id][1]}"><span>🎨 สี${ACC[id][1]}</span>${DYE.map((d, c) => `<button class="dye${cur === c ? ' on' : ''}" data-dye="${c}" data-id="${id}" title="${d ? d[0] : 'สีเดิม'}" aria-label="${d ? d[0] : 'สีเดิม'}" style="background:${d ? d[2] : 'conic-gradient(#fc5c46 0 25%,#f8d239 0 50%,#61af5f 0 75%,#447bce 0)'}"></button>`).join('')}</div>`; };
       const ids = Object.keys(ACC).sort((x, y) => (ACC[x][2] || 99) - (ACC[y][2] || 99));
       B.innerHTML = `<p class="muted" style="margin:6px 0;text-align:center">🪙 ${fmt(p.coins)}</p><h3>ตัวละคร</h3><div class="wd-row">${MI_PEOPLE.map(w => `<button class="wd-who${p.who === w ? ' on' : ''}" data-w="${w}"><img src="assets/mi/${w}_down.png" alt="${w}"></button>`).join('')}</div>
-        <h3>บนหัว</h3><div class="wd-grid"><button class="wd-it${a.h ? '' : ' on'}" data-a="" data-s="h"><span>✖</span><small>ไม่ใส่</small></button>${ids.filter(i => ACC[i][0] === 'h').map(tile).join('')}</div>
-        <h3>แว่น</h3><div class="wd-grid"><button class="wd-it${a.f ? '' : ' on'}" data-a="" data-s="f"><span>✖</span><small>ไม่ใส่</small></button>${ids.filter(i => ACC[i][0] === 'f').map(tile).join('')}</div>`;
+        <h3>บนหัว</h3><div class="wd-grid"><button class="wd-it${a.h ? '' : ' on'}" data-a="" data-s="h"><span>✖</span><small>ไม่ใส่</small></button>${ids.filter(i => ACC[i][0] === 'h').map(tile).join('')}</div>${dyeRow('h')}
+        <h3>แว่น</h3><div class="wd-grid"><button class="wd-it${a.f ? '' : ' on'}" data-a="" data-s="f"><span>✖</span><small>ไม่ใส่</small></button>${ids.filter(i => ACC[i][0] === 'f').map(tile).join('')}</div>${dyeRow('f')}`;
       B.querySelectorAll('[data-w]').forEach(b => b.onclick = () => { const p2 = Prog.get(); p2.who = b.dataset.w; Prog.put(p2); draw(); });
+      B.querySelectorAll('[data-dye]').forEach(b => b.onclick = () => { const p2 = Prog.get(), a2 = st(p2), id = b.dataset.id, c = +b.dataset.dye;
+        if ((a2.col[id] || 0) === c) return;
+        const cost = typeof DYE_COST !== 'undefined' ? DYE_COST : 0;
+        if (cost) { if (p2.coins < cost) { toast(`เหรียญไม่พอ — เปลี่ยนสีใช้ 🪙 ${cost}`); return; } p2.coins -= cost; typeof Stats !== 'undefined' && Stats.econ('out_dye', cost); }
+        if (c) a2.col[id] = c; else delete a2.col[id]; Prog.put(p2); draw(); });
       B.querySelectorAll('[data-a]').forEach(b => b.onclick = () => { const p2 = Prog.get(), a2 = st(p2), id = b.dataset.a;
         if (!id) { a2[b.dataset.s] = ''; Prog.put(p2); return draw(); }
         if (!owns(p2, id)) { const A = ACC[id];

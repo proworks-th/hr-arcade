@@ -47,7 +47,7 @@ const Tower = (() => {
     c.c.width = cols * 32; c.c.height = 288; c.at = performance.now();
     const x = c.c.getContext('2d'); x.clearRect(0, 0, c.c.width, 288);
     drawRoom(x, { ...room, w: cols });
-    c.ok = [room.wall, room.floor, ...room.items.map(i => i[0])].every(n => { const im = pix(n); return im.complete && im.naturalWidth; });
+    c.ok = [room.wall, room.floor, ...room.items.map(i => i[0]).filter(n => !drawnItem(n))].every(n => { const im = pix(n); return im.complete && im.naturalWidth; });
     return c.c;
   }
 

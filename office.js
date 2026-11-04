@@ -63,9 +63,10 @@ const SHOP = [
   ['cabinet_plates', 'f', 120, 4], ['wardrobe', 'f', 140, 4], ['filing', 'f', 130, 4], ['wardrobe_glass', 'f', 150, 5], ['shop_shelf', 'f', 180, 5], ['vanity', 'f', 150, 5], ['fridge_wide', 'f', 220, 6],
   ['crate', 'f', 15, 1], ['box_wood', 'f', 15, 1], ['broom', 'f', 10, 1], ['cushion_blue', 'f', 15, 1], ['cushion_yellow', 'f', 15, 1], ['jar', 'f', 25, 1], ['fruit_basket', 'f', 30, 1], ['cake_straw', 'f', 20, 1], ['globe', 'f', 40, 1],
   ['jar_pot', 'f', 30, 2], ['fruit_bowl', 'f', 30, 2], ['fruit_grape', 'f', 35, 2], ['fruit_veg', 'f', 30, 2], ['globe_blue', 'f', 60, 2], ['cans', 'f', 40, 2], ['pizza', 'f', 25, 2], ['jar_white', 'f', 40, 3], ['jar_gold', 'f', 60, 4], ['globe_gold', 'f', 150, 7],
+  ['dx_cactus', 'f', 30, 1], ['dx_teddy', 'f', 45, 2], ['dx_beanbag', 'f', 70, 2], ['dx_cooler', 'f', 90, 3],
   ['rug_blue', 'r', 60, 1], ['rug_green', 'r', 60, 2], ['rug_lblue', 'r', 70, 3],
   ['window_small', 'w', 30, 1], ['window_frost', 'w', 50, 1], ['window_grey', 'w', 60, 1], ['window_red', 'w', 60, 2], ['window_big', 'w', 90, 2], ['window_slide', 'w', 120, 4],
-  ['pic_bird', 'w', 25, 1], ['pic_flower', 'w', 25, 1], ['pic_hill', 'w', 25, 1], ['pic_fish', 'w', 30, 1], ['pic_fishblue', 'w', 30, 1], ['pic_aqua', 'w', 30, 1], ['pic_cat', 'w', 40, 1], ['noticeboard', 'w', 40, 1], ['board_calendar', 'w', 40, 1],
+  ['pic_bird', 'w', 25, 1], ['pic_flower', 'w', 25, 1], ['pic_hill', 'w', 25, 1], ['pic_fish', 'w', 30, 1], ['pic_fishblue', 'w', 30, 1], ['pic_aqua', 'w', 30, 1], ['pic_cat', 'w', 40, 1], ['noticeboard', 'w', 40, 1], ['board_calendar', 'w', 40, 1], ['dx_clock', 'w', 35, 1], ['dx_firstaid', 'w', 40, 2], ['dx_award', 'w', 60, 3],
   ['pic_fire', 'w', 25, 2], ['pic_forest', 'w', 35, 2], ['pic_long', 'w', 30, 2], ['pic_sunset', 'w', 50, 2], ['pic_land', 'w', 50, 2], ['door', 'w', 80, 2],
   ['pic_monster', 'w', 45, 3], ['pic_robot', 'w', 45, 3], ['mirror_gold', 'w', 70, 3], ['blackboard', 'w', 90, 3], ['world_map', 'w', 100, 4], ['tv', 'w', 160, 4], ['door_double', 'w', 140, 5],
 ];
@@ -138,10 +139,11 @@ function caseImg(cs = [], k = 1) {
   return (_cases[key] = cv);
 }
 const drawnItem = n => n === 'cupcase' || !!cupOf(n) || (typeof SX !== 'undefined' && !!SX[n]);
-const itemCanvas = (n, k = 1, cs = []) => n === 'cupcase' ? caseImg(cs, k) : SX[n] ? sxImg(n, k) : cupImg(n, k);
-const itemImg = (n, room) => drawnItem(n) ? itemCanvas(n, 1, (room && room.cs) || []) : n;
+const itemCanvas = (n, k = 1, cs = [], c = 0) => n === 'cupcase' ? caseImg(cs, k) : SX[n] ? sxImg(n, k, c) : cupImg(n, k);
+const itemImg = (n, room, c = 0) => drawnItem(n) ? itemCanvas(n, 1, (room && room.cs) || [], c) : n;
+const dyeable = n => typeof SX_DYE !== 'undefined' && !!SX_DYE[n];
 function itemLabel(n) {
-  if (typeof SX !== 'undefined' && SX[n]) return SX[n][0] + ' (ของรางวัล Season Pass)';
+  if (typeof SX !== 'undefined' && SX[n]) return SX[n][0] + (n.startsWith('sx_') ? ' (ของรางวัล Season Pass)' : '');
   if (n === 'cupcase') return '🏆 ตู้โชว์ถ้วย (โชว์ถ้วยดีที่สุด 6 ใบของคุณเอง)';
   const c = cupOf(n); if (!c) return n;
   if (c.g === 'pass' || c.g === 'office') return `🎫 ถ้วย Season Pass · ${seasonName(c.s)}`;
@@ -182,10 +184,12 @@ const prizeIcon = n => n.startsWith('acc:') ? (typeof Wardrobe !== 'undefined' ?
 // seasonal decorations (SX_PAL, SX) come from season-art.js
 for (const [n, [, k, rows]] of Object.entries(SX)) { SHOP_KIND[n] = k; if (typeof MI_SZ !== 'undefined') MI_SZ[n] = [Math.max(...rows.map(r => r.length)), rows.length]; }
 const _sx = {};
-function sxImg(n, k = 1) {
-  const key = n + '@' + k; if (_sx[key]) return _sx[key];
+function sxImg(n, k = 1, c = 0) {
+  if (!SX_DYE[n] || !DYE[c]) c = 0;
+  const key = n + '@' + k + '@' + c; if (_sx[key]) return _sx[key];
+  const pal = dyePal(SX_PAL, SX_DYE[n], c);
   const rows = SX[n][2], cv = document.createElement('canvas'); cv.width = Math.max(...rows.map(r => r.length)) * k; cv.height = rows.length * k; const g = cv.getContext('2d');
-  rows.forEach((row, y) => [...row].forEach((ch, x) => { if (ch !== '.') { g.fillStyle = SX_PAL[ch]; g.fillRect(x * k, y * k, k, k); } }));
+  rows.forEach((row, y) => [...row].forEach((ch, x) => { if (ch !== '.') { g.fillStyle = pal[ch]; g.fillRect(x * k, y * k, k, k); } }));
   return (_sx[key] = cv);
 }
 const prevSeason = s => { const y = +s.slice(0, 4), m = +s.slice(4, 6); return m === 1 ? `${y - 1}12` : `${y}${String(m - 1).padStart(2, '0')}`; };
@@ -350,8 +354,8 @@ function drawRoom(ctx, room, extra = [], t = 0, pops = {}, tryFrom = Infinity) {
   officeBG(ctx, roomW(room) * RC, RROWS * RC, RTOP * RC, { wall: room.wall, floor: room.floor, k: 2, calm: .1 });
   const list = [];
   room.items.forEach((it, i) => {
-    const [n, x, y, f] = it, k = SHOP_KIND[n] || 'f', cx = (x + cellsW(n) / 2) * RC, pop = pops[i] || 0, o = { flip: !!f, sx: 1 + pop * .25, sy: 1 - pop * .2, alpha: i >= tryFrom ? .78 : null };
-    const im = itemImg(n, room);
+    const [n, x, y, f, dc] = it, k = SHOP_KIND[n] || 'f', cx = (x + cellsW(n) / 2) * RC, pop = pops[i] || 0, o = { flip: !!f, sx: 1 + pop * .25, sy: 1 - pop * .2, alpha: i >= tryFrom ? .78 : null };
+    const im = itemImg(n, room, dc);
     if (k === 'w') drawPixAt(ctx, im, cx, RTOP * RC - 6, 2, o);
     else if (k === 'r') drawPixAt(ctx, im, cx, (y + 1) * RC, 2, o);
     else list.push({ y: y + 1, d: () => drawPixAt(ctx, im, cx, (y + 1) * RC, 2, o) });
@@ -465,12 +469,14 @@ function officeMount(root, api) {
       el.querySelector('[data-a=like]').onclick = like; loadOnline().then(O => O.likeCount(visit.k)).then(n => { const s = q('likes'); if (s) s.textContent = `(${n})`; }).catch(() => {}); return; }
     if (placing) { el.innerHTML = `<span class="muted">${placingTrial && movingT < 0 ? `แตะช่องในห้องเพื่อ<b>ลองวาง</b> ${icon(placing, 22)} — ยังไม่เสียเงิน` : `แตะช่องในห้องเพื่อวาง ${icon(placing, 22)}`}</span><button class="btn sm" data-a="cancel">ยกเลิก</button>`;
       el.querySelector('[data-a=cancel]').onclick = () => { cancelPlace(); }; return; }
-    if (selT >= 0) { const it = trial[selT]; el.innerHTML = `${icon(it[0], 22)} <span>ในตะกร้า · 🪙 ${priceOf(it[0])}</span><button class="btn sm" data-a="flip">↔ กลับด้าน</button><button class="btn sm" data-a="move">✥ ย้าย</button><button class="btn sm" data-a="rm">🗑️ เอาออก</button><button class="btn sm" data-a="x">✖</button>`;
+    if (selT >= 0) { const it = trial[selT]; el.innerHTML = `${icon(it[0], 22, it[4])} <span>ในตะกร้า · 🪙 ${priceOf(it[0])}</span><button class="btn sm" data-a="flip">↔ กลับด้าน</button><button class="btn sm" data-a="move">✥ ย้าย</button><button class="btn sm" data-a="rm">🗑️ เอาออก</button><button class="btn sm" data-a="x">✖</button>${swatches(it)}`;
+      dyeWire(el, it, false);
       el.querySelector('[data-a=flip]').onclick = () => { it[3] = it[3] ? 0 : 1; };
       el.querySelector('[data-a=move]').onclick = () => { movingT = selT; placing = it[0]; placingTrial = true; selT = -1; tools(); };
       el.querySelector('[data-a=rm]').onclick = () => { trial.splice(selT, 1); selT = -1; tools(); list(); };
       el.querySelector('[data-a=x]').onclick = () => { selT = -1; tools(); }; return; }
-    if (sel >= 0) { el.innerHTML = `<b>${esc(itemLabel(p.room.items[sel][0]))}</b><button class="btn sm" data-a="flip">↔ กลับด้าน</button><button class="btn sm" data-a="move">✥ ย้าย</button><button class="btn sm" data-a="store">📦 เก็บ</button><button class="btn sm" data-a="x">✖</button>`;
+    if (sel >= 0) { el.innerHTML = `<b>${esc(itemLabel(p.room.items[sel][0]))}</b><button class="btn sm" data-a="flip">↔ กลับด้าน</button><button class="btn sm" data-a="move">✥ ย้าย</button><button class="btn sm" data-a="store">📦 เก็บ</button><button class="btn sm" data-a="x">✖</button>${swatches(p.room.items[sel])}`;
+      dyeWire(el, p.room.items[sel], true, sel);
       el.querySelector('[data-a=flip]').onclick = () => { const it = p.room.items[sel]; it[3] = it[3] ? 0 : 1; pops[sel] = 1; save(); };
       el.querySelector('[data-a=move]').onclick = () => { moving = sel; placing = p.room.items[sel][0]; sel = -1; tools(); };
       el.querySelector('[data-a=store]').onclick = () => { const [n] = p.room.items.splice(sel, 1)[0]; p.inv[n] = (p.inv[n] || 0) + 1; sel = -1; save(); tools(); list(); };
@@ -480,6 +486,17 @@ function officeMount(root, api) {
       el.querySelector('[data-a=buy]').onclick = buyCart;
       el.querySelector('[data-a=clear]').onclick = () => { trial = []; tryStyle = {}; tryW = 0; selT = -1; tools(); list(); }; return; }
     el.innerHTML = '<span class="muted">กดของในร้านเพื่อ<b>ลองวาง</b>ในห้องก่อน ถูกใจแล้วค่อยกดซื้อ · แตะของในห้องเพื่อย้าย / กลับด้าน / เก็บ</span>';
+  }
+  // 🎨 colour row under the tools for dyeable drawn items; it[4] = DYE index (0 = original)
+  function swatches(it) {
+    if (!dyeable(it[0])) return '';
+    return `<div class="dye-row" role="group" aria-label="เปลี่ยนสี"><span>🎨${DYE_COST ? ` <small>🪙 ${DYE_COST}</small>` : ''}</span>${DYE.map((d, c) => `<button class="dye${(it[4] || 0) === c ? ' on' : ''}" data-dye="${c}" title="${d ? d[0] : 'สีเดิม'}" aria-label="${d ? d[0] : 'สีเดิม'}" style="background:${d ? d[2] : 'conic-gradient(#fc5c46 0 25%,#f8d239 0 50%,#61af5f 0 75%,#447bce 0)'}"></button>`).join('')}</div>`;
+  }
+  function dyeWire(el, it, real, i) {
+    el.querySelectorAll('[data-dye]').forEach(b => b.onclick = () => { const c = +b.dataset.dye; if ((it[4] || 0) === c) return;
+      if (real && DYE_COST) { if (p.coins < DYE_COST) { toast(`เหรียญไม่พอ — เปลี่ยนสีใช้ 🪙 ${DYE_COST}`); return; } p.coins -= DYE_COST; typeof Stats !== 'undefined' && Stats.econ('out_dye', DYE_COST); hud(); }
+      if (c) it[4] = c; else it.length = Math.min(it.length, 4);
+      if (real) { pops[i] = 1; save(); } tools(); });
   }
   function buyCart() {
     const c = cartCost(); if (c > p.coins) { toast(`เหรียญไม่พอ ขาดอีก 🪙 ${fmt(c - p.coins)} — เอาบางชิ้นออก หรือไปเล่นเกมก่อน`); domShake(q('tools'), 5); return; }
@@ -493,7 +510,7 @@ function officeMount(root, api) {
   function cancelPlace() { if (placing && moving < 0 && !placingTrial) p.inv[placing] = (p.inv[placing] || 0) + 1; placing = null; moving = -1; movingT = -1; placingTrial = false; save(); tools(); list(); }
   function startPlace(n) { if (p.inv[n] > 0) { p.inv[n]--; if (!p.inv[n]) delete p.inv[n]; } placing = n; moving = -1; movingT = -1; placingTrial = false; sel = -1; selT = -1; save(); tools(); list(); }
   function startTry(n) { placing = n; placingTrial = true; moving = -1; movingT = -1; sel = -1; selT = -1; tools(); }
-  const icon = (n, h = 34) => drawnItem(n) ? `<img class="pxi" src="${itemCanvas(n, 4, caseCups(p)).toDataURL()}" alt="" title="${esc(itemLabel(n))}" style="max-height:${h}px">`
+  const icon = (n, h = 34, c = 0) => drawnItem(n) ? `<img class="pxi" src="${itemCanvas(n, 4, caseCups(p), c).toDataURL()}" alt="" title="${esc(itemLabel(n))}" style="max-height:${h}px">`
     : `<img class="pxi" src="assets/mi/${n}.png" alt="" style="max-height:${h}px;max-width:${h * 1.6}px">`;
   function list() {
     const tabs = [['shop', '🛒 ร้านค้า'], ['inv', '📦 ของของฉัน'], ['style', '🎨 ห้อง/ผนัง'], ['friends', '👥 ห้องเพื่อน']];
@@ -575,7 +592,7 @@ function officeMount(root, api) {
       const k = SHOP_KIND[placing] || 'f', w = cellsW(placing), x = Math.max(0, Math.min(RW - w, hover.x - Math.floor((w - 1) / 2))), y = k === 'w' ? 0 : hover.y, ok = roomFits({ w: view().w, items: allItems() }, placing, x, y, skipIdx());
       extra.push({ y: (k === 'w' ? 0 : y + 1) + .02, d: () => {
         ctx.fillStyle = ok ? 'rgba(33,192,122,.35)' : 'rgba(226,48,48,.35)'; ctx.fillRect(x * RC, (k === 'w' ? 0 : y) * RC, w * RC, (k === 'w' ? RTOP : 1) * RC);
-        drawPixAt(ctx, itemImg(placing, view()), (x + w / 2) * RC, k === 'w' ? RTOP * RC - 6 : (y + 1) * RC, 2, { alpha: .75 }); } });
+        drawPixAt(ctx, itemImg(placing, view(), moving >= 0 ? p.room.items[moving][4] : movingT >= 0 ? trial[movingT][4] : 0), (x + w / 2) * RC, k === 'w' ? RTOP * RC - 6 : (y + 1) * RC, 2, { alpha: .75 }); } });
     }
     const real = visit ? room.items : p.room.items.filter((_, i) => i !== moving), tr = visit ? [] : trial.filter((_, i) => i !== movingT);
     drawRoom(ctx, { ...room, items: real.concat(tr) }, extra, t, pops, real.length);

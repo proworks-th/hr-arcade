@@ -3,3 +3,6 @@ _test.html
 verify/out/
 verify/last-run.txt
 __pycache__/
+
+# local-only dev tool (not for staff): open via a local server, e.g. python -m http.server
+sprite-lab.html
