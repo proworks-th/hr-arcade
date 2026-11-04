@@ -65,7 +65,7 @@ export function saveProfile(name,p){
   if(!FIREBASE_CONFIG||!name)return;
   const items=(p.room.items||[]).slice(0,90).map(([n,x,y,f])=>[String(n).slice(0,24),x|0,y|0,f?1:0]);
   return set(ref(db(),`rooms/_prof/${nameKey(name)}`),{n:name.trim().slice(0,20),lv:p.lv|0,ti:String(p.ti||'').slice(0,20),who:String(p.who||'adam').slice(0,10),b:String(p.b||'').slice(0,12),h:String(p.h||'').slice(0,12),f:String(p.f||'').slice(0,12),
-    room:{wall:String(p.room.wall).slice(0,20),floor:String(p.room.floor).slice(0,20),items,w:Math.min(22,Math.max(12,p.room.w|0||12))},t:serverTimestamp()});
+    room:{wall:String(p.room.wall).slice(0,20),floor:String(p.room.floor).slice(0,20),items,cs:(p.room.cs||[]).slice(0,6).map(x=>String(x).slice(0,24)),w:Math.min(22,Math.max(12,p.room.w|0||12))},t:serverTimestamp()});
 }
 export async function listProfiles(n=40){
   if(!FIREBASE_CONFIG)return[];
@@ -107,6 +107,37 @@ export async function trophies(k,season=buckets().m){
   const out=[];
   await Promise.all(Object.keys(RANK_GAMES).map(g=>boardAt(g,'m',season).then(rows=>{const i=rows.findIndex(r=>r.k===k);if(i>=0&&i<3)out.push({g,r:i+1})}).catch(()=>{})));
   return out.sort((a,b)=>a.r-b.r);
+}
+/* ---------- seasons: office ladder (games played together), monthly room likes, hall of fame ---------- */
+export function ladderAdd(name,aid,n=1){
+  if(!FIREBASE_CONFIG)return;
+  const k=name?nameKey(name):'a_'+String(aid||'x').replace(/[.#$\[\]\/]/g,'_').slice(0,20);
+  runTransaction(ref(db(),`rooms/_ladder/${buckets().m}/${k}`),c=>({n:String(name||'').trim().slice(0,20),g:((c&&c.g)||0)+n}));
+}
+export async function ladder(season=buckets().m){
+  if(!FIREBASE_CONFIG)return{total:0,rows:[]};
+  const s=await get(ref(db(),`rooms/_ladder/${season}`)),rows=Object.entries(s.val()||{}).map(([k,v])=>({k,n:v.n||'',g:v.g|0})).sort((a,b)=>b.g-a.g);
+  return{total:rows.reduce((t,r)=>t+r.g,0),rows};
+}
+export function likeMonth(ownerKey,fromName){return FIREBASE_CONFIG&&fromName?set(ref(db(),`rooms/_likem/${buckets().m}/${ownerKey}/${nameKey(fromName)}`),1):Promise.resolve()}
+export async function likeBoard(season=buckets().m){
+  if(!FIREBASE_CONFIG)return[];
+  const s=await get(ref(db(),`rooms/_likem/${season}`));
+  return Object.entries(s.val()||{}).map(([k,v])=>({k,c:Object.keys(v||{}).length})).sort((a,b)=>b.c-a.c);
+}
+export async function fameAll(){if(!FIREBASE_CONFIG)return{};const s=await get(ref(db(),'rooms/_fame'));return s.val()||{}}
+export async function fame(season){if(!FIREBASE_CONFIG)return null;const s=await get(ref(db(),`rooms/_fame/${season}`));return s.val()}
+// writes the hall-of-fame record for a finished month once (the first visitor of the new month does it); returns it when this call wrote it
+export async function closeSeason(ss){
+  if(!FIREBASE_CONFIG)return null;
+  const r=ref(db(),`rooms/_fame/${ss}`);if((await get(r)).exists())return null;
+  const champ={};
+  await Promise.all(Object.keys(RANK_GAMES).map(g=>boardAt(g,'m',ss).then(rows=>{if(rows[0])champ[g]={k:rows[0].k,n:rows[0].n,s:rows[0].s}}).catch(()=>{})));
+  const L=await ladder(ss),lk=(await likeBoard(ss))[0];
+  let room=null;if(lk&&lk.c>=2){const p=(await get(ref(db(),`rooms/_prof/${lk.k}`))).val()||{};room={k:lk.k,n:p.n||lk.k,c:lk.c}}
+  const rec={champ,lad:{t:L.total,top:L.rows.filter(x=>x.n).slice(0,3).map(x=>({n:x.n,g:x.g}))},...(room?{room}:{}),t:Date.now()};
+  const tx=await runTransaction(r,c=>c?undefined:rec);
+  return tx.committed?rec:null;
 }
 export async function likeCount(ownerKey){if(!FIREBASE_CONFIG)return 0;const s=await get(ref(db(),`rooms/_like/${ownerKey}`));return Object.keys(s.val()||{}).length}
 

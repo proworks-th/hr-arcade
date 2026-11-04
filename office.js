@@ -48,7 +48,7 @@ const Prog = {
   sync() {
     clearTimeout(Prog._t);
     Prog._t = setTimeout(() => { const nm = myName(); if (!nm) return; const p = Prog.get();
-      loadOnline().then(O => O.saveProfile(nm, { lv: p.lv, ti: Prog.title(p.lv), who: p.who, room: p.room, b: (p.gacha && p.gacha.eq) || '', h: typeof Wardrobe !== 'undefined' ? Wardrobe.eq('h') : '', f: typeof Wardrobe !== 'undefined' ? Wardrobe.eq('f') : '' })).catch(() => {}); }, 1500);
+      loadOnline().then(O => O.saveProfile(nm, { lv: p.lv, ti: Prog.title(p.lv), who: p.who, room: { ...p.room, cs: caseCups(p) }, b: (p.gacha && p.gacha.eq) || '', h: typeof Wardrobe !== 'undefined' ? Wardrobe.eq('h') : '', f: typeof Wardrobe !== 'undefined' ? Wardrobe.eq('f') : '' })).catch(() => {}); }, 1500);
   },
 };
 
@@ -59,7 +59,7 @@ const SHOP = [
   ['pc_desk', 'f', 80, 1], ['desk_drawer', 'f', 40, 1], ['desk_book', 'f', 60, 1], ['desk_pair', 'f', 70, 2], ['books_desk', 'f', 45, 2], ['dresser', 'f', 70, 3], ['table_wood', 'f', 90, 3], ['table_light', 'f', 90, 3],
   ['sofa_grey', 'f', 120, 1], ['sofa_white', 'f', 120, 2], ['bench_pink', 'f', 70, 2], ['bench_cream', 'f', 70, 2], ['sofa_brown', 'f', 140, 3], ['sofa_red', 'f', 160, 4],
   ['lamp_red', 'f', 30, 1], ['lamp_blue', 'f', 30, 1], ['lamp_beige', 'f', 30, 2], ['lamp_white', 'f', 30, 2], ['floorlamp_red', 'f', 50, 1], ['floorlamp_blue', 'f', 50, 1], ['floorlamp_white', 'f', 50, 2], ['floorlamp_beige', 'f', 50, 2],
-  ['locker', 'f', 60, 1], ['shelf_white', 'f', 90, 2], ['cabinet_glass', 'f', 110, 2], ['cabinet_wood', 'f', 110, 2], ['bookshelf', 'f', 160, 3], ['fridge', 'f', 120, 3], ['shelf_plant', 'f', 90, 3],
+  ['cupcase', 'f', 150, 1], ['locker', 'f', 60, 1], ['shelf_white', 'f', 90, 2], ['cabinet_glass', 'f', 110, 2], ['cabinet_wood', 'f', 110, 2], ['bookshelf', 'f', 160, 3], ['fridge', 'f', 120, 3], ['shelf_plant', 'f', 90, 3],
   ['cabinet_plates', 'f', 120, 4], ['wardrobe', 'f', 140, 4], ['filing', 'f', 130, 4], ['wardrobe_glass', 'f', 150, 5], ['shop_shelf', 'f', 180, 5], ['vanity', 'f', 150, 5], ['fridge_wide', 'f', 220, 6],
   ['crate', 'f', 15, 1], ['box_wood', 'f', 15, 1], ['broom', 'f', 10, 1], ['cushion_blue', 'f', 15, 1], ['cushion_yellow', 'f', 15, 1], ['jar', 'f', 25, 1], ['fruit_basket', 'f', 30, 1], ['cake_straw', 'f', 20, 1], ['globe', 'f', 40, 1],
   ['jar_pot', 'f', 30, 2], ['fruit_bowl', 'f', 30, 2], ['fruit_grape', 'f', 35, 2], ['fruit_veg', 'f', 30, 2], ['globe_blue', 'f', 60, 2], ['cans', 'f', 40, 2], ['pizza', 'f', 25, 2], ['jar_white', 'f', 40, 3], ['jar_gold', 'f', 60, 4], ['globe_gold', 'f', 150, 7],
@@ -90,14 +90,14 @@ function roomFits(room, n, x, y, skip) {
 }
 /* ---------- season trophies: top 3 of a game's monthly board become room items "cup<rank>.<game>.<yyyymm>" ---------- */
 const CUP_FIRST = '202611';                      // the first season (monthly boards started in Nov 2026)
-const CUP_COL = { 1: ['#ffd23f', '#c77d0a'], 2: ['#e6e9ee', '#8a93a3'], 3: ['#e0913b', '#8a5228'] };
+const CUP_COL = { 1: ['#ffd23f', '#c77d0a'], 2: ['#e6e9ee', '#8a93a3'], 3: ['#e0913b', '#8a5228'], 4: ['#7ee0c3', '#1f9d8a'] };   // 4 = office team cup (ladder)
 // ribbon colour per month, so each season's cups look different on the shelf
 const CUP_RIB = ['#3a86ff', '#e63972', '#1f9d63', '#f07b16', '#c99700', '#1597c4', '#7b3fe4', '#0f8f8f', '#9c5a2e', '#b5179e', '#d62828', '#23408e'];
 const CUP_ART = ['..kkkkkkkk..', 'kkkAwAAABkkk', 'k.kAwAAABk.k', 'k.kAwAAABk.k', '.kkAAAAABkk.', '...kAAABk...', '....kABk....', '....kABk....', '...kkkkkk...'];
 // 3x5 pixel digits for the season plaque ("11.69" = Nov 2569)
 const CUP_DIG = ['111101101101111', '010110010010111', '111001111100111', '111001111001111', '101101111001001', '111100111001111', '111100111101111', '111001010010010', '111101111101111', '111101111001111'];
 const TH_MON = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
-const cupOf = n => { const m = /^cup([123])\.([a-z0-9]+)\.(\d{6})$/.exec(n || ''); return m ? { r: +m[1], g: m[2], s: m[3] } : null; };
+const cupOf = n => { const m = /^cup([1-4])\.([a-z0-9]+)\.(\d{6})$/.exec(n || ''); return m ? { r: +m[1], g: m[2], s: m[3] } : null; };
 const seasonName = s => `${TH_MON[+s.slice(4, 6) - 1]} ${(+s.slice(0, 4) + 543) % 100}`;
 const _cups = {};
 function cupImg(n, k = 1) {
@@ -113,9 +113,38 @@ function cupImg(n, k = 1) {
   for (const ch of txt) { if (ch === '.') { px(x, T + 6, ink); x += 2; continue; } [...CUP_DIG[+ch]].forEach((b, i) => { if (b === '1') px(x + i % 3, T + 2 + (i / 3 | 0), ink); }); x += 4; }
   return (_cups[key] = cv);
 }
-const itemImg = n => cupOf(n) ? cupImg(n) : n;
+// ตู้โชว์ถ้วย: drawn here (no sprite in the pack); shows the owner's 6 best cups, filled in automatically
+const MINI_CUP = ['kkkkkk', 'kAwABk', '.kABk.', '..kk..', '.kPPk.', '.kkkk.'];
+const CASE_PAL = { k: '#3a3a50', t: '#e4c181', T: '#cfa06c', b: '#c78c59', B: '#a85f46', i: '#6b5052', s: '#e0b870', g: '#a79796' };
+if (typeof MI_SZ !== 'undefined') MI_SZ.cupcase = [26, 30];
+function caseCups(p) {
+  const all = [...Object.keys(p.inv || {}).filter(n => p.inv[n] > 0), ...(p.room.items || []).map(it => it[0])].filter(cupOf);
+  return [...new Set(all)].sort((a, b) => cupOf(a).r - cupOf(b).r || cupOf(b).s.localeCompare(cupOf(a).s)).slice(0, 6);
+}
+const _cases = {};
+function caseImg(cs = [], k = 1) {
+  const key = cs.join() + '@' + k; if (_cases[key]) return _cases[key];
+  const W = 26, H = 30, cv = document.createElement('canvas'); cv.width = W * k; cv.height = H * k; const g = cv.getContext('2d');
+  const R = (x, y, w, h, c) => { g.fillStyle = c; g.fillRect(x * k, y * k, w * k, h * k); };
+  R(0, 0, W, H, CASE_PAL.k); R(1, 1, W - 2, 3, CASE_PAL.t); R(1, 4, W - 2, 1, CASE_PAL.T);           // top board
+  R(1, 5, W - 2, H - 6, CASE_PAL.b); R(1, 5, 1, H - 6, CASE_PAL.B); R(W - 2, 5, 1, H - 6, CASE_PAL.B); // sides
+  R(3, 6, W - 6, 8, CASE_PAL.i); R(3, 17, W - 6, 8, CASE_PAL.i);                                      // two compartments
+  R(2, 14, W - 4, 2, CASE_PAL.s); R(2, 25, W - 4, 2, CASE_PAL.s); R(2, 16, W - 4, 1, CASE_PAL.B);      // shelves
+  R(3, 6, 1, 3, '#8a7476'); R(3, 17, 1, 3, '#8a7476');                                                 // glass glint
+  R(2, H - 2, 3, 1, CASE_PAL.k); R(W - 5, H - 2, 3, 1, CASE_PAL.k);
+  cs.slice(0, 6).forEach((n, i) => { const c = cupOf(n); if (!c) return; const [A, B] = CUP_COL[c.r], pal = { k: '#2b2140', w: '#fff', A, B, P: CUP_RIB[+c.s.slice(4, 6) - 1] };
+    const ox = 3 + (i % 3) * 7 + 1, oy = i < 3 ? 8 : 19;
+    MINI_CUP.forEach((row, y) => [...row].forEach((ch, x) => { if (ch !== '.') R(ox + x, oy + y, 1, 1, pal[ch]); })); });
+  return (_cases[key] = cv);
+}
+const drawnItem = n => n === 'cupcase' || !!cupOf(n) || (typeof SX !== 'undefined' && !!SX[n]);
+const itemCanvas = (n, k = 1, cs = []) => n === 'cupcase' ? caseImg(cs, k) : SX[n] ? sxImg(n, k) : cupImg(n, k);
+const itemImg = (n, room) => drawnItem(n) ? itemCanvas(n, 1, (room && room.cs) || []) : n;
 function itemLabel(n) {
+  if (typeof SX !== 'undefined' && SX[n]) return SX[n][0] + ' (ของรางวัลบันไดออฟฟิศ)';
+  if (n === 'cupcase') return '🏆 ตู้โชว์ถ้วย (โชว์ถ้วยดีที่สุด 6 ใบของคุณเอง)';
   const c = cupOf(n); if (!c) return n;
+  if (c.g === 'office') return `🪜 ถ้วยทีมออฟฟิศ · ${seasonName(c.s)}`;
   if (c.g === 'season') return `${['', '🏆 ถ้วยทอง', '🏆 ถ้วยเงิน', '🏆 ถ้วยทองแดง'][c.r]} ภารกิจฤดูกาล · ${seasonName(c.s)}`;
   const G = typeof GAMES !== 'undefined' && GAMES.find(x => x.id === c.g);
   return `${['', '🥇', '🥈', '🥉'][c.r]} ${G ? G.title : c.g} · ฤดูกาล ${seasonName(c.s)}`;
@@ -126,18 +155,140 @@ function claimCups() {
   loadOnline().then(async O => {
     const done = store.get('cupsDone', []), cur = O.buckets().m, todo = [];
     let s = cur; for (let i = 0; i < 3; i++) { const y = +s.slice(0, 4), m = +s.slice(4, 6); s = m === 1 ? `${y - 1}12` : `${y}${String(m - 1).padStart(2, '0')}`; if (s >= CUP_FIRST && !done.includes(s)) todo.push(s); }
+    let last = null;
     for (const ss of todo.reverse()) {
+      const rec = await O.closeSeason(ss).catch(() => null);
+      if (rec) postRecap(O, ss, rec);
       const won = await O.trophies(O.nameKey(nm), ss);
-      const p = Prog.get(); won.forEach(w => { const n = `cup${w.r}.${w.g}.${ss}`; p.inv[n] = (p.inv[n] || 0) + 1; });
-      if (won.length) Prog.put(p);
+      // office ladder: each tier the office reached gives its item to everyone who played that tier's minimum themselves
+      const L = await O.ladder(ss), mineG = Ladder.mine(O, L), tiers = LADDER.filter(([need]) => L.total >= need).length;
+      const prizes = LADDER.map(([need, min], i) => L.total >= need && mineG >= min ? ladderPrize(ss, i) : null).filter(Boolean);
+      const p = Prog.get(); [...won.map(w => `cup${w.r}.${w.g}.${ss}`), ...prizes.filter(n => !n.startsWith('acc:'))].forEach(n => { p.inv[n] = (p.inv[n] || 0) + 1; });
+      Prog.put(p);
+      prizes.filter(n => n.startsWith('acc:')).forEach(n => { if (typeof Wardrobe !== 'undefined' && ACC[n.slice(4)]) Wardrobe.give(n.slice(4)); });
       store.set('cupsDone', store.get('cupsDone', []).concat(ss));
-      if (!won.length) continue;
-      if (typeof Stats !== 'undefined') Stats.econ('cup', won.length);
-      toast(`🏆 ได้ถ้วยฤดูกาล ${seasonName(ss)} ${won.length} ใบ! ไปวางในห้องได้เลย`);
-      O.pushFeed(`🏆 ${nm} ได้ถ้วยฤดูกาล ${seasonName(ss)}: ${won.map(w => itemLabel(`cup${w.r}.${w.g}.${ss}`).split(' · ')[0]).join(', ')}`, nm, myAva());
+      last = { ss, won, prizes, mineG, tiers, total: L.total };
+      if (typeof Stats !== 'undefined') { if (won.length) Stats.econ('cup', won.length); if (prizes.length) Stats.econ('ladder_item', prizes.length); }
+      if (won.length) O.pushFeed(`🏆 ${nm} ได้ถ้วยฤดูกาล ${seasonName(ss)}: ${won.map(w => itemLabel(`cup${w.r}.${w.g}.${ss}`).split(' · ')[0]).join(', ')}`, nm, myAva());
     }
+    if (last) Fame.recap(last);
   }).catch(() => {});
 }
+
+/* ---------- office ladder: everyone's finished games this month add up; each tier reached gives a seasonal item
+   to everyone who played at least that tier's own-game minimum (decorations + clothing, themed per month) ---------- */
+const LADDER = [[300, 3], [500, 5], [700, 8], [1000, 10]];   // [office games, your own games needed]
+const LADDER_SET = { '11': ['sx_krathong', 'acc:lotus', 'sx_lantern'], '12': ['sx_snowman', 'acc:santa', 'sx_xtree'] };
+const LADDER_ANY = ['jar_gold', 'mirror_gold', 'globe_gold'];   // months without a theme yet
+const ladderPrize = (ss, i) => i >= 3 ? `cup4.office.${ss}` : (LADDER_SET[ss.slice(4, 6)] || LADDER_ANY)[i];
+const prizeName = n => n.startsWith('acc:') ? (typeof ACC !== 'undefined' && ACC[n.slice(4)] ? '👕 ' + ACC[n.slice(4)][1] : n) : SX[n] ? SX[n][0] : itemLabel(n).split(' · ')[0];
+const prizeIcon = n => n.startsWith('acc:') ? (typeof Wardrobe !== 'undefined' ? Wardrobe.icon(n.slice(4)) : '') : drawnItem(n) ? itemCanvas(n, 4).toDataURL() : `assets/mi/${n}.png`;
+// seasonal decorations drawn here: name → [Thai name, kind, rows]  (draft art, pending review)
+const SX_PAL = { k: '#3b2a3f', g: '#3fae5a', G: '#23703e', y: '#ffd23f', n: '#ff8a1f', N: '#c25a10', r: '#e8434b', R: '#9e2233', b: '#4cc3ff', w: '#ffffff', W: '#dfe7f2',
+  s: '#c3ccd8', S: '#7d8798', C: '#5e3a22', p: '#ff8fb1', P: '#d9507e', l: '#bde67a', L: '#7fb33e' };
+const SX = {
+  sx_krathong: ['🪷 กระทง', 'f', ['.......y.......', '......yny......', '.......w.......', '.......w.......', '...kp.kwk.pk...', '..kpPkpwpkPpk..', '.kpPpPpPpPpPpk.',
+    'kLkpPpPpPpPpkLk', 'klLkkkkkkkkkLlk', '.klLlLlLlLlLlk.', '..kkkkkkkkkkk..']],
+  sx_lantern: ['🏮 โคมยี่เป็ง', 'w', ['....kk....', '....kk....', '..kkkkkk..', '.knnnnnnk.', 'knnyyyynnk', 'knyyyyyynk', 'knnyyyynnk', 'knnnnnnnnk', '.knnnnnnk.', '..kkkkkk..', '...kyyk...', '....yy....', '....yy....']],
+  sx_snowman: ['⛄ ตุ๊กตาหิมะ', 'f', ['....kkkk....', '...kkkkkk...', '..kkkkkkkk..', '...kWWWWk...', '..kWkWWkWk..', '..kWWnnWWk..', '...kWWWWk...', '..krrrrrrk..',
+    '.kWWWrrWWWk.', 'kWWWWkWWWWWk', 'kWWWWWWWWWWk', 'kWWWWkWWWWWk', '.kWWWWWWWWk.', '..kkkkkkkk..']],
+  sx_xtree: ['🎄 ต้นคริสต์มาส', 'f', ['.......y.......', '......yyy......', '.......y.......', '......kgk......', '.....kgggk.....', '....kgrgggk....', '.....kgggk.....',
+    '....kggggbk....', '...kgggggggk...', '..kgygggggrgk..', '....kgggggk....', '...kggggggygk..', '..kgrgggggggk..', '.kgggggbggggggk',
+    'kgggyggggggrggk', '.kkkkkkkkkkkkk.', '......kCk......', '......kCk......', '....kRRRRRk....', '....kRrrrRk....', '.....kRRRk.....']],
+};
+for (const [n, [, k, rows]] of Object.entries(SX)) { SHOP_KIND[n] = k; if (typeof MI_SZ !== 'undefined') MI_SZ[n] = [Math.max(...rows.map(r => r.length)), rows.length]; }
+const _sx = {};
+function sxImg(n, k = 1) {
+  const key = n + '@' + k; if (_sx[key]) return _sx[key];
+  const rows = SX[n][2], cv = document.createElement('canvas'); cv.width = Math.max(...rows.map(r => r.length)) * k; cv.height = rows.length * k; const g = cv.getContext('2d');
+  rows.forEach((row, y) => [...row].forEach((ch, x) => { if (ch !== '.') { g.fillStyle = SX_PAL[ch]; g.fillRect(x * k, y * k, k, k); } }));
+  return (_sx[key] = cv);
+}
+const prevSeason = s => { const y = +s.slice(0, 4), m = +s.slice(4, 6); return m === 1 ? `${y - 1}12` : `${y}${String(m - 1).padStart(2, '0')}`; };
+const Ladder = {
+  _c: null, _t: 0,
+  add() { loadOnline().then(O => { O.ladderAdd(myName(), typeof Stats !== 'undefined' ? Stats.aid() : ''); Ladder._c = null; }).catch(() => {}); },
+  get(force) { if (!force && Ladder._c && Date.now() - Ladder._t < 60000) return Ladder._c; Ladder._t = Date.now(); return (Ladder._c = loadOnline().then(O => O.ladder()).catch(() => ({ total: 0, rows: [] }))); },
+  next: t => LADDER.find(([need]) => t < need),
+  mine: (O, L) => L.rows.filter(r => r.k === O.nameKey(myName()) || r.k === 'a_' + (typeof Stats !== 'undefined' ? Stats.aid() : '')).reduce((t, r) => t + r.g, 0),
+  chip(el) { if (!el) return; Ladder.get().then(L => { const nx = Ladder.next(L.total); el.innerHTML = `🪜<span class="sea-l"> ออฟฟิศ</span> <b>${fmt(L.total)}/${fmt(nx ? nx[0] : LADDER[LADDER.length - 1][0])}</b>`; }); },
+  open() {
+    const ov = document.createElement('div'); ov.className = 'overlay';
+    ov.innerHTML = `<div class="panel popin season"><h2>🪜 บันไดออฟฟิศ</h2><p class="muted">⏳ กำลังโหลด…</p><div class="row"><button class="btn primary" data-k="close">ปิด</button></div></div>`;
+    ov.onclick = e => { if (e.target === ov) ov.remove(); }; ov.querySelector('[data-k=close]').onclick = () => ov.remove();
+    document.body.appendChild(ov); if (typeof Stats !== 'undefined') Stats.open('ladder');
+    Promise.all([Ladder.get(true), loadOnline()]).then(([L, O]) => {
+      const ss = O.buckets().m, me = Ladder.mine(O, L), top = LADDER[LADDER.length - 1][0], nx = Ladder.next(L.total);
+      ov.querySelector('.panel').innerHTML = `<h2>🪜 บันไดออฟฟิศ ${seasonName(ss)}</h2>
+        <p class="muted">ทุกเกมที่ใครก็ได้เล่นจบ นับรวมกันทั้งออฟฟิศ · ถึงขั้นไหน ทุกคนที่ช่วยเล่นได้ของขั้นนั้น</p>
+        <div class="lad-bar"><i style="width:${Math.min(100, L.total / top * 100)}%"></i>${LADDER.map(([need]) => `<span class="lad-tick${L.total >= need ? ' on' : ''}" style="left:${need / top * 100}%"><b>${need}</b></span>`).join('')}</div>
+        <p class="sea-next">ออฟฟิศเล่นแล้ว ${fmt(L.total)} เกม${nx ? ` · อีก ${fmt(nx[0] - L.total)} เกมถึงขั้น ${nx[0]}` : ' · ครบทุกขั้นแล้ว! 🎉'}</p>
+        <ul class="sea-list lad-list">${LADDER.map(([need, min], i) => { const n = ladderPrize(ss, i), office = L.total >= need, ok = me >= min;
+          return `<li class="${office && ok ? 'done' : ''}"><img class="pxi lad-ic" src="${prizeIcon(n)}" alt=""><span class="tx"><b>ขั้น ${i + 1} · ${need} เกม</b> → ${esc(prizeName(n))}<br><small>${ok ? '✅' : '⬜'} คุณต้องเล่นเองอย่างน้อย ${min} เกม${ok ? '' : ` (อีก ${min - me})`}</small></span><small>${office ? '✅ ถึงแล้ว' : `${fmt(L.total)}/${need}`}</small></li>`; }).join('')}</ul>
+        <p class="lad-me">เดือนนี้คุณเล่นไป <b>${me}</b> เกม</p>
+        <h4 class="sz-h">💪 คนขยันเดือนนี้</h4><ol class="rk-list">${L.rows.filter(r => r.n).slice(0, 8).map((r, i) => `<li><span class="pos">${['🥇', '🥈', '🥉'][i] || '#' + (i + 1)}</span><span class="nm">${esc(r.n)}</span><span class="sc">${r.g} เกม</span></li>`).join('') || '<li class="muted">ยังไม่มีใคร — เริ่มเลย!</li>'}</ol>
+        <p class="muted" style="font-size:12px">นับเกมเดี่ยวที่เล่นจบ + รอบปาร์ตี้ · ของรางวัลแจกวันที่ 1 ของเดือนถัดไป · ของแต่ละเดือนไม่ซ้ำกัน หมดเดือนแล้วไม่มีอีก</p>
+        <div class="row"><button class="btn" data-k="fame">📜 หอเกียรติยศ</button><button class="btn primary" data-k="close">ปิด</button></div>`;
+      ov.querySelector('[data-k=close]').onclick = () => ov.remove(); ov.querySelector('[data-k=fame]').onclick = () => { ov.remove(); Fame.open(); };
+    }).catch(() => { ov.querySelector('.muted').textContent = 'โหลดไม่ได้ (เน็ตหลุด?)'; });
+  },
+};
+
+/* ---------- hall of fame + season recap: one record per finished month at rooms/_fame/<yyyymm> ---------- */
+function postRecap(O, ss, rec) {
+  const lv = LADDER.filter(([need]) => rec.lad.t >= need).length;
+  O.pushFeed(`📜 จบฤดูกาล ${seasonName(ss)}: ออฟฟิศเล่นรวม ${fmt(rec.lad.t)} เกม (บันไดขั้น ${lv}/${LADDER.length})${rec.room ? ` · 🏠 ห้องยอดเยี่ยม: ${rec.room.n}` : ''}`);
+  const ch = Object.entries(rec.champ || {}).map(([g, c]) => `${c.n} (${(GAMES.find(x => x.id === g) || { title: g }).title})`);
+  if (ch.length) O.pushFeed(`👑 แชมป์ ${seasonName(ss)}: ${ch.join(', ')}`);
+}
+const Fame = {
+  _f: {},
+  of(ss) { return Fame._f[ss] || (Fame._f[ss] = loadOnline().then(O => O.fame(ss)).catch(() => null)); },
+  // chips for a room owner: champion titles + room of the month, from last month's record
+  async badges(O, k) {
+    const ss = prevSeason(O.buckets().m); if (ss < CUP_FIRST) return [];
+    const f = await Fame.of(ss); if (!f) return [];
+    const out = Object.entries(f.champ || {}).filter(([, c]) => c.k === k).map(([g]) => `👑 แชมป์${(GAMES.find(x => x.id === g) || { title: g }).title} ${seasonName(ss)}`);
+    if (f.room && f.room.k === k) out.unshift(`🏠 ห้องยอดเยี่ยม ${seasonName(ss)}`);
+    return out;
+  },
+  block(ss, f) {
+    const gn = g => { const G = GAMES.find(x => x.id === g); return G ? `${G.emoji} ${G.title}` : g; };
+    const lv = LADDER.filter(([need]) => (f.lad || {}).t >= need).length;
+    return `<div class="fame-s"><h3>${seasonName(ss)}</h3>
+      <p>🪜 ออฟฟิศเล่นรวม <b>${fmt((f.lad || {}).t || 0)}</b> เกม · บันไดขั้น ${lv}/${LADDER.length}${(f.lad && f.lad.top || []).length ? ` · 💪 ${f.lad.top.map(x => `${esc(x.n)} ${x.g}`).join(', ')}` : ''}</p>
+      ${f.room ? `<p>🏠 ห้องยอดเยี่ยม: <b>${esc(f.room.n)}</b> <small>(👍 ${f.room.c})</small></p>` : ''}
+      <div class="fame-ch">${Object.entries(f.champ || {}).map(([g, c]) => `<span class="soc-chip cup">👑 ${esc(c.n)} <small>${gn(g)}</small></span>`).join('') || '<span class="muted">ไม่มีแชมป์</span>'}</div></div>`;
+  },
+  open() {
+    const ov = document.createElement('div'); ov.className = 'overlay';
+    ov.innerHTML = `<div class="panel popin season"><h2>📜 หอเกียรติยศ</h2><div data-k="b"><p class="muted">⏳ กำลังโหลด…</p></div><div class="row"><button class="btn primary" data-k="close">ปิด</button></div></div>`;
+    ov.onclick = e => { if (e.target === ov) ov.remove(); }; ov.querySelector('[data-k=close]').onclick = () => ov.remove();
+    document.body.appendChild(ov); if (typeof Stats !== 'undefined') Stats.open('fame');
+    loadOnline().then(O => Promise.all([O.fameAll(), O.likeBoard(), O.listProfiles(60)])).then(([all, lk, profs]) => {
+      const nm = k => (profs.find(p => p.k === k) || {}).n || k;
+      const live = lk.slice(0, 3).map((r, i) => `${['🥇', '🥈', '🥉'][i]} ${esc(nm(r.k))} (👍 ${r.c})`).join(' · ');
+      const past = Object.keys(all).sort().reverse().map(ss => Fame.block(ss, all[ss])).join('');
+      ov.querySelector('[data-k=b]').innerHTML = `<div class="fame-s now"><h3>ลุ้นห้องยอดเยี่ยมเดือนนี้</h3><p>${live || '<span class="muted">ยังไม่มีใครได้ไลก์เดือนนี้ — ไปกด 👍 ให้ห้องเพื่อนได้ที่ตึกออฟฟิศ</span>'}</p></div>`
+        + (past || '<p class="muted">ยังไม่มีฤดูกาลที่จบ — ฤดูกาลแรกจบวันที่ 1 ธ.ค.</p>');
+    }).catch(() => { ov.querySelector('[data-k=b]').innerHTML = '<p class="muted">โหลดไม่ได้ (เน็ตหลุด?)</p>'; });
+  },
+  // shown once when a season you took part in ends: your rewards + the office's results
+  recap(r) {
+    const ov = document.createElement('div'); ov.className = 'overlay';
+    const mine = [...r.won.map(w => `cup${w.r}.${w.g}.${r.ss}`), ...r.prizes];
+    ov.innerHTML = `<div class="panel popin season recap"><h2>📜 จบฤดูกาล ${seasonName(r.ss)}</h2>
+      ${mine.length ? `<div class="sea-tiers recap-got">${mine.map(n => `<div class="sea-tier got"><img class="pxi" src="${prizeIcon(n)}" alt=""><small>${esc(prizeName(n))}</small></div>`).join('')}</div><p class="sea-next">ของแต่งอยู่ใน "ของของฉัน" · ชุดอยู่ใน "แต่งตัว"</p>` : ''}
+      <p>${r.prizes.length ? `คุณช่วยเล่น <b>${r.mineG}</b> เกม ได้ของรางวัลบันได ${r.prizes.length} ชิ้น` : r.tiers ? `เดือนนี้เล่นให้ถึง ${LADDER[0][1]} เกมขึ้นไป จะได้ของรางวัลบันไดด้วย` : 'ออฟฟิศยังไม่ถึงขั้นแรก เดือนนี้มาช่วยกันเล่น!'}</p>
+      <div data-k="f"></div>
+      <div class="row"><button class="btn" data-k="fame">📜 หอเกียรติยศ</button><button class="btn primary" data-k="close">เยี่ยม!</button></div></div>`;
+    ov.onclick = e => { if (e.target === ov) ov.remove(); }; ov.querySelector('[data-k=close]').onclick = () => ov.remove();
+    ov.querySelector('[data-k=fame]').onclick = () => { ov.remove(); Fame.open(); };
+    document.body.appendChild(ov);
+    if (mine.length) { const pn = ov.querySelector('.panel'), R = pn.getBoundingClientRect(); if (typeof domBurst === 'function') domBurst(pn, R.width / 2, 60, { n: 40, dist: 200, size: 9 }); }
+    Fame._f[r.ss] = null; Fame.of(r.ss).then(f => { const el = ov.querySelector('[data-k=f]'); if (f && el) el.innerHTML = Fame.block(r.ss, f).replace(/<h3>.*?<\/h3>/, ''); });
+  },
+};
 
 /* ---------- season challenges (POE-style): same list for everyone each month; 4 / 8 / 12 done = bronze / silver / gold cup ---------- */
 const SEASON_CH = [ // [id, emoji, text, goal, count(c)]  c = this month's counters
@@ -194,8 +345,9 @@ const Season = {
       <ul class="sea-list">${SEASON_CH.map(([, em, t, goal, f]) => { const v = Math.min(goal, f(s.c)), ok = v >= goal;
         return `<li class="${ok ? 'done' : ''}"><span class="em">${ok ? '✅' : em}</span><span class="tx">${t}<i class="sea-bar"><i style="width:${v / goal * 100}%"></i></i></span><small>${v}/${goal}</small></li>`; }).join('')}</ul>
       <p class="muted" style="font-size:12px">ติดท็อป 3 อันดับเดือนนี้ของเกมไหน ก็ได้ถ้วยเกมนั้นเพิ่มตอนสิ้นเดือน · ถ้วยเก่าเก็บไว้ในห้องได้ตลอด</p>
-      <div class="row"><button class="btn primary" data-k="close">ปิด</button></div></div>`;
+      <div class="row"><button class="btn" data-k="lad">🪜 บันไดออฟฟิศ</button><button class="btn" data-k="fame">📜 หอเกียรติยศ</button><button class="btn primary" data-k="close">ปิด</button></div></div>`;
     ov.onclick = e => { if (e.target === ov) ov.remove(); }; ov.querySelector('[data-k=close]').onclick = () => ov.remove();
+    ov.querySelector('[data-k=lad]').onclick = () => { ov.remove(); Ladder.open(); }; ov.querySelector('[data-k=fame]').onclick = () => { ov.remove(); Fame.open(); };
     document.body.appendChild(ov); if (typeof Stats !== 'undefined') Stats.open('season');
   },
 };
@@ -206,7 +358,7 @@ function drawRoom(ctx, room, extra = [], t = 0, pops = {}, tryFrom = Infinity) {
   const list = [];
   room.items.forEach((it, i) => {
     const [n, x, y, f] = it, k = SHOP_KIND[n] || 'f', cx = (x + cellsW(n) / 2) * RC, pop = pops[i] || 0, o = { flip: !!f, sx: 1 + pop * .25, sy: 1 - pop * .2, alpha: i >= tryFrom ? .78 : null };
-    const im = itemImg(n);
+    const im = itemImg(n, room);
     if (k === 'w') drawPixAt(ctx, im, cx, RTOP * RC - 6, 2, o);
     else if (k === 'r') drawPixAt(ctx, im, cx, (y + 1) * RC, 2, o);
     else list.push({ y: y + 1, d: () => drawPixAt(ctx, im, cx, (y + 1) * RC, 2, o) });
@@ -268,7 +420,7 @@ function officeMount(root, api) {
   const allItems = () => p.room.items.concat(trial);
   const skipIdx = () => moving >= 0 ? moving : movingT >= 0 ? p.room.items.length + movingT : undefined;
   const walker = roomWalker(p.who); walker.ctx = ctx;
-  const view = () => visit ? visit.room : { ...p.room, wall: tryStyle.wall || p.room.wall, floor: tryStyle.floor || p.room.floor, w: tryW || roomW(p.room) };
+  const view = () => visit ? visit.room : { ...p.room, cs: caseCups(p), wall: tryStyle.wall || p.room.wall, floor: tryStyle.floor || p.room.floor, w: tryW || roomW(p.room) };
   function save() { Prog.put(p); }
   function hud() {
     p = Prog.get(); const lvTxt = `Lv ${p.lv} · ${Prog.title(p.lv)}`;
@@ -288,7 +440,7 @@ function officeMount(root, api) {
       const own = k === mine;
       if (!own && visit) { O.visitRoom(k, nm, typeof Stats !== 'undefined' ? Stats.aid() : '').catch(() => {}); if (typeof Stats !== 'undefined') Stats.econ('visit'); }
       el.innerHTML = '<p class="muted">⏳</p>';
-      return Promise.all([O.roomVisits(k, own), O.trophies(k)]).then(([v, tr]) => {
+      return Promise.all([O.roomVisits(k, own), O.trophies(k)]).then(async ([v, tr]) => {
         if (socialKey !== k) return;
         if (own) store.set('visSeen', Date.now());
         myStick = nm && !own ? ((v.notes.find(x => x.k === O.nameKey(nm)) || {}).s || null) : null;
@@ -297,11 +449,12 @@ function officeMount(root, api) {
         const season = seasonName(O.buckets().m);
         const cups = tr.length ? `<span class="muted">ลุ้นถ้วย ${season}:</span>` + tr.slice(0, 6).map(c => `<span class="soc-chip cup">${medal[c.r]} ${esc(gname(c.g))}</span>`).join('')
           : own ? `<span class="muted">ติดท็อป 3 เกมไหนก็ได้ในเดือนนี้ = ได้ถ้วยเพิ่ม</span>` : '';
+        const fb = (await Fame.badges(O, k)).map(t => `<span class="soc-chip cup">${esc(t)}</span>`).join('');
         const sea = own ? `<button class="btn sm sea-btn" data-sea>🏆 ภารกิจฤดูกาล ${season} <b>${Season.done(Season.get())}/${SEASON_CH.length}</b></button>` : '';
         const notes = v.notes.slice(0, 8).map(x => { const s = stickerOf(x.s); return s ? `<span class="soc-chip note">${s[1]} ${s[2]} <small>· ${esc(x.n || '?')}</small></span>` : ''; }).join('');
         const pick = !own && visit ? (nm ? `<div class="stick-row"><span class="muted">ทิ้งโน้ตไว้:</span>${STICKERS.map(([id, e, t]) => `<button class="btn sm${id === myStick ? ' on' : ''}" data-st="${id}" title="${t}">${e} ${t}</button>`).join('')}</div>`
           : '<p class="muted">ตั้งชื่อเล่นที่หน้าแรกก่อน ถึงจะทิ้งโน้ตให้เพื่อนได้</p>') : '';
-        el.innerHTML = `<div class="soc-line">${sea}<span class="soc-chip">👀 เยี่ยมชมวันนี้ <b>${v.today}</b> · 7 วัน <b>${v.week}</b></span>${cups}</div>
+        el.innerHTML = `<div class="soc-line">${sea}${fb}<span class="soc-chip">👀 เยี่ยมชมวันนี้ <b>${v.today}</b> · 7 วัน <b>${v.week}</b></span>${cups}</div>
           ${notes ? `<div class="soc-line">${notes}</div>` : own ? '<p class="muted">ยังไม่มีใครทิ้งโน้ต · ชวนเพื่อนมาดูห้องได้จากตึกออฟฟิศ</p>' : ''}${pick}`;
         const sb = el.querySelector('[data-sea]'); if (sb) sb.onclick = () => Season.open();
         el.querySelectorAll('[data-st]').forEach(b => b.onclick = () => {
@@ -347,7 +500,7 @@ function officeMount(root, api) {
   function cancelPlace() { if (placing && moving < 0 && !placingTrial) p.inv[placing] = (p.inv[placing] || 0) + 1; placing = null; moving = -1; movingT = -1; placingTrial = false; save(); tools(); list(); }
   function startPlace(n) { if (p.inv[n] > 0) { p.inv[n]--; if (!p.inv[n]) delete p.inv[n]; } placing = n; moving = -1; movingT = -1; placingTrial = false; sel = -1; selT = -1; save(); tools(); list(); }
   function startTry(n) { placing = n; placingTrial = true; moving = -1; movingT = -1; sel = -1; selT = -1; tools(); }
-  const icon = (n, h = 34) => cupOf(n) ? `<img class="pxi" src="${cupImg(n, 4).toDataURL()}" alt="" title="${esc(itemLabel(n))}" style="max-height:${h}px">`
+  const icon = (n, h = 34) => drawnItem(n) ? `<img class="pxi" src="${itemCanvas(n, 4, caseCups(p)).toDataURL()}" alt="" title="${esc(itemLabel(n))}" style="max-height:${h}px">`
     : `<img class="pxi" src="assets/mi/${n}.png" alt="" style="max-height:${h}px;max-width:${h * 1.6}px">`;
   function list() {
     const tabs = [['shop', '🛒 ร้านค้า'], ['inv', '📦 ของของฉัน'], ['style', '🎨 ห้อง/ผนัง'], ['friends', '👥 ห้องเพื่อน']];
@@ -392,7 +545,7 @@ function officeMount(root, api) {
   function like() {
     const nm = myName(); if (!nm) { toast('ตั้งชื่อเล่นที่หน้าแรกก่อนนะ'); return; }
     if (visit.n.trim().toLowerCase() === nm.trim().toLowerCase()) { toast('กดถูกใจห้องตัวเองไม่ได้ 😆'); return; }
-    loadOnline().then(O => O.like(visit.k, nm).then(first => { if (first && typeof Awards !== 'undefined') Awards.add('like', 1, visit.n); if (first) Season.add('like'); return O.likeCount(visit.k); })).then(n => { const s = q('likes'); if (s) s.textContent = `(${n})`; toast('👍 ส่งกำลังใจแล้ว!'); }).catch(() => {});
+    loadOnline().then(O => O.likeMonth(visit.k, nm).then(() => O.like(visit.k, nm)).then(first => { if (first && typeof Awards !== 'undefined') Awards.add('like', 1, visit.n); if (first) Season.add('like'); return O.likeCount(visit.k); })).then(n => { const s = q('likes'); if (s) s.textContent = `(${n})`; toast('👍 ส่งกำลังใจแล้ว!'); }).catch(() => {});
     for (let i = 0; i < 6; i++) fx.burst(RW * RC / 2, RROWS * RC / 2, { n: 3, colors: [PAL.pink, '#fff'], speed: 220, grav: -60, size: 7, shape: 'star', life: 1 });
     api.sfx('good');
   }
@@ -400,8 +553,8 @@ function officeMount(root, api) {
   cv.addEventListener('pointermove', e => { hover = cellAt(e); });
   cv.addEventListener('pointerleave', () => { hover = null; });
   cv.addEventListener('pointerdown', e => {
-    if (visit) { const c = cellAt(e), it = [...visit.room.items].reverse().find(([n, x, y]) => cupOf(n) && c.x >= x && c.x < x + cellsW(n) && c.y >= y - 1 && c.y <= y);
-      if (it) toast(itemLabel(it[0])); return; }
+    if (visit) { const c = cellAt(e), it = [...visit.room.items].reverse().find(([n, x, y]) => drawnItem(n) && c.x >= x && c.x < x + cellsW(n) && c.y >= y - 1 && c.y <= y);
+      if (it) toast(it[0] === 'cupcase' ? ((visit.room.cs || []).map(n => itemLabel(n).split(' · ')[0]).join(' · ') || 'ตู้ยังว่างอยู่') : itemLabel(it[0])); return; }
     const c = cellAt(e); hover = c;
     if (placing) {
       const k = SHOP_KIND[placing] || 'f', w = cellsW(placing), x = Math.max(0, Math.min(RW - w, c.x - Math.floor((w - 1) / 2))), y = k === 'w' ? 0 : c.y;
@@ -429,7 +582,7 @@ function officeMount(root, api) {
       const k = SHOP_KIND[placing] || 'f', w = cellsW(placing), x = Math.max(0, Math.min(RW - w, hover.x - Math.floor((w - 1) / 2))), y = k === 'w' ? 0 : hover.y, ok = roomFits({ w: view().w, items: allItems() }, placing, x, y, skipIdx());
       extra.push({ y: (k === 'w' ? 0 : y + 1) + .02, d: () => {
         ctx.fillStyle = ok ? 'rgba(33,192,122,.35)' : 'rgba(226,48,48,.35)'; ctx.fillRect(x * RC, (k === 'w' ? 0 : y) * RC, w * RC, (k === 'w' ? RTOP : 1) * RC);
-        drawPixAt(ctx, itemImg(placing), (x + w / 2) * RC, k === 'w' ? RTOP * RC - 6 : (y + 1) * RC, 2, { alpha: .75 }); } });
+        drawPixAt(ctx, itemImg(placing, view()), (x + w / 2) * RC, k === 'w' ? RTOP * RC - 6 : (y + 1) * RC, 2, { alpha: .75 }); } });
     }
     const real = visit ? room.items : p.room.items.filter((_, i) => i !== moving), tr = visit ? [] : trial.filter((_, i) => i !== movingT);
     drawRoom(ctx, { ...room, items: real.concat(tr) }, extra, t, pops, real.length);

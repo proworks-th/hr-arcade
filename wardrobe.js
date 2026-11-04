@@ -19,9 +19,12 @@ const ACC = {
   beanie:  ['h', 'หมวกไหมพรม', 0, ['.....kk.....', '....kwwk....', '...kkkkkk...', '..kbbbbbbk..', '.kbbbbbbbbk.', '.kBBBBBBBBk.', '.kkkkkkkkkk.'], 4],
   sprout:  ['h', 'ต้นอ่อนบนหัว', 0, ['.kk..kk.', 'kggkkggk', '.kGkkGk.', '...kk...', '...kk...'], 1],
   bunny:   ['h', 'หูกระต่าย', 0, ['.kk....kk.', 'kmmk..kmmk', 'kmpk..kpmk', 'kmpk..kpmk', 'kmpk..kpmk', 'kmmk..kmmk', '.kmk..kmk.'], 2],
+  lotus:   ['h', 'ปิ่นดอกบัว', 0, ['...kpk...', '.k.kpk.k.', 'kpkpPpkpk', '.kpPpPpk.', '..kgggk..'], 2, 4],
+  santa:   ['h', 'หมวกซานต้า', 0, ['......kk......', '.....kwwk.....', '.....kkkk.....', '....krrrrk....', '...krrrrrrk...', '..krrrRrrrrk..', '..krrrrrrRrk..', '.kwwwwwwwwwwk.', '.kwwwwwwwwwwk.', '..kkkkkkkkkk..'], 4],
   tiara:   ['h', 'มงกุฎเพชร', 0, ['.....b.....', '....kbk....', '.k.kbwbk.k.', 'kbkkbbbkkbk', 'ksssssssssk', '.kkkkkkkkkk'], 2],
 };
 const ACC_GACHA = ['beanie', 'sprout', 'bunny', 'tiara'];
+const ACC_LADDER = { lotus: 'พ.ย.', santa: 'ธ.ค.' };   // only from the office ladder (office.js)
 // coin price of each level-gated accessory (buyable once your level reaches ACC[id][2]; gacha-only ones have none)
 const ACC_PRICE = { cap: 60, flower: 120, glasses: 180, phones: 250, party: 300, cat: 360, shades: 420, chef: 500, tophat: 600, laurel: 750, crown: 1000, halo: 1500 };
 // head-top row inside the 16×32 frame (adam is a pixel taller) and the 1-px bob of the idle / run cycles
@@ -92,7 +95,7 @@ const Wardrobe = (() => {
       const p = Prog.get(), a = st(p);
       const tile = id => { const A = ACC[id], has = owns(p, id), on = a[A[0]] === id, c = price(id), sell = !has && A[2] && p.lv >= A[2];
         if (sell) return `<button class="wd-it buy${p.coins < c ? ' short' : ''}"${p.coins < c ? ' disabled' : ''} data-a="${id}" title="${A[1]}"><img src="${icon(id)}" alt=""><small>${A[1]}</small><small><b>${p.coins < c ? `ขาด ${fmt(c - p.coins)} 🪙` : `🪙 ${fmt(c)} ซื้อ`}</b></small></button>`;
-        return `<button class="wd-it${has ? '' : ' no'}${on ? ' on' : ''}" data-a="${id}" title="${A[1]}"><img src="${icon(id)}" alt=""><small>${has ? A[1] : A[2] ? `🔒 Lv ${A[2]}` : '🎰 กาชา'}</small></button>`; };
+        return `<button class="wd-it${has ? '' : ' no'}${on ? ' on' : ''}" data-a="${id}" title="${A[1]}"><img src="${icon(id)}" alt=""><small>${has ? A[1] : A[2] ? `🔒 Lv ${A[2]}` : ACC_LADDER[id] ? '🪜 บันได' : '🎰 กาชา'}</small></button>`; };
       const ids = Object.keys(ACC).sort((x, y) => (ACC[x][2] || 99) - (ACC[y][2] || 99));
       B.innerHTML = `<p class="muted" style="margin:6px 0;text-align:center">🪙 ${fmt(p.coins)}</p><h3>ตัวละคร</h3><div class="wd-row">${MI_PEOPLE.map(w => `<button class="wd-who${p.who === w ? ' on' : ''}" data-w="${w}"><img src="assets/mi/${w}_down.png" alt="${w}"></button>`).join('')}</div>
         <h3>บนหัว</h3><div class="wd-grid"><button class="wd-it${a.h ? '' : ' on'}" data-a="" data-s="h"><span>✖</span><small>ไม่ใส่</small></button>${ids.filter(i => ACC[i][0] === 'h').map(tile).join('')}</div>
@@ -102,7 +105,7 @@ const Wardrobe = (() => {
         if (!id) { a2[b.dataset.s] = ''; Prog.put(p2); return draw(); }
         if (!owns(p2, id)) { const A = ACC[id];
           if (A[2] && p2.lv >= A[2]) { if (p2.coins < price(id)) toast(`เหรียญไม่พอ — ขาด ${fmt(price(id) - p2.coins)} 🪙`); else if (buy(id)) draw(); return; }
-          toast(A[2] ? `🔒 ถึง Lv ${A[2]} แล้วซื้อ ${A[1]} ได้` : `🎰 ${A[1]} มีเฉพาะในตู้กาชา`); return; }
+          toast(A[2] ? `🔒 ถึง Lv ${A[2]} แล้วซื้อ ${A[1]} ได้` : ACC_LADDER[id] ? `🪜 ${A[1]} ได้จากบันไดออฟฟิศเดือน ${ACC_LADDER[id]} เท่านั้น` : `🎰 ${A[1]} มีเฉพาะในตู้กาชา`); return; }
         a2[ACC[id][0]] = a2[ACC[id][0]] === id ? '' : id; Prog.put(p2); draw(); });
     }
     draw();
