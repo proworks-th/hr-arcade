@@ -19,8 +19,8 @@ const ACC = {
   beanie:  ['h', 'หมวกไหมพรม', 0, ['.....kk.....', '....kwwk....', '...kkkkkk...', '..kbbbbbbk..', '.kbbbbbbbbk.', '.kBBBBBBBBk.', '.kkkkkkkkkk.'], 4],
   sprout:  ['h', 'ต้นอ่อนบนหัว', 0, ['.kk..kk.', 'kggkkggk', '.kGkkGk.', '...kk...', '...kk...'], 1],
   bunny:   ['h', 'หูกระต่าย', 0, ['.kk....kk.', 'kmmk..kmmk', 'kmpk..kpmk', 'kmpk..kpmk', 'kmpk..kpmk', 'kmmk..kmmk', '.kmk..kmk.'], 2],
-  lotus:   ['h', 'ปิ่นดอกบัว', 0, ['...kpk...', '.k.kpk.k.', 'kpkpPpkpk', '.kpPpPpk.', '..kgggk..'], 2, 4],
-  santa:   ['h', 'หมวกซานต้า', 0, ['......kk......', '.....kwwk.....', '.....kkkk.....', '....krrrrk....', '...krrrrrrk...', '..krrrRrrrrk..', '..krrrrrrRrk..', '.kwwwwwwwwwwk.', '.kwwwwwwwwwwk.', '..kkkkkkkkkk..'], 4],
+  lotus:   ['h', 'ปิ่นดอกบัว', 0, ['....k....', '...kwk...', '.k.kpk.k.', 'kpkpppkRk', '.kpppRRk.', '..kgGGk..'], 2, 2],
+  santa:   ['h', 'หมวกซานต้า', 0, ['...........kk.', '..........kwsk', '......kkkkRkk.', '.....krrrRRk..', '....krrrrRk...', '...krrrrrRRk..', '..krrrrrrrRk..', '.kwwwwwwwwwssk', '.kwswwswwswssk', '..kkkkkkkkkkk.'], 4],
   tiara:   ['h', 'มงกุฎเพชร', 0, ['.....b.....', '....kbk....', '.k.kbwbk.k.', 'kbkkbbbkkbk', 'ksssssssssk', '.kkkkkkkkkk'], 2],
 };
 const ACC_GACHA = ['beanie', 'sprout', 'bunny', 'tiara'];
