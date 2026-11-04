@@ -92,17 +92,25 @@ function roomFits(room, n, x, y, skip) {
 const CUP_FIRST = '202611';                      // the first season (monthly boards started in Nov 2026)
 const CUP_COL = { 1: ['#ffd23f', '#c77d0a'], 2: ['#e6e9ee', '#8a93a3'], 3: ['#e0913b', '#8a5228'] };
 // ribbon colour per month, so each season's cups look different on the shelf
-const CUP_RIB = ['#4cc3ff', '#ff5c8a', '#21c07a', '#ff8fab', '#ffd23f', '#3a86ff', '#ff7f50', '#8338ec', '#2b9348', '#e0913b', '#c0392b', '#d62828'];
-const CUP_ART = ['..kkkkkkkk..', 'kkkAwAAABkkk', 'k.kAwAAABk.k', 'k.kAwAAABk.k', '.kkAAAAABkk.', '...kAAABk...', '....kABk....', '....kABk....', '...kkkkkk...', '..kPPPPPPk..', '..kPwPPPPk..', '..kkkkkkkk..'];
+const CUP_RIB = ['#3a86ff', '#e63972', '#1f9d63', '#f07b16', '#c99700', '#1597c4', '#7b3fe4', '#0f8f8f', '#9c5a2e', '#b5179e', '#d62828', '#23408e'];
+const CUP_ART = ['..kkkkkkkk..', 'kkkAwAAABkkk', 'k.kAwAAABk.k', 'k.kAwAAABk.k', '.kkAAAAABkk.', '...kAAABk...', '....kABk....', '....kABk....', '...kkkkkk...'];
+// 3x5 pixel digits for the season plaque ("11.69" = Nov 2569)
+const CUP_DIG = ['111101101101111', '010110010010111', '111001111100111', '111001111001111', '101101111001001', '111100111001111', '111100111101111', '111001010010010', '111101111101111', '111101111001111'];
 const TH_MON = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
 const cupOf = n => { const m = /^cup([123])\.([a-z0-9]+)\.(\d{6})$/.exec(n || ''); return m ? { r: +m[1], g: m[2], s: m[3] } : null; };
 const seasonName = s => `${TH_MON[+s.slice(4, 6) - 1]} ${(+s.slice(0, 4) + 543) % 100}`;
 const _cups = {};
 function cupImg(n, k = 1) {
   const key = n + '@' + k; if (_cups[key]) return _cups[key];
-  const c = cupOf(n), [A, B] = CUP_COL[c.r], pal = { k: '#2b2140', w: '#ffffff', A, B, P: CUP_RIB[+c.s.slice(4, 6) - 1] };
-  const cv = document.createElement('canvas'); cv.width = 12 * k; cv.height = CUP_ART.length * k; const g = cv.getContext('2d');
-  CUP_ART.forEach((row, y) => [...row].forEach((ch, x) => { if (ch !== '.') { g.fillStyle = pal[ch]; g.fillRect(x * k, y * k, k, k); } }));
+  const c = cupOf(n), [A, B] = CUP_COL[c.r], P = CUP_RIB[+c.s.slice(4, 6) - 1], pal = { k: '#2b2140', w: '#ffffff', A, B };
+  const W = 21, H = CUP_ART.length + 8, cv = document.createElement('canvas'); cv.width = W * k; cv.height = H * k; const g = cv.getContext('2d');
+  const px = (x, y, col) => { g.fillStyle = col; g.fillRect(x * k, y * k, k, k); };
+  CUP_ART.forEach((row, y) => [...row].forEach((ch, x) => { if (ch !== '.') px(x + 4, y, pal[ch]); }));
+  // plaque in the month colour with "MM.YY" (Thai year), so every season's cup is different
+  const T = CUP_ART.length; g.fillStyle = pal.k; g.fillRect(0, T * k, W * k, 8 * k); g.fillStyle = P; g.fillRect(k, (T + 1) * k, (W - 2) * k, 6 * k);
+  const ink = pal.w;
+  const txt = c.s.slice(4, 6) + '.' + String((+c.s.slice(0, 4) + 543) % 100).padStart(2, '0'); let x = 2;
+  for (const ch of txt) { if (ch === '.') { px(x, T + 6, ink); x += 2; continue; } [...CUP_DIG[+ch]].forEach((b, i) => { if (b === '1') px(x + i % 3, T + 2 + (i / 3 | 0), ink); }); x += 4; }
   return (_cups[key] = cv);
 }
 const itemImg = n => cupOf(n) ? cupImg(n) : n;
