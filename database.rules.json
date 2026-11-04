@@ -1,0 +1,17 @@
+{
+  "rules": {
+    "rooms": {
+      "$room": {
+        ".read": "$room !== '_usave'",
+        ".write": "$room !== '_usave'",
+        ".validate": "$room.length <= 16"
+      },
+      "_usave": {
+        "$uid": {
+          ".read": "auth != null && auth.uid === $uid",
+          ".write": "auth != null && auth.uid === $uid"
+        }
+      }
+    }
+  }
+}
