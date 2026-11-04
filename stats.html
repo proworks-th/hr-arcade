@@ -30,7 +30,7 @@ td.w.in i{background:var(--ok)}td.w.out i{background:var(--blue)}
 <div id="out"><p class="muted">กำลังโหลด…</p></div>
 </main>
 <script type="module">
-import {stats} from './online.js?v=17';
+import {stats} from './online.js?v=18';
 const NAMES={spot:'จับผิดภาพ',run:'วิ่งไปตอกบัตร',whack:'สายด่วนถล่มโต๊ะ',stack:'ซ้อนแฟ้มเสียดฟ้า',tetris:'Printer Tetris',stamp:'ปั๊มตรารัวๆ',
   barista:'บาริสต้าพักเที่ยง',toss:'ปากระดาษลงถัง',slack:'แอบเล่นมือถือ',conga:'ขบวนไปกินข้าว',dance:'Office Audition',
   party:'ปาร์ตี้ออนไลน์',party3d:'ห้องรวม 3D',office:'ออฟฟิศของฉัน',farm:'ฟาร์มดาดฟ้า'};
@@ -71,7 +71,7 @@ stats().then(all=>{
   const lvB=[[1,2],[3,5],[6,9],[10,14],[15,999]].map(([a,b])=>[b>99?`Lv ${a}+`:`Lv ${a}–${b}`,bs.filter(x=>x.l>=a&&x.l<=b).length]);
   const crops=Object.entries(eco).filter(([k])=>k.startsWith('h_')).map(([k,n])=>[CROP[k.slice(2)]||k.slice(2),n]).sort((a,b)=>b[1]-a[1]);
   const farmK=[['ปลูก',eco.plant],['เก็บเกี่ยว',eco.harvest],['กลายพันธุ์ ✨',eco.mutant],['ขาย (ชิ้น)',eco.sold],['ส่งโรงอาหาร (ชิ้น)',eco.canteen_n],['ส่งของขวัญ',eco.gift],['รดน้ำให้เพื่อน',eco.water]];
-  const ev=[['เลื่อนขั้น',eco.lvup],['ภารกิจสำเร็จ',eco.mission],['ทำภารกิจครบวัน',eco.streak],['หมุนกาชาฟรี',eco.pull_free],['หมุนกาชาจ่ายเหรียญ',eco.pull]];
+  const ev=[['เลื่อนขั้น',eco.lvup],['ภารกิจสำเร็จ',eco.mission],['ทำภารกิจครบวัน',eco.streak],['หมุนกาชาฟรี',eco.pull_free],['หมุนกาชาจ่ายเหรียญ',eco.pull],['เยี่ยมห้องเพื่อน',eco.visit],['ทิ้งโน้ตในห้องเพื่อน',eco.sticker]];
   const kv=l=>l.map(([k,n])=>`<tr><td>${k}</td><td>${n?fmt(n):'–'}</td></tr>`).join('');
   const econ=`<h2>💰 เหรียญ</h2>
     <p class="muted">เข้า − ออก = เหรียญที่ค้างอยู่ในมือคนเพิ่มขึ้น ถ้าบวกเยอะต่อเนื่อง แปลว่าของน่าซื้อน้อยไป${eSince?` · นับตั้งแต่${day(eSince)}`:' · ยังไม่มีข้อมูล (เพิ่งเริ่มนับ)'}</p>

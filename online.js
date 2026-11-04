@@ -79,6 +79,34 @@ export async function like(ownerKey,fromName){
   if((await get(r)).exists())return false;
   await set(r,1);return true;
 }
+// room visits + sticker notes: rooms/_visit/{ownerKey}/{day}/{visitorKey}={n:name,s:sticker,t}; the owner's read prunes days older than a week
+export function visitRoom(ownerKey,name,aid){
+  if(!FIREBASE_CONFIG||!ownerKey)return Promise.resolve();
+  const vk=name?nameKey(name):'a_'+String(aid||'x').slice(0,10),b=`rooms/_visit/${ownerKey}/${buckets().d}/${vk}`,D=db();
+  return Promise.all([set(ref(D,`${b}/n`),String(name||'').trim().slice(0,20)),set(ref(D,`${b}/t`),serverTimestamp())]);
+}
+export function stickRoom(ownerKey,name,s){
+  if(!FIREBASE_CONFIG||!ownerKey||!name)return Promise.resolve();
+  const b=`rooms/_visit/${ownerKey}/${buckets().d}/${nameKey(name)}`,D=db();
+  return Promise.all([set(ref(D,`${b}/n`),name.trim().slice(0,20)),set(ref(D,`${b}/s`),String(s).slice(0,10)),set(ref(D,`${b}/t`),serverTimestamp())]);
+}
+// → {today:n, week:n, notes:[{k,n,s,t}] newest first, all:[{k,n,t}]}
+export async function roomVisits(ownerKey,prune){
+  if(!FIREBASE_CONFIG||!ownerKey)return{today:0,week:0,notes:[],all:[]};
+  const s=(await get(ref(db(),`rooms/_visit/${ownerKey}`))).val()||{},cut=buckets(Date.now()-7*864e5).d,today=buckets().d,wk=new Set(),notes={},all=[];
+  for(const [d,vs] of Object.entries(s)){
+    if(d<cut){if(prune)remove(ref(db(),`rooms/_visit/${ownerKey}/${d}`));continue}
+    for(const [k,v] of Object.entries(vs||{})){wk.add(k);all.push({k,...v});if(v.s&&(!notes[k]||(v.t||0)>(notes[k].t||0)))notes[k]={k,...v}}
+  }
+  return{today:Object.keys(s[today]||{}).length,week:wk.size,notes:Object.values(notes).sort((a,b)=>(b.t||0)-(a.t||0)),all};
+}
+// top-3 places this player holds right now, this week and all time
+export async function trophies(k){
+  if(!FIREBASE_CONFIG||!k)return[];
+  const out=[];
+  await Promise.all(Object.keys(RANK_GAMES).flatMap(g=>['w','a'].map(p=>board(g,p).then(rows=>{const i=rows.findIndex(r=>r.k===k);if(i>=0&&i<3)out.push({g,p,r:i+1})}).catch(()=>{}))));
+  return out.sort((a,b)=>a.r-b.r||(a.p==='a'?-1:1));
+}
 export async function likeCount(ownerKey){if(!FIREBASE_CONFIG)return 0;const s=await get(ref(db(),`rooms/_like/${ownerKey}`));return Object.keys(s.val()||{}).length}
 
 /* ---------- ห้องรวม: chat, the shared party-game state and the server clock ---------- */

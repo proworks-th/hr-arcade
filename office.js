@@ -116,11 +116,27 @@ function roomWalker(who) {
   return a;
 }
 
+// sticker notes a visitor can leave on a coworker's room (fixed words, so nothing needs moderating)
+const STICKERS = [['cute', '😍', 'ห้องน่ารัก'], ['fire', '🔥', 'สุดยอด'], ['coffee', '☕', 'ขอมานั่งด้วย'], ['plant', '🌿', 'ต้นไม้สวย'], ['lol', '😂', 'ฮามาก'], ['clap', '👏', 'ปรบมือให้'], ['work', '💼', 'ตั้งใจทำงานนะ']];
+const stickerOf = id => STICKERS.find(s => s[0] === id);
+
+// on opening the site: who dropped by my room since I last looked (once per new batch)
+function roomNews() {
+  const nm = myName(); if (!nm) return;
+  loadOnline().then(O => O.roomVisits(O.nameKey(nm))).then(v => {
+    const seen = store.get('visSeen', 0), fresh = v.all.filter(x => (x.t || 0) > seen && x.n !== nm.trim().slice(0, 20));
+    if (!fresh.length) return;
+    const who = [...new Set(fresh.map(x => x.k))].length, notes = fresh.filter(x => x.s).length;
+    store.set('visSeen', Date.now());
+    toast(`🏠 เพื่อนแวะมาเยี่ยมห้อง ${who} คน${notes ? ` · โน้ต ${notes} อัน` : ''}`);
+  }).catch(() => {});
+}
+
 /* ---------- the "ออฟฟิศของฉัน" screen ---------- */
 function officeMount(root, api) {
   root.innerHTML = `<div class="hud office-hud"><span data-k="lv"></span><span class="xpbar" title="XP"><i data-k="xp"></i></span><span data-k="xpt" class="muted"></span><span>🪙 <b data-k="coins">0</b></span>
     <span data-k="who" class="office-who"></span></div>
-    <div class="office"><div class="office-room"><div class="office-tools" data-k="tools"></div></div>
+    <div class="office"><div class="office-room"><div class="office-tools" data-k="tools"></div><div class="room-social" data-k="social"></div></div>
     <div class="box office-side"><div class="rk-tabs" data-k="tabs"></div><div class="office-list" data-k="list"></div></div></div>`;
   const roomBox = root.querySelector('.office-room'), { cv, ctx } = g2canvas(roomBox, RCOLS * RC, RROWS * RC);
   // the canvas follows the width of the room on screen (yours, a tried-on expansion, or a coworker's)
@@ -148,7 +164,39 @@ function officeMount(root, api) {
     q('who').innerHTML = visit ? '' : MI_PEOPLE.map(w => `<button class="btn sm${w === p.who ? ' on' : ''}" data-who="${w}" title="ตัวละคร"><img class="pxi" src="assets/mi/${w}_down.png" height="24" alt="${w}"></button>`).join('');
     q('who').querySelectorAll('[data-who]').forEach(b => b.onclick = () => { p.who = b.dataset.who; walker.who = p.who; save(); hud(); });
   }
+  // visitors, trophies and sticker notes for the room on screen (refetched only when the room changes)
+  let socialKey = null, myStick = null;
+  function social(force) {
+    const el = q('social'); if (!el) return;
+    loadOnline().then(O => {
+      const nm = myName(), mine = nm ? O.nameKey(nm) : '', k = visit ? visit.k : mine;
+      if (!k) { el.innerHTML = '<p class="muted">ตั้งชื่อเล่นที่หน้าแรก ห้องของคุณจะขึ้นให้เพื่อนมาเยี่ยมได้</p>'; socialKey = null; return; }
+      if (k === socialKey && !force) return; socialKey = k;
+      const own = k === mine;
+      if (!own && visit) { O.visitRoom(k, nm, typeof Stats !== 'undefined' ? Stats.aid() : '').catch(() => {}); if (typeof Stats !== 'undefined') Stats.econ('visit'); }
+      el.innerHTML = '<p class="muted">⏳</p>';
+      return Promise.all([O.roomVisits(k, own), O.trophies(k)]).then(([v, tr]) => {
+        if (socialKey !== k) return;
+        if (own) store.set('visSeen', Date.now());
+        myStick = nm && !own ? ((v.notes.find(x => x.k === O.nameKey(nm)) || {}).s || null) : null;
+        const gname = g => { const G = typeof GAMES !== 'undefined' && GAMES.find(x => x.id === g); return G ? `${G.emoji} ${G.title}` : g; };
+        const medal = ['', '🥇', '🥈', '🥉'];
+        const cups = tr.length ? tr.slice(0, 6).map(c => `<span class="soc-chip cup">${medal[c.r]} ${esc(gname(c.g))} <small>${c.p === 'a' ? 'ตลอดกาล' : 'สัปดาห์นี้'}</small></span>`).join('')
+          : `<span class="muted">${own ? 'ติดท็อป 3 เกมไหนก็ได้ ถ้วยจะมาโชว์ตรงนี้' : 'ยังไม่มีถ้วย'}</span>`;
+        const notes = v.notes.slice(0, 8).map(x => { const s = stickerOf(x.s); return s ? `<span class="soc-chip note">${s[1]} ${s[2]} <small>· ${esc(x.n || '?')}</small></span>` : ''; }).join('');
+        const pick = !own && visit ? (nm ? `<div class="stick-row"><span class="muted">ทิ้งโน้ตไว้:</span>${STICKERS.map(([id, e, t]) => `<button class="btn sm${id === myStick ? ' on' : ''}" data-st="${id}" title="${t}">${e} ${t}</button>`).join('')}</div>`
+          : '<p class="muted">ตั้งชื่อเล่นที่หน้าแรกก่อน ถึงจะทิ้งโน้ตให้เพื่อนได้</p>') : '';
+        el.innerHTML = `<div class="soc-line"><span class="soc-chip">👀 เยี่ยมชมวันนี้ <b>${v.today}</b> · 7 วัน <b>${v.week}</b></span>${cups}</div>
+          ${notes ? `<div class="soc-line">${notes}</div>` : own ? '<p class="muted">ยังไม่มีใครทิ้งโน้ต · ชวนเพื่อนมาดูห้องได้จากตึกออฟฟิศ</p>' : ''}${pick}`;
+        el.querySelectorAll('[data-st]').forEach(b => b.onclick = () => {
+          const id = b.dataset.st; O.stickRoom(k, nm, id).then(() => { if (typeof Stats !== 'undefined') Stats.econ('sticker'); api.sfx('good');
+            fx.burst(RW * RC / 2, RROWS * RC / 2, { n: 16, colors: [PAL.pink, PAL.yel, '#fff'], speed: 220, grav: -60, size: 6, shape: 'star', life: .9 });
+            toast(`${stickerOf(id)[1]} ทิ้งโน้ตให้ ${visit ? visit.n : ''} แล้ว`); social(true); }).catch(() => toast('ส่งไม่สำเร็จ (เน็ตหลุด?)')); });
+      });
+    }).catch(() => { el.innerHTML = ''; });
+  }
   function tools() {
+    social();
     const el = q('tools');
     if (visit) { el.innerHTML = `<button class="btn primary" data-a="like">👍 ถูกใจห้องนี้ <span data-k="likes"></span></button><button class="btn" data-a="back">🏠 กลับห้องฉัน</button>`;
       el.querySelector('[data-a=back]').onclick = () => { visit = null; tab = 'friends'; hud(); tools(); list(); };

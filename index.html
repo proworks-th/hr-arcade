@@ -289,6 +289,11 @@ button.pk:hover{transform:translateY(-2px)}div.pk{cursor:default}.pk b{font-size
 @media (max-width:820px){.office{grid-template-columns:1fr}}
 .office .g2box canvas{width:min(100%,calc((100dvh - var(--chrome) - 70px) * var(--ar)))}
 .office-tools{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:center;margin-top:10px;min-height:44px}
+.room-social{margin-top:8px;display:grid;gap:6px;justify-items:center;text-align:center}
+.room-social .soc-line,.room-social .stick-row{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;align-items:center}
+.soc-chip{font-size:13px;background:#fff;border:2px solid var(--line);border-radius:999px;padding:3px 10px;white-space:nowrap}
+.soc-chip small{color:var(--muted)}.soc-chip.cup{background:#fff6d6;border-color:#f2d27a}.soc-chip.note{background:#ffe9f1;border-color:#f7b9cf}
+.stick-row .btn.on{outline:3px solid var(--pri)}
 .office-hud .xpbar{width:160px}.office-who{display:flex;gap:4px;margin-left:auto}
 .office-side{max-height:calc(100dvh - 190px);overflow:auto}
 .shop-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(74px,1fr));gap:8px;margin-top:10px}
@@ -494,7 +499,7 @@ button.pk:hover{transform:translateY(-2px)}div.pk{cursor:default}.pk b{font-size
 <div id="boss" hidden></div>
 
 <script src="solo-games.js?v=10"></script>
-<script src="office.js?v=11"></script>
+<script src="office.js?v=12"></script>
 <script src="wardrobe.js?v=4"></script>
 <script src="gacha.js?v=4"></script>
 <script src="hubroom.js?v=8"></script>
@@ -547,7 +552,7 @@ $('#muteBtn').onclick=()=>{muted=!muted;store.set('muted',muted);renderMute()};
 
 /* ---------- online services (online.js, Firebase): ranking, presence, feed ---------- */
 let onlineMod=null;
-const loadRank=()=>onlineMod||(onlineMod=import('./online.js?v=17'));
+const loadRank=()=>onlineMod||(onlineMod=import('./online.js?v=18'));
 const loadOnline=loadRank;
 const PIX_AVAS=['p_office','p_woffice','p_whealth','p_tech','p_cat','p_dog'];
 const myAva=()=>{const a=store.get('partyAva','p_office');return PIX_AVAS.includes(a)?a:'p_office'};
@@ -1441,7 +1446,7 @@ function renderHub(){
 }
 renderHub();
 onboarding();
-Cloud.boot();Stats.boot();
+Cloud.boot();Stats.boot();setTimeout(roomNews,2500);
 if(/[?&]join=room/.test(location.search)){Tower.setView('room');setTimeout(()=>{document.getElementById('room')?.scrollIntoView({behavior:'smooth',block:'center'});
   const G=HubRoom.G;toast(G.sc&&G.sc!=='lobby'&&G.sc!=='res'?'🎉 เพื่อนกำลังเล่นอยู่ในห้องรวม — รอบหน้าเล่นด้วยกัน!':'👋 เพื่อนชวนมาที่ห้องรวม ทักทายกันได้เลย')},600)}
 // test-mode hook for verify/run.py (absent for normal visits)
