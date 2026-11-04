@@ -6,11 +6,11 @@ import {FIREBASE_CONFIG} from './firebase-config.js';
 
 // max = sanity cap so an obviously broken score can't take the board
 export const RANK_GAMES={spot:{max:30000},run:{max:200000},whack:{max:6000},stack:{max:400},dance:{max:400000},tetris:{max:2000000},stamp:{max:200000},barista:{max:30000},toss:{max:3000},slack:{max:200000},conga:{max:100000}};
-export const PERIODS={d:'วันนี้',w:'สัปดาห์นี้',a:'ตลอดกาล'};
+export const PERIODS={d:'วันนี้',w:'สัปดาห์นี้',m:'เดือนนี้ 🏆',a:'ตลอดกาล'};   // m = trophy season (calendar month)
 const app=()=>getApps().find(a=>a.name==='hub')||initializeApp(FIREBASE_CONFIG,'hub'),db=()=>getDatabase(app());
 // Thai calendar: day resets at midnight ICT, week starts Monday
 const ymd=d=>`${d.getUTCFullYear()}${String(d.getUTCMonth()+1).padStart(2,'0')}${String(d.getUTCDate()).padStart(2,'0')}`;
-export function buckets(t=Date.now()){const d=new Date(t+7*3600e3),mon=new Date(d.getTime()-((d.getUTCDay()+6)%7)*864e5);return{d:ymd(d),w:ymd(mon),a:'all'}}
+export function buckets(t=Date.now()){const d=new Date(t+7*3600e3),mon=new Date(d.getTime()-((d.getUTCDay()+6)%7)*864e5);return{d:ymd(d),w:ymd(mon),m:ymd(d).slice(0,6),a:'all'}}
 export const nameKey=n=>(n||'').trim().toLowerCase().replace(/[.#$\[\]\/]/g,'_').slice(0,24)||'_';
 export const ready=()=>!!FIREBASE_CONFIG;
 
@@ -25,9 +25,10 @@ export async function submit(game,name,score,extra='',lv=0){
   }));
   return out;
 }
-export async function board(game,period){
+export function board(game,period){return boardAt(game,period,buckets()[period])}
+export async function boardAt(game,period,bk){
   if(!FIREBASE_CONFIG)return[];
-  const snap=await get(ref(db(),`rooms/_rank/${game}/${period}/${buckets()[period]}`));
+  const snap=await get(ref(db(),`rooms/_rank/${game}/${period}/${bk}`));
   return Object.entries(snap.val()||{}).map(([k,v])=>({k,...v})).sort((a,b)=>b.s-a.s||a.t-b.t);
 }
 
@@ -100,12 +101,12 @@ export async function roomVisits(ownerKey,prune){
   }
   return{today:Object.keys(s[today]||{}).length,week:wk.size,notes:Object.values(notes).sort((a,b)=>(b.t||0)-(a.t||0)),all};
 }
-// top-3 places this player holds right now, this week and all time
-export async function trophies(k){
+// top-3 places this player holds in a trophy season (default: the current month) → [{g,r}]
+export async function trophies(k,season=buckets().m){
   if(!FIREBASE_CONFIG||!k)return[];
   const out=[];
-  await Promise.all(Object.keys(RANK_GAMES).flatMap(g=>['w','a'].map(p=>board(g,p).then(rows=>{const i=rows.findIndex(r=>r.k===k);if(i>=0&&i<3)out.push({g,p,r:i+1})}).catch(()=>{}))));
-  return out.sort((a,b)=>a.r-b.r||(a.p==='a'?-1:1));
+  await Promise.all(Object.keys(RANK_GAMES).map(g=>boardAt(g,'m',season).then(rows=>{const i=rows.findIndex(r=>r.k===k);if(i>=0&&i<3)out.push({g,r:i+1})}).catch(()=>{})));
+  return out.sort((a,b)=>a.r-b.r);
 }
 export async function likeCount(ownerKey){if(!FIREBASE_CONFIG)return 0;const s=await get(ref(db(),`rooms/_like/${ownerKey}`));return Object.keys(s.val()||{}).length}
 

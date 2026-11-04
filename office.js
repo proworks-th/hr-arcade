@@ -88,15 +88,120 @@ function roomFits(room, n, x, y, skip) {
     if (k !== 'w' && it[2] !== y) return false;
     return x < it[1] + cellsW(it[0]) && it[1] < x + w; });
 }
+/* ---------- season trophies: top 3 of a game's monthly board become room items "cup<rank>.<game>.<yyyymm>" ---------- */
+const CUP_FIRST = '202611';                      // the first season (monthly boards started in Nov 2026)
+const CUP_COL = { 1: ['#ffd23f', '#c77d0a'], 2: ['#e6e9ee', '#8a93a3'], 3: ['#e0913b', '#8a5228'] };
+// ribbon colour per month, so each season's cups look different on the shelf
+const CUP_RIB = ['#4cc3ff', '#ff5c8a', '#21c07a', '#ff8fab', '#ffd23f', '#3a86ff', '#ff7f50', '#8338ec', '#2b9348', '#e0913b', '#c0392b', '#d62828'];
+const CUP_ART = ['..kkkkkkkk..', 'kkkAwAAABkkk', 'k.kAwAAABk.k', 'k.kAwAAABk.k', '.kkAAAAABkk.', '...kAAABk...', '....kABk....', '....kABk....', '...kkkkkk...', '..kPPPPPPk..', '..kPwPPPPk..', '..kkkkkkkk..'];
+const TH_MON = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+const cupOf = n => { const m = /^cup([123])\.([a-z0-9]+)\.(\d{6})$/.exec(n || ''); return m ? { r: +m[1], g: m[2], s: m[3] } : null; };
+const seasonName = s => `${TH_MON[+s.slice(4, 6) - 1]} ${(+s.slice(0, 4) + 543) % 100}`;
+const _cups = {};
+function cupImg(n, k = 1) {
+  const key = n + '@' + k; if (_cups[key]) return _cups[key];
+  const c = cupOf(n), [A, B] = CUP_COL[c.r], pal = { k: '#2b2140', w: '#ffffff', A, B, P: CUP_RIB[+c.s.slice(4, 6) - 1] };
+  const cv = document.createElement('canvas'); cv.width = 12 * k; cv.height = CUP_ART.length * k; const g = cv.getContext('2d');
+  CUP_ART.forEach((row, y) => [...row].forEach((ch, x) => { if (ch !== '.') { g.fillStyle = pal[ch]; g.fillRect(x * k, y * k, k, k); } }));
+  return (_cups[key] = cv);
+}
+const itemImg = n => cupOf(n) ? cupImg(n) : n;
+function itemLabel(n) {
+  const c = cupOf(n); if (!c) return n;
+  if (c.g === 'season') return `${['', '🏆 ถ้วยทอง', '🏆 ถ้วยเงิน', '🏆 ถ้วยทองแดง'][c.r]} ภารกิจฤดูกาล · ${seasonName(c.s)}`;
+  const G = typeof GAMES !== 'undefined' && GAMES.find(x => x.id === c.g);
+  return `${['', '🥇', '🥈', '🥉'][c.r]} ${G ? G.title : c.g} · ฤดูกาล ${seasonName(c.s)}`;
+}
+// on opening the site: hand out cups for finished seasons I placed top 3 in (each season checked once)
+function claimCups() {
+  const nm = myName(); if (!nm) return;
+  loadOnline().then(async O => {
+    const done = store.get('cupsDone', []), cur = O.buckets().m, todo = [];
+    let s = cur; for (let i = 0; i < 3; i++) { const y = +s.slice(0, 4), m = +s.slice(4, 6); s = m === 1 ? `${y - 1}12` : `${y}${String(m - 1).padStart(2, '0')}`; if (s >= CUP_FIRST && !done.includes(s)) todo.push(s); }
+    for (const ss of todo.reverse()) {
+      const won = await O.trophies(O.nameKey(nm), ss);
+      const p = Prog.get(); won.forEach(w => { const n = `cup${w.r}.${w.g}.${ss}`; p.inv[n] = (p.inv[n] || 0) + 1; });
+      if (won.length) Prog.put(p);
+      store.set('cupsDone', store.get('cupsDone', []).concat(ss));
+      if (!won.length) continue;
+      if (typeof Stats !== 'undefined') Stats.econ('cup', won.length);
+      toast(`🏆 ได้ถ้วยฤดูกาล ${seasonName(ss)} ${won.length} ใบ! ไปวางในห้องได้เลย`);
+      O.pushFeed(`🏆 ${nm} ได้ถ้วยฤดูกาล ${seasonName(ss)}: ${won.map(w => itemLabel(`cup${w.r}.${w.g}.${ss}`).split(' · ')[0]).join(', ')}`, nm, myAva());
+    }
+  }).catch(() => {});
+}
+
+/* ---------- season challenges (POE-style): same list for everyone each month; 4 / 8 / 12 done = bronze / silver / gold cup ---------- */
+const SEASON_CH = [ // [id, emoji, text, goal, count(c)]  c = this month's counters
+  ['g5', '🎮', 'เล่นเกมเดี่ยวครบ 5 เกมต่างกัน', 5, c => (c.games || []).length],
+  ['g10', '🕹️', 'เล่นเกมเดี่ยวครบ 10 เกมต่างกัน', 10, c => (c.games || []).length],
+  ['r30', '🔁', 'เล่นจบ 30 รอบ', 30, c => c.g || 0],
+  ['r100', '💯', 'เล่นจบ 100 รอบ', 100, c => c.g || 0],
+  ['best', '📈', 'ทำสถิติใหม่ของตัวเอง 5 ครั้ง', 5, c => c.best || 0],
+  ['feat', '⭐', 'เล่นเกมแนะนำวันนี้ 7 ครั้ง', 7, c => c.feat || 0],
+  ['mis', '🎯', 'ทำภารกิจรายวันสำเร็จ 15 อัน', 15, c => c.mission || 0],
+  ['str', '🔥', 'ทำภารกิจครบทั้งวัน 5 วัน', 5, c => c.streak || 0],
+  ['party', '🎉', 'เล่นปาร์ตี้ในห้องรวม 3 รอบ', 3, c => c.party || 0],
+  ['vis', '👀', 'แวะเยี่ยมห้องเพื่อน 10 ครั้ง', 10, c => c.visit || 0],
+  ['stk', '💌', 'แปะสติกเกอร์ให้ห้องเพื่อน 5 ครั้ง', 5, c => c.sticker || 0],
+  ['like', '👍', 'ส่งกำลังใจให้ห้องเพื่อน 3 ห้อง', 3, c => c.like || 0],
+  ['deco', '🪑', 'ซื้อของแต่งห้อง 3 ชิ้น', 3, c => c.deco || 0],
+  ['lv', '⬆️', 'เลื่อนขั้น 2 ครั้ง', 2, c => c.lvup || 0],
+  ['farm', '🥕', 'เก็บผักในฟาร์ม 30 ต้น', 30, c => c.harvest || 0],
+  ['help', '💧', 'รดน้ำหรือส่งของขวัญให้เพื่อน 5 ครั้ง', 5, c => (c.water || 0) + (c.gift || 0)],
+];
+const SEASON_TIER = [[4, 3], [8, 2], [12, 1]];   // [challenges done, cup rank]
+const SEASON_KEYS = ['harvest', 'water', 'gift', 'lvup', 'mission', 'streak', 'visit', 'sticker'];   // Stats.econ keys that count
+const Season = {
+  now: () => new Date(Date.now() + 7 * 3600e3).toISOString().slice(0, 7).replace('-', ''),
+  get() { const s = store.get('season', null), m = Season.now(); return s && s.s === m ? s : { s: m, c: {}, got: [] }; },
+  ids: s => SEASON_CH.filter(([, , , goal, f]) => f(s.c) >= goal).map(x => x[0]),
+  done: s => Season.ids(s).length,
+  add(k, n = 1, gid) {
+    const s = Season.get(), before = Season.ids(s);
+    if (k === 'g' && gid && !(typeof GAMES !== 'undefined' && (GAMES.find(x => x.id === gid) || {}).online)) { const L = s.c.games || (s.c.games = []); if (!L.includes(gid)) L.push(gid); }
+    s.c[k] = (s.c[k] || 0) + n;
+    const nowIds = Season.ids(s), after = nowIds.length;
+    SEASON_CH.filter(x => nowIds.includes(x[0]) && !before.includes(x[0])).forEach(([, em, t]) => toast(`🏆 ภารกิจฤดูกาลสำเร็จ: ${em} ${t} (${after}/${SEASON_CH.length})`));
+    const won = SEASON_TIER.filter(([need, r]) => after >= need && !s.got.includes(r));
+    store.set('season', s);
+    if (won.length) {
+      const p = Prog.get(); won.forEach(([, r]) => { s.got.push(r); const nm = `cup${r}.season.${s.s}`; p.inv[nm] = (p.inv[nm] || 0) + 1; });
+      Prog.put(p); store.set('season', s);
+      if (typeof Stats !== 'undefined') Stats.econ('scup', won.length);
+      const lab = won.map(([, r]) => ['', 'ถ้วยทอง', 'ถ้วยเงิน', 'ถ้วยทองแดง'][r]).join(', ');
+      setTimeout(() => toast(`🏆 ได้${lab} ${seasonName(s.s)}! ไปวางในห้องได้`), 1200);
+      const me = myName(); if (me) loadOnline().then(O => O.pushFeed(`🏆 ${me} ได้${lab}ภารกิจฤดูกาล ${seasonName(s.s)}`, me, myAva())).catch(() => {});
+    }
+  },
+  econ(k, n) { if (SEASON_KEYS.includes(k)) Season.add(k, n); },
+  open() {
+    const s = Season.get(), d = Season.done(s), nx = SEASON_TIER.find(([need]) => d < need);
+    const [y, m] = [+s.s.slice(0, 4), +s.s.slice(4, 6)], left = Math.ceil((Date.UTC(m === 12 ? y + 1 : y, m % 12, 1) - 7 * 3600e3 - Date.now()) / 864e5);
+    const ov = document.createElement('div'); ov.className = 'overlay';
+    ov.innerHTML = `<div class="panel popin season"><h2>🏆 ภารกิจฤดูกาล ${seasonName(s.s)}</h2>
+      <p class="muted">ทำได้ ${d}/${SEASON_CH.length} · เหลืออีก ${left} วัน · ไม่ต้องทำครบทุกอัน เลือกที่ชอบได้เลย</p>
+      <div class="sea-tiers">${SEASON_TIER.map(([need, r]) => `<div class="sea-tier${s.got.includes(r) ? ' got' : ''}"><img class="pxi" src="${cupImg(`cup${r}.season.${s.s}`, 4).toDataURL()}" alt=""><b>${need} อัน</b><small>${s.got.includes(r) ? 'ได้แล้ว ✅' : ['', 'ถ้วยทอง', 'ถ้วยเงิน', 'ถ้วยทองแดง'][r]}</small></div>`).join('')}</div>
+      ${nx ? `<p class="sea-next">อีก ${nx[0] - d} อัน ได้${['', 'ถ้วยทอง', 'ถ้วยเงิน', 'ถ้วยทองแดง'][nx[1]]}</p>` : '<p class="sea-next">ได้ครบทั้ง 3 ใบแล้ว เก่งมาก! 🎉</p>'}
+      <ul class="sea-list">${SEASON_CH.map(([, em, t, goal, f]) => { const v = Math.min(goal, f(s.c)), ok = v >= goal;
+        return `<li class="${ok ? 'done' : ''}"><span class="em">${ok ? '✅' : em}</span><span class="tx">${t}<i class="sea-bar"><i style="width:${v / goal * 100}%"></i></i></span><small>${v}/${goal}</small></li>`; }).join('')}</ul>
+      <p class="muted" style="font-size:12px">ติดท็อป 3 อันดับเดือนนี้ของเกมไหน ก็ได้ถ้วยเกมนั้นเพิ่มตอนสิ้นเดือน · ถ้วยเก่าเก็บไว้ในห้องได้ตลอด</p>
+      <div class="row"><button class="btn primary" data-k="close">ปิด</button></div></div>`;
+    ov.onclick = e => { if (e.target === ov) ov.remove(); }; ov.querySelector('[data-k=close]').onclick = () => ov.remove();
+    document.body.appendChild(ov); if (typeof Stats !== 'undefined') Stats.open('season');
+  },
+};
+
 // draws a room (yours or a coworker's); extra = things to depth-sort in (avatar, ghost)
 function drawRoom(ctx, room, extra = [], t = 0, pops = {}, tryFrom = Infinity) {
   officeBG(ctx, roomW(room) * RC, RROWS * RC, RTOP * RC, { wall: room.wall, floor: room.floor, k: 2, calm: .1 });
   const list = [];
   room.items.forEach((it, i) => {
     const [n, x, y, f] = it, k = SHOP_KIND[n] || 'f', cx = (x + cellsW(n) / 2) * RC, pop = pops[i] || 0, o = { flip: !!f, sx: 1 + pop * .25, sy: 1 - pop * .2, alpha: i >= tryFrom ? .78 : null };
-    if (k === 'w') drawPixAt(ctx, n, cx, RTOP * RC - 6, 2, o);
-    else if (k === 'r') drawPixAt(ctx, n, cx, (y + 1) * RC, 2, o);
-    else list.push({ y: y + 1, d: () => drawPixAt(ctx, n, cx, (y + 1) * RC, 2, o) });
+    const im = itemImg(n);
+    if (k === 'w') drawPixAt(ctx, im, cx, RTOP * RC - 6, 2, o);
+    else if (k === 'r') drawPixAt(ctx, im, cx, (y + 1) * RC, 2, o);
+    else list.push({ y: y + 1, d: () => drawPixAt(ctx, im, cx, (y + 1) * RC, 2, o) });
   });
   list.push(...extra);
   list.sort((a, b) => a.y - b.y).forEach(o => o.d());
@@ -181,13 +286,16 @@ function officeMount(root, api) {
         myStick = nm && !own ? ((v.notes.find(x => x.k === O.nameKey(nm)) || {}).s || null) : null;
         const gname = g => { const G = typeof GAMES !== 'undefined' && GAMES.find(x => x.id === g); return G ? `${G.emoji} ${G.title}` : g; };
         const medal = ['', '🥇', '🥈', '🥉'];
-        const cups = tr.length ? tr.slice(0, 6).map(c => `<span class="soc-chip cup">${medal[c.r]} ${esc(gname(c.g))} <small>${c.p === 'a' ? 'ตลอดกาล' : 'สัปดาห์นี้'}</small></span>`).join('')
-          : `<span class="muted">${own ? 'ติดท็อป 3 เกมไหนก็ได้ ถ้วยจะมาโชว์ตรงนี้' : 'ยังไม่มีถ้วย'}</span>`;
+        const season = seasonName(O.buckets().m);
+        const cups = tr.length ? `<span class="muted">ลุ้นถ้วย ${season}:</span>` + tr.slice(0, 6).map(c => `<span class="soc-chip cup">${medal[c.r]} ${esc(gname(c.g))}</span>`).join('')
+          : own ? `<span class="muted">ติดท็อป 3 เกมไหนก็ได้ในเดือนนี้ = ได้ถ้วยเพิ่ม</span>` : '';
+        const sea = own ? `<button class="btn sm sea-btn" data-sea>🏆 ภารกิจฤดูกาล ${season} <b>${Season.done(Season.get())}/${SEASON_CH.length}</b></button>` : '';
         const notes = v.notes.slice(0, 8).map(x => { const s = stickerOf(x.s); return s ? `<span class="soc-chip note">${s[1]} ${s[2]} <small>· ${esc(x.n || '?')}</small></span>` : ''; }).join('');
         const pick = !own && visit ? (nm ? `<div class="stick-row"><span class="muted">ทิ้งโน้ตไว้:</span>${STICKERS.map(([id, e, t]) => `<button class="btn sm${id === myStick ? ' on' : ''}" data-st="${id}" title="${t}">${e} ${t}</button>`).join('')}</div>`
           : '<p class="muted">ตั้งชื่อเล่นที่หน้าแรกก่อน ถึงจะทิ้งโน้ตให้เพื่อนได้</p>') : '';
-        el.innerHTML = `<div class="soc-line"><span class="soc-chip">👀 เยี่ยมชมวันนี้ <b>${v.today}</b> · 7 วัน <b>${v.week}</b></span>${cups}</div>
+        el.innerHTML = `<div class="soc-line">${sea}<span class="soc-chip">👀 เยี่ยมชมวันนี้ <b>${v.today}</b> · 7 วัน <b>${v.week}</b></span>${cups}</div>
           ${notes ? `<div class="soc-line">${notes}</div>` : own ? '<p class="muted">ยังไม่มีใครทิ้งโน้ต · ชวนเพื่อนมาดูห้องได้จากตึกออฟฟิศ</p>' : ''}${pick}`;
+        const sb = el.querySelector('[data-sea]'); if (sb) sb.onclick = () => Season.open();
         el.querySelectorAll('[data-st]').forEach(b => b.onclick = () => {
           const id = b.dataset.st; O.stickRoom(k, nm, id).then(() => { if (typeof Stats !== 'undefined') Stats.econ('sticker'); api.sfx('good');
             fx.burst(RW * RC / 2, RROWS * RC / 2, { n: 16, colors: [PAL.pink, PAL.yel, '#fff'], speed: 220, grav: -60, size: 6, shape: 'star', life: .9 });
@@ -208,7 +316,7 @@ function officeMount(root, api) {
       el.querySelector('[data-a=move]').onclick = () => { movingT = selT; placing = it[0]; placingTrial = true; selT = -1; tools(); };
       el.querySelector('[data-a=rm]').onclick = () => { trial.splice(selT, 1); selT = -1; tools(); list(); };
       el.querySelector('[data-a=x]').onclick = () => { selT = -1; tools(); }; return; }
-    if (sel >= 0) { el.innerHTML = `<b>${p.room.items[sel][0]}</b><button class="btn sm" data-a="flip">↔ กลับด้าน</button><button class="btn sm" data-a="move">✥ ย้าย</button><button class="btn sm" data-a="store">📦 เก็บ</button><button class="btn sm" data-a="x">✖</button>`;
+    if (sel >= 0) { el.innerHTML = `<b>${esc(itemLabel(p.room.items[sel][0]))}</b><button class="btn sm" data-a="flip">↔ กลับด้าน</button><button class="btn sm" data-a="move">✥ ย้าย</button><button class="btn sm" data-a="store">📦 เก็บ</button><button class="btn sm" data-a="x">✖</button>`;
       el.querySelector('[data-a=flip]').onclick = () => { const it = p.room.items[sel]; it[3] = it[3] ? 0 : 1; pops[sel] = 1; save(); };
       el.querySelector('[data-a=move]').onclick = () => { moving = sel; placing = p.room.items[sel][0]; sel = -1; tools(); };
       el.querySelector('[data-a=store]').onclick = () => { const [n] = p.room.items.splice(sel, 1)[0]; p.inv[n] = (p.inv[n] || 0) + 1; sel = -1; save(); tools(); list(); };
@@ -221,7 +329,7 @@ function officeMount(root, api) {
   }
   function buyCart() {
     const c = cartCost(); if (c > p.coins) { toast(`เหรียญไม่พอ ขาดอีก 🪙 ${fmt(c - p.coins)} — เอาบางชิ้นออก หรือไปเล่นเกมก่อน`); domShake(q('tools'), 5); return; }
-    p = Prog.get(); p.coins -= c; typeof Stats !== 'undefined' && Stats.econ('out_furniture', c); p.room.items.push(...trial.map(it => it.slice()));
+    p = Prog.get(); p.coins -= c; typeof Stats !== 'undefined' && Stats.econ('out_furniture', c); Season.add('deco', trial.length); p.room.items.push(...trial.map(it => it.slice()));
     for (const [slot, n] of Object.entries(tryStyle)) { if (!p.styles.includes(n)) p.styles.push(n); p.room[slot] = n; }
     if (tryW) p.room.w = tryW;
     trial.forEach((it, i) => pops[p.room.items.length - trial.length + i] = 1);
@@ -231,7 +339,8 @@ function officeMount(root, api) {
   function cancelPlace() { if (placing && moving < 0 && !placingTrial) p.inv[placing] = (p.inv[placing] || 0) + 1; placing = null; moving = -1; movingT = -1; placingTrial = false; save(); tools(); list(); }
   function startPlace(n) { if (p.inv[n] > 0) { p.inv[n]--; if (!p.inv[n]) delete p.inv[n]; } placing = n; moving = -1; movingT = -1; placingTrial = false; sel = -1; selT = -1; save(); tools(); list(); }
   function startTry(n) { placing = n; placingTrial = true; moving = -1; movingT = -1; sel = -1; selT = -1; tools(); }
-  const icon = (n, h = 34) => `<img class="pxi" src="assets/mi/${n}.png" alt="" style="max-height:${h}px;max-width:${h * 1.6}px">`;
+  const icon = (n, h = 34) => cupOf(n) ? `<img class="pxi" src="${cupImg(n, 4).toDataURL()}" alt="" title="${esc(itemLabel(n))}" style="max-height:${h}px">`
+    : `<img class="pxi" src="assets/mi/${n}.png" alt="" style="max-height:${h}px;max-width:${h * 1.6}px">`;
   function list() {
     const tabs = [['shop', '🛒 ร้านค้า'], ['inv', '📦 ของของฉัน'], ['style', '🎨 ห้อง/ผนัง'], ['friends', '👥 ห้องเพื่อน']];
     q('tabs').innerHTML = tabs.map(([k, v]) => `<button class="btn sm${k === tab ? ' on' : ''}" data-t="${k}">${v}</button>`).join('');
@@ -275,7 +384,7 @@ function officeMount(root, api) {
   function like() {
     const nm = myName(); if (!nm) { toast('ตั้งชื่อเล่นที่หน้าแรกก่อนนะ'); return; }
     if (visit.n.trim().toLowerCase() === nm.trim().toLowerCase()) { toast('กดถูกใจห้องตัวเองไม่ได้ 😆'); return; }
-    loadOnline().then(O => O.like(visit.k, nm).then(first => { if (first && typeof Awards !== 'undefined') Awards.add('like', 1, visit.n); return O.likeCount(visit.k); })).then(n => { const s = q('likes'); if (s) s.textContent = `(${n})`; toast('👍 ส่งกำลังใจแล้ว!'); }).catch(() => {});
+    loadOnline().then(O => O.like(visit.k, nm).then(first => { if (first && typeof Awards !== 'undefined') Awards.add('like', 1, visit.n); if (first) Season.add('like'); return O.likeCount(visit.k); })).then(n => { const s = q('likes'); if (s) s.textContent = `(${n})`; toast('👍 ส่งกำลังใจแล้ว!'); }).catch(() => {});
     for (let i = 0; i < 6; i++) fx.burst(RW * RC / 2, RROWS * RC / 2, { n: 3, colors: [PAL.pink, '#fff'], speed: 220, grav: -60, size: 7, shape: 'star', life: 1 });
     api.sfx('good');
   }
@@ -283,7 +392,9 @@ function officeMount(root, api) {
   cv.addEventListener('pointermove', e => { hover = cellAt(e); });
   cv.addEventListener('pointerleave', () => { hover = null; });
   cv.addEventListener('pointerdown', e => {
-    if (visit) return; const c = cellAt(e); hover = c;
+    if (visit) { const c = cellAt(e), it = [...visit.room.items].reverse().find(([n, x, y]) => cupOf(n) && c.x >= x && c.x < x + cellsW(n) && c.y >= y - 1 && c.y <= y);
+      if (it) toast(itemLabel(it[0])); return; }
+    const c = cellAt(e); hover = c;
     if (placing) {
       const k = SHOP_KIND[placing] || 'f', w = cellsW(placing), x = Math.max(0, Math.min(RW - w, c.x - Math.floor((w - 1) / 2))), y = k === 'w' ? 0 : c.y;
       if (!roomFits({ w: view().w, items: allItems() }, placing, x, y, skipIdx())) { fx.shake(3, .12); api.sfx('bad'); return; }
@@ -310,7 +421,7 @@ function officeMount(root, api) {
       const k = SHOP_KIND[placing] || 'f', w = cellsW(placing), x = Math.max(0, Math.min(RW - w, hover.x - Math.floor((w - 1) / 2))), y = k === 'w' ? 0 : hover.y, ok = roomFits({ w: view().w, items: allItems() }, placing, x, y, skipIdx());
       extra.push({ y: (k === 'w' ? 0 : y + 1) + .02, d: () => {
         ctx.fillStyle = ok ? 'rgba(33,192,122,.35)' : 'rgba(226,48,48,.35)'; ctx.fillRect(x * RC, (k === 'w' ? 0 : y) * RC, w * RC, (k === 'w' ? RTOP : 1) * RC);
-        drawPixAt(ctx, placing, (x + w / 2) * RC, k === 'w' ? RTOP * RC - 6 : (y + 1) * RC, 2, { alpha: .75 }); } });
+        drawPixAt(ctx, itemImg(placing), (x + w / 2) * RC, k === 'w' ? RTOP * RC - 6 : (y + 1) * RC, 2, { alpha: .75 }); } });
     }
     const real = visit ? room.items : p.room.items.filter((_, i) => i !== moving), tr = visit ? [] : trial.filter((_, i) => i !== movingT);
     drawRoom(ctx, { ...room, items: real.concat(tr) }, extra, t, pops, real.length);

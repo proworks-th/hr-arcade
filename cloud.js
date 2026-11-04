@@ -165,11 +165,11 @@ const Cloud = {
 /* ---------- anonymous stats: a random id per browser (never the name); game starts + finished plays, feature opens ---------- */
 const Stats = {
   aid() { let a = store.get('aid', ''); if (!a) { a = Math.random().toString(36).slice(2, 10); store.set('aid', a); } return a; },
-  hit(kind, id) { loadOnline().then(O => O.stat(kind, id, Stats.aid())).catch(() => {}); },
+  hit(kind, id) { if (kind === 'g' && typeof Season !== 'undefined') Season.add('g', 1, id); loadOnline().then(O => O.stat(kind, id, Stats.aid())).catch(() => {}); },
   open(feature) { Stats.hit('o', feature); },
   // economy: in_<source> / out_<sink> coins and event counts (plant, harvest, h_<crop>, ...), summed locally and sent every few seconds
   _e: {},
-  econ(k, n = 1) { if (!n) return; Stats._e[k] = (Stats._e[k] || 0) + n; clearTimeout(Stats._et); Stats._et = setTimeout(Stats.flush, 3000); },
+  econ(k, n = 1) { if (!n) return; if (typeof Season !== 'undefined') Season.econ(k, n); Stats._e[k] = (Stats._e[k] || 0) + n; clearTimeout(Stats._et); Stats._et = setTimeout(Stats.flush, 3000); },
   flush() { clearTimeout(Stats._et); const e = Stats._e; Stats._e = {}; const ks = Object.keys(e); if (!ks.length) return;
     loadOnline().then(O => ks.forEach(k => O.stat('e', k, null, e[k]))).catch(() => {}); },
   // one balance per browser per day, for "how rich / what level are people" (no names)

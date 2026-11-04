@@ -222,7 +222,7 @@ button.pk:hover{transform:translateY(-2px)}div.pk{cursor:default}.pk b{font-size
 .me-nav{display:flex;gap:2px;margin-left:auto}.me-nav button{min-height:46px;min-width:46px}.me-nav button{position:relative;display:grid;justify-items:center;gap:0;padding:4px 10px;border:none;background:none;border-radius:10px;font:inherit;font-size:20px;line-height:1.1;cursor:pointer}
 .me-nav button:hover{background:#f3ecdf}.me-nav .bl{font-size:12px;color:var(--muted)}.me-nav .gacha-btn.free::after{content:'';position:absolute;top:4px;right:10px;width:8px;height:8px;border-radius:50%;background:var(--pink)}
 .me-coins{padding-left:12px;border-left:2px solid #eee2cf;font-size:18px}
-.play-cta{order:3;margin-left:auto;padding:6px 16px}.play-cta small{font-weight:600;opacity:.85}
+.play-cta{order:3;margin-left:auto;padding:6px 16px}.sea-chip{margin-left:0;white-space:nowrap;background:#fff6d6;border-color:#f2d27a}#mBtn{white-space:nowrap}@media (max-width:560px){.sea-l{display:none}.solo .sec-h{flex-wrap:wrap}.solo .play-cta{white-space:nowrap}}.play-cta small{font-weight:600;opacity:.85}
 .me-nav .cloud-btn.dot::after{content:'';position:absolute;top:4px;right:10px;width:8px;height:8px;border-radius:50%;background:var(--pink)}
 .cloud p{max-width:380px;margin:8px auto}.cloud .pin{display:block;margin:10px auto;width:150px;padding:6px;font:inherit;font-size:28px;letter-spacing:10px;text-align:center;border:2px solid var(--line);border-radius:12px}
 .cloud-note{font-size:12px;max-width:340px;margin:8px auto 0}.cloud-warn{max-width:360px;margin:8px auto;padding:8px 12px;background:#fff3cd;border-radius:10px;font-size:14px}
@@ -292,6 +292,14 @@ button.pk:hover{transform:translateY(-2px)}div.pk{cursor:default}.pk b{font-size
 .room-social{margin-top:8px;display:grid;gap:6px;justify-items:center;text-align:center}
 .room-social .soc-line,.room-social .stick-row{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;align-items:center}
 .soc-chip{font-size:13px;background:#fff;border:2px solid var(--line);border-radius:999px;padding:3px 10px;white-space:nowrap}
+.season{max-width:520px;text-align:left}.season h2{text-align:center}.season>p{text-align:center;margin:4px 0}
+.sea-tiers{display:flex;gap:10px;justify-content:center;margin:10px 0 4px}.sea-tier{display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 12px;border:2px solid var(--line);border-radius:12px;background:#fff;opacity:.55}
+.sea-tier.got{opacity:1;background:#fff6d6;border-color:#f2d27a}.sea-tier img{height:44px;image-rendering:pixelated}.sea-tier small{color:var(--muted);font-size:12px}
+.sea-next{font-weight:700}.sea-list{list-style:none;padding:0;margin:8px 0;max-height:46vh;overflow:auto;display:grid;gap:6px}
+.sea-list li{display:flex;align-items:center;gap:10px;padding:6px 10px;border:2px solid var(--line);border-radius:10px;background:#fff}.sea-list li.done{background:#eafbf1;border-color:#9fe0bb}
+.sea-list .em{font-size:20px;width:26px;text-align:center}.sea-list .tx{flex:1;font-size:14px;text-align:left}.sea-list small{color:var(--muted);white-space:nowrap}
+.sea-bar{display:block;height:6px;border-radius:3px;background:#eee;margin-top:4px;overflow:hidden}.sea-bar>i{display:block;height:100%;background:#ffb703}.sea-list li.done .sea-bar>i{background:#21c07a}
+.sea-btn{background:#fff6d6;border-color:#f2d27a}
 .soc-chip small{color:var(--muted)}.soc-chip.cup{background:#fff6d6;border-color:#f2d27a}.soc-chip.note{background:#ffe9f1;border-color:#f7b9cf}
 .stick-row .btn.on{outline:3px solid var(--pri)}
 .office-hud .xpbar{width:160px}.office-who{display:flex;gap:4px;margin-left:auto}
@@ -499,13 +507,13 @@ button.pk:hover{transform:translateY(-2px)}div.pk{cursor:default}.pk b{font-size
 <div id="boss" hidden></div>
 
 <script src="solo-games.js?v=10"></script>
-<script src="office.js?v=12"></script>
+<script src="office.js?v=13"></script>
 <script src="wardrobe.js?v=4"></script>
 <script src="gacha.js?v=4"></script>
 <script src="hubroom.js?v=8"></script>
 <script src="tower.js?v=3"></script>
 <script src="farm.js?v=5"></script>
-<script src="cloud.js?v=8"></script>
+<script src="cloud.js?v=9"></script>
 <script>
 'use strict';
 /* ---------- utils ---------- */
@@ -552,7 +560,7 @@ $('#muteBtn').onclick=()=>{muted=!muted;store.set('muted',muted);renderMute()};
 
 /* ---------- online services (online.js, Firebase): ranking, presence, feed ---------- */
 let onlineMod=null;
-const loadRank=()=>onlineMod||(onlineMod=import('./online.js?v=18'));
+const loadRank=()=>onlineMod||(onlineMod=import('./online.js?v=19'));
 const loadOnline=loadRank;
 const PIX_AVAS=['p_office','p_woffice','p_whealth','p_tech','p_cat','p_dog'];
 const myAva=()=>{const a=store.get('partyAva','p_office');return PIX_AVAS.includes(a)?a:'p_office'};
@@ -598,7 +606,7 @@ function recordMission(e){ // e: {game,score,daily,st,kind}
   for(const m of list)if(!s.done.includes(m.id)&&m.ok(e,s)){s.done.push(m.id);fresh.push(m)}
   store.set('missions',s);
   fresh.forEach(m=>{toast('✅ ภารกิจสำเร็จ: '+m.t+' (+20 🪙)');Prog.give(20,30,'mission');Stats.econ('mission')});
-  if(e.kind){Prog.give(30,60,'party');toast('🎉 เล่นปาร์ตี้ +30 🪙')}
+  if(e.kind){Prog.give(30,60,'party');Season.add('party');toast('🎉 เล่นปาร์ตี้ +30 🪙')}
   if(fresh.length&&s.done.length>=list.length){
     const k=store.get('streak',{last:'',n:0}),n=k.last===thaiDay()?k.n:k.last===thaiDay(Date.now()-864e5)?k.n+1:1;
     store.set('streak',{last:thaiDay(),n});toast(`🔥 ภารกิจวันนี้ครบ! ต่อเนื่อง ${n} วัน (+40 🪙)`);Prog.give(40,80,'streak');Stats.econ('streak');
@@ -729,7 +737,7 @@ async function showRanking(gid='spot',per='d'){
     ov.querySelectorAll('[data-g]').forEach(b=>b.onclick=()=>{gid=b.dataset.g;draw()});
     ov.querySelectorAll('[data-p]').forEach(b=>b.onclick=()=>{per=b.dataset.p;draw()});
     const g=GAMES.find(x=>x.id===gid),L=ov.querySelector('[data-k=list]');
-    ov.querySelector('[data-k=note]').textContent=(gid==='spot'?'นับเฉพาะด่านประจำวัน · ':'')+'เก็บคะแนนดีที่สุดคนละ 1 ค่า · วันนี้รีเซ็ตเที่ยงคืน · สัปดาห์รีเซ็ตวันจันทร์';
+    ov.querySelector('[data-k=note]').textContent=(gid==='spot'?'นับเฉพาะด่านประจำวัน · ':'')+'เก็บคะแนนดีที่สุดคนละ 1 ค่า · วันนี้รีเซ็ตเที่ยงคืน · สัปดาห์รีเซ็ตวันจันทร์'+(per==='m'?' · ท็อป 3 ของเดือนได้ถ้วยไปวางในห้อง':'');
     L.innerHTML='<li class="muted">⏳ กำลังโหลด…</li>';
     try{
       const rows=await R.board(gid,per),medal=['🥇','🥈','🥉'],mi=rows.findIndex(r=>r.k===me);
@@ -782,7 +790,7 @@ function startGame(id){
       const mult=g.id===featuredId()?2:1,rw=Prog.award(g.id,score,mult),lastSc=store.get('last_'+g.id,null);store.set('last_'+g.id,score);Stats.hit('g',g.id);
       mine.forEach(f=>loops.delete(f));mine.clear();
       api.sfx('over');
-      const bk='best_'+g.id,prev=store.get(bk,0),isBest=score>prev;if(isBest)store.set(bk,score);
+      const bk='best_'+g.id,prev=store.get(bk,0),isBest=score>prev;if(isBest)store.set(bk,score);if(isBest&&prev>0)Season.add('best');if(mult>1)Season.add('feat');
       const ov=document.createElement('div');ov.className='overlay';
       window.pendingFly=rw.coins;
       ov.innerHTML=`<div class="panel popin res"><h2 class="res-h">${g.emoji} ${g.title}</h2>
@@ -1418,7 +1426,7 @@ function renderHub(){
     <div class="alerts" data-k="alerts"></div>
     <div class="room-h"><span class="seg"><button class="on" data-view="room" type="button">🏠 ห้องรวม</button><button data-view="tower" type="button">🏢 ตึกออฟฟิศ</button></span><span class="dot"></span><span class="muted" data-k="oncount"></span><div class="heads" data-k="onlist"></div><button class="off-bar" id="offBar" type="button"></button></div>
     <div data-k="room"></div><div data-k="tower"></div>
-    <section class="solo"><div class="sec-h"><h3>เกม</h3><button class="btn primary play-cta" id="playFeat" type="button">▶ เล่น${GAMES.find(g=>g.id===featuredId()).title} <small>🪙×2</small></button><button class="chip" id="mBtn" type="button" aria-expanded="${mOpen}">🎯 ภารกิจวันนี้ <b data-k="mcount">0/3</b> <span data-k="streak"></span> ${mOpen?'▴':'▾'}</button></div>
+    <section class="solo"><div class="sec-h"><h3>เกม</h3><button class="btn primary play-cta" id="playFeat" type="button">▶ เล่น${GAMES.find(g=>g.id===featuredId()).title} <small>🪙×2</small></button><button class="chip" id="mBtn" type="button" aria-expanded="${mOpen}">🎯 ภารกิจวันนี้ <b data-k="mcount">0/3</b> <span data-k="streak"></span> ${mOpen?'▴':'▾'}</button><button class="chip sea-chip" id="seaBtn" type="button" title="ภารกิจฤดูกาล">🏆<span class="sea-l"> ฤดูกาล</span> <b>${Season.done(Season.get())}/${SEASON_CH.length}</b></button></div>
       <div class="mpanel"${mOpen?'':' hidden'}><ul class="mlist" data-k="mlist"></ul></div>
       <div class="solo-grid">${solo.map(g=>{const b=store.get('best_'+g.id,0),ft=g.id===featuredId();return`<button class="scard${ft?' feat':''}" data-g="${g.id}" title="${g.desc}">${ft?'<i class="feat-b">⭐ วันนี้ 🪙×2</i>':''}<span class="em" style="--c:${g.color}"><img src="${g.img}" alt=""></span>
         <b>${g.title}</b><small>${b?`🏆 ${fmt(b)}${g.unit?' '+g.unit:''}`:g.time}</small></button>`}).join('')}</div></section>
@@ -1438,7 +1446,7 @@ function renderHub(){
   Awards.mount(hub.querySelector('[data-k=aw]'));
   $('#playFeat').onclick=()=>startGame(featuredId());
   if(window.pendingFly){const n=window.pendingFly;window.pendingFly=0;requestAnimationFrame(()=>flyCoins(innerWidth/2,innerHeight*.45,hub.querySelector('.me-coins'),n))}
-  $('#mBtn').onclick=()=>{store.set('mOpen',!store.get('mOpen',false));renderHub()};
+  $('#seaBtn').onclick=()=>Season.open();$('#mBtn').onclick=()=>{store.set('mOpen',!store.get('mOpen',false));renderHub()};
   $('#feedMore').onclick=()=>{feedOpen=!feedOpen;$('#feedMore').textContent=feedOpen?'ย่อ':'ดูทั้งหมด';renderFeed()};
   $('#crewMore').onclick=()=>{window.officeTab='friends';startGame('office');window.officeTab=null};
   presence('hub');startLive();renderOnline();renderFeed();renderMissions();renderCrew();beatenAlerts().catch(()=>{});
@@ -1446,7 +1454,7 @@ function renderHub(){
 }
 renderHub();
 onboarding();
-Cloud.boot();Stats.boot();setTimeout(roomNews,2500);
+Cloud.boot();Stats.boot();setTimeout(roomNews,2500);setTimeout(claimCups,3500);
 if(/[?&]join=room/.test(location.search)){Tower.setView('room');setTimeout(()=>{document.getElementById('room')?.scrollIntoView({behavior:'smooth',block:'center'});
   const G=HubRoom.G;toast(G.sc&&G.sc!=='lobby'&&G.sc!=='res'?'🎉 เพื่อนกำลังเล่นอยู่ในห้องรวม — รอบหน้าเล่นด้วยกัน!':'👋 เพื่อนชวนมาที่ห้องรวม ทักทายกันได้เลย')},600)}
 // test-mode hook for verify/run.py (absent for normal visits)
