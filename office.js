@@ -90,7 +90,7 @@ function roomFits(room, n, x, y, skip) {
 }
 /* ---------- season trophies: top 3 of a game's monthly board become room items "cup<rank>.<game>.<yyyymm>" ---------- */
 const CUP_FIRST = '202611';                      // the first season (monthly boards started in Nov 2026)
-const CUP_COL = { 1: ['#ffd23f', '#c77d0a'], 2: ['#e6e9ee', '#8a93a3'], 3: ['#e0913b', '#8a5228'], 4: ['#7ee0c3', '#1f9d8a'] };   // 4 = office team cup (ladder)
+const CUP_COL = { 1: ['#ffd23f', '#c77d0a'], 2: ['#e6e9ee', '#8a93a3'], 3: ['#e0913b', '#8a5228'], 4: ['#7ee0c3', '#1f9d8a'] };   // 4 = season pass cup
 // ribbon colour per month, so each season's cups look different on the shelf
 const CUP_RIB = ['#3a86ff', '#e63972', '#1f9d63', '#f07b16', '#c99700', '#1597c4', '#7b3fe4', '#0f8f8f', '#9c5a2e', '#b5179e', '#d62828', '#23408e'];
 const CUP_ART = ['..kkkkkkkk..', 'kkkAwAAABkkk', 'k.kAwAAABk.k', 'k.kAwAAABk.k', '.kkAAAAABkk.', '...kAAABk...', '....kABk....', '....kABk....', '...kkkkkk...'];
@@ -141,10 +141,10 @@ const drawnItem = n => n === 'cupcase' || !!cupOf(n) || (typeof SX !== 'undefine
 const itemCanvas = (n, k = 1, cs = []) => n === 'cupcase' ? caseImg(cs, k) : SX[n] ? sxImg(n, k) : cupImg(n, k);
 const itemImg = (n, room) => drawnItem(n) ? itemCanvas(n, 1, (room && room.cs) || []) : n;
 function itemLabel(n) {
-  if (typeof SX !== 'undefined' && SX[n]) return SX[n][0] + ' (ของรางวัลบันไดออฟฟิศ)';
+  if (typeof SX !== 'undefined' && SX[n]) return SX[n][0] + ' (ของรางวัล Season Pass)';
   if (n === 'cupcase') return '🏆 ตู้โชว์ถ้วย (โชว์ถ้วยดีที่สุด 6 ใบของคุณเอง)';
   const c = cupOf(n); if (!c) return n;
-  if (c.g === 'office') return `🪜 ถ้วยทีมออฟฟิศ · ${seasonName(c.s)}`;
+  if (c.g === 'pass' || c.g === 'office') return `🎫 ถ้วย Season Pass · ${seasonName(c.s)}`;
   if (c.g === 'season') return `${['', '🏆 ถ้วยทอง', '🏆 ถ้วยเงิน', '🏆 ถ้วยทองแดง'][c.r]} ภารกิจฤดูกาล · ${seasonName(c.s)}`;
   const G = typeof GAMES !== 'undefined' && GAMES.find(x => x.id === c.g);
   return `${['', '🥇', '🥈', '🥉'][c.r]} ${G ? G.title : c.g} · ฤดูกาล ${seasonName(c.s)}`;
@@ -160,27 +160,23 @@ function claimCups() {
       const rec = await O.closeSeason(ss).catch(() => null);
       if (rec) postRecap(O, ss, rec);
       const won = await O.trophies(O.nameKey(nm), ss);
-      // office ladder: each tier the office reached gives its item to everyone who played that tier's minimum themselves
-      const L = await O.ladder(ss), mineG = Ladder.mine(O, L), tiers = LADDER.filter(([need]) => L.total >= need).length;
-      const prizes = LADDER.map(([need, min], i) => L.total >= need && mineG >= min ? ladderPrize(ss, i) : null).filter(Boolean);
-      const p = Prog.get(); [...won.map(w => `cup${w.r}.${w.g}.${ss}`), ...prizes.filter(n => !n.startsWith('acc:'))].forEach(n => { p.inv[n] = (p.inv[n] || 0) + 1; });
-      Prog.put(p);
-      prizes.filter(n => n.startsWith('acc:')).forEach(n => { if (typeof Wardrobe !== 'undefined' && ACC[n.slice(4)]) Wardrobe.give(n.slice(4)); });
+      const p = Prog.get(); won.forEach(w => { const n = `cup${w.r}.${w.g}.${ss}`; p.inv[n] = (p.inv[n] || 0) + 1; });
+      if (won.length) Prog.put(p);
       store.set('cupsDone', store.get('cupsDone', []).concat(ss));
-      last = { ss, won, prizes, mineG, tiers, total: L.total };
-      if (typeof Stats !== 'undefined') { if (won.length) Stats.econ('cup', won.length); if (prizes.length) Stats.econ('ladder_item', prizes.length); }
+      last = { ss, won };
+      if (won.length && typeof Stats !== 'undefined') Stats.econ('cup', won.length);
       if (won.length) O.pushFeed(`🏆 ${nm} ได้ถ้วยฤดูกาล ${seasonName(ss)}: ${won.map(w => itemLabel(`cup${w.r}.${w.g}.${ss}`).split(' · ')[0]).join(', ')}`, nm, myAva());
     }
     if (last) Fame.recap(last);
   }).catch(() => {});
 }
 
-/* ---------- office ladder: everyone's finished games this month add up; each tier reached gives a seasonal item
-   to everyone who played at least that tier's own-game minimum (decorations + clothing, themed per month) ---------- */
-const LADDER = [[300, 3], [500, 5], [700, 8], [1000, 10]];   // [office games, your own games needed]
-const LADDER_SET = { '11': ['sx_krathong', 'acc:lotus', 'sx_lantern'], '12': ['sx_snowman', 'acc:santa', 'sx_xtree'] };
-const LADDER_ANY = ['jar_gold', 'mirror_gold', 'globe_gold'];   // months without a theme yet
-const ladderPrize = (ss, i) => i >= 3 ? `cup4.office.${ss}` : (LADDER_SET[ss.slice(4, 6)] || LADDER_ANY)[i];
+/* ---------- season pass: personal, resets each month. Points = finished games + party rounds + 3 per season challenge.
+   Each tier gives its item right away (decorations + clothing, themed per month; top tier = the pass cup) ---------- */
+const PASS = [5, 15, 30, 45];   // points needed per tier
+const PASS_SET = { '11': ['sx_krathong', 'acc:lotus', 'sx_lantern'], '12': ['sx_snowman', 'acc:santa', 'sx_xtree'] };
+const PASS_ANY = ['jar_gold', 'mirror_gold', 'globe_gold'];   // months without a theme yet
+const passPrize = (ss, i) => i >= 3 ? `cup4.pass.${ss}` : (PASS_SET[ss.slice(4, 6)] || PASS_ANY)[i];
 const prizeName = n => n.startsWith('acc:') ? (typeof ACC !== 'undefined' && ACC[n.slice(4)] ? '👕 ' + ACC[n.slice(4)][1] : n) : SX[n] ? SX[n][0] : itemLabel(n).split(' · ')[0];
 const prizeIcon = n => n.startsWith('acc:') ? (typeof Wardrobe !== 'undefined' ? Wardrobe.icon(n.slice(4)) : '') : drawnItem(n) ? itemCanvas(n, 4).toDataURL() : `assets/mi/${n}.png`;
 // seasonal decorations drawn here: name → [Thai name, kind, rows]  (draft art, pending review)
@@ -205,39 +201,48 @@ function sxImg(n, k = 1) {
   return (_sx[key] = cv);
 }
 const prevSeason = s => { const y = +s.slice(0, 4), m = +s.slice(4, 6); return m === 1 ? `${y - 1}12` : `${y}${String(m - 1).padStart(2, '0')}`; };
-const Ladder = {
-  _c: null, _t: 0,
-  add() { loadOnline().then(O => { O.ladderAdd(myName(), typeof Stats !== 'undefined' ? Stats.aid() : ''); Ladder._c = null; }).catch(() => {}); },
-  get(force) { if (!force && Ladder._c && Date.now() - Ladder._t < 60000) return Ladder._c; Ladder._t = Date.now(); return (Ladder._c = loadOnline().then(O => O.ladder()).catch(() => ({ total: 0, rows: [] }))); },
-  next: t => LADDER.find(([need]) => t < need),
-  mine: (O, L) => L.rows.filter(r => r.k === O.nameKey(myName()) || r.k === 'a_' + (typeof Stats !== 'undefined' ? Stats.aid() : '')).reduce((t, r) => t + r.g, 0),
-  chip(el) { if (!el) return; Ladder.get().then(L => { const nx = Ladder.next(L.total); el.innerHTML = `🪜<span class="sea-l"> ออฟฟิศ</span> <b>${fmt(L.total)}/${fmt(nx ? nx[0] : LADDER[LADDER.length - 1][0])}</b>`; }); },
+const Pass = {
+  pts: s => (s.c.g || 0) + (s.c.party || 0) + 3 * Season.done(s),
+  next: p => PASS.findIndex(need => p < need),
+  // give every tier reached and not yet given (called from Season.add after the counters change)
+  check(s) {
+    const p = Pass.pts(s), got = s.pass || (s.pass = []), fresh = PASS.map((need, i) => i).filter(i => p >= PASS[i] && !got.includes(i));
+    if (!fresh.length) return;
+    const q = Prog.get(); fresh.forEach(i => { got.push(i); const n = passPrize(s.s, i); if (!n.startsWith('acc:')) q.inv[n] = (q.inv[n] || 0) + 1; });
+    Prog.put(q); store.set('season', s);
+    fresh.forEach(i => { const n = passPrize(s.s, i); if (n.startsWith('acc:') && typeof Wardrobe !== 'undefined' && ACC[n.slice(4)]) Wardrobe.give(n.slice(4)); });
+    if (typeof Stats !== 'undefined') Stats.econ('pass', fresh.length);
+    setTimeout(() => toast(`🎫 Season Pass ขั้น ${fresh[fresh.length - 1] + 1}: ได้ ${fresh.map(i => prizeName(passPrize(s.s, i))).join(', ')}!`), 2400);
+    const me = myName(); if (me && fresh.includes(PASS.length - 1)) loadOnline().then(O => O.pushFeed(`🎫 ${me} ผ่าน Season Pass ${seasonName(s.s)} ครบทุกขั้น!`, me, myAva())).catch(() => {});
+    const el = document.getElementById('ladBtn'); if (el) Pass.chip(el);
+  },
+  // office-wide count of finished games per person (for the "who played most" list and the hall of fame)
+  add() { loadOnline().then(O => { O.ladderAdd(myName(), typeof Stats !== 'undefined' ? Stats.aid() : ''); }).catch(() => {}); },
+  chip(el) { if (!el) return; const s = Season.get(); el.innerHTML = `🎫<span class="sea-l"> Pass</span> <b>${(s.pass || []).length}/${PASS.length}</b>`; },
   open() {
+    const s = Season.get(), p = Pass.pts(s), got = s.pass || [], top = PASS[PASS.length - 1], nx = Pass.next(p);
     const ov = document.createElement('div'); ov.className = 'overlay';
-    ov.innerHTML = `<div class="panel popin season"><h2>🪜 บันไดออฟฟิศ</h2><p class="muted">⏳ กำลังโหลด…</p><div class="row"><button class="btn primary" data-k="close">ปิด</button></div></div>`;
+    ov.innerHTML = `<div class="panel popin season"><h2>🎫 Season Pass ${seasonName(s.s)}</h2>
+      <p class="muted">เล่นจบ 1 เกม / ปาร์ตี้ 1 รอบ = 1 แต้ม · ภารกิจฤดูกาลสำเร็จ 1 อัน = 3 แต้ม · ถึงขั้นไหนได้ของทันที</p>
+      <div class="lad-bar"><i style="width:${Math.min(100, p / top * 100)}%"></i>${PASS.map(need => `<span class="lad-tick${p >= need ? ' on' : ''}" style="left:${need / top * 100}%"><b>${need}</b></span>`).join('')}</div>
+      <p class="sea-next">คุณมี ${p} แต้ม${nx >= 0 ? ` · อีก ${PASS[nx] - p} แต้มถึงขั้น ${nx + 1}` : ' · ผ่านครบทุกขั้นแล้ว! 🎉'}</p>
+      <ul class="sea-list lad-list">${PASS.map((need, i) => { const n = passPrize(s.s, i), ok = got.includes(i);
+        return `<li class="${ok ? 'done' : ''}"><img class="pxi lad-ic" src="${prizeIcon(n)}" alt=""><span class="tx"><b>ขั้น ${i + 1} · ${need} แต้ม</b><br><small>${esc(prizeName(n))}</small></span><small>${ok ? '✅ ได้แล้ว' : `${p}/${need}`}</small></li>`; }).join('')}</ul>
+      <h4 class="sz-h">💪 คนขยันเดือนนี้</h4><ol class="rk-list" data-k="top"><li class="muted">⏳ กำลังโหลด…</li></ol>
+      <p class="muted" style="font-size:12px">ของแต่ละเดือนไม่ซ้ำกัน หมดเดือนแล้วไม่มีอีก · ของแต่งอยู่ใน "ของของฉัน" · ชุดอยู่ใน "แต่งตัว"</p>
+      <div class="row"><button class="btn" data-k="sea">🏆 ภารกิจ</button><button class="btn" data-k="fame">📜 หอเกียรติยศ</button><button class="btn primary" data-k="close">ปิด</button></div></div>`;
     ov.onclick = e => { if (e.target === ov) ov.remove(); }; ov.querySelector('[data-k=close]').onclick = () => ov.remove();
-    document.body.appendChild(ov); if (typeof Stats !== 'undefined') Stats.open('ladder');
-    Promise.all([Ladder.get(true), loadOnline()]).then(([L, O]) => {
-      const ss = O.buckets().m, me = Ladder.mine(O, L), top = LADDER[LADDER.length - 1][0], nx = Ladder.next(L.total);
-      ov.querySelector('.panel').innerHTML = `<h2>🪜 บันไดออฟฟิศ ${seasonName(ss)}</h2>
-        <p class="muted">ทุกเกมที่ใครก็ได้เล่นจบ นับรวมกันทั้งออฟฟิศ · ถึงขั้นไหน ทุกคนที่ช่วยเล่นได้ของขั้นนั้น</p>
-        <div class="lad-bar"><i style="width:${Math.min(100, L.total / top * 100)}%"></i>${LADDER.map(([need]) => `<span class="lad-tick${L.total >= need ? ' on' : ''}" style="left:${need / top * 100}%"><b>${need}</b></span>`).join('')}</div>
-        <p class="sea-next">ออฟฟิศเล่นแล้ว ${fmt(L.total)} เกม${nx ? ` · อีก ${fmt(nx[0] - L.total)} เกมถึงขั้น ${nx[0]}` : ' · ครบทุกขั้นแล้ว! 🎉'}</p>
-        <ul class="sea-list lad-list">${LADDER.map(([need, min], i) => { const n = ladderPrize(ss, i), office = L.total >= need, ok = me >= min;
-          return `<li class="${office && ok ? 'done' : ''}"><img class="pxi lad-ic" src="${prizeIcon(n)}" alt=""><span class="tx"><b>ขั้น ${i + 1} · ${need} เกม</b> → ${esc(prizeName(n))}<br><small>${ok ? '✅' : '⬜'} คุณต้องเล่นเองอย่างน้อย ${min} เกม${ok ? '' : ` (อีก ${min - me})`}</small></span><small>${office ? '✅ ถึงแล้ว' : `${fmt(L.total)}/${need}`}</small></li>`; }).join('')}</ul>
-        <p class="lad-me">เดือนนี้คุณเล่นไป <b>${me}</b> เกม</p>
-        <h4 class="sz-h">💪 คนขยันเดือนนี้</h4><ol class="rk-list">${L.rows.filter(r => r.n).slice(0, 8).map((r, i) => `<li><span class="pos">${['🥇', '🥈', '🥉'][i] || '#' + (i + 1)}</span><span class="nm">${esc(r.n)}</span><span class="sc">${r.g} เกม</span></li>`).join('') || '<li class="muted">ยังไม่มีใคร — เริ่มเลย!</li>'}</ol>
-        <p class="muted" style="font-size:12px">นับเกมเดี่ยวที่เล่นจบ + รอบปาร์ตี้ · ของรางวัลแจกวันที่ 1 ของเดือนถัดไป · ของแต่ละเดือนไม่ซ้ำกัน หมดเดือนแล้วไม่มีอีก</p>
-        <div class="row"><button class="btn" data-k="fame">📜 หอเกียรติยศ</button><button class="btn primary" data-k="close">ปิด</button></div>`;
-      ov.querySelector('[data-k=close]').onclick = () => ov.remove(); ov.querySelector('[data-k=fame]').onclick = () => { ov.remove(); Fame.open(); };
-    }).catch(() => { ov.querySelector('.muted').textContent = 'โหลดไม่ได้ (เน็ตหลุด?)'; });
+    ov.querySelector('[data-k=sea]').onclick = () => { ov.remove(); Season.open(); }; ov.querySelector('[data-k=fame]').onclick = () => { ov.remove(); Fame.open(); };
+    document.body.appendChild(ov); if (typeof Stats !== 'undefined') Stats.open('pass');
+    loadOnline().then(O => O.ladder()).then(L => { const el = ov.querySelector('[data-k=top]');
+      el.innerHTML = L.rows.filter(r => r.n).slice(0, 8).map((r, i) => `<li><span class="pos">${['🥇', '🥈', '🥉'][i] || '#' + (i + 1)}</span><span class="nm">${esc(r.n)}</span><span class="sc">${r.g} เกม</span></li>`).join('') || '<li class="muted">ยังไม่มีใคร — เริ่มเลย!</li>'; })
+      .catch(() => { ov.querySelector('[data-k=top]').innerHTML = '<li class="muted">โหลดไม่ได้ (เน็ตหลุด?)</li>'; });
   },
 };
 
 /* ---------- hall of fame + season recap: one record per finished month at rooms/_fame/<yyyymm> ---------- */
 function postRecap(O, ss, rec) {
-  const lv = LADDER.filter(([need]) => rec.lad.t >= need).length;
-  O.pushFeed(`📜 จบฤดูกาล ${seasonName(ss)}: ออฟฟิศเล่นรวม ${fmt(rec.lad.t)} เกม (บันไดขั้น ${lv}/${LADDER.length})${rec.room ? ` · 🏠 ห้องยอดเยี่ยม: ${rec.room.n}` : ''}`);
+  O.pushFeed(`📜 จบฤดูกาล ${seasonName(ss)}: ออฟฟิศเล่นรวม ${fmt(rec.lad.t)} เกม${rec.room ? ` · 🏠 ห้องยอดเยี่ยม: ${rec.room.n}` : ''}`);
   const ch = Object.entries(rec.champ || {}).map(([g, c]) => `${c.n} (${(GAMES.find(x => x.id === g) || { title: g }).title})`);
   if (ch.length) O.pushFeed(`👑 แชมป์ ${seasonName(ss)}: ${ch.join(', ')}`);
 }
@@ -254,9 +259,8 @@ const Fame = {
   },
   block(ss, f) {
     const gn = g => { const G = GAMES.find(x => x.id === g); return G ? `${G.emoji} ${G.title}` : g; };
-    const lv = LADDER.filter(([need]) => (f.lad || {}).t >= need).length;
     return `<div class="fame-s"><h3>${seasonName(ss)}</h3>
-      <p>🪜 ออฟฟิศเล่นรวม <b>${fmt((f.lad || {}).t || 0)}</b> เกม · บันไดขั้น ${lv}/${LADDER.length}${(f.lad && f.lad.top || []).length ? ` · 💪 ${f.lad.top.map(x => `${esc(x.n)} ${x.g}`).join(', ')}` : ''}</p>
+      <p>🎮 ออฟฟิศเล่นรวม <b>${fmt((f.lad || {}).t || 0)}</b> เกม${(f.lad && f.lad.top || []).length ? ` · 💪 ${f.lad.top.map(x => `${esc(x.n)} ${x.g}`).join(', ')}` : ''}</p>
       ${f.room ? `<p>🏠 ห้องยอดเยี่ยม: <b>${esc(f.room.n)}</b> <small>(👍 ${f.room.c})</small></p>` : ''}
       <div class="fame-ch">${Object.entries(f.champ || {}).map(([g, c]) => `<span class="soc-chip cup">👑 ${esc(c.n)} <small>${gn(g)}</small></span>`).join('') || '<span class="muted">ไม่มีแชมป์</span>'}</div></div>`;
   },
@@ -276,10 +280,10 @@ const Fame = {
   // shown once when a season you took part in ends: your rewards + the office's results
   recap(r) {
     const ov = document.createElement('div'); ov.className = 'overlay';
-    const mine = [...r.won.map(w => `cup${w.r}.${w.g}.${r.ss}`), ...r.prizes];
+    const mine = r.won.map(w => `cup${w.r}.${w.g}.${r.ss}`);
     ov.innerHTML = `<div class="panel popin season recap"><h2>📜 จบฤดูกาล ${seasonName(r.ss)}</h2>
-      ${mine.length ? `<div class="sea-tiers recap-got">${mine.map(n => `<div class="sea-tier got"><img class="pxi" src="${prizeIcon(n)}" alt=""><small>${esc(prizeName(n))}</small></div>`).join('')}</div><p class="sea-next">ของแต่งอยู่ใน "ของของฉัน" · ชุดอยู่ใน "แต่งตัว"</p>` : ''}
-      <p>${r.prizes.length ? `คุณช่วยเล่น <b>${r.mineG}</b> เกม ได้ของรางวัลบันได ${r.prizes.length} ชิ้น` : r.tiers ? `เดือนนี้เล่นให้ถึง ${LADDER[0][1]} เกมขึ้นไป จะได้ของรางวัลบันไดด้วย` : 'ออฟฟิศยังไม่ถึงขั้นแรก เดือนนี้มาช่วยกันเล่น!'}</p>
+      ${mine.length ? `<div class="sea-tiers recap-got">${mine.map(n => `<div class="sea-tier got"><img class="pxi" src="${prizeIcon(n)}" alt=""><small>${esc(prizeName(n))}</small></div>`).join('')}</div><p class="sea-next">ถ้วยอยู่ใน "ของของฉัน" ไปวางในห้องได้เลย</p>` : ''}
+      <p>🎫 Season Pass ${seasonName(Season.now())} เริ่มใหม่แล้ว มีของแต่งชุดใหม่รออยู่</p>
       <div data-k="f"></div>
       <div class="row"><button class="btn" data-k="fame">📜 หอเกียรติยศ</button><button class="btn primary" data-k="close">เยี่ยม!</button></div></div>`;
     ov.onclick = e => { if (e.target === ov) ov.remove(); }; ov.querySelector('[data-k=close]').onclick = () => ov.remove();
@@ -324,6 +328,7 @@ const Season = {
     SEASON_CH.filter(x => nowIds.includes(x[0]) && !before.includes(x[0])).forEach(([, em, t]) => toast(`🏆 ภารกิจฤดูกาลสำเร็จ: ${em} ${t} (${after}/${SEASON_CH.length})`));
     const won = SEASON_TIER.filter(([need, r]) => after >= need && !s.got.includes(r));
     store.set('season', s);
+    Pass.check(s);
     if (won.length) {
       const p = Prog.get(); won.forEach(([, r]) => { s.got.push(r); const nm = `cup${r}.season.${s.s}`; p.inv[nm] = (p.inv[nm] || 0) + 1; });
       Prog.put(p); store.set('season', s);
@@ -345,9 +350,9 @@ const Season = {
       <ul class="sea-list">${SEASON_CH.map(([, em, t, goal, f]) => { const v = Math.min(goal, f(s.c)), ok = v >= goal;
         return `<li class="${ok ? 'done' : ''}"><span class="em">${ok ? '✅' : em}</span><span class="tx">${t}<i class="sea-bar"><i style="width:${v / goal * 100}%"></i></i></span><small>${v}/${goal}</small></li>`; }).join('')}</ul>
       <p class="muted" style="font-size:12px">ติดท็อป 3 อันดับเดือนนี้ของเกมไหน ก็ได้ถ้วยเกมนั้นเพิ่มตอนสิ้นเดือน · ถ้วยเก่าเก็บไว้ในห้องได้ตลอด</p>
-      <div class="row"><button class="btn" data-k="lad">🪜 บันไดออฟฟิศ</button><button class="btn" data-k="fame">📜 หอเกียรติยศ</button><button class="btn primary" data-k="close">ปิด</button></div></div>`;
+      <div class="row"><button class="btn" data-k="lad">🎫 Season Pass</button><button class="btn" data-k="fame">📜 หอเกียรติยศ</button><button class="btn primary" data-k="close">ปิด</button></div></div>`;
     ov.onclick = e => { if (e.target === ov) ov.remove(); }; ov.querySelector('[data-k=close]').onclick = () => ov.remove();
-    ov.querySelector('[data-k=lad]').onclick = () => { ov.remove(); Ladder.open(); }; ov.querySelector('[data-k=fame]').onclick = () => { ov.remove(); Fame.open(); };
+    ov.querySelector('[data-k=lad]').onclick = () => { ov.remove(); Pass.open(); }; ov.querySelector('[data-k=fame]').onclick = () => { ov.remove(); Fame.open(); };
     document.body.appendChild(ov); if (typeof Stats !== 'undefined') Stats.open('season');
   },
 };

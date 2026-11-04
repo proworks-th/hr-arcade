@@ -512,8 +512,8 @@ button.pk:hover{transform:translateY(-2px)}div.pk{cursor:default}.pk b{font-size
 <div id="boss" hidden></div>
 
 <script src="solo-games.js?v=10"></script>
-<script src="office.js?v=15"></script>
-<script src="wardrobe.js?v=5"></script>
+<script src="office.js?v=16"></script>
+<script src="wardrobe.js?v=6"></script>
 <script src="gacha.js?v=4"></script>
 <script src="hubroom.js?v=8"></script>
 <script src="tower.js?v=3"></script>
@@ -611,7 +611,7 @@ function recordMission(e){ // e: {game,score,daily,st,kind}
   for(const m of list)if(!s.done.includes(m.id)&&m.ok(e,s)){s.done.push(m.id);fresh.push(m)}
   store.set('missions',s);
   fresh.forEach(m=>{toast('✅ ภารกิจสำเร็จ: '+m.t+' (+20 🪙)');Prog.give(20,30,'mission');Stats.econ('mission')});
-  if(e.kind){Prog.give(30,60,'party');Season.add('party');Ladder.add();toast('🎉 เล่นปาร์ตี้ +30 🪙')}
+  if(e.kind){Prog.give(30,60,'party');Season.add('party');Pass.add();toast('🎉 เล่นปาร์ตี้ +30 🪙')}
   if(fresh.length&&s.done.length>=list.length){
     const k=store.get('streak',{last:'',n:0}),n=k.last===thaiDay()?k.n:k.last===thaiDay(Date.now()-864e5)?k.n+1:1;
     store.set('streak',{last:thaiDay(),n});toast(`🔥 ภารกิจวันนี้ครบ! ต่อเนื่อง ${n} วัน (+40 🪙)`);Prog.give(40,80,'streak');Stats.econ('streak');
@@ -1431,7 +1431,7 @@ function renderHub(){
     <div class="alerts" data-k="alerts"></div>
     <div class="room-h"><span class="seg"><button class="on" data-view="room" type="button">🏠 ห้องรวม</button><button data-view="tower" type="button">🏢 ตึกออฟฟิศ</button></span><span class="dot"></span><span class="muted" data-k="oncount"></span><div class="heads" data-k="onlist"></div><button class="off-bar" id="offBar" type="button"></button></div>
     <div data-k="room"></div><div data-k="tower"></div>
-    <section class="solo"><div class="sec-h"><h3>เกม</h3><button class="btn primary play-cta" id="playFeat" type="button">▶ เล่น${GAMES.find(g=>g.id===featuredId()).title} <small>🪙×2</small></button><button class="chip" id="mBtn" type="button" aria-expanded="${mOpen}">🎯 ภารกิจวันนี้ <b data-k="mcount">0/3</b> <span data-k="streak"></span> ${mOpen?'▴':'▾'}</button><button class="chip sea-chip" id="ladBtn" type="button" title="บันไดออฟฟิศ">🪜</button><button class="chip sea-chip" id="seaBtn" type="button" title="ภารกิจฤดูกาล">🏆<span class="sea-l"> ฤดูกาล</span> <b>${Season.done(Season.get())}/${SEASON_CH.length}</b></button></div>
+    <section class="solo"><div class="sec-h"><h3>เกม</h3><button class="btn primary play-cta" id="playFeat" type="button">▶ เล่น${GAMES.find(g=>g.id===featuredId()).title} <small>🪙×2</small></button><button class="chip" id="mBtn" type="button" aria-expanded="${mOpen}">🎯 ภารกิจวันนี้ <b data-k="mcount">0/3</b> <span data-k="streak"></span> ${mOpen?'▴':'▾'}</button><button class="chip sea-chip" id="ladBtn" type="button" title="Season Pass">🎫</button><button class="chip sea-chip" id="seaBtn" type="button" title="ภารกิจฤดูกาล">🏆<span class="sea-l"> ฤดูกาล</span> <b>${Season.done(Season.get())}/${SEASON_CH.length}</b></button></div>
       <div class="mpanel"${mOpen?'':' hidden'}><ul class="mlist" data-k="mlist"></ul></div>
       <div class="solo-grid">${solo.map(g=>{const b=store.get('best_'+g.id,0),ft=g.id===featuredId();return`<button class="scard${ft?' feat':''}" data-g="${g.id}" title="${g.desc}">${ft?'<i class="feat-b">⭐ วันนี้ 🪙×2</i>':''}<span class="em" style="--c:${g.color}"><img src="${g.img}" alt=""></span>
         <b>${g.title}</b><small>${b?`🏆 ${fmt(b)}${g.unit?' '+g.unit:''}`:g.time}</small></button>`}).join('')}</div></section>
@@ -1451,7 +1451,7 @@ function renderHub(){
   Awards.mount(hub.querySelector('[data-k=aw]'));
   $('#playFeat').onclick=()=>startGame(featuredId());
   if(window.pendingFly){const n=window.pendingFly;window.pendingFly=0;requestAnimationFrame(()=>flyCoins(innerWidth/2,innerHeight*.45,hub.querySelector('.me-coins'),n))}
-  $('#seaBtn').onclick=()=>Season.open();$('#ladBtn').onclick=()=>Ladder.open();Ladder.chip($('#ladBtn'));$('#mBtn').onclick=()=>{store.set('mOpen',!store.get('mOpen',false));renderHub()};
+  $('#seaBtn').onclick=()=>Season.open();$('#ladBtn').onclick=()=>Pass.open();Pass.chip($('#ladBtn'));$('#mBtn').onclick=()=>{store.set('mOpen',!store.get('mOpen',false));renderHub()};
   $('#feedMore').onclick=()=>{feedOpen=!feedOpen;$('#feedMore').textContent=feedOpen?'ย่อ':'ดูทั้งหมด';renderFeed()};
   $('#crewMore').onclick=()=>{window.officeTab='friends';startGame('office');window.officeTab=null};
   presence('hub');startLive();renderOnline();renderFeed();renderMissions();renderCrew();beatenAlerts().catch(()=>{});

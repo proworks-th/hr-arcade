@@ -165,7 +165,7 @@ const Cloud = {
 /* ---------- anonymous stats: a random id per browser (never the name); game starts + finished plays, feature opens ---------- */
 const Stats = {
   aid() { let a = store.get('aid', ''); if (!a) { a = Math.random().toString(36).slice(2, 10); store.set('aid', a); } return a; },
-  hit(kind, id) { if (kind === 'g' && typeof Season !== 'undefined') { Season.add('g', 1, id); Ladder.add(); } loadOnline().then(O => O.stat(kind, id, Stats.aid())).catch(() => {}); },
+  hit(kind, id) { if (kind === 'g' && typeof Season !== 'undefined') { Season.add('g', 1, id); Pass.add(); } loadOnline().then(O => O.stat(kind, id, Stats.aid())).catch(() => {}); },
   open(feature) { Stats.hit('o', feature); },
   // economy: in_<source> / out_<sink> coins and event counts (plant, harvest, h_<crop>, ...), summed locally and sent every few seconds
   _e: {},
