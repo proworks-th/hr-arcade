@@ -496,6 +496,13 @@ button.pk:hover{transform:translateY(-2px)}div.pk{cursor:default}.pk b{font-size
 .xl-status{height:24px;background:#f3f3f3;border-top:1px solid #d4d4d4;display:flex;align-items:center;gap:18px;padding:0 12px;color:#555;font-size:12px;flex:none}
 .xl-status .ready{cursor:default}
 .xl-status .sp{flex:1}
+.news{text-align:left}.news h2{text-align:center}
+.news section{margin:10px 0}.news section.old{opacity:.75}
+.news h3{font-size:15px;margin:0 0 4px;display:flex;align-items:center;gap:6px}
+.news .new{background:var(--yel);border:2px solid var(--line);border-radius:999px;padding:0 8px;font-size:12px}
+.news ul{list-style:none;margin:0;padding:8px 12px;background:#fff8ec;border-radius:12px}
+.news li{display:flex;gap:8px;margin:5px 0;font-size:15px;line-height:1.45}.news li .e{font-family:var(--emoji);flex:none}
+#newsBtn{position:relative}#newsBtn.dot::after{content:'';position:absolute;top:2px;right:2px;width:10px;height:10px;border-radius:50%;background:var(--bad);border:2px solid #fff}
 </style>
 </head>
 <body>
@@ -503,6 +510,7 @@ button.pk:hover{transform:translateY(-2px)}div.pk{cursor:default}.pk b{font-size
   <button class="btn" id="homeBtn" hidden aria-label="หน้าแรก">🏠<span class="lbl"> หน้าแรก</span></button>
   <h1>🕹️ <span>ห้องพักสมอง · HR Arcade</span></h1>
   <button class="btn icon" id="rankBtn" title="อันดับ" aria-label="อันดับ">🏆</button>
+  <button class="btn icon" id="newsBtn" title="มีอะไรใหม่" aria-label="มีอะไรใหม่">📰</button>
   <button class="btn icon" id="helpBtn" title="วิธีเล่น" aria-label="วิธีเล่น">❓</button>
   <button class="btn icon" id="muteBtn" title="เปิด/ปิดเสียง" aria-label="เปิด/ปิดเสียง">🔊</button>
   <!-- boss key lives in the sticky header so it never covers game content -->
@@ -522,6 +530,7 @@ button.pk:hover{transform:translateY(-2px)}div.pk{cursor:default}.pk b{font-size
 <script src="tower.js?v=4"></script>
 <script src="farm.js?v=6"></script>
 <script src="cloud.js?v=10"></script>
+<script src="news.js?v=1"></script>
 <script>
 'use strict';
 /* ---------- utils ---------- */
@@ -1462,7 +1471,7 @@ function renderHub(){
 }
 renderHub();
 onboarding();
-Cloud.boot();Stats.boot();setTimeout(roomNews,2500);setTimeout(claimCups,3500);
+Cloud.boot();Stats.boot();$('#newsBtn').onclick=News.open;News.boot();setTimeout(roomNews,2500);setTimeout(claimCups,3500);
 if(/[?&]join=room/.test(location.search)){Tower.setView('room');setTimeout(()=>{document.getElementById('room')?.scrollIntoView({behavior:'smooth',block:'center'});
   const G=HubRoom.G;toast(G.sc&&G.sc!=='lobby'&&G.sc!=='res'?'🎉 เพื่อนกำลังเล่นอยู่ในห้องรวม — รอบหน้าเล่นด้วยกัน!':'👋 เพื่อนชวนมาที่ห้องรวม ทักทายกันได้เลย')},600)}
 // test-mode hook for verify/run.py (absent for normal visits)
