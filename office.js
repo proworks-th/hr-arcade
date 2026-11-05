@@ -74,6 +74,18 @@ const SHOP = [
 const STYLES = [['wall_mint', 0, 1], ['wall_yellow', 50, 1], ['wall_pink', 80, 2], ['wall_grey', 80, 2], ['wall_beige', 80, 3], ['wall_wood', 150, 4], ['wall_dwood', 150, 5], ['wall_red', 200, 6],
   ['floor_wood', 0, 1], ['floor_grey', 60, 1], ['floor_herring', 80, 2], ['floor_teal', 80, 2], ['floor_yellow', 80, 3], ['floor_carpet', 100, 3], ['floor_brick', 120, 4], ['floor_dwood', 120, 4], ['floor_rwood', 150, 5]];
 const SHOP_KIND = Object.fromEntries(SHOP.map(s => [s[0], s[1]]));
+// shop filter chips: [id, label]; catOf() sorts every catalogue item into one of them
+const SHOP_CATS = [['all', 'ทั้งหมด'], ['new', '✨ ใหม่'], ['seat', '🪑 ที่นั่ง'], ['desk', '🖥️ โต๊ะ'], ['store', '🗄️ ตู้/ชั้น'], ['plant', '🌿 ต้นไม้'], ['light', '💡 โคมไฟ'], ['deco', '🧸 ของแต่ง'], ['wall', '🖼️ ติดผนัง']];
+const SHOP_NEW = n => n.startsWith('dx_');
+function catOf(n, k) {
+  if (k === 'w') return 'wall';
+  if (/^(chair|armchair|sofa|bench|cushion)_|^dx_(beanbag|rollchair|bamboo)$/.test(n)) return 'seat';
+  if (/^(pc_desk|desk_|books_desk|table_|dresser|vanity)/.test(n)) return 'desk';
+  if (/^(cupcase|locker|shelf_|cabinet_|bookshelf|fridge|wardrobe|filing|shop_shelf|crate|box_wood)|^dx_(medcab|cooler|cart)$/.test(n)) return 'store';
+  if (/^(plant_|tree|palm)|^dx_cactus$/.test(n)) return 'plant';
+  if (/^(lamp|floorlamp)_/.test(n)) return 'light';
+  return 'deco';
+}
 
 /* ---------- the room: 12 x 9 cells, rows 0-1 are the wall ---------- */
 const RC = 32, RCOLS = 12, RROWS = 9, RTOP = 2;
@@ -519,9 +531,12 @@ function officeMount(root, api) {
     q('tabs').querySelectorAll('[data-t]').forEach(b => b.onclick = () => { tab = b.dataset.t; list(); });
     const L = q('list');
     if (tab === 'shop') {
-      L.innerHTML = `<div class="shop-grid">${SHOP.filter(s => typeof GACHA_ONLY === 'undefined' || !GACHA_ONLY.has(s[0])).map(([n, k, price, lv]) => { const lock = p.lv < lv, poor = p.coins < price;
+      const cat = store.get('shopCat', 'all'), pick = s => cat === 'all' || (cat === 'new' ? SHOP_NEW(s[0]) : catOf(s[0], s[1]) === cat);
+      L.innerHTML = `<div class="shop-cats">${SHOP_CATS.map(([c, v]) => `<button class="btn sm${c === cat ? ' on' : ''}" data-cat="${c}">${v}</button>`).join('')}</div>
+        <div class="shop-grid">${SHOP.filter(s => (typeof GACHA_ONLY === 'undefined' || !GACHA_ONLY.has(s[0])) && pick(s)).map(([n, k, price, lv]) => { const lock = p.lv < lv, poor = p.coins < price;
         return `<button class="shop-it${lock ? ' lock' : ''}" data-buy="${n}" ${lock ? 'disabled' : ''}>${icon(n)}<small>${lock ? `🔒 Lv ${lv}` : `🪙 ${price}`}</small>${p.inv[n] ? `<i class="cnt">${p.inv[n]}</i>` : ''}${trial.some(it => it[0] === n) ? '<i class="incart">🛒</i>' : ''}</button>`; }).join('')}</div>`;
       L.querySelectorAll('[data-buy]').forEach(b => b.onclick = () => { startTry(b.dataset.buy); api.sfx('tick'); });
+      L.querySelectorAll('[data-cat]').forEach(b => b.onclick = () => { store.set('shopCat', b.dataset.cat); list(); });
     } else if (tab === 'inv') {
       const own = Object.entries(p.inv).filter(([, c]) => c > 0);
       L.innerHTML = own.length ? `<div class="shop-grid">${own.map(([n, c]) => `<button class="shop-it" data-place="${n}">${icon(n)}<small>วาง</small><i class="cnt">${c}</i></button>`).join('')}</div>`
