@@ -64,6 +64,7 @@ const SHOP = [
   ['crate', 'f', 15, 1], ['box_wood', 'f', 15, 1], ['broom', 'f', 10, 1], ['cushion_blue', 'f', 15, 1], ['cushion_yellow', 'f', 15, 1], ['jar', 'f', 25, 1], ['fruit_basket', 'f', 30, 1], ['cake_straw', 'f', 20, 1], ['globe', 'f', 40, 1],
   ['jar_pot', 'f', 30, 2], ['fruit_bowl', 'f', 30, 2], ['fruit_grape', 'f', 35, 2], ['fruit_veg', 'f', 30, 2], ['globe_blue', 'f', 60, 2], ['cans', 'f', 40, 2], ['pizza', 'f', 25, 2], ['jar_white', 'f', 40, 3], ['jar_gold', 'f', 60, 4], ['globe_gold', 'f', 150, 7],
   ['dx_cactus', 'f', 30, 1], ['dx_teddy', 'f', 45, 2], ['dx_beanbag', 'f', 70, 2], ['dx_cooler', 'f', 90, 3],
+  ['dx_bamboo', 'f', 35, 1], ['dx_rollchair', 'f', 45, 2], ['dx_cart', 'f', 70, 3], ['dx_medcab', 'f', 100, 4], ['dx_arcade', 'f', 300, 6],
   ['rug_blue', 'r', 60, 1], ['rug_green', 'r', 60, 2], ['rug_lblue', 'r', 70, 3],
   ['window_small', 'w', 30, 1], ['window_frost', 'w', 50, 1], ['window_grey', 'w', 60, 1], ['window_red', 'w', 60, 2], ['window_big', 'w', 90, 2], ['window_slide', 'w', 120, 4],
   ['pic_bird', 'w', 25, 1], ['pic_flower', 'w', 25, 1], ['pic_hill', 'w', 25, 1], ['pic_fish', 'w', 30, 1], ['pic_fishblue', 'w', 30, 1], ['pic_aqua', 'w', 30, 1], ['pic_cat', 'w', 40, 1], ['noticeboard', 'w', 40, 1], ['board_calendar', 'w', 40, 1], ['dx_clock', 'w', 35, 1], ['dx_firstaid', 'w', 40, 2], ['dx_award', 'w', 60, 3],
