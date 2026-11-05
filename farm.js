@@ -10,22 +10,24 @@
 // Classic script after office.js (uses Prog, roomW, PXA_ART, pxa, pxImg, drawChar, drawAcc, makeFX, txt, rrect, g2canvas, store, toast).
 'use strict';
 // id → [Thai name, grow minutes, seed price, sell price, level, ripe art]
+// [Thai name, grow minutes, seed price, sell price, level, art]. Sell prices were cut on 5 Nov 2026 (the farm out-earned the games);
+// harvest XP still uses the old margins (CROP_XP) so levelling speed did not change.
 const CROPS = {
-  bok: ['ผักบุ้ง', 3, 4, 6, 1, ['g...g...g', 'gg.gGg.gg', '.gGgGgGg.', '.gGgGgGg.', '..gGGGg..', '..GgGgG..', '..GgGgG..', '...GGG...']],
-  let: ['ผักสลัด', 10, 8, 18, 1, ['...ggg...', '.ggwgwgg.', 'gGgggggGg', 'ggGgwgGgg', 'gGgggggGg', '.gGgGgGg.', '..ggggg..']],
-  car: ['แครอท', 20, 12, 28, 2, ['..g.g.g..', '..gGgGg..', '...gGg...', '...kGk...', '..ktttk..', '..ktttk..', '...kttk..', '...ktk...', '....k....']],
-  tom: ['มะเขือเทศ', 40, 18, 44, 3, ['..gGgGg..', '.gGrrGgg.', 'gGrwrRgGg', 'gGrrRGrrg', '.gGRgGrwr', '.gGgGgrrR', '..gGGGg..', '...GGG...']],
-  chi: ['พริก', 60, 22, 58, 5, ['...gGg...', '.ggGgGgg.', 'gGrgGgRgg', 'gGRgGgrGg', '.grGgGrg.', '.gRgGgRg.', '..gGGGg..', '...GGG...']],
-  cor: ['ข้าวโพด', 90, 28, 78, 7, ['....g.....', '...ggk....', '..gGkyk...', '..gkyyyk..', '.gGkyoyk..', 'gGgkyyyk.g', '.g.kyoykgG', '...gkyyGg.', '....gGGg..', '.....GG...']],
-  pum: ['ฟักทอง', 120, 35, 100, 9, ['....Gc....', '...gGc....', '.kkkkkkkk.', 'ktottottok', 'kttottotok', 'kttottotok', 'ktottottok', '.kkkkkkkk.']],
-  wat: ['แตงโม', 180, 45, 140, 12, ['.....gG....', '..kkkkkkk..', '.kgGgGgGgk.', 'kgGgGgGgGgk', 'kGgGgGgGgGk', 'kgGgGgGgGgk', '.kGgGgGgGk.', '..kkkkkkk..']],
+  bok: ['ผักบุ้ง', 3, 4, 5, 1, ['g...g...g', 'gg.gGg.gg', '.gGgGgGg.', '.gGgGgGg.', '..gGGGg..', '..GgGgG..', '..GgGgG..', '...GGG...']],
+  let: ['ผักสลัด', 10, 8, 11, 1, ['...ggg...', '.ggwgwgg.', 'gGgggggGg', 'ggGgwgGgg', 'gGgggggGg', '.gGgGgGg.', '..ggggg..']],
+  car: ['แครอท', 20, 12, 17, 2, ['..g.g.g..', '..gGgGg..', '...gGg...', '...kGk...', '..ktttk..', '..ktttk..', '...kttk..', '...ktk...', '....k....']],
+  tom: ['มะเขือเทศ', 40, 18, 25, 3, ['..gGgGg..', '.gGrrGgg.', 'gGrwrRgGg', 'gGrrRGrrg', '.gGRgGrwr', '.gGgGgrrR', '..gGGGg..', '...GGG...']],
+  chi: ['พริก', 60, 22, 32, 5, ['...gGg...', '.ggGgGgg.', 'gGrgGgRgg', 'gGRgGgrGg', '.grGgGrg.', '.gRgGgRg.', '..gGGGg..', '...GGG...']],
+  cor: ['ข้าวโพด', 90, 28, 40, 7, ['....g.....', '...ggk....', '..gGkyk...', '..gkyyyk..', '.gGkyoyk..', 'gGgkyyyk.g', '.g.kyoykgG', '...gkyyGg.', '....gGGg..', '.....GG...']],
+  pum: ['ฟักทอง', 120, 35, 48, 9, ['....Gc....', '...gGc....', '.kkkkkkkk.', 'ktottottok', 'kttottotok', 'kttottotok', 'ktottottok', '.kkkkkkkk.']],
+  wat: ['แตงโม', 180, 45, 64, 12, ['.....gG....', '..kkkkkkk..', '.kgGgGgGgk.', 'kgGgGgGgGgk', 'kGgGgGgGgGk', 'kgGgGgGgGgk', '.kGgGgGgGk.', '..kkkkkkk..']],
   // signature fruits: everyone is dealt one (from their name); only its owner can plant it
-  mgo: ['มะม่วง', 60, 20, 55, 1, ['....Gg...', '...kkkk..', '..kyyyok.', '.kyyyyyok', '.kyyytyok', '.kyyttook', '..kyttok.', '...kkkk..']],
-  mgs: ['มังคุด', 60, 20, 55, 1, ['...gGg...', '..gGkGg..', '.kkvvvkk.', 'kvvvvvvvk', 'kvwvvvvvk', 'kvvvvvvvk', '.kvvvvvk.', '..kkkkk..']],
-  lyc: ['ลิ้นจี่', 60, 20, 55, 1, ['...Gg....', '..kkkk...', '.krRrRk..', 'kRrRrRrk.', 'krRrRrRk.', 'kRrRrRrk.', '.krRrRk..', '..kkkk...']],
-  ram: ['เงาะ', 60, 20, 55, 1, ['.r.r.r.r.', 'r.kkkkk.r', '.krrrrrk.', 'rkrwrrrkr', '.krrrrrk.', 'rkrrrrRkr', '.kkrrrkk.', 'r..kkk..r']],
-  coc: ['มะพร้าว', 60, 20, 55, 1, ['..kkkkk..', '.kcCcCck.', 'kcCcCcCck', 'kCcCcCcCk', 'kcCcCckck', '.kcCckck.', '..kkkkk..']],
-  dur: ['ทุเรียน', 60, 20, 55, 1, ['....c....', '..kykyk..', '.kygyyyk.', 'kyygyGyyk', 'kgyyGyygk', 'kyyGyyGyk', '.kGyygyk.', '..kkkkk..']],
+  mgo: ['มะม่วง', 60, 20, 30, 1, ['....Gg...', '...kkkk..', '..kyyyok.', '.kyyyyyok', '.kyyytyok', '.kyyttook', '..kyttok.', '...kkkk..']],
+  mgs: ['มังคุด', 60, 20, 30, 1, ['...gGg...', '..gGkGg..', '.kkvvvkk.', 'kvvvvvvvk', 'kvwvvvvvk', 'kvvvvvvvk', '.kvvvvvk.', '..kkkkk..']],
+  lyc: ['ลิ้นจี่', 60, 20, 30, 1, ['...Gg....', '..kkkk...', '.krRrRk..', 'kRrRrRrk.', 'krRrRrRk.', 'kRrRrRrk.', '.krRrRk..', '..kkkk...']],
+  ram: ['เงาะ', 60, 20, 30, 1, ['.r.r.r.r.', 'r.kkkkk.r', '.krrrrrk.', 'rkrwrrrkr', '.krrrrrk.', 'rkrrrrRkr', '.kkrrrkk.', 'r..kkk..r']],
+  coc: ['มะพร้าว', 60, 20, 30, 1, ['..kkkkk..', '.kcCcCck.', 'kcCcCcCck', 'kCcCcCcCk', 'kcCcCckck', '.kcCckck.', '..kkkkk..']],
+  dur: ['ทุเรียน', 60, 20, 30, 1, ['....c....', '..kykyk..', '.kygyyyk.', 'kyygyGyyk', 'kgyyGyygk', 'kyyGyyGyk', '.kGyygyk.', '..kkkkk..']],
 };
 const SIG = ['mgo', 'mgs', 'lyc', 'ram', 'coc', 'dur'], VEG = Object.keys(CROPS).filter(id => !SIG.includes(id));
 for (const [id, c] of Object.entries(CROPS)) PXA_ART['crop_' + id] = c[5];
@@ -35,6 +37,7 @@ Object.assign(PXA_ART, {
   crop_grow: ['..g..g..g..', '.ggg.g.ggg.', 'ggGggGggGgg', '.gGgGgGgGg.', '..gGGGGGg..', '...gGGGg...', '....GGG....', '....G.G....'],
   can: ['.....kk...', '....kbbk..', 'kkkkkbbk..', 'kbbbbbbbkk', 'kbbbbbbbk.', 'kbBbbbbbk.', 'kbbbbbbbk.', '.kkkkkkk..'],
 });
+const CROP_XP = {bok:2,let:4,car:6,tom:10,chi:13,cor:18,pum:23,wat:33,mgo:13,mgs:13,lyc:13,ram:13,coc:13,dur:13};
 const WATER_CUT = .15, WATER_MAX = 3, FRIEND_WATER_DAY = 20, GIFT_DAY = 10, SPRINKLER = [300, 3], CANTEEN_BONUS = 1.2, CANTEEN_REWARD = 150;
 // plots per room width (office.js ROOM_SIZES)
 const PLOTS_FOR = { 12: 4, 15: 6, 18: 8, 22: 10 };
@@ -209,7 +212,7 @@ function farmMount(root, api) {
   function splash(i) { const r = plotRect(i); fx.burst(r.x + r.w / 2, r.y + 20, { n: 14, colors: ['#4cc3ff', '#bfe9ff', '#fff'], speed: 140, size: 4 }); }
   // harvest goes into the basket (XP now, coins when sold or delivered)
   function harvest(i, quiet) {
-    const pl = f.plots[i], c = CROPS[pl.c], m = MUT_AT(pl, fwMine(i)), key = pl.c + (m ? '.' + m : ''), xp = Math.round((c[3] - c[2]) / 3) + 1;
+    const pl = f.plots[i], c = CROPS[pl.c], m = MUT_AT(pl, fwMine(i)), key = pl.c + (m ? '.' + m : ''), xp = CROP_XP[pl.c] || Math.round((c[3] - c[2]) / 3) + 1;
     const b = f.book[pl.c] || (f.book[pl.c] = [0, 0]); b[0]++; if (m) { b[1] = (b[1] || 0) + 1; (b[3] = b[3] || {})[m] = 1; }
     f.bag[key] = (f.bag[key] || 0) + 1; Awards.add('farm', 1);
     if (typeof Stats !== 'undefined') { Stats.econ('harvest'); Stats.econ('h_' + pl.c); if (m) Stats.econ('mutant'); }
