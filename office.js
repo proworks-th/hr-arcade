@@ -153,8 +153,21 @@ function caseImg(cs = [], k = 1) {
 }
 const drawnItem = n => n === 'cupcase' || !!cupOf(n) || (typeof SX !== 'undefined' && !!SX[n]);
 const itemCanvas = (n, k = 1, cs = [], c = 0) => n === 'cupcase' ? caseImg(cs, k) : SX[n] ? sxImg(n, k, c) : cupImg(n, k);
-const itemImg = (n, room, c = 0) => drawnItem(n) ? itemCanvas(n, 1, (room && room.cs) || [], c) : n;
-const dyeable = n => typeof SX_DYE !== 'undefined' && !!SX_DYE[n];
+const itemImg = (n, room, c = 0) => drawnItem(n) ? itemCanvas(n, 1, (room && room.cs) || [], c) : c && MI_DYE[n] ? miImg(n, c) : n;
+const dyeable = n => typeof SX_DYE !== 'undefined' && (!!SX_DYE[n] || !!MI_DYE[n]);
+// a LimeZu sprite with its fabric colours swapped for a dye ramp; the plain image until it has loaded (then cached)
+const _mi = {};
+function miImg(n, c) {
+  const im = pix(n); if (!c || !DYE[c] || !MI_DYE[n] || !im.complete || !im.naturalWidth) return im;
+  const key = n + '@' + c; if (_mi[key]) return _mi[key];
+  const L = MI_DYE[n].split(','), ps = L.length === 1 ? [1] : L.length === 2 ? [0, 1] : L.map((_, i) => 2 * i / (L.length - 1));
+  const rgb = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16)), R = DYE[c].slice(1).map(rgb), m = {};
+  L.forEach((h, j) => { const p = ps[j], a = Math.floor(p), b = Math.min(2, a + 1), f = p - a; m[h] = R[a].map((v, i) => Math.round(v + (R[b][i] - v) * f)); });
+  const cv = document.createElement('canvas'); cv.width = im.naturalWidth; cv.height = im.naturalHeight; const g = cv.getContext('2d'); g.drawImage(im, 0, 0);
+  const d = g.getImageData(0, 0, cv.width, cv.height), a = d.data;
+  for (let i = 0; i < a.length; i += 4) { if (!a[i + 3]) continue; const t = m[((a[i] << 16) | (a[i + 1] << 8) | a[i + 2]).toString(16).padStart(6, '0')]; if (t) { a[i] = t[0]; a[i + 1] = t[1]; a[i + 2] = t[2]; } }
+  g.putImageData(d, 0, 0); return (_mi[key] = cv);
+}
 function itemLabel(n) {
   if (typeof SX !== 'undefined' && SX[n]) return SX[n][0] + (n.startsWith('sx_') ? ' (ของรางวัล Season Pass)' : '');
   if (n === 'cupcase') return '🏆 ตู้โชว์ถ้วย (โชว์ถ้วยดีที่สุด 6 ใบของคุณเอง)';
@@ -525,7 +538,7 @@ function officeMount(root, api) {
   function startPlace(n) { if (p.inv[n] > 0) { p.inv[n]--; if (!p.inv[n]) delete p.inv[n]; } placing = n; moving = -1; movingT = -1; placingTrial = false; sel = -1; selT = -1; save(); tools(); list(); }
   function startTry(n) { placing = n; placingTrial = true; moving = -1; movingT = -1; sel = -1; selT = -1; tools(); }
   const icon = (n, h = 34, c = 0) => drawnItem(n) ? `<img class="pxi" src="${itemCanvas(n, 4, caseCups(p), c).toDataURL()}" alt="" title="${esc(itemLabel(n))}" style="max-height:${h}px">`
-    : `<img class="pxi" src="assets/mi/${n}.png" alt="" style="max-height:${h}px;max-width:${h * 1.6}px">`;
+    : `<img class="pxi" src="${c && MI_DYE[n] && miImg(n, c).toDataURL ? miImg(n, c).toDataURL() : `assets/mi/${n}.png`}" alt="" style="max-height:${h}px;max-width:${h * 1.6}px">`;
   function list() {
     const tabs = [['shop', '🛒 ร้านค้า'], ['inv', '📦 ของของฉัน'], ['style', '🎨 ห้อง/ผนัง'], ['friends', '👥 ห้องเพื่อน']];
     q('tabs').innerHTML = tabs.map(([k, v]) => `<button class="btn sm${k === tab ? ' on' : ''}" data-t="${k}">${v}</button>`).join('');
