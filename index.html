@@ -371,6 +371,8 @@ button.pk:hover{transform:translateY(-2px)}div.pk{cursor:default}.pk b{font-size
 .g2box canvas{display:block;width:min(100%,calc((100dvh - var(--chrome)) * var(--ar,1.8)));height:auto;aspect-ratio:var(--ar,1.8);border:3px solid var(--line);border-radius:14px;box-shadow:0 6px 0 var(--line);touch-action:none;background:#fdf3e6}
 .g2pad{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:12px}
 .g2pad .btn small{font-size:12px;color:var(--muted)}
+.pz-pick{max-width:560px}.pz-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin:10px 0}
+.pz-grid .btn{display:flex;flex-direction:column;align-items:center;gap:2px;min-height:76px;padding:8px 6px}.pz-grid .btn b{font-size:20px}.pz-grid .btn small{font-size:12px;line-height:1.2}.pz-grid .btn i{font-style:normal;font-size:13px}.pz-grid .btn.on{outline:3px solid var(--pink,#ff5c8a)}.pz-grid .btn:disabled{opacity:.5}
 @media (max-width:720px){.g2tip{display:none}}
 
 /* hub live panel */
@@ -529,8 +531,11 @@ button.pk:hover{transform:translateY(-2px)}div.pk{cursor:default}.pk b{font-size
 <div id="boss" hidden></div>
 
 <script src="solo-games.js?v=10"></script>
+<script src="prism-core.js?v=2"></script>
+<script src="prism-levels.js?v=1"></script>
+<script src="prism.js?v=5"></script>
 <script src="season-art.js?v=5"></script>
-<script src="office.js?v=26"></script>
+<script src="office.js?v=27"></script>
 <script src="wardrobe.js?v=9"></script>
 <script src="gacha.js?v=4"></script>
 <script src="hubroom.js?v=9"></script>
@@ -584,7 +589,7 @@ $('#muteBtn').onclick=()=>{muted=!muted;store.set('muted',muted);renderMute()};
 
 /* ---------- online services (online.js, Firebase): ranking, presence, feed ---------- */
 let onlineMod=null;
-const loadRank=()=>onlineMod||(onlineMod=import('./online.js?v=21'));
+const loadRank=()=>onlineMod||(onlineMod=import('./online.js?v=22'));
 const loadOnline=loadRank;
 const PIX_AVAS=['p_office','p_woffice','p_whealth','p_tech','p_cat','p_dog'];
 const myAva=()=>{const a=store.get('partyAva','p_office');return PIX_AVAS.includes(a)?a:'p_office'};
@@ -688,7 +693,7 @@ function partyInvite(G,name){
   document.body.appendChild(d);setTimeout(()=>d.remove(),15000);
 }
 /* ---------- เกมแนะนำวันนี้: same pick for everyone, pays double coins ---------- */
-function featuredId(){const L=GAMES.filter(g=>!g.online),d=thaiDay().replace(/\D/g,'');return L[(+d*2654435761>>>0)%L.length].id}
+function featuredId(){const L=GAMES.filter(g=>!g.online&&!g.noFeat),d=thaiDay().replace(/\D/g,'');return L[(+d*2654435761>>>0)%L.length].id}
 /* ---------- first-play tutorials: 3 picture steps, shown the first time each game opens ---------- */
 const TUT={
   spot:[['👀','ดูภาพซ้าย-ขวา'],['👆','แตะจุดที่ต่างกัน'],['⏱','หาให้ครบก่อนหมดเวลา']],
@@ -701,6 +706,7 @@ const TUT={
   toss:[['👆','ลากลูกถอยหลังแบบหนังสติ๊ก'],['🌬️','ดูลมจากพัดลม'],['🗑️','ปล่อยให้ลงถัง']],
   slack:[['✋','กดค้าง = แอบเล่นมือถือ'],['👀','หัวหน้าหันมา ปล่อยทันที!'],['😴','ไม่เล่นเลยจะง่วงหลับ']],
   conga:[['← ↑ → ↓','เลี้ยวขบวน'],['🧑‍🤝‍🧑','เก็บเพื่อนต่อแถว'],['🚪','ครบแล้วพาออกประตู']],
+  prism:[['👆','แตะกองพลัง'],['⬡','แตะช่องข้างๆ สีบนตรงกัน'],['⚡','ครบ 4 ชั้นสีเดียว = ชาร์จ']],
 };
 function tutHTML(id){const T=TUT[id];if(!T)return'';
   return`<div class="tut">${T.map(([k,t],i)=>`<div class="tut-step" style="animation-delay:${i*.25}s"><span class="tut-k${k.length>2?' wide':''}">${k}</span><small>${i+1}. ${t}</small></div>`).join('<span class="tut-arrow">→</span>')}</div>`}
@@ -823,7 +829,7 @@ function startGame(id){
         <div class="rankline" data-a="rk"></div><div class="reward"><b>+${rw.coins} 🪙</b>${mult>1?' <i class="feat-b">×2 เกมแนะนำ</i>':''} · <b>+${rw.xp} XP</b><div class="xpbar big"><i style="width:${rw.ups.length?0:rw.before.xp/needXP(rw.before.lv)*100}%"></i></div>
           <small>${rw.ups.length?`🎉 เลื่อนขั้นเป็น <b>Lv ${rw.after.lv} · ${Prog.title(rw.after.lv)}</b>!`:`Lv ${rw.after.lv} · ${Prog.title(rw.after.lv)} · อีก ${needXP(rw.after.lv)-rw.after.xp} XP`}</small>
           ${unlockHTML(rw)}</div>
-        <div class="row"><button class="btn primary res-cta" data-a="again">🔁 เล่นอีกรอบ</button></div>
+        <div class="row"><button class="btn primary res-cta" data-a="again">${g.again||'🔁 เล่นอีกรอบ'}</button></div>
         <div class="res-links"><button class="linkbtn" data-a="board">🏆 อันดับ</button><button class="linkbtn" data-a="share">📋 อวดในไลน์</button><button class="linkbtn" data-a="home">🏠 หน้าแรก</button></div></div>`;
       requestAnimationFrame(()=>requestAnimationFrame(()=>{const b=ov.querySelector('.reward .xpbar i');if(b)b.style.width=(rw.after.xp/needXP(rw.after.lv)*100)+'%'}));
       if(rw.ups.length)setTimeout(()=>{const pn=ov.querySelector('.panel');if(pn){const R=pn.getBoundingClientRect();domBurst(pn,R.width/2,R.height/3,{n:40,dist:220,size:10});api.sfx('level')}},350);
@@ -1402,6 +1408,7 @@ const GAMES=[
   {id:'conga',title:'ขบวนไปกินข้าว',emoji:'🍱',img:'assets/mi/adam_down.png',color:'#e0f4d6',desc:'เก็บเพื่อนต่อแถว พาออกประตูไปโรงอาหาร',time:'2–4 นาที',mount:congaGame},
   {id:'office',title:'ออฟฟิศของฉัน',emoji:'🏠',online:true,mount:officeMount},
   {id:'farm',title:'ฟาร์มดาดฟ้า',emoji:'🌱',online:true,mount:farmMount},
+  {id:'prism',title:'โรงหลอมปริซึม',emoji:'💎',img:'assets/mi/globe_blue.png',color:'#e3dcff',noFeat:true,again:'▶ ด่านต่อไป',unit:'แต้ม',desc:'พัซเซิลช่องหกเหลี่ยม ย้ายพลังสีไปช่องข้างๆ รวมให้ครบ 4 ชั้นเพื่อชาร์จคริสตัล ไม่จับเวลา คิดได้เต็มที่',time:'1–5 นาที/ด่าน',mount:prismGame},
   {id:'stack',title:'ซ้อนแฟ้มเสียดฟ้า',emoji:'📚',img:'assets/mi/books_desk.png',color:'#b8f2c9',desc:'แตะเดียวจบ ซ้อนแฟ้มให้สูงที่สุด ยิ่งเป๊ะยิ่งไปไกล',time:'1–2 นาที',unit:'ชั้น',mount:stackGame},
 ];
 let feedOpen=false;

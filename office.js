@@ -6,7 +6,7 @@
 
 /* ---------- economy ---------- */
 // score that pays one coin, per game (a decent run ≈ 20–30 coins)
-const PROG_NORM = { spot: 60, run: 20, whack: 16, stack: .8, tetris: 80, stamp: 24, barista: 24, toss: 24, slack: 16, conga: 12 };
+const PROG_NORM = { spot: 60, run: 20, whack: 16, stack: .8, tetris: 80, stamp: 24, barista: 24, toss: 24, slack: 16, conga: 12, prism: 12 };
 // a new title every 2–3 levels; each title level also unlocks an accessory (ACC in wardrobe.js)
 const TITLES = [[1, 'เด็กฝึกงาน'], [2, 'พนักงานทดลองงาน'], [4, 'พนักงานใหม่'], [6, 'พนักงานขยัน'], [8, 'มือโปรประจำแผนก'], [10, 'พนักงานดีเด่น'], [12, 'รุ่นพี่ใจดี'],
   [14, 'หัวหน้าทีม'], [17, 'ผู้ช่วยผู้จัดการ'], [20, 'ผู้จัดการ'], [23, 'ผู้อำนวยการฝ่าย'], [26, 'ผู้อำนวยการ'], [30, 'ตำนานออฟฟิศ'], [35, 'เทพเจ้าแห่ง HR'], [40, 'ตำนานห้องพักสมอง']];

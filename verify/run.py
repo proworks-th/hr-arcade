@@ -132,7 +132,7 @@ def farm(page, base, shot):
 
 
 SCREENS = {'office': office, 'farm': farm, 'hub': hub, 'spot': solo('spot'), 'run': solo('run'), 'whack': solo('whack'), 'stack': solo('stack', 600),
-           'tetris': solo('tetris'), 'stamp': solo('stamp'), 'barista': solo('barista', 2500), 'toss': solo('toss'), 'slack': solo('slack', 2000), 'conga': solo('conga', 2000),
+           'tetris': solo('tetris'), 'stamp': solo('stamp'), 'barista': solo('barista', 2500), 'toss': solo('toss'), 'slack': solo('slack', 2000), 'conga': solo('conga', 2000), 'prism': solo('prism'),
            'party': party2d}
 
 
