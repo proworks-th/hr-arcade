@@ -406,6 +406,7 @@ button.pk:hover{transform:translateY(-2px)}div.pk{cursor:default}.pk b{font-size
 .rk-list{list-style:none;margin:8px 0 0;padding:0;text-align:left}
 .rk-list li{display:flex;gap:8px;align-items:center;padding:6px 8px;border-bottom:1px dashed #e2d8c8}
 .rk-list li.me{background:#fff3c4;border-radius:8px}
+.pz-grid .pz-day{grid-column:1/-1;flex-direction:row;justify-content:center;gap:10px;min-height:54px;background:#fff4c4}.pz-grid .pz-hard{background:#ffe6ee}
 .rk-list .pos{width:34px;font-weight:800;text-align:center}
 .rk-list .nm{flex:1;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .rk-list .sc{font-weight:800}.rk-list .ex{font-size:12px;color:var(--muted)}
@@ -531,9 +532,10 @@ button.pk:hover{transform:translateY(-2px)}div.pk{cursor:default}.pk b{font-size
 <div id="boss" hidden></div>
 
 <script src="solo-games.js?v=10"></script>
-<script src="prism-core.js?v=2"></script>
-<script src="prism-levels.js?v=1"></script>
-<script src="prism.js?v=5"></script>
+<script src="prism-core.js?v=3"></script>
+<script src="prism-levels.js?v=2"></script>
+<script src="prism-daily.js?v=1"></script>
+<script src="prism.js?v=6"></script>
 <script src="season-art.js?v=5"></script>
 <script src="office.js?v=27"></script>
 <script src="wardrobe.js?v=9"></script>
@@ -817,7 +819,7 @@ function startGame(id){
     end(score,extra='',daily=false,stats={}){
       if(cur.ended)return;cur.ended=true;
       recordMission({game:g.id,score,daily,st:stats});
-      const mult=g.id===featuredId()?2:1,rw=Prog.award(g.id,score,mult),lastSc=store.get('last_'+g.id,null);store.set('last_'+g.id,score);Stats.hit('g',g.id);
+      const mult=g.id===featuredId()?2:1,rw=Prog.award(g.id,stats.award!=null?stats.award:score,mult),lastSc=store.get('last_'+g.id,null);store.set('last_'+g.id,score);Stats.hit('g',g.id);
       mine.forEach(f=>loops.delete(f));mine.clear();
       api.sfx('over');
       const bk='best_'+g.id,prev=store.get(bk,0),isBest=score>prev;if(isBest)store.set(bk,score);if(isBest&&prev>0)Season.add('best');if(mult>1)Season.add('feat');
@@ -882,6 +884,7 @@ $('#homeBtn').onclick=goHome;
 
 function showPause(){
   if(!current||!current.started||current.ended||$('#pauseOv'))return;
+      else if(g.id==='prism'&&!daily)rk.innerHTML='<span class="muted">ด่านปกติไม่นับอันดับ — เล่น 📅 ด่านประจำวันเพื่อลงอันดับ</span>';
   paused=true;
   const ov=document.createElement('div');ov.className='overlay';ov.id='pauseOv';
   ov.innerHTML=`<div class="panel popin"><div class="big">⏸️</div><h2>พักเกมไว้ก่อน</h2><p class="muted">รอดตัวไปอีกรอบ 😮‍💨</p><div class="row"><button class="btn primary">▶ เล่นต่อ</button><button class="btn">🏠 หน้าหลัก</button></div></div>`;

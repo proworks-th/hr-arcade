@@ -1,6 +1,6 @@
 // Runs the Prism Foundry solver off the main thread (hint + dead-end check after every move).
 // Shortest path when the search is small; otherwise any path (a hint only has to keep the level solvable).
-importScripts('prism-core.js?v=2');
+importScripts('prism-core.js?v=3');
 const geos = {};
 onmessage = e => {
   const { id, lv, def, st } = e.data;

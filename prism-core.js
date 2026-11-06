@@ -134,6 +134,35 @@
     }
     return null;
   }
-  const api = { CAP, COLORS, load, why, moves, apply, solve, solveAny, key, done, isRes, cap, top, run, clone };
+  /* ---------- level generator (shared by the daily puzzle and `node verify/prism-levels.js gen`) ---------- */
+  const LAYOUTS = {
+    line3: ['0,0', '1,0', '2,0'], line4: ['0,0', '1,0', '2,0', '3,0'], tri: ['0,0', '1,0', '0,1'], diamond: ['0,0', '1,0', '0,1', '1,-1'],
+    bar5: ['0,0', '1,0', '2,0', '0,1', '1,1'],
+    flower: ['0,0', '1,0', '1,-1', '0,-1', '-1,0', '-1,1', '0,1'],
+    wide: ['0,0', '1,0', '2,0', '3,0', '-1,1', '0,1', '1,1', '2,1'],
+    flower9: ['0,0', '1,0', '1,-1', '0,-1', '-1,0', '-1,1', '0,1', '2,-1', '-2,1'],
+    zig: ['0,0', '1,0', '1,-1', '2,-1', '0,1', '-1,1', '2,0'],
+  };
+  function rng(seed) { let a = seed >>> 0; return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+  // one random candidate for (opts, seed) → { def, par } when it is a good puzzle, else null.
+  // Good = solvable, shortest solution lo..hi moves, nothing charged at the start, and (with a reservoir) the reservoir matters.
+  function candidate(o, seed) {
+    const cells = LAYOUTS[o.layout], r = rng(seed * 7919 + cells.length), units = [];
+    for (const c of o.colours) for (let k = 0; k < CAP; k++) units.push(c);
+    for (let i = units.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [units[i], units[j]] = [units[j], units[i]]; }
+    const fill = cells.map(() => '');
+    for (const u of units) { const open = fill.map((s, i) => s.length < CAP ? i : -1).filter(i => i >= 0); if (!open.length) return null; fill[open[Math.floor(r() * open.length)]] += u; }
+    const def = { cells: {}, res: o.res, resCap: o.resCap };
+    const lockSet = new Set(); while (lockSet.size < o.locks) lockSet.add(Math.floor(r() * cells.length));
+    cells.forEach((k, i) => { def.cells[k] = (lockSet.has(i) ? '#' : '') + fill[i]; });
+    if (fill.some((s, i) => !lockSet.has(i) && s.length === CAP && run(s) === CAP)) return null;
+    let L; try { L = load(def); } catch (e) { return null; }
+    const sol = solve(L.geo, L.st, o.limit || 300000);
+    if (!Array.isArray(sol) || sol.length < o.lo || sol.length > o.hi) return null;
+    if (o.res) { const L2 = load({ ...def, res: 0 }), s2 = solve(L2.geo, L2.st, o.limit || 300000); if (Array.isArray(s2) && s2.length <= sol.length) return null; }
+    def.par = sol.length;
+    return def;
+  }
+  const api = { CAP, COLORS, LAYOUTS, load, why, moves, apply, solve, solveAny, candidate, key, done, isRes, cap, top, run, clone };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.PrismCore = api;
 })(typeof window !== 'undefined' ? window : globalThis);
