@@ -36,14 +36,24 @@ const HubRoom = (() => {
     const next = i + 1 < OFFICE.length ? OFFICE[i + 1][0] : base + 6000;
     return { lv: i + 1 + extra, i, pts, from: base, to: next, cur: { n: OFFICE[i][1] }, next: OFFICE[i + 1] ? { n: OFFICE[i + 1][1], items: OFFICE[i + 1][2] } : null };
   }
-  let offPts = 0, offI = 0;
+  // office fund (กองทุนออฟฟิศ): coins people chip in this month; each goal decorates this room until the month ends
+  // [coins in the pot this month, what the room gets, items ([n, x, y, lift] — lift = px above a table top)]
+  const FUND = [
+    [5000, '💡 โคมไฟประดับ', [['floorlamp_blue', 8, 2], ['floorlamp_blue', 11, 2]]],
+    [15000, '🍰 โต๊ะขนมเลี้ยงออฟฟิศ', [['table_light', 4, 6], ['cake_straw', 4, 6, 12], ['pizza', 5, 6, 12]]],
+    [30000, '🕹️ ตู้เกม + ตู้กดน้ำ', [['dx_arcade', 19, 2], ['dx_cooler', 15, 2]]],
+    [50000, '🧸 มุมบีนแบ็ก', [['dx_beanbag', 0, 8], ['dx_teddy', 2, 8]]],
+  ];
+  const FUND_AMT = [50, 200, 1000];
+  const fundI = got => FUND.filter(f => got >= f[0]).length;
+  let offPts = 0, offI = 0, fund = { got: 0, by: [] }, fundN = 0;
   const kindOf = n => (typeof SHOP_KIND !== 'undefined' && SHOP_KIND[n]) || (/^(window|pic|notice|tv|world|board|door|mirror|black)/.test(n) ? 'w' : /^rug/.test(n) ? 'r' : 'f');
   const GACHA = { x: 5, y: 2 };                 // the capsule machine (drawn by hand, 2 cells wide)
   const BASE_ITEMS = ROOM.items.slice(), blockedCells = new Set();
-  function setItems(i) {                        // base room + every unlocked office level's furniture
-    ROOM.items = BASE_ITEMS.concat(...OFFICE.slice(1, i + 1).map(o => o[2]));
+  function setItems(i = offI, f = fundN) {     // base room + every unlocked office level's furniture + this month's fund goals
+    ROOM.items = BASE_ITEMS.concat(...OFFICE.slice(1, i + 1).map(o => o[2]), ...FUND.slice(0, f).map(o => o[2]));
     blockedCells.clear(); blockedCells.add(GACHA.x + ',' + GACHA.y); blockedCells.add((GACHA.x + 1) + ',' + GACHA.y);
-    for (const [n, x, y] of ROOM.items) if (kindOf(n) === 'f') for (let k = 0; k < cellsW(n); k++) blockedCells.add((x + k) + ',' + y);
+    for (const [n, x, y, lift] of ROOM.items) if (kindOf(n) === 'f' && !lift) for (let k = 0; k < cellsW(n); k++) blockedCells.add((x + k) + ',' + y);
   }
   setItems(0);
   const free = (x, y) => x >= 0 && x < COLS && y >= TOP && y < ROWS && !blockedCells.has(x + ',' + y);
@@ -336,8 +346,8 @@ const HubRoom = (() => {
     ctx.beginPath(); ctx.roundRect(STAGE.x0 * C + 2, STAGE.y0 * C + 2, (STAGE.x1 - STAGE.x0 + 1) * C - 4, (STAGE.y1 - STAGE.y0 + 1) * C - 4, 12); ctx.fill(); ctx.stroke(); ctx.restore();
     if (G.sc === 'lobby') { ctx.font = '600 12px Kanit,sans-serif'; ctx.fillStyle = 'rgba(214,51,108,.8)'; ctx.textAlign = 'center'; ctx.fillText('🎉 เวทีปาร์ตี้ · กดปุ่ม 🎉 เล่นปาร์ตี้', (STAGE.x0 + STAGE.x1 + 1) / 2 * C, STAGE.y0 * C + 18); ctx.textAlign = 'start'; }
     const list = [];
-    for (const [n, x, y] of ROOM.items) { const k = kindOf(n), cx = (x + cellsW(n) / 2) * C;
-      if (k === 'w') drawPixAt(ctx, n, cx, TOP * C - 6, 2); else if (k === 'r') drawPixAt(ctx, n, cx, (y + 1) * C, 2); else list.push({ y: y + 1, d: () => drawPixAt(ctx, n, cx, (y + 1) * C, 2) }); }
+    for (const [n, x, y, lift = 0] of ROOM.items) { const k = kindOf(n), cx = (x + cellsW(n) / 2) * C, im = typeof itemImg === 'function' ? itemImg(n) : n;
+      if (k === 'w') drawPixAt(ctx, im, cx, TOP * C - 6, 2); else if (k === 'r') drawPixAt(ctx, im, cx, (y + 1) * C, 2); else list.push({ y: y + 1 + (lift ? .01 : 0), d: () => drawPixAt(ctx, im, cx, (y + 1) * C - lift * 2, 2) }); }
     list.push({ y: GACHA.y + 1, d: drawGacha });
     // people: on the stage during a game, otherwise where they walked to
     const L = roster(), chatBy = {}; for (const m of chatLog) if (now() - m.t < 6000) chatBy[m.s] = m.m;
@@ -429,23 +439,70 @@ const HubRoom = (() => {
     }
     store.set('offLv', o.lv); renderOffice();
   }
+  function onFund(v) {
+    const n = fundI(v.got), was = fundN; fund = v;
+    if (n !== fundN) { fundN = n; setItems(); }
+    if (n > was && store.get('fundSeen', '') === v.m + ':' + was && visible()) {   // a goal was reached while we watched
+      toast(`💰 กองทุนออฟฟิศครบเป้า! ห้องรวมได้ ${FUND[n - 1][1]} ถึงสิ้นเดือน`); for (let i = 0; i < 5; i++) burst(W * (i + .5) / 5, H * .4, 30);
+    }
+    store.set('fundSeen', v.m + ':' + n); renderOffice();
+    const pn = document.querySelector('.office-p[data-tab=fund]'); if (pn) fundTab(pn);
+  }
+  const itemSrc = n => typeof drawnItem === 'function' && drawnItem(n) ? itemCanvas(n, 2).toDataURL() : `assets/mi/${n}.png`;
+  const ico = it => it.filter(x => !x[3]).concat(it.filter(x => x[3])).slice(0, 2).map(([n]) => `<img class="pxi" src="${itemSrc(n)}" alt="" height="26">`).join('');
+  const showCoins = () => { const m = document.querySelector('.me-coins'); if (m) m.textContent = `🪙 ${fmt(Prog.get().coins)}`; };
+  async function give(n, btn) {
+    const nm = myName(); if (!nm) { toast('ตั้งชื่อก่อนนะ (มุมขวาบน)'); return; }
+    const p = Prog.get(); if (p.coins < n) { toast(`เหรียญไม่พอ (มี 🪙 ${fmt(p.coins)})`); return; }
+    if (!O) { toast('ยังต่อออนไลน์ไม่ได้ ลองใหม่อีกที'); return; }
+    p.coins -= n; Prog.put(p); showCoins();
+    btn.disabled = true;
+    try {
+      const r = await O.fundGive(n, nm); if (!r) throw 0;
+      typeof Stats !== 'undefined' && Stats.econ('out_fund', n);
+      toast(`💰 ขอบคุณที่ลง 🪙 ${fmt(n)} เข้ากองทุนออฟฟิศ!`);
+      const a = fundI(r.before), b = fundI(r.after);
+      if (b > a) O.pushFeed(`💰 กองทุนออฟฟิศครบเป้า ${FUND[b - 1][1]}! ขอบคุณ ${nm} ที่ช่วยปิดยอด`, nm, myAva());
+    } catch (e) { const q = Prog.get(); q.coins += n; Prog.put(q); showCoins(); toast('ลงเหรียญไม่สำเร็จ เหรียญคืนแล้ว'); }
+    btn.disabled = false;
+  }
+  function fundTab(panel) {
+    const el = panel.querySelector('[data-k=body]'), got = fund.got, i = fundN, nx = FUND[i], from = i ? FUND[i - 1][0] : 0;
+    const pc = nx ? Math.min(100, (got - from) / (nx[0] - from) * 100) : 100, me = (myName() || '').trim().toLowerCase(), coins = Prog.get().coins;
+    const mon = typeof seasonName === 'function' && fund.m ? seasonName(fund.m) : 'เดือนนี้';
+    el.innerHTML = `<h2>💰 กองทุนออฟฟิศ</h2><p class="muted">ลงเหรียญได้ตามใจ ไม่บังคับ · ครบเป้าแล้วห้องรวมได้ของแต่งถึงสิ้นเดือน · ยอดเริ่มใหม่ทุกต้นเดือน · ท็อป 3 ผู้สนับสนุนได้ถ้วยไปวางในห้อง (ลงรวมอย่างน้อย 🪙 100)</p>
+      <div class="fund-sum"><b>${mon}: 🪙 ${fmt(got)}</b><span class="xpbar"><i style="width:${pc}%"></i></span><small>${nx ? `อีก 🪙 ${fmt(nx[0] - got)} → ${nx[1]}` : '🎉 ครบทุกเป้าแล้ว!'}</small></div>
+      <ul class="off-list fund-list">${FUND.map((r, k) => `<li class="${k < i ? 'ok' : k === i ? 'nx' : ''}"><span>${ico(r[2])}</span><b>${r[1]}</b><small>${k < i ? '✅ ได้แล้ว' : `🪙 ${fmt(r[0])}`}</small></li>`).join('')}</ul>
+      <div class="row fund-give">${FUND_AMT.map(a => `<button type="button" class="btn${a > coins ? '' : ' primary'}" data-give="${a}">ลง 🪙 ${fmt(a)}</button>`).join('')}</div>
+      <h3>ผู้สนับสนุนเดือนนี้</h3><ol class="off-top">${fund.by.length ? fund.by.slice(0, 5).map(r => `<li${r.n.trim().toLowerCase() === me ? ' class="me"' : ''}><b>${esc(r.n)}</b> <span>🪙 ${fmt(r.p)}</span></li>`).join('') : '<li class="muted">ยังไม่มีใครลง — เป็นคนแรกเลย!</li>'}</ol>`;
+    el.querySelectorAll('[data-give]').forEach(b => b.onclick = () => {     // tap once to arm, again to confirm
+      const n = +b.dataset.give;
+      if (b.dataset.arm) { delete b.dataset.arm; give(n, b).then(() => panel.isConnected && fundTab(panel)); return; }
+      el.querySelectorAll('[data-arm]').forEach(x => { delete x.dataset.arm; x.textContent = `ลง 🪙 ${fmt(+x.dataset.give)}`; });
+      b.dataset.arm = 1; b.textContent = `ยืนยันลง 🪙 ${fmt(n)}?`; });
+  }
   // the office bar above the room (the hub renders an empty #offBar)
   function renderOffice() {
     const b = document.getElementById('offBar'); if (!b) return; const o = officeLv(offPts), pc = Math.min(100, (offPts - o.from) / (o.to - o.from) * 100);
-    b.innerHTML = `🏢 <b>ออฟฟิศ Lv ${o.lv}</b><span class="xpbar"><i style="width:${pc}%"></i></span><small>${fmt(offPts - o.from)}/${fmt(o.to - o.from)}${o.next ? ` · ต่อไป ${o.next.n}` : ''}</small>`;
-    b.onclick = officePanel;
+    b.innerHTML = `🏢 <b>ออฟฟิศ Lv ${o.lv}</b><span class="xpbar"><i style="width:${pc}%"></i></span><small>${fmt(offPts - o.from)}/${fmt(o.to - o.from)}${o.next ? ` · ต่อไป ${o.next.n}` : ''}</small><span class="fund-pill" data-fund>💰 กองทุน 🪙 ${fmt(fund.got)}</span>`;
+    b.onclick = e => officePanel(e.target.closest('[data-fund]') ? 'fund' : 'lv');
   }
-  function officePanel() {
-    const o = officeLv(offPts), ov = document.createElement('div'); ov.className = 'overlay';
-    const ico = it => it.slice(0, 2).map(([n]) => `<img class="pxi" src="assets/mi/${n}.png" alt="" height="26">`).join('');
-    ov.innerHTML = `<div class="panel popin office-p"><h2>🏢 ออฟฟิศ Lv ${o.lv}</h2>
+  function officePanel(tab) {
+    const ov = document.createElement('div'); ov.className = 'overlay';
+    ov.innerHTML = `<div class="panel popin office-p"><div class="seg off-tabs"><button type="button" data-tab="lv">🏢 เลเวลออฟฟิศ</button><button type="button" data-tab="fund">💰 กองทุนออฟฟิศ</button></div>
+      <div data-k="body"></div><div class="row"><button class="btn primary" data-x>ปิด</button></div></div>`;
+    const panel = ov.firstElementChild;
+    const show = t => { panel.dataset.tab = t; panel.querySelectorAll('.off-tabs [data-tab]').forEach(b => b.classList.toggle('on', b.dataset.tab === t)); t === 'fund' ? fundTab(panel) : lvTab(panel); };
+    ov.onclick = e => { const b = e.target.closest('.off-tabs [data-tab]'); if (b) show(b.dataset.tab); if (e.target === ov || e.target.closest('[data-x]')) ov.remove(); };
+    document.body.appendChild(ov); show(tab === 'fund' ? 'fund' : 'lv');
+  }
+  function lvTab(panel) {
+    const o = officeLv(offPts), el = panel.querySelector('[data-k=body]');
+    el.innerHTML = `<h2>🏢 ออฟฟิศ Lv ${o.lv}</h2>
       <p class="muted">ทุกเหรียญที่ใครก็ได้หาได้ จะนับเป็นแต้มออฟฟิศด้วย · ครบเป้าแล้วห้องรวมได้ของใหม่ถาวร และทุกคนได้ของขวัญ 20 🪙</p>
       <ul class="off-list">${OFFICE.slice(1).map((r, i) => `<li class="${i + 1 <= o.i ? 'ok' : i === o.i ? 'nx' : ''}"><span>${ico(r[2])}</span><b>${r[1]}</b><small>${i + 1 <= o.i ? '✅ ได้แล้ว' : `${fmt(r[0])} แต้ม`}</small></li>`).join('')}</ul>
-      <h3>คนช่วยเยอะสุด</h3><ol class="off-top" data-k="top"><li class="muted">กำลังโหลด…</li></ol>
-      <div class="row"><button class="btn primary" data-x>ปิด</button></div></div>`;
-    ov.onclick = e => { if (e.target === ov || e.target.closest('[data-x]')) ov.remove(); };
-    document.body.appendChild(ov);
-    O && O.officeBoard().then(L => { const me = (myName() || '').trim().toLowerCase(), el2 = ov.querySelector('[data-k=top]');
+      <h3>คนช่วยเยอะสุด</h3><ol class="off-top" data-k="top"><li class="muted">กำลังโหลด…</li></ol>`;
+    O && O.officeBoard().then(L => { const me = (myName() || '').trim().toLowerCase(), el2 = el.querySelector('[data-k=top]'); if (!el2) return;
       el2.innerHTML = L.length ? L.slice(0, 5).map(r => `<li${r.n.trim().toLowerCase() === me ? ' class="me"' : ''}><b>${esc(r.n)}</b> <span>${fmt(r.p)} แต้ม</span></li>`).join('') : '<li class="muted">ยังไม่มีใคร — เล่นเกมสักตาเลย!</li>'; }).catch(() => {});
   }
   function start() {
@@ -455,7 +512,7 @@ const HubRoom = (() => {
     loadOnline().then(M => { O = M; M.watchOffset(v => offset = v); send({}, true);
       M.watchOnline(l => { people = l; for (const id of Object.keys(others)) if (!l.some(p => p.id === id && inRoom(p))) delete others[id]; });
       M.watchChat(l => chatLog = l); M.pruneChat().catch(() => {}); M.watchGame(onGame);
-      M.watchOffice(onOffice);
+      M.watchOffice(onOffice); M.watchFund(onFund);
     }).catch(() => {});
     requestAnimationFrame(frame);
   }

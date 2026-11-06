@@ -38,7 +38,7 @@ Object.assign(PXA_ART, {
   can: ['.....kk...', '....kbbk..', 'kkkkkbbk..', 'kbbbbbbbkk', 'kbbbbbbbk.', 'kbBbbbbbk.', 'kbbbbbbbk.', '.kkkkkkk..'],
 });
 const CROP_XP = {bok:2,let:4,car:6,tom:10,chi:13,cor:18,pum:23,wat:33,mgo:13,mgs:13,lyc:13,ram:13,coc:13,dur:13};
-const WATER_CUT = .15, WATER_MAX = 3, FRIEND_WATER_DAY = 20, GIFT_DAY = 10, SPRINKLER = [300, 3], CANTEEN_BONUS = 1.2, CANTEEN_REWARD = 150;
+const WATER_CUT = .15, WATER_MAX = 3, FRIEND_WATER_DAY = 20, GIFT_DAY = 10, SPRINKLER = [300, 3], CANTEEN_BONUS = 1.2, CANTEEN_REWARD = 40, CANTEEN_CD = 30 * 60e3;
 // plots per room width (office.js ROOM_SIZES)
 const PLOTS_FOR = { 12: 4, 15: 6, 18: 8, 22: 10 };
 const plotsFor = w => PLOTS_FOR[w] || 4;
@@ -84,11 +84,13 @@ const cropURL = (key, size = 24) => { const [id, m] = key.split('.'), im = cropI
   c.width = im.width * k; c.height = im.height * k; const g = c.getContext('2d'); g.imageSmoothingEnabled = false; g.drawImage(im, 0, 0, c.width, c.height);
   return `<img class="pxi" alt="" src="${c.toDataURL()}" height="${size}">`; };
 
-// canteen: one shared order per week, picked from the week key so everyone sees the same board
-function canteenGoal(wk) {
-  const h = hashStr('cant:' + wk), pick = (a, s) => a[(h >>> s) % a.length];
-  return [[pick(['bok', 'let', 'car'], 0), 80], [pick(['tom', 'chi'], 5), 30], [pick(['cor', 'pum', 'wat'], 9), 12]];
-}
+// canteen: 3 shared orders at once. Each one, once filled, is replaced by a new order 30 minutes later (rounds r = 0, 1, 2…);
+// the crop of round r comes from a hash so everyone sees the same order. Everyone who helped fill one gets CANTEEN_REWARD.
+const CANT_SLOTS = [[['bok', 'let', 'car'], 30], [['tom', 'chi'], 12], [['cor', 'pum', 'wat'], 5]];
+const canteenQuest = (wk, s, r) => { const [a, n] = CANT_SLOTS[s]; return [a[hashStr(`cant:${wk}:${s}:${r}`) % a.length], n]; };
+const cantSlot = (cant, s) => { const q = (cant && cant.q && cant.q[s]) || {}; return { r: q.r || 0, got: q.got || 0, done: q.done || 0, by: q.by || {}, prev: q.prev || null }; };
+// what players see now: a filled order whose 30 minutes are up shows as the next one (the DB moves on at the next delivery)
+const cantView = (q, now) => q.done && now >= q.done + CANTEEN_CD ? { r: q.r + 1, got: 0, done: 0, by: {}, prev: { r: q.r, by: q.by } } : q;
 
 const Farm = {
   BALCONY_H: 24,
@@ -245,21 +247,29 @@ function farmMount(root, api) {
   function growRoom() { window.officeTab = 'style'; startGame('office'); window.officeTab = null; }
 
   // canteen: deliver basket items toward this week's shared order (pays a bit more than selling)
-  function deliver(id) {
+  // rounds of each order I helped fill and have not been paid for yet → [[slot, round]]
+  function cantClaims(now = Date.now()) {
+    const out = [];
+    for (let s = 0; s < CANT_SLOTS.length; s++) { const q = cantView(cantSlot(cant, s), now);
+      for (const x of [q.done ? q : null, q.prev]) if (x && x.by && x.by[myKey] && !store.get(`cantq_${wk()}_${s}_${x.r}`, false)) out.push([s, x.r]); }
+    return out;
+  }
+  function deliver(s) {
     if (!O) return; if (!nm) { toast('ตั้งชื่อเล่นที่หน้าแรกก่อน'); return; }
-    fresh(); const goal = canteenGoal(wk()).find(g => g[0] === id); if (!goal) return;
+    fresh(); const q = cantView(cantSlot(cant, s), Date.now()); if (q.done) return;
+    const [id, goal] = canteenQuest(wk(), s, q.r);
     const keys = Object.keys(f.bag).filter(k => k.split('.')[0] === id).sort((a, b) => bagPrice(a) - bagPrice(b));   // plain ones first
     const have = keys.reduce((a, k) => a + f.bag[k], 0); if (!have) return;
-    O.deliver(wk(), id, have, goal[1], nm).then(took => {
-      if (!took) { toast('ครบแล้ว ขอบคุณที่ช่วย 🍱'); return; }
+    O.deliverQ(wk(), s, q.r, have, goal, nm, Date.now(), CANTEEN_CD).then(took => {
+      if (!took) { toast('ออเดอร์นี้ครบแล้ว หรือเปลี่ยนเป็นออเดอร์ใหม่แล้ว 🍱'); return; }
       fresh(); let left = took, c = 0;
       for (const k of keys) { const u = Math.min(left, f.bag[k] || 0); f.bag[k] -= u; if (!f.bag[k]) delete f.bag[k]; c += Math.round(bagPrice(k) * CANTEEN_BONUS) * u; left -= u; if (!left) break; }
       save(); typeof Stats !== 'undefined' && Stats.econ('canteen_n', took); Prog.give(c, 0, 'canteen'); api.sfx('good'); fly(c); toast(`🍱 ส่ง${CROPS[id][0]} ${took} ชิ้น +${fmt(c)} 🪙`); render();
     }).catch(() => toast('ส่งไม่สำเร็จ (เน็ตหลุด?)'));
   }
-  function claimCanteen() {
-    const k = 'cant_' + wk(); if (store.get(k, false)) return; store.set(k, true);
-    Prog.give(CANTEEN_REWARD, 20, 'canteen'); api.sfx('level'); fly(CANTEEN_REWARD); toast(`🎉 รางวัลโรงอาหารสัปดาห์นี้ +${CANTEEN_REWARD} 🪙`); list(); hud();
+  function claimCanteen(s, r) {
+    const k = `cantq_${wk()}_${s}_${r}`; if (store.get(k, false)) return; store.set(k, true);
+    Prog.give(CANTEEN_REWARD, 7, 'canteen'); api.sfx('level'); fly(CANTEEN_REWARD); toast(`🎉 ออเดอร์ครบ! รางวัลคนช่วยส่ง +${CANTEEN_REWARD} 🪙`); list(); hud();
   }
   // gifts: one item to a friend, claimed when they next open the farm
   function gift(key) {
@@ -355,8 +365,9 @@ function farmMount(root, api) {
       const sb = L.querySelector('[data-a=spr]'); if (sb) sb.onclick = buySprinkler;
     } else if (tab === 'bag') {
       const keys = Object.keys(f.bag).filter(k => CROPS[k.split('.')[0]]).sort((a, b) => bagPrice(b) - bagPrice(a));
-      const g = canteenGoal(wk()), got = (cant && cant.got) || {}, cg = g.reduce((a, [id, n]) => a + Math.min(n, got[id] || 0), 0), ct = g.reduce((a, [, n]) => a + n, 0);
-      const card = `<button class="farm-card" data-t="cant"><span>🍱 <b>ออเดอร์โรงอาหาร</b> <small class="muted">สัปดาห์นี้ ${cg}/${ct}</small><span class="xpbar"><i style="width:${cg / ct * 100}%"></i></span></span><i>›</i></button>`;
+      const now = Date.now(), qs = CANT_SLOTS.map((_, s) => cantView(cantSlot(cant, s), now)), open = qs.filter(q => !q.done).length, cl = cantClaims(now).length;
+      const cg = qs.reduce((a, q, s) => a + (q.done ? 0 : q.got), 0), ct = qs.reduce((a, q, s) => a + (q.done ? 0 : canteenQuest(wk(), s, q.r)[1]), 0) || 1;
+      const card = `<button class="farm-card" data-t="cant"><span>🍱 <b>ออเดอร์โรงอาหาร</b> <small class="muted">${cl ? `🎁 มีรางวัลรอรับ ${cl}` : open ? `รอส่ง ${open} ออเดอร์` : 'ครบหมดแล้ว รอออเดอร์ใหม่'}</small><span class="xpbar"><i style="width:${cg / ct * 100}%"></i></span></span><i>›</i></button>`;
       if (!keys.length) { L.innerHTML = card + '<p class="muted farm-empty">ตะกร้าว่าง · ผักที่เก็บจะมาอยู่ที่นี่</p>'; return; }
       L.innerHTML = card + `<div class="gift-to">🎁 ส่งให้ <select data-k="giftTo"><option value="">เลือกเพื่อน…</option></select></div>
         <ul class="farm-ls farm-bag">${keys.map(k => `<li>${cropURL(k, 26)}<span class="bag-n"><b>${bagName(k)} <i>×${f.bag[k]}</i></b><small>ชิ้นละ ${bagPrice(k)} 🪙</small></span>
@@ -367,16 +378,17 @@ function farmMount(root, api) {
       (friends ? Promise.resolve(friends) : loadFriends()).then(fr => { if (!sel.isConnected) return;
         sel.innerHTML = '<option value="">เลือกเพื่อน…</option>' + fr.map(r => `<option value="${esc(r.k)}"${r.k === giftTo ? ' selected' : ''}>${esc(r.nm)} (ผลไม้ประจำตัว: ${CROPS[sigOf(r.k)][0]})</option>`).join(''); }).catch(() => {});
     } else if (tab === 'cant') {
-      const g = canteenGoal(wk()), got = (cant && cant.got) || {}, done = g.every(([id, n]) => (got[id] || 0) >= n), by = Object.values((cant && cant.by) || {}).sort((a, b) => b.p - a.p);
-      const mine = cant && cant.by && cant.by[myKey], claimed = store.get('cant_' + wk(), false);
-      L.innerHTML = backTo('bag') + `<p class="muted farm-tip">ออเดอร์ของทั้งออฟฟิศ สัปดาห์นี้ ช่วยกันส่งให้ครบ · ส่งได้ราคาดีกว่าขาย 20% · ครบแล้วคนที่ช่วยได้ ${CANTEEN_REWARD} 🪙</p>
-        <ul class="farm-ls cant">${g.map(([id, n]) => { const have = Object.entries(f.bag).filter(([k]) => k.split('.')[0] === id).reduce((a, [, c]) => a + c, 0), v = Math.min(n, got[id] || 0);
+      const now = Date.now(), by = Object.values((cant && cant.by) || {}).sort((a, b) => b.p - a.p), claims = cantClaims(now);
+      L.innerHTML = backTo('bag') + `<p class="muted farm-tip">ออเดอร์ของทั้งออฟฟิศ ช่วยกันส่งให้ครบ · ส่งได้ราคาดีกว่าขาย 20% · ครบแต่ละออเดอร์ คนที่ช่วยส่งได้ ${CANTEEN_REWARD} 🪙 · แล้วออเดอร์ใหม่มาใน 30 นาที</p>
+        <ul class="farm-ls cant">${CANT_SLOTS.map((_, s) => { const q = cantView(cantSlot(cant, s), now), [id, n] = canteenQuest(wk(), s, q.r);
+          const have = Object.entries(f.bag).filter(([k]) => k.split('.')[0] === id).reduce((a, [, c]) => a + c, 0), v = Math.min(n, q.got);
+          if (q.done) return `<li class="cool">${pxImg('crop_' + id, 26)}<div class="cant-m"><b>${CROPS[id][0]}</b> <span class="ok">✓ ครบ ${n}</span><small class="muted">ออเดอร์ใหม่ใน <b data-cd="${q.done + CANTEEN_CD}">${mmss(q.done + CANTEEN_CD - now)}</b></small></div></li>`;
           return `<li>${pxImg('crop_' + id, 26)}<div class="cant-m"><b>${CROPS[id][0]}</b> <span class="muted">${v}/${n}</span><span class="xpbar"><i style="width:${v / n * 100}%"></i></span></div>
-            ${v >= n ? '<span class="ok">✓</span>' : `<button class="btn sm" data-dl="${id}" ${have ? '' : 'disabled'}>${have ? `ส่ง ${have}` : 'ไม่มีในตะกร้า'}</button>`}</li>`; }).join('')}</ul>
-        ${done ? (mine ? (claimed ? '<p class="muted">รับรางวัลสัปดาห์นี้แล้ว ✓</p>' : `<button class="btn primary farm-plot" data-a="claim">🎉 ครบแล้ว! รับ ${CANTEEN_REWARD} 🪙</button>`) : '<p class="muted">ออเดอร์ครบแล้ว สัปดาห์หน้ามาช่วยกันใหม่นะ</p>') : ''}
-        ${by.length ? `<h4 class="sz-h">คนที่ช่วยส่ง</h4><ol class="off-top">${by.slice(0, 5).map(r => `<li${keyOf(r.n) === myKey ? ' class="me"' : ''}><b>${esc(r.n)}</b> <span>${r.p} ชิ้น</span></li>`).join('')}</ol>` : ''}`;
-      L.querySelectorAll('[data-dl]').forEach(b => b.onclick = () => deliver(b.dataset.dl));
-      const cb = L.querySelector('[data-a=claim]'); if (cb) cb.onclick = claimCanteen;
+            <button class="btn sm" data-dl="${s}" ${have ? '' : 'disabled'}>${have ? `ส่ง ${Math.min(have, n - v)}` : 'ไม่มีในตะกร้า'}</button></li>`; }).join('')}</ul>
+        ${claims.length ? `<button class="btn primary farm-plot" data-a="claim">🎉 รับรางวัลออเดอร์ที่ช่วยส่ง ${claims.length} ออเดอร์ (+${CANTEEN_REWARD * claims.length} 🪙)</button>` : ''}
+        ${by.length ? `<h4 class="sz-h">คนที่ช่วยส่ง สัปดาห์นี้</h4><ol class="off-top">${by.slice(0, 5).map(r => `<li${keyOf(r.n) === myKey ? ' class="me"' : ''}><b>${esc(r.n)}</b> <span>${r.p} ชิ้น</span></li>`).join('')}</ol>` : ''}`;
+      L.querySelectorAll('[data-dl]').forEach(b => b.onclick = () => deliver(+b.dataset.dl));
+      const cb = L.querySelector('[data-a=claim]'); if (cb) cb.onclick = () => cantClaims().forEach(([s, r]) => claimCanteen(s, r));
     } else if (tab === 'book') {
       const own = id => f.book[id] && (f.book[id][0] || f.book[id][2]), row = id => { const b = f.book[id], c = CROPS[id], muts = Object.keys((b && b[3]) || {});
         return `<li class="${own(id) ? '' : 'none'}">${own(id) ? pxImg('crop_' + id, 24) : '❔'} <b>${own(id) ? c[0] : '???'}</b> <span class="muted">${own(id) ? `เก็บ ${fmt(b[0] || 0)}${b[2] ? ` · ได้จากเพื่อน ${b[2]}` : ''}` : SIG.includes(id) ? 'ขอจากเพื่อน' : `Lv ${c[4]}`}</span>${muts.map(m => ` <i class="mut mut-${m}">${MUT[m][0]}</i>`).join('')}</li>`; };
@@ -493,6 +505,7 @@ function farmMount(root, api) {
     ctx.font = '600 13px Kanit, sans-serif'; const w = ctx.measureText(s).width + 24, x = W / 2 - w / 2, y = H - 30;
     rrect(ctx, x, y, w, 24, 12, 'rgba(43,33,64,.86)'); txt(ctx, s, W / 2, y + 12, 13, '#fff');
   }
+  let cdT = 0;
   const off = api.loop(dt => {
     t += dt; const d = fx.step(dt), now = Date.now(), wx = wxWindow(now).id;
     if (Math.abs(me.tx - me.x) > 1) { me.x += Math.sign(me.tx - me.x) * Math.min(160 * d, Math.abs(me.tx - me.x)); me.dir = me.tx > me.x ? 'right' : 'left'; } else me.dir = 'down';
@@ -510,6 +523,9 @@ function farmMount(root, api) {
     wxHud(now);
     // keep the smart button current (crops ripen, the countdown ticks)
     if (!visit && smart(now).html !== toolSig) tools();
+    if (tab === 'cant' && now - cdT > 500) { cdT = now; let up = false;     // canteen countdowns; a finished one brings the next order
+      document.querySelectorAll('.farm [data-cd]').forEach(e => { const ms = +e.dataset.cd - now; if (ms <= 0) up = true; else e.textContent = mmss(ms); });
+      if (up) list(); }
   });
   render();
   if (/[?&]test=1/.test(location.search)) window.__farm = { get f() { return f; }, harvestAll, harvest, fwMine, ripeAt };

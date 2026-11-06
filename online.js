@@ -106,6 +106,7 @@ export async function trophies(k,season=buckets().m){
   if(!FIREBASE_CONFIG||!k)return[];
   const out=[];
   await Promise.all(Object.keys(RANK_GAMES).map(g=>boardAt(g,'m',season).then(rows=>{const i=rows.findIndex(r=>r.k===k);if(i>=0&&i<3)out.push({g,r:i+1})}).catch(()=>{})));
+  await get(ref(db(),`rooms/_fund/${season}`)).then(f=>{const i=fundRows(f.val()).filter(r=>r.p>=FUND_CUP_MIN).findIndex(r=>r.k===k);if(i>=0&&i<3)out.push({g:'fund',r:i+1})}).catch(()=>{});
   return out.sort((a,b)=>a.r-b.r);
 }
 /* ---------- seasons: office ladder (games played together), monthly room likes, hall of fame ---------- */
@@ -188,7 +189,25 @@ export async function takeGifts(me){
   s.forEach(c=>{const v=c.val();if(v&&v.c){out.push(v);remove(c.ref)}});
   return out;
 }
-// canteen board: rooms/_canteen/{week}={got:{crop:n},by:{key:{n,p}}}; returns how many were accepted (never past the goal)
+// canteen orders: rooms/_canteen/{week}={q:{slot:{r,got,done,by,prev:{r,by}}},by:{key:{n,p}}} (by = the week's helpers board).
+// A filled order (done = time) waits cd ms, then the next delivery opens round r+1 (prev keeps who helped, so they can still claim).
+// Returns how many were accepted (never past the goal); 0 when the round changed or the order is cooling down.
+export async function deliverQ(wk,s,r,n,goal,name,now,cd){
+  if(!FIREBASE_CONFIG)return 0;
+  const D=db(),k=nameKey(name),nm=name.trim().slice(0,20);let took=0;
+  await runTransaction(ref(D,`rooms/_canteen/${wk}/q/${s}`),cur=>{
+    let q=cur||{r:0,got:0};took=0;
+    if(q.done&&now>=q.done+cd)q={r:(q.r||0)+1,got:0,prev:{r:q.r||0,by:q.by||{}}};
+    if((q.r||0)!==r||q.done)return undefined;
+    took=Math.max(0,Math.min(n,goal-(q.got||0)));if(!took)return undefined;
+    const by=Object.assign({},q.by);by[k]={n:nm,p:((by[k]&&by[k].p)||0)+took};
+    q=Object.assign({},q,{got:(q.got||0)+took,by});if(q.got>=goal)q.done=now;
+    return q;
+  });
+  if(took)await runTransaction(ref(D,`rooms/_canteen/${wk}/by/${k}`),cur=>({n:nm,p:((cur&&cur.p)||0)+took}));
+  return took;
+}
+// (old weekly board, kept for clients that have not reloaded yet)
 export async function deliver(wk,crop,n,goal,name){
   if(!FIREBASE_CONFIG)return 0;
   const D=db();let took=0;
@@ -196,6 +215,17 @@ export async function deliver(wk,crop,n,goal,name){
   if(took)await runTransaction(ref(D,`rooms/_canteen/${wk}/by/${nameKey(name)}`),cur=>({n:name.trim().slice(0,20),p:((cur&&cur.p)||0)+took}));
   return took;
 }
+/* ---------- กองทุนออฟฟิศ: a voluntary monthly coin pot rooms/_fund/{yyyymm}={got,by:{key:{n,p}}}; top 3 donors get a cup ---------- */
+export const FUND_CUP_MIN=100;
+export async function fundGive(n,name){
+  if(!FIREBASE_CONFIG||!(n>0)||!name)return null;
+  const D=db(),m=buckets().m;n=Math.min(1000,Math.round(n));let after=0;
+  await runTransaction(ref(D,`rooms/_fund/${m}/got`),cur=>(after=(+cur||0)+n));
+  await runTransaction(ref(D,`rooms/_fund/${m}/by/${nameKey(name)}`),cur=>({n:name.trim().slice(0,20),p:((cur&&cur.p)||0)+n}));
+  return{before:after-n,after};
+}
+const fundRows=v=>Object.entries((v&&v.by)||{}).map(([k,x])=>({k,...x})).filter(r=>r.p>0).sort((a,b)=>b.p-a.p);
+export function watchFund(cb,m=buckets().m){return FIREBASE_CONFIG?onValue(ref(db(),`rooms/_fund/${m}`),s=>{const v=s.val()||{};cb({m,got:+v.got||0,by:fundRows(v)})}):()=>{}}
 export function watchCanteen(wk,cb){return FIREBASE_CONFIG?onValue(ref(db(),`rooms/_canteen/${wk}`),s=>cb(s.val()||{})):()=>{}}
 /* ---------- cloud save: rooms/_save/{nameKey}={h:pinHash,d:{key:json},lt,lv,c,n,t} ---------- */
 export function saveCloud(k,v){return FIREBASE_CONFIG?set(ref(db(),`rooms/_save/${k}`),{...v,t:serverTimestamp()}):Promise.resolve()}
