@@ -506,10 +506,11 @@ function officeMount(root, api) {
     return `<div class="dye-row" role="group" aria-label="เปลี่ยนสี"><span>🎨${DYE_COST ? ` <small>🪙 ${DYE_COST}</small>` : ''}</span>${DYE.map((d, c) => `<button class="dye${(it[4] || 0) === c ? ' on' : ''}" data-dye="${c}" title="${d ? d[0] : 'สีเดิม'}" aria-label="${d ? d[0] : 'สีเดิม'}" style="background:${d ? d[2] : 'conic-gradient(#fc5c46 0 25%,#f8d239 0 50%,#61af5f 0 75%,#447bce 0)'}"></button>`).join('')}</div>`;
   }
   function dyeWire(el, it, real, i) {
-    el.querySelectorAll('[data-dye]').forEach(b => b.onclick = () => { const c = +b.dataset.dye; if ((it[4] || 0) === c) return;
-      if (real && DYE_COST) { if (p.coins < DYE_COST) { toast(`เหรียญไม่พอ — เปลี่ยนสีใช้ 🪙 ${DYE_COST}`); return; } p.coins -= DYE_COST; typeof Stats !== 'undefined' && Stats.econ('out_dye', DYE_COST); hud(); }
-      if (c) it[4] = c; else it.length = Math.min(it.length, 4);
-      if (real) { pops[i] = 1; save(); } tools(); });
+    // hud() reloads p from storage, so a real item is looked up at click time and saved before the HUD refresh
+    el.querySelectorAll('[data-dye]').forEach(b => b.onclick = () => { const c = +b.dataset.dye, t = real ? p.room.items[i] : it; if (!t || (t[4] || 0) === c) return;
+      if (real && DYE_COST) { if (p.coins < DYE_COST) { toast(`เหรียญไม่พอ — เปลี่ยนสีใช้ 🪙 ${DYE_COST}`); return; } p.coins -= DYE_COST; typeof Stats !== 'undefined' && Stats.econ('out_dye', DYE_COST); }
+      if (c) t[4] = c; else t.length = Math.min(t.length, 4);
+      if (real) { pops[i] = 1; save(); hud(); } tools(); });
   }
   function buyCart() {
     const c = cartCost(); if (c > p.coins) { toast(`เหรียญไม่พอ ขาดอีก 🪙 ${fmt(c - p.coins)} — เอาบางชิ้นออก หรือไปเล่นเกมก่อน`); domShake(q('tools'), 5); return; }

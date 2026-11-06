@@ -39,7 +39,7 @@ const CROP={bok:'ผักบุ้ง',let:'ผักสลัด',car:'แค�
   mgo:'มะม่วง',mgs:'มังคุด',lyc:'ลิ้นจี่',ram:'เงาะ',coc:'มะพร้าว',dur:'ทุเรียน'};
 const SRC={sell:'🧺 ขายผัก',canteen:'🍱 โรงอาหาร',help:'💧 รดน้ำให้เพื่อน',like:'👍 คนถูกใจห้อง',mission:'✅ ภารกิจรายวัน',streak:'🔥 ภารกิจครบวัน',
   party:'🎉 ปาร์ตี้',level:'⬆️ โบนัสเลื่อนขั้น',office:'🏢 ออฟฟิศเลเวลอัป',other:'อื่น ๆ'};
-const SINK={seed:'🌱 เมล็ดพันธุ์',sprinkler:'💦 สปริงเกอร์',gacha:'🎰 กาชา',wardrobe:'👕 ชุด/เครื่องประดับ',furniture:'🪑 ของแต่งห้อง'};
+const SINK={seed:'🌱 เมล็ดพันธุ์',sprinkler:'💦 สปริงเกอร์',gacha:'🎰 กาชา',wardrobe:'👕 ชุด/เครื่องประดับ',furniture:'🪑 ของแต่งห้อง',dye:'🎨 เปลี่ยนสี'};
 const FEAT={room:'🚶 ห้องรวม',tower:'🏢 ตึกออฟฟิศ',chat:'💬 ส่งแชท',wardrobe:'👕 แต่งตัว',gacha:'🎰 กาชา',cloud:'☁️ หน้าเซฟ',boss:'🙈 ปุ่มหัวหน้ามา',season:'🏆 ภารกิจฤดูกาล',pass:'🎫 Season Pass'};
 const fmt=n=>Math.round(+n||0).toLocaleString('th-TH'),out=document.getElementById('out'),esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const day=k=>new Date(+k.slice(0,4),+k.slice(4,6)-1,+k.slice(6,8)).toLocaleDateString('th-TH',{weekday:'short',day:'numeric',month:'short'});

@@ -23,7 +23,7 @@ const SX = {
 };
 // dye: 0 = original colours; each ramp is [Thai name, light, mid, dark]
 const DYE = [null, ['แดง', '#fc5c46', '#d93232', '#9e2b2d'], ['ส้ม', '#ffb04a', '#ed931e', '#b5651d'], ['เหลือง', '#fff59a', '#f8d239', '#d9a420'], ['เขียว', '#a4dc77', '#61af5f', '#3f7a4a'], ['มิ้นต์', '#8ee6d6', '#3cb8a8', '#22786f'], ['ฟ้า', '#8ccbf2', '#447bce', '#2c4f94'], ['ม่วง', '#c8a2f0', '#8a5cd6', '#5a3a96'], ['ชมพู', '#ffd6e6', '#f49ac1', '#d9608f'], ['น้ำตาล', '#d3a672', '#a9764f', '#6b4c2c'], ['เทา', '#e6e9ee', '#a2a8be', '#565972'], ['ดำ', '#6b6b80', '#46465e', '#2e2e40'], ['ขาว', '#ffffff', '#e6e9ee', '#b8bfcc']];
-const DYE_COST = 0;   // coins per colour change (0 = free)
+const DYE_COST = 10;  // coins per colour change, every time (0 = free); trying colours on unbought cart items stays free
 // which palette letters each dyeable item recolours → ramp shade (0 light · 1 mid · 2 dark)
 const SX_DYE = {dx_cactus:{n:0,b:1,B:2},dx_teddy:{n:0,b:1,B:2},dx_beanbag:{f:0,r:1,R:2},dx_cooler:{i:0,c:1,C:2},dx_firstaid:{L:0,l:1,h:2},dx_award:{n:0,b:1,B:2},dx_clock:{b:1,B:2},dx_rollchair:{i:0,c:1,C:2},dx_bamboo:{q:0,p:1,P:2},dx_medcab:{w:0,W:1},dx_cart:{i:0,c:1,C:2},dx_arcade:{f:0,r:1,R:2}};
 const dyePal = (pal, map, c) => { if (!c || !map || !DYE[c]) return pal; const o = { ...pal }; for (const ch in map) o[ch] = DYE[c][1 + map[ch]]; return o; };
