@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Office building wireframe</title>
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box}body{margin:0;background:#ececec;font-family:Kanit,sans-serif;color:#333;font-size:13px}
+.page{max-width:1180px;margin:0 auto;padding:16px}
+h1{font-size:20px;margin:0 0 2px}.sub{color:#777;margin:0 0 14px}
+.set{display:grid;grid-template-columns:1fr 260px;gap:14px;align-items:start}
+.fr{background:#fff;border:2px solid #555;border-radius:10px;overflow:hidden}
+.hd{display:flex;align-items:center;gap:8px;padding:6px 10px;border-bottom:2px solid #555;background:#f6f6f6}.hd b{flex:1}
+.pill{border:1.5px solid #777;border-radius:8px;padding:1px 8px;background:#fff}
+.tabs{display:flex;border-bottom:2px solid #555}.tabs span{flex:1;text-align:center;padding:6px;border-right:1.5px solid #bbb}.tabs span:last-child{border:0}.tabs .on{background:#555;color:#fff;font-weight:600}
+.btn{border:1.5px solid #555;border-radius:8px;padding:3px 10px;background:#fff;white-space:nowrap}.btn.p{background:#333;color:#fff;font-weight:600;padding:5px 14px}
+.img{background:repeating-linear-gradient(45deg,#e4e4e4 0 8px,#eee 8px 16px);border:1.5px solid #aaa;display:grid;place-items:center;color:#888;font-size:12px}
+.tag{display:inline-block;border:1px solid #888;border-radius:6px;padding:0 5px;font-size:11px;background:#fff}
+.lbl{font-size:11px;color:#888}
+.num{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;background:#3a86ff;color:#fff;font-size:11px;font-weight:600;margin-right:4px;flex:none}
+.wrap{display:grid;grid-template-columns:150px 1fr;gap:10px;padding:10px;background:#f4f4f4}
+/* elevator */
+.elev{border:2px solid #555;border-radius:10px;background:#fff;padding:8px;display:grid;gap:5px}
+.elev .t{font-weight:600;text-align:center;border-bottom:1.5px solid #bbb;padding-bottom:4px;margin-bottom:2px}
+.fb{display:flex;align-items:center;gap:6px;border:1.5px solid #888;border-radius:8px;padding:3px 6px;background:#fff}
+.fb b{width:26px;height:22px;border-radius:6px;border:1.5px solid #555;display:grid;place-items:center;font-size:12px}
+.fb.on{background:#555;color:#fff}.fb.on b{border-color:#fff}
+.fb small{margin-left:auto;font-size:11px}
+/* building */
+.bld{position:relative;border:2px solid #555;border-radius:10px;background:#dcdcdc;overflow:hidden}
+.sky{height:28px;background:#eee;border-bottom:1.5px solid #aaa;display:flex;align-items:center;justify-content:center;gap:8px}
+.roof{margin:0 30px;border:2px solid #555;border-bottom:0;background:#e8e8e8;padding:6px;display:flex;gap:6px;align-items:center}
+.flr{margin:0 30px;border:2px solid #555;border-top:0;background:#cfcfcf;padding:6px 6px 0;display:grid;gap:6px}
+.flr .ttl{display:flex;justify-content:space-between;font-size:12px;font-weight:600}
+.units{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.unit{position:relative}
+.door{display:flex;align-items:center;gap:4px;border:1.5px solid #555;border-bottom:0;background:#fff;border-radius:6px 6px 0 0;padding:2px 6px;font-size:12.5px}
+.door .lv{margin-left:auto;font-size:11px;color:#666}
+.unit .img{height:66px}
+.unit .st{position:absolute;left:4px;bottom:4px;display:flex;gap:3px}
+.unit.mine .door{border:2.5px solid #222;font-weight:600}.unit.sel .img{outline:3px solid #222;outline-offset:-3px}
+.slab{height:8px;background:#999;margin:0 -6px}
+.lobby{margin:0 30px;border:2px solid #555;border-top:0;background:#e2e2e2;padding:8px;display:grid;grid-template-columns:1fr 1.2fr 1fr;gap:8px;align-items:end}
+.ground{height:14px;background:#bbb;border-top:2px solid #555}
+.card{position:absolute;right:12px;top:150px;width:230px;background:#fff;border:2px solid #333;border-radius:12px;box-shadow:0 4px 0 #555;padding:8px;display:grid;gap:5px}
+.note{background:#fff8d6;border:1.5px solid #c9b25a;border-radius:10px;padding:10px 12px;font-size:13px;line-height:1.5}
+.note h3{margin:0 0 6px;font-size:15px}.note b{display:block;margin-top:8px;font-size:12px;color:#8a6d00}
+</style></head><body><div class="page">
+<h1>ออฟฟิศ = ตึกจริง ๆ ทั้งหลัง</h1>
+<p class="sub">ดาดฟ้า = ฟาร์ม · ชั้นบน = ชั้นส่วนกลาง · ชั้นกลาง = ห้องของแต่ละคน · ล็อบบี้ = ห้องรวม + บอร์ดประกาศ · ลิฟต์ = เมนูไปชั้นต่าง ๆ</p>
+<div class="set"><div class="fr">
+  <div class="hd"><b>🕹️ ห้องพักสมอง</b><span class="pill">⋯</span><span class="pill">หัวหน้ามา Esc</span><span class="pill">🪙 1,990</span></div>
+  <div class="tabs"><span>วันนี้</span><span>ของฉัน</span><span class="on">ออฟฟิศ</span><span>เกม</span></div>
+  <div class="wrap">
+    <div class="elev">
+      <div class="t"><span class="num">1</span>🛗 ลิฟต์</div>
+      <div class="fb"><b>R</b>ดาดฟ้า<small>💧2</small></div>
+      <div class="fb"><b>6</b>โรงอาหาร</div>
+      <div class="fb on"><b>5</b>พี่ฝน · เอ ·…<small>✨2</small></div>
+      <div class="fb"><b>4</b>ใหม่ · คุณ</div>
+      <div class="fb"><b>3</b>ต้น · นก ·…</div>
+      <div class="fb"><b>2</b>…</div>
+      <div class="fb"><b>G</b>ล็อบบี้<small>🟢4</small></div>
+      <div style="border-top:1.5px solid #bbb;padding-top:5px;display:grid;gap:4px">
+        <span class="btn">📍 ห้องฉัน</span><span class="btn">💧 ไปห้องที่รอรดน้ำ</span><span class="btn">✨ ห้องแต่งใหม่</span></div>
+    </div>
+    <div class="bld">
+      <div class="sky"><span class="lbl">ท้องฟ้าเปลี่ยนตามเวลาจริง · ฝนตก = ผักโตเร็ว</span></div>
+      <div class="roof"><span class="num">2</span><div class="img grow" style="flex:1;height:40px">ดาดฟ้า: แปลงผักของทุกคน 🌱🌱🥕 · ป้ายชื่อตึก · เครนสร้างชั้นใหม่ 62%</div></div>
+      <div class="flr"><div class="ttl"><span>ชั้น 6 · 🍱 โรงอาหาร (ส่วนกลาง)</span><span class="tag">ส่งผักวันนี้ 12/40</span></div>
+        <div class="img" style="height:44px">โรงอาหาร — คนที่ออนไลน์เดินกินข้าวอยู่ที่นี่</div><div class="slab"></div></div>
+      <div class="flr"><div class="ttl"><span><span class="num">3</span>ชั้น 5</span><span class="lbl">ยิ่งเลเวลสูง ยิ่งอยู่ชั้นบน</span></div>
+        <div class="units">
+          <div class="unit sel"><div class="door">🟢 พี่ฝน<span class="lv">Lv 14</span></div><div class="img">ห้อง (ไฟเปิด)</div><div class="st"><span class="tag">ใหม่!</span><span class="tag">💧</span></div></div>
+          <div class="unit"><div class="door">🟢 น้องเอ<span class="lv">🎮 เล่นอยู่</span></div><div class="img">ห้อง (ไฟเปิด)</div><div class="st"><span class="tag">ใหม่!</span></div></div>
+          <div class="unit"><div class="door">แบงค์<span class="lv">Lv 9</span></div><div class="img">ห้อง (ไฟหรี่)</div><div class="st"><span class="tag">💧</span></div></div>
+        </div><div class="slab"></div></div>
+      <div class="flr"><div class="ttl"><span>ชั้น 4</span></div>
+        <div class="units">
+          <div class="unit"><div class="door">ใหม่<span class="lv">Lv 8</span></div><div class="img">ห้อง</div></div>
+          <div class="unit mine"><div class="door">⭐ พล (คุณ)<span class="lv">Lv 6</span></div><div class="img">ห้องคุณ</div><div class="st"><span class="tag">❤️ 5</span></div></div>
+          <div class="unit"><div class="door" style="border-style:dashed;color:#888">ห้องว่าง</div><div class="img">รอเพื่อนใหม่</div></div>
+        </div><div class="slab"></div></div>
+      <div class="lobby">
+        <div><span class="num">4</span><div class="img" style="height:58px">📌 บอร์ดประกาศ<br>รางวัลสัปดาห์ · ข่าว</div></div>
+        <div><div class="img" style="height:72px">🚪 ประตูกระจก ห้องรวม<br>คน 4 คนเดินอยู่ · 💃 ปาร์ตี้ 0:40</div></div>
+        <div><div class="img" style="height:58px">🛎️ เคาน์เตอร์<br>ภารกิจ / Pass</div></div>
+      </div>
+      <div class="ground"></div>
+      <div class="card"><div class="lbl"><span class="num">5</span>เคาะประตูห้อง (ไม่ออกจากตึก)</div>
+        <b>🟢 พี่ฝน · Lv 14 · 🏅 ชาวสวน</b><div class="img" style="height:60px">ห้องขยายใหญ่</div>
+        <div style="display:flex;gap:5px"><span class="btn p">💧 รดน้ำ +2</span><span class="btn">❤️</span><span class="btn">เข้าห้อง</span></div>
+        <div class="lbl">ปิดการ์ด → ลิฟต์ไปห้องถัดไปที่รอรดน้ำ</div></div>
+    </div>
+  </div>
+</div>
+<div class="note"><h3>ทำไมแบบนี้ถึงดีกว่า</h3>
+  <b><span class="num">1</span>ลิฟต์ = เมนู</b>แทนปุ่มกรองแบบเว็บ กดชั้นแล้วตึกเลื่อนไปชั้นนั้น · ตัวเลขข้างชั้นบอกว่ามีอะไรรอ (💧 ✨ 🟢)
+  <b><span class="num">2</span>ดาดฟ้า = ฟาร์ม</b>ชื่อเกมก็คือ "ฟาร์มดาดฟ้า" อยู่แล้ว ให้มันอยู่บนหลังคาจริง ๆ
+  <b><span class="num">3</span>ห้องใหญ่พออ่านชื่อได้</b>เห็นทีละ 2–3 ชั้น ไม่ย่อทั้งตึกจนตัวเล็ก · ป้ายชื่อเป็นประตู · ไฟเปิด = คนออนไลน์
+  <b><span class="num">4</span>ล็อบบี้ = ของส่วนรวม</b>บอร์ดประกาศ (รางวัล/ข่าว), ประตูห้องรวม, เคาน์เตอร์ภารกิจ — ย้ายของที่ใช้น้อยออกจากหน้าแรกมาไว้ที่นี่
+  <b><span class="num">5</span>เคาะประตู</b>การ์ดดูห้องแบบเดิม (ที่ชอบ) แต่เปิดอยู่ในตึก รดน้ำเสร็จลิฟต์พาไปห้องต่อไป</div>
+</div>
+</div></body></html>

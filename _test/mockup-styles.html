@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Style sampler</title>
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;600;700&family=Mitr:wght@400;500&family=Sarabun:wght@400;600&family=Pixelify+Sans:wght@500&family=Itim&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f4f1ec;font-family:Kanit,sans-serif;color:#2b2140}
+img{image-rendering:pixelated}
+.page{max-width:1100px;margin:0 auto;padding:16px}
+.page>h1{font-size:20px;margin:0 0 4px}.page>p{margin:0 0 14px;color:#7a6f8c}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:16px}
+.tile{border-radius:14px;overflow:hidden;background:#fff;border:1px solid #ddd}
+.lab{display:flex;align-items:baseline;gap:8px;padding:8px 12px;background:#fff;border-bottom:1px solid #eee;font-family:Kanit}
+.lab b{font-size:22px;color:#ff5c8a}.lab span{font-weight:600}.lab small{color:#7a6f8c;margin-left:auto;font-size:12px}
+.stage{padding:14px;min-height:330px;position:relative}
+/* shared structure */
+.apt{position:relative;width:200px}
+.room{position:relative;height:96px;overflow:hidden}
+.room .w{position:absolute;inset:0 0 auto 0;height:40px;background:url(../assets/mi/wall_mint.png) 0 0/20px 40px}
+.room .f{position:absolute;inset:40px 0 0 0;background:url(../assets/mi/floor_herring.png) 0 0/40px}
+.room img{position:absolute;zoom:1.25}
+.nm{display:flex;align-items:center;gap:5px}.nm img{height:20px}.nm .lv{margin-left:auto;font-size:12px}
+.sts{display:flex;gap:4px;margin-top:4px}
+.card{margin:12px 0 0 auto;width:250px}
+.card .row{display:flex;gap:6px;margin-top:8px}.card button{flex:1;font:inherit;cursor:pointer;white-space:nowrap;font-size:13.5px}
+.card h4{margin:0;display:flex;align-items:center;gap:6px}.card h4 img{height:24px}
+.card p{margin:2px 0 0;font-size:12.5px}
+.dot{width:8px;height:8px;border-radius:50%;background:#21c07a;display:inline-block}
+
+/* A — chunky sticker (current) */
+.A .stage{background:#fff4e6 radial-gradient(#ffe0c2 1.2px,transparent 1.2px) 0 0/18px 18px}
+.A .nm{background:#2b2140;color:#fff;padding:2px 8px;border-radius:8px 8px 0 0;font-weight:600;font-size:13px}
+.A .room{border:3px solid #2b2140}
+.A .st{border:2px solid #2b2140;border-radius:999px;background:#fff;font-size:12px;font-weight:700;padding:0 7px}.A .st.n{background:#ff5c8a;color:#fff}
+.A .card{background:#fff;border:3px solid #2b2140;border-radius:16px;box-shadow:0 5px 0 #2b2140;padding:10px}
+.A .card button{border:2px solid #2b2140;border-radius:12px;background:#fff;box-shadow:0 3px 0 #2b2140;font-weight:600;padding:5px}.A .card button.p{background:#ff5c8a;color:#fff}
+
+/* B — cozy pastel (soft, no outlines, bubbly) */
+.B .stage{background:#fdf6e9;font-family:Mitr}
+.B .apt{background:#fff;border-radius:20px;padding:6px;box-shadow:0 6px 18px rgba(170,130,80,.18)}
+.B .room{border-radius:14px}
+.B .nm{padding:4px 6px;font-size:14px;color:#6b5440}.B .nm .lv{background:#fbe7c8;border-radius:999px;padding:0 8px;color:#a0703c}
+.B .st{border-radius:999px;font-size:12px;padding:1px 9px;background:#eef6e4;color:#5f8a3c}.B .st.n{background:#ffe1e6;color:#d0607a}
+.B .card{background:#fff;border-radius:24px;padding:12px;box-shadow:0 10px 26px rgba(170,130,80,.22);color:#6b5440}
+.B .card button{border:0;border-radius:999px;background:#f3ead9;color:#7a5a3a;padding:7px;font-family:Mitr}.B .card button.p{background:#8fcf8a;color:#fff}
+
+/* C — pixel RPG window (wood + parchment) */
+.C .stage{background:#3b2c22 url(../assets/mi/floor_dwood.png) 0 0/48px;font-family:Kanit}
+.C .apt{background:#e9d3a6;border:4px solid #5a3a22;outline:3px solid #2a1a10;padding:4px;box-shadow:inset 0 0 0 2px #fff3d0}
+.C .room{border:3px solid #5a3a22}
+.C .nm{font-size:13px;font-weight:600;color:#4a2e18;padding:0 2px 4px}.C .nm .lv{font-family:'Pixelify Sans';color:#8a4a1a}
+.C .st{background:#5a3a22;color:#ffe9a8;font-size:11.5px;padding:0 6px;border:2px solid #2a1a10}.C .st.n{background:#c0392b;color:#fff}
+.C .card{background:#e9d3a6;border:4px solid #5a3a22;outline:3px solid #2a1a10;padding:10px;color:#4a2e18;box-shadow:inset 0 0 0 2px #fff3d0}
+.C .card button{border:3px solid #2a1a10;background:#c9a46a;color:#2a1a10;font-weight:700;padding:4px;box-shadow:inset -3px -3px 0 #8a6a3a,inset 3px 3px 0 #f3dca0}.C .card button.p{background:#6aa84f;color:#fff;box-shadow:inset -3px -3px 0 #3d7a2a,inset 3px 3px 0 #9fd88a}
+
+/* D — clean modern app (light, thin lines) */
+.D .stage{background:#f7f8fa;font-family:Sarabun}
+.D .apt{background:#fff;border:1px solid #e4e7ec;border-radius:12px;padding:6px;box-shadow:0 1px 2px rgba(16,24,40,.06)}
+.D .room{border-radius:8px}
+.D .nm{font-size:14px;font-weight:600;color:#101828;padding:2px 2px 6px}.D .nm .lv{color:#667085;font-weight:400}
+.D .st{border:1px solid #e4e7ec;border-radius:6px;font-size:12px;padding:0 6px;color:#344054;background:#fff}.D .st.n{background:#eef4ff;color:#3538cd;border-color:#c7d7fe}
+.D .card{background:#fff;border:1px solid #e4e7ec;border-radius:12px;padding:12px;box-shadow:0 12px 24px -6px rgba(16,24,40,.12);color:#101828}
+.D .card p{color:#667085}.D .card button{border:1px solid #d0d5dd;border-radius:8px;background:#fff;padding:6px;font-family:Sarabun;font-weight:600;color:#344054}.D .card button.p{background:#4f46e5;border-color:#4f46e5;color:#fff}
+
+/* E — retro office (Windows 98 / Excel joke, fits boss key) */
+.E .stage{background:#008080;font-family:Tahoma,Sarabun,sans-serif;font-size:13px}
+.E .apt{background:#c0c0c0;border:2px solid;border-color:#fff #404040 #404040 #fff;padding:3px}
+.E .nm{background:#000080;color:#fff;padding:2px 4px;font-weight:700;font-size:12.5px}.E .nm .lv{color:#c0c0ff}
+.E .room{border:2px solid;border-color:#808080 #fff #fff #808080}
+.E .st{background:#ffffe1;border:1px solid #000;font-size:11.5px;padding:0 4px}.E .st.n{background:#ff0;font-weight:700}
+.E .card{background:#c0c0c0;border:2px solid;border-color:#fff #404040 #404040 #fff;padding:3px}
+.E .card h4{background:#000080;color:#fff;padding:2px 4px;font-size:13px}.E .card p{padding:4px}
+.E .card .row{padding:0 4px 4px}.E .card button{background:#c0c0c0;border:2px solid;border-color:#fff #404040 #404040 #fff;padding:3px;font-family:Tahoma}.E .card button.p{font-weight:700;outline:1px dotted #000;outline-offset:-5px}
+
+/* F — night arcade (dark, glow, game-show energy) */
+.F .stage{background:#16132b;font-family:Kanit;color:#fff}
+.F .apt{background:#231e44;border:2px solid #5b4bd6;border-radius:10px;padding:5px;box-shadow:0 0 0 3px rgba(91,75,214,.25)}
+.F .room{border-radius:6px}
+.F .nm{font-size:13px;font-weight:600;padding:0 2px 5px}.F .nm .lv{color:#ffd23f;font-family:'Pixelify Sans'}
+.F .st{background:#2e2858;border:1px solid #6f61f0;border-radius:6px;font-size:12px;padding:0 6px;color:#cfc8ff}.F .st.n{background:#ff3d7f;border-color:#ff3d7f;color:#fff}
+.F .card{background:#231e44;border:2px solid #ff3d7f;border-radius:14px;padding:12px;box-shadow:0 0 24px rgba(255,61,127,.35)}
+.F .card p{color:#b8b0e8}.F .card button{border:0;border-radius:10px;background:#3a3370;color:#fff;padding:7px;font-weight:600}.F .card button.p{background:linear-gradient(90deg,#ff3d7f,#ff8a3d)}
+
+/* G — hand-drawn notebook (doodle, office stationery) */
+.G .stage{background:#fffdf5 repeating-linear-gradient(#fffdf5 0 23px,#dce8f5 23px 24px);font-family:Itim}
+.G .apt{background:#fff;border:2px solid #333;border-radius:255px 15px 225px 15px/15px 225px 15px 255px;padding:6px;transform:rotate(-1deg)}
+.G .room{border-radius:6px}
+.G .nm{font-size:15px;padding:0 4px 4px}.G .nm .lv{color:#e0593a}
+.G .st{background:#fff27a;font-size:13px;padding:0 6px;transform:rotate(-3deg);box-shadow:1px 2px 0 rgba(0,0,0,.15)}.G .st.n{background:#ff9fb6}
+.G .card{background:#fff;border:2px solid #333;border-radius:15px 225px 15px 255px/255px 15px 225px 15px;padding:12px;transform:rotate(1deg);box-shadow:4px 4px 0 #333}
+.G .card button{border:2px solid #333;border-radius:20px 6px 20px 6px;background:#fff;font-family:Itim;font-size:15px;padding:4px}.G .card button.p{background:#7fd1ff}
+</style></head><body>
+<div class="page">
+  <h1>เลือกสไตล์ที่ชอบ — เนื้อหาเดียวกัน หน้าตาต่างกัน</h1>
+  <p>ทุกกล่องคือ "ห้องในตึก + การ์ดดูห้อง" เหมือนกัน · ลองบอกตัวอักษรที่ชอบ และส่วนที่ไม่ชอบ</p>
+  <div class="grid" id="g"></div>
+</div>
+<script>
+const S=[['A','สติกเกอร์หนา (แบบปัจจุบัน)','เส้นดำหนา ปุ่มนูน'],['B','อบอุ่นพาสเทล','นุ่ม โค้งมน ไม่มีเส้นขอบ'],['C','หน้าต่างเกม RPG พิกเซล','ไม้ + กระดาษ แบบเกมฟาร์ม'],['D','แอปสมัยใหม่ สะอาด','เส้นบาง ขาว เรียบ'],['E','ออฟฟิศย้อนยุค Win98','มุกเดียวกับปุ่มหัวหน้ามา'],['F','อาร์เคดกลางคืน','มืด เรืองแสง ตื่นเต้น'],['G','สมุดจดวาดมือ','ลายเส้นดินสอ โพสต์อิท']];
+const room=`<div class="room"><div class="w"></div><div class="f"></div>
+<img src="../assets/mi/bookshelf.png" style="left:4px;top:0"><img src="../assets/mi/tv.png" style="left:52px;top:8px"><img src="../assets/mi/rug_green.png" style="left:50px;top:42px"><img src="../assets/mi/palm.png" style="left:124px;top:28px"><img src="../assets/mi/amelia_down.png" style="left:86px;top:34px"></div>`;
+document.getElementById('g').innerHTML=S.map(([k,n,d])=>`<div class="tile ${k}"><div class="lab"><b>${k}</b><span>${n}</span><small>${d}</small></div><div class="stage">
+<div class="apt"><div class="nm"><img src="../assets/mi/amelia_down.png"><span class="dot"></span> พี่ฝน<span class="lv">Lv 14</span></div>${room}
+<div class="sts"><span class="st n">ใหม่!</span><span class="st">❤️ 12</span><span class="st">🌱 สุก 2</span></div></div>
+<div class="card"><h4><img src="../assets/mi/amelia_down.png"> พี่ฝน <span class="dot"></span></h4><p>Lv 14 · หัวหน้าทีม · ตกแต่งใหม่เมื่อเช้า</p>
+<div class="row"><button>❤️ ไลก์</button><button>💧 รดน้ำ</button><button class="p">เข้าห้อง →</button></div></div></div></div>`).join('');
+</script>
+</body></html>

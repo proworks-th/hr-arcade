@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Village wireframe</title>
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box}body{margin:0;background:#ececec;font-family:Kanit,sans-serif;color:#333;font-size:13px}
+.page{max-width:1180px;margin:0 auto;padding:16px}
+h1{font-size:20px;margin:0 0 2px}.sub{color:#777;margin:0 0 14px}h2{font-size:15px;margin:18px 0 8px}
+.set{display:grid;grid-template-columns:1fr 270px;gap:14px;align-items:start}
+.fr{background:#fff;border:2px solid #555;border-radius:10px;overflow:hidden}
+.hd{display:flex;align-items:center;gap:8px;padding:6px 10px;border-bottom:2px solid #555;background:#f6f6f6}.hd b{flex:1}
+.pill{border:1.5px solid #777;border-radius:8px;padding:1px 8px;background:#fff}
+.tabs{display:flex;border-bottom:2px solid #555}.tabs span{flex:1;text-align:center;padding:6px;border-right:1.5px solid #bbb}.tabs span:last-child{border:0}.tabs .on{background:#555;color:#fff;font-weight:600}
+.btn{display:inline-block;border:1.5px solid #555;border-radius:8px;padding:3px 10px;background:#fff;white-space:nowrap}.btn.p{background:#333;color:#fff;font-weight:600;padding:5px 14px}
+.img{background:repeating-linear-gradient(45deg,#e4e4e4 0 8px,#eee 8px 16px);border:1.5px solid #aaa;display:grid;place-items:center;color:#888;font-size:12px;text-align:center}
+.tag{display:inline-block;border:1px solid #888;border-radius:6px;padding:0 5px;font-size:11px;background:#fff}
+.lbl{font-size:11px;color:#888}
+.num{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;background:#3a86ff;color:#fff;font-size:11px;font-weight:600;margin-right:4px;flex:none}
+.seg{display:flex;gap:6px;padding:8px 10px;border-bottom:1.5px solid #bbb;background:#fafafa}.seg span{border:1.5px solid #777;border-radius:999px;padding:2px 12px}.seg .on{background:#555;color:#fff}
+/* street */
+.street{position:relative;background:#dfe9f2;padding:10px 10px 0;display:grid;grid-template-columns:150px repeat(5,1fr);gap:8px;align-items:end}
+.tower{height:250px}.lot{display:grid;gap:4px;align-items:end}
+.house{height:120px}.house.big{height:150px}.house.mine{outline:3px solid #222;outline-offset:2px}
+.sign{display:flex;gap:4px;align-items:center;border:1.5px solid #555;border-radius:6px;background:#fff;padding:1px 6px;font-size:12px}.sign small{margin-left:auto;font-size:11px;color:#666}
+.garden{height:26px;font-size:11px}
+.road{grid-column:1/-1;height:26px;background:#bbb;border-top:2px solid #555;margin:0 -10px;display:flex;align-items:center;justify-content:center;color:#666;font-size:11px}
+.empty .house{border-style:dashed;background:#f4f4f4}
+.st{display:flex;gap:3px;flex-wrap:wrap}
+.card{background:#fff;border:2px solid #333;border-radius:12px;box-shadow:0 4px 0 #555;padding:8px;display:grid;gap:5px}
+.note{background:#fff8d6;border:1.5px solid #c9b25a;border-radius:10px;padding:10px 12px;font-size:13px;line-height:1.5}
+.note h3{margin:0 0 6px;font-size:15px}.note b{display:block;margin-top:8px;font-size:12px;color:#8a6d00}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}
+.stages{display:grid;gap:5px;padding:10px}
+.stg{display:grid;grid-template-columns:26px 1fr auto;gap:8px;align-items:center;border:1.5px solid #999;border-radius:8px;padding:5px 8px;background:#fff}
+.stg.done{background:#eee;color:#888}.stg.now{border:2.5px solid #222}
+.bar{height:8px;border:1.5px solid #555;border-radius:6px;background:#fff;overflow:hidden}.bar i{display:block;height:100%;background:#555}
+.inside{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:10px}
+.tl{display:grid;grid-template-columns:110px repeat(28,1fr);gap:2px;padding:10px;font-size:11px;align-items:center}
+.tl .d{height:16px;background:#eee;border:1px solid #ccc}.tl .c{background:#999}.tl .r{background:#555}.tl .m{outline:2px solid #222}
+</style></head><body><div class="page">
+<h1>หมู่บ้านพนักงาน — ย้ายจากคอนโดไปมีบ้านของตัวเอง</h1>
+<p class="sub">ตึกออฟฟิศอยู่ต้นซอย · บ้านเรียงตามถนนข้าง ๆ ในภาพเดียวกัน · บ้านสร้างทีละขั้น 5 ขั้น ใช้เวลา 2–4 สัปดาห์ · เพื่อนบ้าน = เพื่อนร่วมงาน</p>
+
+<div class="set"><div class="fr">
+  <div class="hd"><b>🕹️ ห้องพักสมอง</b><span class="pill">⋯</span><span class="pill">หัวหน้ามา Esc</span><span class="pill">🪙 3,420</span></div>
+  <div class="tabs"><span>วันนี้</span><span>ของฉัน</span><span class="on">ออฟฟิศ</span><span>เกม</span></div>
+  <div class="seg"><span>🏢 ตึก</span><span class="on">🏡 หมู่บ้าน</span><span class="lbl" style="border:0;margin-left:auto">ซอยสุขใจ · 6 หลัง · ว่าง 3 แปลง</span></div>
+  <div class="street">
+    <div class="lot"><div class="img tower"><span class="num">1</span>ตึกออฟฟิศ<br>(คอนโด)<br>ต้นซอย</div><div class="sign">🏢 ตึก<small>ไปลิฟต์ →</small></div></div>
+    <div class="lot"><div class="st"><span class="tag">ขึ้นบ้านใหม่! 🎉</span></div><div class="img house big">บ้าน 2 ชั้น<br>ไฟเปิด = ออนไลน์</div>
+      <div class="img garden">สวน 14 แปลง 🌱🍅</div><div class="sign">🟢 พี่ฝน<small>บ้าน Lv 2</small></div></div>
+    <div class="lot"><div class="st"><span class="tag">💧3</span></div><div class="img house">บ้าน 1 ชั้น</div>
+      <div class="img garden">สวน 12 แปลง</div><div class="sign">จ๋า<small>บ้าน Lv 1</small></div></div>
+    <div class="lot"><div class="st"><span class="tag">🔨 ช่วยสร้างได้</span></div><div class="img house mine"><span class="num">2</span>บ้านคุณ<br>กำลังสร้าง ขั้น 3/5<br>🏗️ เครน · นั่งร้าน</div>
+      <div class="bar"><i style="width:55%"></i></div><div class="sign">⭐ พล (คุณ)<small>ผนัง 55%</small></div></div>
+    <div class="lot"><div class="st"><span class="tag">🔨</span></div><div class="img house" style="height:70px">ฐานราก<br>ขั้น 2/5</div>
+      <div class="sign">เอ<small>ฐานราก</small></div></div>
+    <div class="lot empty"><div class="img house" style="height:60px">🪧 ที่ดินว่าง<br>จองได้</div><div class="sign" style="border-style:dashed">แปลง 7<small>🪙 1,500</small></div></div>
+    <div class="road">ถนนในซอย · คนออนไลน์เดินไปมา · กดบ้านเพื่อเคาะประตู</div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 250px;gap:10px;padding:10px;background:#f4f4f4">
+    <div class="card"><div class="lbl"><span class="num">3</span>เคาะประตูบ้านเพื่อน (การ์ดเดียวกับในตึก)</div>
+      <b>เอ · กำลังสร้างฐานราก</b><div class="bar"><i style="width:30%"></i></div><span class="lbl">เหลือ 26 ชม. · วันนี้มีคนช่วยแล้ว 2/5</span>
+      <div style="display:flex;gap:5px"><span class="btn p">🔨 ช่วยสร้าง −2 ชม. +5 🪙</span><span class="btn">❤️</span><span class="btn">ดูบ้าน</span></div>
+      <span class="lbl">บ้านที่เสร็จแล้ว → ปุ่มหลักเปลี่ยนเป็น 💧 รดน้ำสวน</span></div>
+    <div class="card"><div class="lbl"><span class="num">4</span>ป้ายจองที่ดิน</div><b>แปลง 7 · ติดบ้านจ๋า</b>
+      <span class="lbl">ต้องมีห้องคอนโดขนาดใหญ่สุด (22) หรือ Lv 12</span><span class="btn p">🪧 จองที่ดิน 🪙 1,500</span><span class="lbl">เลือกแปลงข้างเพื่อนสนิทได้</span></div>
+  </div>
+</div>
+<div class="note"><h3>ทำไมเป็นซอยข้างตึก ไม่ใช่หน้าใหม่</h3>
+  <b><span class="num">1</span>ภาพเดียวกับตึก</b>ตอนนี้คนเข้าวันละ ~12 คน ถ้าแยกหน้าใหม่ ทั้งตึกและหมู่บ้านจะดูร้าง · สลับ 🏢/🏡 ได้ แต่เป็นถนนเส้นเดียวกัน
+  <b><span class="num">2</span>เห็นบ้านกำลังสร้าง</b>เครนกับนั่งร้านคือ "ความคืบหน้าที่คนอื่นเห็น" — อวดได้ตั้งแต่วันแรก ไม่ต้องรอ 3 สัปดาห์
+  <b><span class="num">3</span>ช่วยสร้าง = รดน้ำแบบใหม่</b>การกระทำทางสังคมที่คนทำอยู่แล้ว (รดน้ำ 718 ครั้ง) ย้ายมาใช้กับบ้านด้วย กดครั้งเดียวจากการ์ด
+  <b><span class="num">4</span>ที่ดินมีจำกัดและเลือกได้</b>อยู่ติดเพื่อนสนิท = เหตุผลชวนเพื่อนมาเล่น · ห้องคอนโดที่ย้ายออกกลายเป็นห้องว่างให้คนใหม่</div>
+</div>
+
+<div class="row">
+  <div class="fr"><div class="hd"><b><span class="num">5</span>แผงสร้างบ้าน (กดบ้านตัวเอง)</b><span class="pill">🪙 3,420 · 🧱 18</span></div>
+    <div class="stages">
+      <div class="stg done"><b>1</b><span>🪧 จองที่ดิน · 🪙 1,500</span><span>✔</span></div>
+      <div class="stg done"><b>2</b><span>🧱 ฐานราก · 🪙 1,500 + 🧱 20 · สร้าง 24 ชม.</span><span>✔</span></div>
+      <div class="stg now"><b>3</b><span>🏠 ผนัง + หลังคา · 🪙 2,000 + 🧱 40 · สร้าง 48 ชม.<div class="bar" style="margin-top:4px"><i style="width:55%"></i></div><span class="lbl">เหลือ 21 ชม. · เพื่อนช่วยแล้ว 6 ครั้ง (−12 ชม.)</span></span><span class="btn">⚡ เร่ง 🪙</span></div>
+      <div class="stg"><b>4</b><span>🌳 สวนหน้าบ้าน (+4 แปลง) · 🪙 1,500 + 🥬 ผัก 30 ชิ้น · 24 ชม.</span><span class="lbl">ล็อก</span></div>
+      <div class="stg"><b>5</b><span>🎉 ขึ้นบ้านใหม่ · 🪙 1,000 · ปาร์ตี้ในซอย 30 นาที</span><span class="lbl">ล็อก</span></div>
+      <div class="lbl">🧱 อิฐ/ไม้ ได้จากการเล่นเกม (1–3 ต่อรอบ ไม่เกิน 12 ต่อวัน) · ผักจากฟาร์ม · เหรียญจากทุกอย่าง</div>
+    </div></div>
+  <div class="fr"><div class="hd"><b><span class="num">6</span>ในบ้าน (หลังเสร็จ)</b><span class="pill">แต่งได้เหมือนห้อง</span></div>
+    <div class="inside"><div class="img" style="height:110px">ห้องนั่งเล่น<br>กว้าง 26 ช่อง (ใหญ่กว่าคอนโด)</div><div class="img" style="height:110px">ห้องนอน / ห้องทำงาน<br>(บ้าน Lv 2: ชั้นสอง)</div>
+      <div class="img" style="height:46px">สวน 14 แปลง (คอนโดมี 10)</div><div class="img" style="height:46px">📮 ตู้จดหมาย = ของขวัญจากเพื่อน</div></div>
+    <div style="padding:0 10px 10px" class="lbl">หลังขึ้นบ้านใหม่: บ้าน Lv 2–3 (ชั้นสอง, สระ/ศาลา) เป็นเป้าระยะยาวต่อ · ของจากคอนโดย้ายมาด้วยทั้งหมด</div></div>
+</div>
+
+<h2><span class="num">7</span>จังหวะเวลา (เป้าหมาย 2–4 สัปดาห์)</h2>
+<div class="fr" style="padding-bottom:6px">
+  <div class="tl"><span></span>
+    <span style="grid-column:span 7;text-align:center">สัปดาห์ 1</span><span style="grid-column:span 7;text-align:center">สัปดาห์ 2</span><span style="grid-column:span 7;text-align:center">สัปดาห์ 3</span><span style="grid-column:span 7;text-align:center">สัปดาห์ 4</span>
+    <b>เล่นประจำ<br><small>~650 🪙/วัน</small></b>
+    <i class="d r m"></i><i class="d r"></i><i class="d r"></i><i class="d r m"></i><i class="d r"></i><i class="d r"></i><i class="d r"></i><i class="d r m"></i><i class="d r"></i><i class="d r"></i><i class="d r"></i><i class="d r m"></i><i class="d r"></i><i class="d r m"></i>
+    <i class="d"></i><i class="d"></i><i class="d"></i><i class="d"></i><i class="d"></i><i class="d"></i><i class="d"></i><i class="d"></i><i class="d"></i><i class="d"></i><i class="d"></i><i class="d"></i><i class="d"></i><i class="d"></i>
+    <b>เล่นวันละครั้ง<br><small>~280 🪙/วัน</small></b>
+    <i class="d c m"></i><i class="d c"></i><i class="d c"></i><i class="d c"></i><i class="d c"></i><i class="d c m"></i><i class="d c"></i><i class="d c"></i><i class="d c"></i><i class="d c"></i><i class="d c"></i><i class="d c"></i><i class="d c m"></i><i class="d c"></i><i class="d c"></i><i class="d c"></i><i class="d c"></i><i class="d c"></i><i class="d c"></i><i class="d c m"></i><i class="d c"></i><i class="d c"></i><i class="d c"></i><i class="d c"></i><i class="d c"></i><i class="d c"></i><i class="d c m"></i><i class="d"></i>
+  </div>
+  <div class="lbl" style="padding:0 10px">กรอบสีดำ = จบขั้น · เล่นประจำ ~14 วัน (ติดเวลาก่อสร้างกับเพดานอิฐ ไม่ใช่เหรียญ) · เล่นวันละครั้ง ~27 วัน (ติดเหรียญ) · เหรียญที่เก็บไว้แล้วช่วยให้เริ่มได้ทันที</div>
+</div>
+</div></body></html>

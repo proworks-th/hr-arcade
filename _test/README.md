@@ -1,0 +1,24 @@
+# _test: design prototypes (not part of the live game)
+
+This folder is gitignored; the files below were force-added so work can continue on another computer.
+Add new files with `git add -f _test/<file>`; never `git add -A`.
+
+## Village (หมู่บ้านพนักงาน)
+- `gdd-village.md` - design doc, draft 2: real economy stats, ×5 prices, pets, consumables, deliveries, clusters
+- `village-proto.html` - playable prototype (Kenney Tiny Town + Tiny Farm, LimeZu characters, 2dPig dog/cat)
+- `wireframe-village.html` - early gray wireframe
+- `village-room.png` - house interior rendered by the real `drawRoom`
+
+Run: from the repo root `python -m http.server 8767`, open http://localhost:8767/_test/village-proto.html
+Screenshots: `python _test/village-shots-a.py` / `-b.py` (Playwright, channel chrome) -> `_test/village-*.png`
+
+Status (6 Nov 2026): prices ×5 (house 37,500), pet dog + food 150/400, street cat, road pickups,
+fertiliser, bike 7,500 / scooter 20,000, board deliveries (3 jobs/day, ~2× canteen price).
+Next: pet/accessory art. KittyToy and Tamaweb art are NOT usable (no licence / Terms forbid);
+use CC0 art or get written permission. Open questions are at the end of the GDD.
+
+## Other mockups
+`mockup-*.html`, `wireframe-office.html`, `wireframes.html`, `mock-*.js` (offline mocks for the mockups)
+
+## Third-party
+`dl-tinytown/`, `dl-tinyfarm/`: Kenney (CC0), only License.txt + Tilemap committed.

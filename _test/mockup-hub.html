@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Hub mockup</title>
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#fff4e6;--ink:#2b2140;--line:#2b2140;--pri:#ff5c8a;--yel:#ffd23f;--ok:#21c07a;--muted:#7a6f8c}
+*{box-sizing:border-box}body{margin:0;background:var(--bg) radial-gradient(#ffe0c2 1.2px,transparent 1.2px) 0 0/18px 18px;color:var(--ink);font-family:Kanit,"Leelawadee UI",Tahoma,sans-serif}
+img{image-rendering:pixelated}
+.top{display:flex;align-items:center;gap:8px;padding:8px 16px;border-bottom:3px solid var(--line);background:#fff}
+.top h1{font-size:17px;margin:0;flex:1}
+.btn{font:inherit;font-weight:600;border:2px solid var(--line);background:#fff;border-radius:12px;padding:6px 12px;box-shadow:0 3px 0 var(--line);cursor:pointer;white-space:nowrap}
+.btn.pri{background:var(--pri);color:#fff;font-size:18px;padding:8px 22px}
+.coin{font-weight:700;font-size:17px;display:flex;align-items:center;gap:4px}
+.coin i{width:18px;height:18px;border-radius:50%;background:#f5b70a;border:2px solid #b27c00;display:inline-block}
+.wrap{max-width:1040px;margin:0 auto;padding:12px 16px 40px}
+.box{background:#fff;border:2px solid var(--line);border-radius:14px;box-shadow:0 3px 0 var(--line)}
+.back{display:flex;align-items:center;gap:12px;padding:8px 12px;margin-bottom:12px;background:#e9fbf1}
+.back .ico{display:flex;gap:2px}.back .ico img{height:30px}
+.back p{margin:0;flex:1;font-size:15px}.back b{color:#0f8a52}
+.feat{display:flex;align-items:center;gap:14px;padding:10px 14px;margin-bottom:12px;background:#fff6d8}
+.feat .em{width:56px;height:56px;border:2px solid var(--line);border-radius:12px;background:#ffd6e3;display:grid;place-items:center}
+.feat .em img{height:44px}
+.feat h2{margin:0;font-size:21px}.feat small{color:var(--muted)}
+.tag{background:var(--yel);border:2px solid var(--line);border-radius:999px;padding:0 8px;font-size:12px;font-weight:600}
+.grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:12px}
+.g{padding:10px 6px;text-align:center;cursor:pointer}
+.g .em{width:46px;height:46px;margin:0 auto 4px;border:2px solid var(--line);border-radius:10px;background:var(--c);display:grid;place-items:center}
+.g .em img{height:36px}.g b{display:block;font-size:14px;line-height:1.2}.g small{color:var(--muted);font-size:12px}
+.g.more{display:grid;place-items:center;color:var(--muted);font-weight:600;border-style:dashed;box-shadow:none}
+.room{display:flex;align-items:center;gap:14px;padding:6px 12px 6px 6px;margin-bottom:12px;overflow:hidden}
+.strip{position:relative;width:330px;height:64px;border:2px solid var(--line);border-radius:10px;background:#c98f55 url(../assets/mi/floor_wood.png) 0 0/32px;flex:none;overflow:hidden}
+.strip img{position:absolute;bottom:4px;height:40px}
+.room p{margin:0;flex:1;font-size:15px}.dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--ok);margin-right:4px}
+.today{padding:10px 14px;font-size:14.5px}
+.today ul{margin:4px 0 0;padding:0;list-style:none;display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.today li{display:flex;gap:8px;align-items:center}.today li img{height:30px}
+.today h3{margin:0;font-size:15px;color:var(--muted);font-weight:600}
+.n{position:absolute;margin:-14px 0 0 -14px;width:24px;height:24px;border-radius:50%;background:#3a86ff;color:#fff;font-size:13px;font-weight:700;display:grid;place-items:center;border:2px solid #fff;z-index:2}
+.rel{position:relative}
+</style></head><body>
+<div class="top">
+  <h1>🕹️ ห้องพักสมอง · HR Arcade</h1>
+  <button class="btn">⋯</button>
+  <button class="btn" style="background:var(--yel)">🙈 หัวหน้ามา! Esc</button>
+  <span class="coin"><i></i>1,240</span>
+</div>
+<div class="wrap">
+  <div class="rel"><span class="n">1</span>
+  <div class="box back">
+    <span class="ico"><img src="../assets/mi/fruit_veg.png"><img src="../assets/mi/amelia_down.png"></span>
+    <p>ยินดีต้อนรับกลับ! ระหว่างที่ไม่อยู่ — <b>ผักสุก 3 แปลง</b> · พี่ฝนมารดน้ำให้ · มีคนไลก์ห้องคุณ <b>2</b></p>
+    <button class="btn" style="background:var(--ok);color:#fff">เก็บ +86 🪙</button>
+  </div></div>
+
+  <div class="rel"><span class="n">2</span>
+  <div class="box feat">
+    <div class="em"><img src="../assets/mi/amelia_phone.png"></div>
+    <div style="flex:1"><span class="tag">⭐ เกมวันนี้ เหรียญ ×2</span><h2>สายด่วนถล่มโต๊ะ</h2><small>ประมาณ 1 นาที · คุณอยู่อันดับ 4 ของสัปดาห์</small></div>
+    <button class="btn pri">▶ เล่นเลย</button>
+  </div></div>
+
+  <div class="rel"><span class="n">3</span>
+  <div class="grid">
+    <div class="box g" style="--c:#cfe8ff"><div class="em"><img src="../assets/mi/adam_down.png"></div><b>จับผิดภาพ</b><small>2–4 นาที</small></div>
+    <div class="box g" style="--c:#d8f5e0"><div class="em"><img src="../assets/mi/adam_right.png"></div><b>วิ่งไปตอกบัตร</b><small>1–3 นาที</small></div>
+    <div class="box g" style="--c:#e3e0ff"><div class="em"><img src="../assets/mi/pc_desk.png"></div><b>Printer Tetris</b><small>2–5 นาที</small></div>
+    <div class="box g" style="--c:#ffe0d0"><div class="em"><img src="../assets/mi/cake_straw.png"></div><b>บาริสต้าพักเที่ยง</b><small>1.5–2 นาที</small></div>
+    <div class="box g more">+5 เกม ▾</div>
+  </div></div>
+
+  <div class="rel"><span class="n">4</span>
+  <div class="box room">
+    <div class="strip">
+      <img src="../assets/mi/plant_pot.png" style="left:8px">
+      <img src="../assets/mi/adam_down.png" style="left:70px;height:44px">
+      <img src="../assets/mi/amelia_down.png" style="left:120px;height:44px">
+      <img src="../assets/mi/bob_phone.png" style="left:200px;height:44px">
+      <img src="../assets/mi/alex_down.png" style="left:250px;height:44px">
+      <img src="../assets/mi/plant_small.png" style="left:300px">
+    </div>
+    <p><span class="dot"></span><b>4 คน</b> อยู่ในห้องรวม · 💃 ปาร์ตี้เต้นเริ่มใน 0:40</p>
+    <button class="btn">เข้าห้อง →</button>
+  </div></div>
+
+  <div class="rel"><span class="n">5</span>
+  <div class="box today">
+    <h3>วันนี้ในออฟฟิศ</h3>
+    <ul>
+      <li><img src="../assets/mi/alex_down.png"><span><b>น้องเอ</b> แซงคุณใน จับผิดภาพ — <u>เอาคืน</u></span></li>
+      <li><img src="../assets/mi/amelia_down.png"><span><b>พี่ฝน</b> ได้ 🏅 ชาวสวนแห่งสัปดาห์</span></li>
+      <li><span style="font-size:24px">🎯</span><span>ภารกิจวันนี้ <b>1/3</b> · 🔥 สตรีค 4 วัน</span></li>
+    </ul>
+  </div></div>
+</div>
+</body></html>

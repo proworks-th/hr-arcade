@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Wireframes</title>
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box}body{margin:0;background:#ececec;font-family:Kanit,sans-serif;color:#333;font-size:13px}
+.page{max-width:1180px;margin:0 auto;padding:16px}
+h1{font-size:20px;margin:0 0 2px}.sub{color:#777;margin:0 0 14px}
+.set{display:grid;grid-template-columns:1fr 250px;gap:14px;margin-bottom:22px;align-items:start}
+.fr{background:#fff;border:2px solid #555;border-radius:10px;overflow:hidden}
+.hd{display:flex;align-items:center;gap:8px;padding:6px 10px;border-bottom:2px solid #555;background:#f6f6f6}
+.hd b{flex:1}.pill{border:1.5px solid #777;border-radius:8px;padding:1px 8px;background:#fff}
+.tabs{display:flex;border-bottom:2px solid #555}
+.tabs span{flex:1;text-align:center;padding:6px;border-right:1.5px solid #bbb;position:relative}.tabs span:last-child{border:0}
+.tabs .on{background:#555;color:#fff;font-weight:600}
+.tabs i{position:absolute;top:4px;right:10px;width:9px;height:9px;border-radius:50%;background:#555}.tabs .on i{background:#fff}
+.bd{padding:10px;display:grid;gap:8px}
+.bx{border:1.5px dashed #999;border-radius:8px;padding:8px;background:#fafafa}
+.bx.s{border-style:solid;border-color:#777;background:#fff}
+.lbl{font-size:11px;color:#888;text-transform:none;margin-bottom:4px}
+.row{display:flex;gap:8px;align-items:center}.grow{flex:1}
+.btn{border:1.5px solid #555;border-radius:8px;padding:3px 10px;background:#fff;white-space:nowrap}
+.btn.p{background:#333;color:#fff;font-weight:600;padding:5px 16px}
+.img{background:repeating-linear-gradient(45deg,#e4e4e4 0 8px,#eee 8px 16px);border:1.5px solid #aaa;border-radius:6px;display:grid;place-items:center;color:#888}
+.g5{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.g2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.gt{border:1.5px solid #888;border-radius:6px;padding:6px 4px;text-align:center;font-size:12px;background:#fff}
+.gt .img{height:30px;margin-bottom:3px}.tag{display:inline-block;border:1px solid #888;border-radius:6px;padding:0 5px;font-size:11px;margin:1px}
+.note{background:#fff8d6;border:1.5px solid #c9b25a;border-radius:10px;padding:10px 12px;font-size:13px;line-height:1.5}
+.note h3{margin:0 0 6px;font-size:15px}.note b{display:block;margin-top:6px;font-size:12px;color:#8a6d00}
+.num{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;background:#3a86ff;color:#fff;font-size:11px;font-weight:600;margin-right:4px}
+</style></head><body><div class="page">
+<h1>Wireframes · 4 ที่ของ HR Arcade (ยังไม่ใส่สี — ดูแค่ตำแหน่งและลำดับ)</h1>
+<p class="sub">แถบแท็บเดียวกันทุกหน้า · จุด ● บนแท็บ = มีของรออยู่ตรงนั้น · ปุ่มดำ = ปุ่มหลัก 1 ปุ่มต่อหน้า</p>
+
+<!-- 1 TODAY -->
+<div class="set"><div class="fr">
+  <div class="hd"><b>🕹️ ห้องพักสมอง</b><span class="pill">⋯</span><span class="pill">หัวหน้ามา Esc</span><span class="pill">🪙 1,904</span></div>
+  <div class="tabs"><span class="on">วันนี้</span><span>ของฉัน<i></i></span><span>ออฟฟิศ<i></i></span><span>เกม</span></div>
+  <div class="bd">
+    <div class="bx s"><div class="lbl">① ระหว่างที่คุณไม่อยู่</div>
+      <div class="row"><span class="grow">🌱 ผักสุก 3 แปลง · ✨ กลายพันธุ์ 1</span><span class="btn">เก็บ</span></div>
+      <div class="row" style="margin-top:4px"><span class="grow">💧 พี่ฝน, แบงค์ รอรดน้ำ</span><span class="btn">ไปรดน้ำ</span></div>
+      <div class="row" style="margin-top:4px"><span class="grow">🏁 น้องเอ แซงคุณในจับผิดภาพ</span><span class="btn">เอาคืน</span></div>
+      <div class="row" style="margin-top:8px"><span class="grow"></span><span class="btn p">เก็บทั้งหมด +86 🪙</span></div></div>
+    <div class="g2">
+      <div class="bx"><div class="lbl">② เกมวันนี้</div><div class="row"><div class="img" style="width:40px;height:40px">เกม</div><span class="grow">สายด่วนถล่มโต๊ะ<br><span class="tag">×2 เหรียญ</span><span class="tag">+เมล็ดหายาก</span></span><span class="btn">▶ เล่น</span></div></div>
+      <div class="bx"><div class="lbl">③ ภารกิจวันนี้ 1/3 · 🔥 4 วัน</div>☑ เก็บผัก 5 ชิ้น<br>☐ รดน้ำให้เพื่อน 2 คน<br>☐ เล่นเกมไหนก็ได้ 1 รอบ</div>
+    </div>
+    <div class="bx"><div class="row"><span class="lbl" style="margin:0">④ ตอนนี้ในออฟฟิศ</span><span class="grow">🟢 4 คนออนไลน์ · 💃 ปาร์ตี้เต้นเริ่มใน 0:40</span><span class="btn">เข้าห้องรวม</span></div></div>
+  </div></div>
+  <div class="note"><h3>1 · วันนี้</h3>เปิดเว็บมาแล้วรู้ทันทีว่า "มีอะไรรอฉันอยู่"
+    <b>เป้าหมาย</b>รับของที่สะสมไว้ภายใน 5 วินาที
+    <b>ปุ่มหลัก</b>เก็บทั้งหมด (ฟาร์ม = เหตุผลอันดับ 1 ที่คนกลับมา)
+    <b>ไปต่อ</b>ทุกแถวมีปุ่มพาไปที่นั้นเลย: เก็บ → ของฉัน, รดน้ำ → ออฟฟิศ, เอาคืน → เกม
+    <b>ถ้าไม่มีอะไรรอ</b>แถว ① หายไป เกมวันนี้ขึ้นมาแทน</div>
+</div>
+
+<!-- 2 MINE -->
+<div class="set"><div class="fr">
+  <div class="hd"><b>🕹️ ห้องพักสมอง</b><span class="pill">⋯</span><span class="pill">หัวหน้ามา Esc</span><span class="pill">🪙 1,990</span></div>
+  <div class="tabs"><span>วันนี้</span><span class="on">ของฉัน</span><span>ออฟฟิศ<i></i></span><span>เกม</span></div>
+  <div class="bd">
+    <div class="row"><span class="btn" style="background:#555;color:#fff">🏠 ห้อง + ฟาร์ม</span><span class="btn">👕 แต่งตัว</span><span class="btn">🎰 กาชา</span><span class="grow"></span><span>Lv 6 · ❤️ 5 · 👀 ผู้มาเยี่ยม 3</span></div>
+    <div style="display:grid;grid-template-columns:1fr 200px;gap:8px">
+      <div><div class="img" style="height:150px">ห้องของฉัน (กดของเพื่อขยับ / แต่ง)</div>
+        <div class="img" style="height:46px;margin-top:4px">ระเบียงฟาร์ม: 🌱🌱🥕✨ ⏳ ⏳</div>
+        <div class="row" style="margin-top:8px"><span class="grow">① ปุ่มฉลาด: เก็บ → ปลูก → ขาย → รดน้ำ</span><span class="btn p">🧺 เก็บ 3 แปลง</span></div></div>
+      <div class="bx s"><div class="lbl">② ร้าน · มีของใหม่ 4 ชิ้น</div>
+        <div class="g2"><div class="gt"><div class="img">โซฟา</div>300</div><div class="gt"><div class="img">โคม</div>120</div><div class="gt"><div class="img">ต้นไม้</div>80</div><div class="gt"><div class="img">พรม</div>150</div></div>
+        <div style="margin-top:6px;text-align:center"><span class="btn">ดูร้านทั้งหมด</span></div></div>
+    </div>
+    <div class="bx"><div class="row"><span class="lbl" style="margin:0">③ หลังแต่งเสร็จ</span><span class="grow">"ห้องใหม่ของคุณขึ้นป้าย ใหม่! ในตึกแล้ว"</span><span class="btn">ดูในตึก →</span></div></div>
+  </div></div>
+  <div class="note"><h3>2 · ของฉัน</h3>ห้องกับฟาร์มอยู่หน้าเดียวกัน (ข้อมูล: ฟาร์ม 190 ครั้ง + ห้อง 77 ครั้ง = ที่ที่คนอยู่นานสุด)
+    <b>เป้าหมาย</b>ดูแลฟาร์ม + ใช้เหรียญแต่งห้อง
+    <b>ปุ่มหลัก</b>ปุ่มฉลาดของฟาร์ม (ทำสิ่งที่ควรทำต่อไปให้)
+    <b>แก้เหรียญล้น</b>ร้านอยู่ข้างห้องตลอด ไม่ต้องกดเข้าไปหา
+    <b>ไปต่อ</b>แต่งเสร็จ → ไปดูในตึก (อวด)</div>
+</div>
+
+<!-- 3 OFFICE -->
+<div class="set"><div class="fr">
+  <div class="hd"><b>🕹️ ห้องพักสมอง</b><span class="pill">⋯</span><span class="pill">หัวหน้ามา Esc</span><span class="pill">🪙 1,990</span></div>
+  <div class="tabs"><span>วันนี้</span><span>ของฉัน</span><span class="on">ออฟฟิศ</span><span>เกม</span></div>
+  <div class="bd">
+    <div class="row"><span class="btn" style="background:#555;color:#fff">🏢 ตึก</span><span class="btn">🚶 ห้องรวม (4)</span><span class="grow"></span><span class="btn">💧 รอรดน้ำ 2</span><span class="btn">✨ แต่งใหม่ 3</span><span class="btn">📍 ห้องฉัน</span></div>
+    <div style="position:relative">
+      <div class="g3">
+        <div><div class="row" style="border:1.5px solid #555;border-bottom:0;padding:2px 6px;border-radius:6px 6px 0 0"><span class="grow">🟢 พี่ฝน</span>Lv 14</div><div class="img" style="height:70px;border-radius:0 0 6px 6px;outline:3px solid #333">ห้อง</div><span class="tag">ใหม่!</span><span class="tag">💧 รอรดน้ำ</span></div>
+        <div><div class="row" style="border:1.5px solid #555;border-bottom:0;padding:2px 6px;border-radius:6px 6px 0 0"><span class="grow">🟢 น้องเอ</span>Lv 11</div><div class="img" style="height:70px;border-radius:0 0 6px 6px">ห้อง</div><span class="tag">ใหม่!</span><span class="tag">❤️ 7</span></div>
+        <div><div class="row" style="border:1.5px solid #555;border-bottom:0;padding:2px 6px;border-radius:6px 6px 0 0"><span class="grow">แบงค์</span>Lv 9</div><div class="img" style="height:70px;border-radius:0 0 6px 6px">ห้อง</div><span class="tag">💧 รอรดน้ำ</span></div>
+        <div><div class="row" style="border:1.5px solid #555;border-bottom:0;padding:2px 6px;border-radius:6px 6px 0 0"><span class="grow">ใหม่</span>Lv 8</div><div class="img" style="height:70px;border-radius:0 0 6px 6px">ห้อง</div></div>
+        <div><div class="row" style="border:2.5px solid #333;border-bottom:0;padding:2px 6px;border-radius:6px 6px 0 0;font-weight:600"><span class="grow">พล (คุณ)</span>Lv 6</div><div class="img" style="height:70px;border-radius:0 0 6px 6px">ห้องคุณ</div><span class="tag">❤️ 5</span></div>
+        <div></div>
+      </div>
+      <div class="bx s" style="position:absolute;right:0;bottom:-6px;width:230px;box-shadow:0 4px 0 #555">
+        <div class="lbl">② การ์ดดูห้อง (ไม่ออกจากหน้า)</div><b>พี่ฝน</b> · Lv 14 · 🏅 ชาวสวน<div class="img" style="height:56px;margin:5px 0">ห้องขยาย</div>
+        <div class="row"><span class="btn p">💧 รดน้ำ +2</span><span class="btn">❤️</span><span class="btn">เข้าห้อง</span></div></div>
+    </div>
+    <div class="bx"><div class="row"><span class="lbl" style="margin:0">③ หลังรดน้ำ</span><span class="grow">"+2 🪙 · เหลืออีก 1 ห้องที่รอรดน้ำ"</span><span class="btn">ห้องต่อไป →</span></div></div>
+  </div></div>
+  <div class="note"><h3>3 · ออฟฟิศ</h3>ตึก + ห้องรวมรวมเป็นที่เดียว = "ที่ของเพื่อน"
+    <b>เป้าหมาย</b>ช่วยเพื่อน + ส่องห้องที่แต่งใหม่
+    <b>ปุ่มหลัก</b>💧 รดน้ำ (ใช้จริง 718 ครั้ง) นำหน้า ❤️
+    <b>ปุ่มทางลัด</b>รอรดน้ำ / แต่งใหม่ / ห้องฉัน = กระโดดไปห้องนั้นเลย
+    <b>ไปต่อ</b>"ห้องต่อไป →" วนจนครบ แล้วพาไปเกม/ห้องรวม</div>
+</div>
+
+<!-- 4 GAMES -->
+<div class="set"><div class="fr">
+  <div class="hd"><b>🕹️ ห้องพักสมอง</b><span class="pill">⋯</span><span class="pill">หัวหน้ามา Esc</span><span class="pill">🪙 1,990</span></div>
+  <div class="tabs"><span>วันนี้</span><span>ของฉัน</span><span>ออฟฟิศ</span><span class="on">เกม</span></div>
+  <div class="bd">
+    <div class="bx s"><div class="row"><div class="img" style="width:48px;height:48px">เกม</div><span class="grow"><span class="lbl">① เกมวันนี้</span><br><b>สายด่วนถล่มโต๊ะ</b> · ~1 นาที · คุณอันดับ 4 <span class="tag">×2</span><span class="tag">🌱 เมล็ดหายาก</span></span><span class="btn p">▶ เล่นเลย</span></div></div>
+    <div><div class="lbl">② ทุกเกม · เรียงตามเวลาที่ใช้ · ป้าย = รางวัลพิเศษที่ได้</div>
+      <div class="g5">
+        <div class="gt"><div class="img"></div>จับผิดภาพ<br><span class="tag">2–4 น.</span></div><div class="gt"><div class="img"></div>วิ่งตอกบัตร<br><span class="tag">1–3 น.</span></div><div class="gt"><div class="img"></div>ปั๊มตรา<br><span class="tag">💦 เร่งฟาร์ม</span></div><div class="gt"><div class="img"></div>ปากระดาษ<br><span class="tag">1–2 น.</span></div><div class="gt"><div class="img"></div>บาริสต้า<br><span class="tag">🍱 โรงอาหาร</span></div>
+        <div class="gt"><div class="img"></div>ขบวนกินข้าว</div><div class="gt"><div class="img"></div>ซ้อนแฟ้ม</div><div class="gt"><div class="img"></div>แอบเล่นมือถือ</div><div class="gt"><div class="img"></div>Printer Tetris</div><div class="gt"><div class="img"></div>👥 ปาร์ตี้</div>
+      </div></div>
+    <div class="g2">
+      <div class="bx"><div class="lbl">③ คู่แข่งของคุณ</div>น้องเอ แซงคุณใน จับผิดภาพ (+120)<br>คุณนำ แบงค์ อยู่ 30 ในวิ่งตอกบัตร</div>
+      <div class="bx s"><div class="lbl">④ หน้าจบเกม (ตัวอย่าง)</div><b>1,240 คะแนน</b> · อันดับ 3 ↑<br>+48 🪙 · 🌱 เมล็ดแตงโมทอง<div class="row" style="margin-top:4px"><span class="btn p">เล่นอีก</span><span class="btn">ไปปลูก →</span></div></div>
+    </div>
+  </div></div>
+  <div class="note"><h3>4 · เกม</h3>เกมเล่นจบ 77–100% อยู่แล้ว ปัญหาคือ "ไม่มีเหตุผลต้องเล่น" เพราะฟาร์มให้เหรียญมากกว่า
+    <b>เป้าหมาย</b>เล่นสั้น ๆ ช่วงพัก แล้วได้ของไปใช้ในฟาร์ม/ห้อง
+    <b>ปุ่มหลัก</b>▶ เล่นเกมวันนี้
+    <b>ไอเดียเชื่อมวงจร</b>รางวัลเกม = เมล็ดหายาก / เร่งฟาร์ม / ของโรงอาหาร (ต้องตัดสินใจเรื่องเศรษฐกิจ)
+    <b>ไปต่อ</b>หน้าจบเกม: "เล่นอีก" หรือ "ไปปลูก →"</div>
+</div>
+</div></body></html>

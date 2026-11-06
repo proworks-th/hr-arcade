@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tower mockup</title>
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#fff4e6;--ink:#2b2140;--line:#2b2140;--pri:#ff5c8a;--yel:#ffd23f;--ok:#21c07a;--muted:#7a6f8c}
+*{box-sizing:border-box}body{margin:0;background:var(--bg) radial-gradient(#ffe0c2 1.2px,transparent 1.2px) 0 0/18px 18px;color:var(--ink);font-family:Kanit,"Leelawadee UI",Tahoma,sans-serif}
+img{image-rendering:pixelated}
+.top{display:flex;align-items:center;gap:8px;padding:8px 16px;border-bottom:3px solid var(--line);background:#fff}
+.top h1{font-size:17px;margin:0;flex:1}
+.btn{font:inherit;font-weight:600;border:2px solid var(--line);background:#fff;border-radius:12px;padding:6px 12px;box-shadow:0 3px 0 var(--line);cursor:pointer;white-space:nowrap;font-size:14px}
+.btn.pri{background:var(--pri);color:#fff}
+.coin{font-weight:700;font-size:17px;display:flex;align-items:center;gap:4px}
+.coin i{width:18px;height:18px;border-radius:50%;background:#f5b70a;border:2px solid #b27c00;display:inline-block}
+.wrap{max-width:1040px;margin:0 auto;padding:12px 16px 40px}
+.bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+.seg{display:inline-flex;border:2px solid var(--line);border-radius:12px;overflow:hidden;background:#fff}
+.seg b{padding:4px 12px;font-size:14px}.seg b.on{background:var(--yel)}
+.chip{border:2px solid var(--line);border-radius:999px;background:#fff;padding:3px 12px;font-size:14px;font-weight:600;cursor:pointer}
+.chip.hot{background:#ffe3ec}.chip em{font-style:normal;background:var(--pri);color:#fff;border-radius:8px;padding:0 6px;margin-left:4px;font-size:12px}
+.sky{position:relative;border:2px solid var(--line);border-radius:14px;background:#a9dbff;padding:14px 0 0;overflow:hidden;box-shadow:0 3px 0 var(--line)}
+.sign{margin:0 auto 10px;width:max-content;background:var(--ink);color:var(--yel);border-radius:10px;padding:4px 16px;font-weight:700}
+.bld{margin:0 40px;background:#c98f6b;border:3px solid #6d4c41;border-bottom:0;padding:10px 14px 0}
+.floor{display:flex;gap:12px;padding-bottom:12px;border-bottom:8px solid #8d6e63;margin-bottom:10px}
+.floor>.fl{writing-mode:vertical-rl;color:#fff;font-size:12px;font-weight:700;opacity:.8}
+.apt{position:relative;flex:1;cursor:pointer}
+.tagn{display:flex;align-items:center;gap:5px;background:var(--ink);color:#fff;border-radius:8px 8px 0 0;padding:2px 8px;font-size:13.5px;font-weight:600}
+.tagn img{height:20px;margin-top:-4px}.tagn .lv{margin-left:auto;font-size:12px;color:#d9cfee}
+.mine .tagn{background:var(--yel);color:var(--ink)}.mine .tagn .lv{color:var(--ink)}
+.box{position:relative;height:120px;border:2px solid #5d4037;overflow:hidden}
+.mine .box{border:3px solid var(--yel)}
+.box .wall{position:absolute;left:0;right:0;top:0;height:48px;background-size:24px 48px}
+.box .flr{position:absolute;left:0;right:0;top:48px;bottom:0;background-size:48px}
+.box .it{position:absolute;zoom:1.5}
+.dim .box::after{content:'';position:absolute;inset:0;background:rgba(30,30,60,.28)}
+.st{position:absolute;z-index:3;font-size:12px;font-weight:700;border:2px solid var(--line);border-radius:999px;padding:0 7px;background:#fff}
+.st.new{top:30px;left:-6px;background:var(--pri);color:#fff;transform:rotate(-8deg)}
+.st.like{bottom:6px;right:6px}.st.farm{bottom:6px;left:6px;background:#e9fbf1}
+.on-dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--ok);border:1.5px solid #fff}
+.lobby{margin:0 40px;background:#c98f6b;border:3px solid #6d4c41;border-top:0;height:56px;display:grid;place-items:center}
+.ground{height:22px;background:#7cc46a;border-top:3px solid #5a9e4a}
+.sheet{position:absolute;right:14px;bottom:14px;width:300px;background:#fff;border:3px solid var(--line);border-radius:16px;box-shadow:0 5px 0 var(--line);padding:12px;z-index:5}
+.sheet h3{margin:0;font-size:18px;display:flex;align-items:center;gap:6px}.sheet small{color:var(--muted)}
+.sheet .big{height:130px;margin:8px 0;border:2px solid var(--line);border-radius:10px;position:relative;overflow:hidden}
+.sheet .big .wall{height:52px}.sheet .big .flr{top:52px}.sheet .big .it{zoom:1.7}
+.row{display:flex;gap:6px}.row .btn{flex:1;padding:6px 4px}
+.x{position:absolute;top:6px;right:10px;font-weight:700;color:var(--muted)}
+.hl{outline:4px solid var(--pri);outline-offset:3px;border-radius:4px}
+.n{position:absolute;width:24px;height:24px;border-radius:50%;background:#3a86ff;color:#fff;font-size:13px;font-weight:700;display:grid;place-items:center;border:2px solid #fff;z-index:9}
+</style></head><body>
+<div class="top">
+  <h1>🕹️ ห้องพักสมอง · HR Arcade</h1>
+  <button class="btn">⋯</button>
+  <button class="btn" style="background:var(--yel)">🙈 หัวหน้ามา! Esc</button>
+  <span class="coin"><i></i>1,240</span>
+</div>
+<div class="wrap">
+  <div class="bar" style="position:relative">
+    <span class="n" style="left:-14px;top:-10px">1</span>
+    <span class="seg"><b>🏠 ห้องรวม</b><b class="on">🏢 ตึกออฟฟิศ</b></span>
+    <span class="chip hot">✨ ห้องที่ตกแต่งใหม่<em>3</em></span>
+    <span class="chip">💧 ฟาร์มที่รดน้ำช่วยได้<em style="background:var(--ok)">2</em></span>
+    <span class="chip">📍 ห้องฉัน · ชั้น 2</span>
+    <span style="margin-left:auto;font-size:14px" class="muted"><span class="on-dot"></span> 3 คนออนไลน์</span>
+  </div>
+
+  <div class="sky">
+    <div class="sign">🏢 ห้องพักสมอง · ออฟฟิศ Lv 3</div>
+    <div class="bld">
+      <div class="floor">
+        <span class="fl">ชั้น 3</span>
+        <div class="apt hl" style="position:relative">
+          <span class="n" style="left:-16px;top:-14px">2</span>
+          <div class="tagn"><img src="../assets/mi/amelia_down.png"><span class="on-dot"></span> พี่ฝน<span class="lv">Lv 14 · หัวหน้าทีม</span></div>
+          <div class="box"><div class="wall" style="background-image:url(../assets/mi/wall_mint.png)"></div><div class="flr" style="background-image:url(../assets/mi/floor_herring.png)"></div>
+            <img class="it" src="../assets/mi/bookshelf.png" style="left:6px;top:0"><img class="it" src="../assets/mi/tv.png" style="left:60px;top:10px"><img class="it" src="../assets/mi/rug_green.png" style="left:56px;top:46px"><img class="it" src="../assets/mi/palm.png" style="left:118px;top:30px"><img class="it" src="../assets/mi/amelia_down.png" style="left:84px;top:36px"></div>
+          <span class="st new">ใหม่!</span><span class="st like">❤️ 12</span><span class="st farm">🌱 สุก 2</span>
+        </div>
+        <div class="apt">
+          <div class="tagn"><img src="../assets/mi/alex_down.png"><span class="on-dot"></span> น้องเอ<span class="lv">Lv 11 · 🎮 เล่นอยู่</span></div>
+          <div class="box"><div class="wall" style="background-image:url(../assets/mi/wall_pink.png)"></div><div class="flr" style="background-image:url(../assets/mi/floor_wood.png)"></div>
+            <img class="it" src="../assets/mi/pc_desk.png" style="left:10px;top:20px"><img class="it" src="../assets/mi/chair_red.png" style="left:20px;top:40px"><img class="it" src="../assets/mi/pic_cat.png" style="left:60px;top:8px"><img class="it" src="../assets/mi/sofa_lilac_s.png" style="left:100px;top:14px"></div>
+          <span class="st new">ใหม่!</span><span class="st like">❤️ 7</span>
+        </div>
+        <div class="apt dim">
+          <div class="tagn"><img src="../assets/mi/bob_down.png"> แบงค์<span class="lv">Lv 9</span></div>
+          <div class="box"><div class="wall" style="background-image:url(../assets/mi/wall_grey.png)"></div><div class="flr" style="background-image:url(../assets/mi/floor_dwood.png)"></div>
+            <img class="it" src="../assets/mi/desk_pair.png" style="left:14px;top:30px"><img class="it" src="../assets/mi/locker.png" style="left:110px;top:14px"><img class="it" src="../assets/mi/fridge.png" style="left:90px;top:14px"></div>
+          <span class="st like">❤️ 3</span><span class="st farm">💧 รดน้ำได้</span>
+        </div>
+      </div>
+      <div class="floor">
+        <span class="fl">ชั้น 2</span>
+        <div class="apt dim">
+          <div class="tagn"><img src="../assets/mi/amelia_down.png"> ใหม่<span class="lv">Lv 8</span></div>
+          <div class="box"><div class="wall" style="background-image:url(../assets/mi/wall_yellow.png)"></div><div class="flr" style="background-image:url(../assets/mi/floor_yellow.png)"></div>
+            <img class="it" src="../assets/mi/vanity.png" style="left:10px;top:18px"><img class="it" src="../assets/mi/plant_pot.png" style="left:120px;top:40px"></div>
+          <span class="st new">ใหม่!</span><span class="st farm">💧 รดน้ำได้</span>
+        </div>
+        <div class="apt mine">
+          <span class="n" style="left:-16px;top:-14px">3</span>
+          <div class="tagn"><img src="../assets/mi/adam_down.png"><span class="on-dot"></span> พล (คุณ)<span class="lv">Lv 6 · ได้ ❤️ 2 วันนี้</span></div>
+          <div class="box"><div class="wall" style="background-image:url(../assets/mi/wall_mint.png)"></div><div class="flr" style="background-image:url(../assets/mi/floor_wood.png)"></div>
+            <img class="it" src="../assets/mi/table_light.png" style="left:40px;top:22px"><img class="it" src="../assets/mi/plant_pot.png" style="left:120px;top:40px"><img class="it" src="../assets/mi/lamp_beige.png" style="left:10px;top:40px"><img class="it" src="../assets/mi/adam_down.png" style="left:94px;top:38px"></div>
+          <span class="st like">❤️ 5</span><span class="st farm">🌱 สุก 3</span>
+        </div>
+        <div class="apt dim">
+          <div class="tagn"><img src="../assets/mi/alex_down.png"> ต้น<span class="lv">Lv 6</span></div>
+          <div class="box"><div class="wall" style="background-image:url(../assets/mi/wall_grey.png)"></div><div class="flr" style="background-image:url(../assets/mi/floor_herring.png)"></div>
+            <img class="it" src="../assets/mi/pc_desk.png" style="left:20px;top:20px"><img class="it" src="../assets/mi/chair_red.png" style="left:30px;top:40px"></div>
+          <span class="st like">❤️ 1</span>
+        </div>
+      </div>
+    </div>
+    <div class="lobby"><span class="btn pri" style="font-size:14px">🎉 ห้องรวม · 1 คนอยู่ตอนนี้ — เข้าไปเลย</span></div>
+    <div class="ground"></div>
+
+    <div class="sheet">
+      <span class="n" style="left:-14px;top:-14px">4</span>
+      <span class="x">✕</span>
+      <h3><img src="../assets/mi/amelia_down.png" style="height:26px"> พี่ฝน <span class="on-dot"></span></h3>
+      <small>Lv 14 · หัวหน้าทีม · 🏅 ชาวสวนแห่งสัปดาห์ · ตกแต่งใหม่เมื่อเช้า</small>
+      <div class="big"><div class="wall" style="position:absolute;left:0;right:0;top:0;background-image:url(../assets/mi/wall_mint.png);background-size:26px 52px"></div><div class="flr" style="position:absolute;left:0;right:0;bottom:0;background-image:url(../assets/mi/floor_herring.png);background-size:52px"></div>
+        <img class="it" src="../assets/mi/bookshelf.png" style="position:absolute;left:4px;top:0;zoom:1.7"><img class="it" src="../assets/mi/tv.png" style="position:absolute;left:48px;top:8px;zoom:1.7"><img class="it" src="../assets/mi/palm.png" style="position:absolute;left:140px;top:22px;zoom:1.7"><img class="it" src="../assets/mi/amelia_down.png" style="position:absolute;left:84px;top:30px;zoom:1.7"></div>
+      <div class="row"><button class="btn">❤️ ไลก์</button><button class="btn">💧 รดน้ำ</button><button class="btn pri">เข้าห้อง →</button></div>
+    </div>
+  </div>
+</div>
+</body></html>
