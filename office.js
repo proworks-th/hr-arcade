@@ -93,14 +93,27 @@ const RC = 32, RCOLS = 12, RROWS = 9, RTOP = 2;
 const ROOM_SIZES = [[12, 0, 1], [15, 300, 3], [18, 700, 6], [22, 1500, 10]];
 const roomW = room => room.w || RCOLS;
 const cellsW = n => Math.max(1, Math.ceil((MI_SZ[n] || [16])[0] / 16));
+// small things can stand on a table: same row and inside the table's span (no extra save data); they are drawn
+// lifted to the tabletop, given here in sprite pixels above the table's bottom edge
+const SURFACE = { desk_drawer: 15, desk_pair: 16, dresser: 15, table_wood: 12, table_light: 12, cabinet_wood: 26, cabinet_glass: 26 };
+const SMALL = new Set(['lamp_red', 'lamp_blue', 'lamp_beige', 'lamp_white', 'plant_small', 'plant_pot', 'cake_straw', 'pizza', 'fruit_basket', 'fruit_bowl', 'fruit_grape', 'fruit_veg',
+  'jar', 'jar_pot', 'jar_white', 'jar_gold', 'globe', 'globe_blue', 'globe_gold', 'dx_cactus', 'dx_teddy']);
+const isSmall = n => SMALL.has(n) || !!cupOf(n);
+const inside = (a, b) => a[1] >= b[1] && a[1] + cellsW(a[0]) <= b[1] + cellsW(b[0]);   // a's span lies within b's
+const surfaceOf = (items, it) => isSmall(it[0]) ? items.find(s => s !== it && SURFACE[s[0]] && s[2] === it[2] && inside(it, s)) : undefined;
+const liftOf = (items, it) => { const s = surfaceOf(items, it); return s ? SURFACE[s[0]] : 0; };
+const ridersOf = (items, i) => SURFACE[(items[i] || [])[0]] ? items.map((it, j) => j !== i && surfaceOf([items[i]], it) ? j : -1).filter(j => j >= 0) : [];
 function roomFits(room, n, x, y, skip) {
-  const k = SHOP_KIND[n] || 'f', w = cellsW(n);
+  const k = SHOP_KIND[n] || 'f', w = cellsW(n), me = [n, x, y], sk = i => skip instanceof Set ? skip.has(i) : i === skip;
   if (x < 0 || x + w > roomW(room)) return false;
   if (k === 'w' ? y >= RTOP : (y < RTOP || y >= RROWS)) return false;
-  return !room.items.some((it, i) => { if (i === skip) return false; const k2 = SHOP_KIND[it[0]] || 'f';
+  return !room.items.some((it, i) => { if (sk(i)) return false; const k2 = SHOP_KIND[it[0]] || 'f';
     if ((k === 'w') !== (k2 === 'w') || (k === 'r') !== (k2 === 'r')) return false;   // rugs only collide with rugs, wall with wall
     if (k !== 'w' && it[2] !== y) return false;
-    return x < it[1] + cellsW(it[0]) && it[1] < x + w; });
+    if (!(x < it[1] + cellsW(it[0]) && it[1] < x + w)) return false;
+    if (isSmall(n) && SURFACE[it[0]] && inside(me, it)) return false;                 // onto a table
+    if (SURFACE[n] && isSmall(it[0]) && inside(it, me)) return false;                 // a table under it
+    return true; });
 }
 /* ---------- season trophies: top 3 of a game's monthly board become room items "cup<rank>.<game>.<yyyymm>" ---------- */
 const CUP_FIRST = '202611';                      // the first season (monthly boards started in Nov 2026)
@@ -387,7 +400,7 @@ function drawRoom(ctx, room, extra = [], t = 0, pops = {}, tryFrom = Infinity) {
     const im = itemImg(n, room, dc);
     if (k === 'w') drawPixAt(ctx, im, cx, RTOP * RC - 6, 2, o);
     else if (k === 'r') drawPixAt(ctx, im, cx, (y + 1) * RC, 2, o);
-    else list.push({ y: y + 1, d: () => drawPixAt(ctx, im, cx, (y + 1) * RC, 2, o) });
+    else { const lift = liftOf(room.items, it); list.push({ y: y + 1 + (lift ? .01 : 0), d: () => drawPixAt(ctx, im, cx, (y + 1) * RC - lift * 2, 2, o) }); }
   });
   list.push(...extra);
   list.sort((a, b) => a.y - b.y).forEach(o => o.d());
@@ -444,7 +457,7 @@ function officeMount(root, api) {
   const cartCost = () => trial.reduce((a, it) => a + priceOf(it[0]), 0) + Object.values(tryStyle).reduce((a, n) => a + stylePrice(n), 0) + (tryW ? sizePrice(tryW) : 0);
   const cartN = () => trial.length + Object.keys(tryStyle).length + (tryW ? 1 : 0);
   const allItems = () => p.room.items.concat(trial);
-  const skipIdx = () => moving >= 0 ? moving : movingT >= 0 ? p.room.items.length + movingT : undefined;
+  const skipIdx = () => moving >= 0 ? new Set([moving, ...ridersOf(p.room.items, moving)]) : movingT >= 0 ? p.room.items.length + movingT : undefined;   // a table carries what stands on it
   const walker = roomWalker(p.who); walker.ctx = ctx;
   const view = () => visit ? visit.room : { ...p.room, cs: caseCups(p), wall: tryStyle.wall || p.room.wall, floor: tryStyle.floor || p.room.floor, w: tryW || roomW(p.room) };
   function save() { Prog.put(p); }
@@ -604,15 +617,18 @@ function officeMount(root, api) {
       if (!roomFits({ w: view().w, items: allItems() }, placing, x, y, skipIdx())) { fx.shake(3, .12); api.sfx('bad'); return; }
       if (movingT >= 0) { trial[movingT][1] = x; trial[movingT][2] = y; }
       else if (placingTrial) trial.push([placing, x, y, 0]);
-      else if (moving >= 0) { p.room.items[moving][1] = x; p.room.items[moving][2] = y; pops[moving] = 1; }
+      else if (moving >= 0) { const it = p.room.items[moving], rs = ridersOf(p.room.items, moving), dx = x - it[1], dy = y - it[2];
+        if (rs.length && p.room.items.some((o, j) => j !== moving && !rs.includes(j) && isSmall(o[0]) && o[2] === y && inside(o, [placing, x, y]))) { fx.shake(3, .12); api.sfx('bad'); return; }
+        it[1] = x; it[2] = y; pops[moving] = 1; rs.forEach(j => { p.room.items[j][1] += dx; p.room.items[j][2] += dy; pops[j] = 1; }); }
       else { p.room.items.push([placing, x, y, 0]); pops[p.room.items.length - 1] = 1; }
       fx.burst((x + w / 2) * RC, (k === 'w' ? RTOP : y + 1) * RC, { n: 10, colors: ['#fff', '#e8dcc8'], speed: 120, grav: -40, size: 7, shape: 'puff', life: .45, spread: Math.PI, dir: -Math.PI / 2 });
       api.sfx('stamp'); placing = null; moving = -1; movingT = -1; placingTrial = false; save(); tools(); list(); return;
     }
     // pick the front-most item under the pointer
-    sel = -1; selT = -1; const A = allItems(), nReal = p.room.items.length;
-    for (let i = A.length - 1; i >= 0; i--) { const [n, x, y] = A[i], k = SHOP_KIND[n] || 'f', w = cellsW(n), h = Math.ceil((MI_SZ[n] || [16, 16])[1] / 16);
-      const top = k === 'w' ? 0 : y - h + 1, bot = k === 'w' ? RTOP - 1 : y;
+    sel = -1; selT = -1; const A = allItems(), nReal = p.room.items.length, L = A.map(it => (SHOP_KIND[it[0]] || 'f') === 'f' ? liftOf(A, it) * 2 / RC : 0);
+    const order = A.map((_, i) => i).reverse().sort((a, b) => (L[b] ? 1 : 0) - (L[a] ? 1 : 0));   // things on tables before the table
+    for (const i of order) { const [n, x, y] = A[i], k = SHOP_KIND[n] || 'f', w = cellsW(n), h = Math.ceil((MI_SZ[n] || [16, 16])[1] / 16);
+      const top = k === 'w' ? 0 : Math.floor(y - h + 1 - L[i]), bot = k === 'w' ? RTOP - 1 : Math.ceil(y + 1 - L[i]) - 1;
       if (c.x >= x && c.x < x + w && c.y >= top && c.y <= bot) { if (i >= nReal) selT = i - nReal; else { sel = i; pops[i] = 1; } break; } }
     tools();
   });
@@ -625,9 +641,11 @@ function officeMount(root, api) {
       const k = SHOP_KIND[placing] || 'f', w = cellsW(placing), x = Math.max(0, Math.min(RW - w, hover.x - Math.floor((w - 1) / 2))), y = k === 'w' ? 0 : hover.y, ok = roomFits({ w: view().w, items: allItems() }, placing, x, y, skipIdx());
       extra.push({ y: (k === 'w' ? 0 : y + 1) + .02, d: () => {
         ctx.fillStyle = ok ? 'rgba(33,192,122,.35)' : 'rgba(226,48,48,.35)'; ctx.fillRect(x * RC, (k === 'w' ? 0 : y) * RC, w * RC, (k === 'w' ? RTOP : 1) * RC);
-        drawPixAt(ctx, itemImg(placing, view(), moving >= 0 ? p.room.items[moving][4] : movingT >= 0 ? trial[movingT][4] : 0), (x + w / 2) * RC, k === 'w' ? RTOP * RC - 6 : (y + 1) * RC, 2, { alpha: .75 }); } });
+        const gl = k === 'f' ? liftOf(allItems().filter((_, i) => i !== moving), [placing, x, y]) : 0;
+        drawPixAt(ctx, itemImg(placing, view(), moving >= 0 ? p.room.items[moving][4] : movingT >= 0 ? trial[movingT][4] : 0), (x + w / 2) * RC, k === 'w' ? RTOP * RC - 6 : (y + 1) * RC - gl * 2, 2, { alpha: .75 }); } });
     }
-    const real = visit ? room.items : p.room.items.filter((_, i) => i !== moving), tr = visit ? [] : trial.filter((_, i) => i !== movingT);
+    const carried = moving >= 0 ? ridersOf(p.room.items, moving) : [];
+    const real = visit ? room.items : p.room.items.filter((_, i) => i !== moving && !carried.includes(i)), tr = visit ? [] : trial.filter((_, i) => i !== movingT);
     drawRoom(ctx, { ...room, items: real.concat(tr) }, extra, t, pops, real.length);
     // cart items: dashed pink frame + price tag
     tr.forEach(([n, x, y]) => { const k = SHOP_KIND[n] || 'f', w = cellsW(n), h = k === 'w' ? RTOP : Math.max(1, Math.ceil((MI_SZ[n] || [16, 16])[1] / 16)), top = k === 'w' ? 0 : y - h + 1;
