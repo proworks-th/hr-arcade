@@ -131,7 +131,37 @@ def farm(page, base, shot):
     shot('farm')
 
 
-SCREENS = {'office': office, 'farm': farm, 'hub': hub, 'spot': solo('spot'), 'run': solo('run'), 'whack': solo('whack'), 'stack': solo('stack', 600),
+
+TOWER_SEED = """async () => {
+  localStorage.setItem('hra_name', JSON.stringify('ทดสอบ'));
+  const M = await import('/verify/mocks/firebase-database.js'), now = Date.now(), P = {}, F = {};
+  [['พี่ฝน', 14, 18, now - 36e5], ['เอ', 12, 15, 0], ['แบงค์', 9, 12, 0], ['ทดสอบ', 6, 12, 0], ['ใหม่', 2, 12, 0]].forEach(([n, lv, w, rt]) => {
+    P[n] = { n, lv, ti: 'พนักงาน', who: 'adam', rt, t: now, room: { wall: 'wall_pink', floor: 'floor_wood', w, items: [['plant_pot', 2, 8], ['sofa_red', 5, 7]] } };
+    F[n] = { nm: n, who: 'adam', n: 4, plots: [{ c: 'tom', t: now - 6e4, w: 0 }, { c: 'bok', t: now - 6e5, w: 0 }, 0, 0], t: now }; });
+  M.set(M.ref(null, 'rooms/_prof'), P); M.set(M.ref(null, 'rooms/_farm'), F);
+}"""
+
+
+def tower(page, base, shot):
+    page.goto(base + '/index.html?test=1')
+    page.wait_for_function('window.__app', timeout=3000)
+    page.evaluate(TOWER_SEED)
+    page.click('[data-view=tower]')
+    page.evaluate('Tower.refresh()')
+    page.wait_for_selector('.tower-signs .door-s', timeout=3000)
+    page.wait_for_timeout(600)
+    shot('tower')
+    page.locator('.door-s', has_text='พี่ฝน').first.click()
+    page.wait_for_selector('.knock [data-a=water]', timeout=2000)
+    shot('tower-knock')
+    page.click('.knock [data-a=water]')
+    page.wait_for_function("!document.querySelector('.knock [data-a=water]')", timeout=2000)
+    # last: an element capture taller than the viewport resizes it and drops touch emulation
+    if canvas_blank(page, '.tower-wrap canvas'):
+        raise AssertionError('tower canvas is blank')
+
+
+SCREENS = {'office': office, 'farm': farm, 'hub': hub, 'tower': tower, 'spot': solo('spot'), 'run': solo('run'), 'whack': solo('whack'), 'stack': solo('stack', 600),
            'tetris': solo('tetris'), 'stamp': solo('stamp'), 'barista': solo('barista', 2500), 'toss': solo('toss'), 'slack': solo('slack', 2000), 'conga': solo('conga', 2000), 'prism': solo('prism'),
            'party': party2d}
 

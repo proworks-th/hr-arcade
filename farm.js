@@ -118,6 +118,31 @@ const Farm = {
     ctx.fillStyle = '#d9dde3'; ctx.fillRect(x, y + H - 9, w, 1);                 // rail
     for (let px = x + 2; px < x + w; px += 12) ctx.fillRect(px, y + H - 9, 1, 3);
   },
+  // plots of a friend's garden I can still water (row from listFarms, waters = their rooms/_farmw branch)
+  waterable(row, waters, me, now = Date.now()) {
+    const out = []; if (!row) return out;
+    (row.plots || []).forEach((pl, i) => { if (!pl || !CROPS[pl.c]) return;
+      const by = (waters || {})[i] || {}, fw = Object.values(by).filter(v => v && v.s === pl.t).length;
+      if (by[me] && by[me].s === pl.t) return;
+      if ((pl.w ? 1 : 0) + fw >= WATER_MAX || now >= ripeAt(pl, fw)) return;
+      out.push(i); });
+    return out;
+  },
+  // water every plot I still can in one go (the tower's knock card) → { n, coins }; same rules and rewards as in the farm
+  waterAll(O, row, waters, nm) {
+    const me = keyOf(nm), ids = Farm.waterable(row, waters, me);
+    if (!ids.length) return Promise.resolve({ n: 0, coins: 0 });
+    return Promise.all(ids.map(i => O.water(row.k, i, nm, row.plots[i].t).then(() => {
+      ((waters[i] = waters[i] || {}))[me] = { n: nm, s: row.plots[i].t }; return i; }))).then(done => {
+      const d = store.get('farmWD', { d: '', n: 0 }), day = new Date().toDateString(); if (d.d !== day) { d.d = day; d.n = 0; }
+      const paid = Math.max(0, Math.min(done.length, FRIEND_WATER_DAY - d.n)); d.n += paid; store.set('farmWD', d);
+      Awards.add('help', done.length); if (typeof Stats !== 'undefined') for (const _ of done) Stats.econ('water');
+      if (paid) Prog.give(paid * 2, paid, 'help');
+      return { n: done.length, coins: paid * 2 };
+    });
+  },
+  // coins still payable for friend water today
+  waterCoinsLeft() { const d = store.get('farmWD', { d: '', n: 0 }); return 2 * Math.max(0, FRIEND_WATER_DAY - (d.d === new Date().toDateString() ? d.n : 0)); },
   balconyInfo(row, now = Date.now()) {
     if (!row) return '🌱 ยังไม่ได้ปลูกผัก';
     const pl = (row.plots || []).filter(p => p && CROPS[p.c]), ripe = pl.filter(p => now >= ripeAt(p, 0)).length;

@@ -65,7 +65,7 @@ export function saveProfile(name,p){
   if(!FIREBASE_CONFIG||!name)return;
   const items=(p.room.items||[]).slice(0,90).map(([n,x,y,f])=>[String(n).slice(0,24),x|0,y|0,f?1:0]);
   return set(ref(db(),`rooms/_prof/${nameKey(name)}`),{n:name.trim().slice(0,20),lv:p.lv|0,ti:String(p.ti||'').slice(0,20),who:String(p.who||'adam').slice(0,10),b:String(p.b||'').slice(0,12),h:String(p.h||'').slice(0,12),f:String(p.f||'').slice(0,12),
-    room:{wall:String(p.room.wall).slice(0,20),floor:String(p.room.floor).slice(0,20),items,cs:(p.room.cs||[]).slice(0,6).map(x=>String(x).slice(0,24)),w:Math.min(22,Math.max(12,p.room.w|0||12))},t:serverTimestamp()});
+    room:{wall:String(p.room.wall).slice(0,20),floor:String(p.room.floor).slice(0,20),items,cs:(p.room.cs||[]).slice(0,6).map(x=>String(x).slice(0,24)),w:Math.min(22,Math.max(12,p.room.w|0||12))},rt:+p.rt||0,t:serverTimestamp()});
 }
 export async function listProfiles(n=40){
   if(!FIREBASE_CONFIG)return[];
@@ -178,6 +178,8 @@ export async function listFarms(){
   return Object.entries(s.val()||{}).map(([k,v])=>({k,...v,plots:(v.plots||[]).map(x=>x||null)})).sort((a,b)=>(b.t||0)-(a.t||0)).slice(0,60);
 }
 export function water(owner,i,from,s){return FIREBASE_CONFIG?set(ref(db(),`rooms/_farmw/${owner}/${i}/${nameKey(from)}`),{n:String(from).trim().slice(0,20),s}):Promise.resolve()}
+// every garden's friend water at once (the office tower shows who still needs a 💧)
+export async function allWaters(){if(!FIREBASE_CONFIG)return{};const s=await get(ref(db(),'rooms/_farmw'));return s.val()||{}}
 export async function getWaters(owner){if(!FIREBASE_CONFIG)return{};const s=await get(ref(db(),`rooms/_farmw/${owner}`));return s.val()||{}}
 export function watchWaters(owner,cb){return FIREBASE_CONFIG?onValue(ref(db(),`rooms/_farmw/${owner}`),s=>cb(s.val()||{})):()=>{}}
 export function clearWaters(owner,i){if(FIREBASE_CONFIG)remove(ref(db(),`rooms/_farmw/${owner}/${i}`))}

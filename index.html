@@ -253,6 +253,39 @@ button.pk:hover{transform:translateY(-2px)}div.pk{cursor:default}.pk b{font-size
 .tower-wrap canvas{display:block;width:100%;height:auto;image-rendering:pixelated}
 .tower-tip{position:absolute;max-width:240px;background:#fff;border:2px solid var(--line);border-radius:8px;padding:4px 8px;font-size:12.5px;pointer-events:none;z-index:2}
 .tower-bar{display:flex;align-items:center;gap:8px;margin-top:8px;font-size:13px}.tower-bar .muted{flex:1}.tower-zoom{display:flex;gap:4px;flex:none}
+/* tower = a real building: elevator menu + readable door signs + knock-on-door card */
+.tw{position:relative;display:grid;grid-template-columns:170px minmax(0,1fr);gap:10px;align-items:start}
+.elev{display:flex;flex-direction:column;gap:4px;background:#fff;border:3px solid var(--line);border-radius:14px;box-shadow:0 6px 0 var(--line);padding:8px;max-height:min(70vh,640px);overflow:auto}
+.elev-t{text-align:center;font-size:14px;padding-bottom:4px;border-bottom:2px dashed #eee2cf}
+.elev-fl{display:flex;flex-direction:column;gap:4px}
+.fb{display:flex;align-items:center;gap:6px;font:inherit;font-size:12.5px;text-align:left;border:2px solid #e3d6c2;border-radius:10px;background:#fffaf2;padding:3px 6px;cursor:pointer;color:var(--ink);min-height:34px}
+.fb b{flex:none;width:26px;height:24px;display:grid;place-items:center;border:2px solid var(--line);border-radius:7px;background:#fff;font-size:12px}
+.fb span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.fb small{flex:none;font-size:11.5px;font-weight:700}
+.fb:hover{border-color:var(--line)}.fb.on{background:var(--yel);border-color:var(--line)}.fb.mine b{background:var(--yel)}
+.elev-sc{display:flex;flex-direction:column;gap:4px;margin-top:4px;padding-top:6px;border-top:2px dashed #eee2cf}.elev-sc .btn{justify-content:flex-start;text-align:left;font-size:12.5px}.elev-sc .btn:disabled{opacity:.55;cursor:default}
+.tower-in{position:relative}.tower-signs{position:absolute;inset:0;pointer-events:none}
+.tower-signs>button{position:absolute;pointer-events:auto;display:flex;align-items:center;height:24px;margin-top:-12px;padding:0;font:inherit;background:none;border:0;cursor:pointer}
+.ds{flex:1;min-width:0;position:relative;display:flex;align-items:center;gap:4px;height:24px;padding:0 7px;font-size:12.5px;color:#fff;background:#2b2140;border:2px solid #fff;border-radius:8px;box-shadow:0 2px 0 rgba(0,0,0,.35);white-space:nowrap}
+.ds b{overflow:hidden;text-overflow:ellipsis;min-width:0}.ds small{margin-left:auto;font-size:11px;opacity:.85;flex:none}
+.door-s.mine .ds{background:var(--yel);color:var(--ink);border-color:var(--line)}.door-s.sel .ds{outline:3px solid var(--pri);outline-offset:1px}
+.ds .on{flex:none;width:9px;height:9px;border-radius:50%;background:#3ee07f;box-shadow:0 0 0 2px rgba(255,255,255,.6)}
+.ds .stk{position:absolute;right:-4px;top:-15px;display:flex;gap:3px}
+.stk em{font-style:normal;font-size:11px;font-weight:700;line-height:1;padding:3px 5px;border-radius:999px;background:#fff;color:var(--ink);border:2px solid var(--line);transform:rotate(4deg)}.stk em.new{background:var(--pri);color:#fff}.stk em.wat{background:#cdeeff}
+.lob-s .ds,.roof-s .ds{justify-content:center;background:#fff;color:var(--ink);border-color:var(--line);font-weight:700}.lob-s.door .ds{background:var(--pri);color:#fff}
+.roof-s em{font-style:normal;color:var(--ok)}
+@media (pointer:coarse),(hover:none){.tower-signs>button{height:44px;margin-top:-22px}.knock-h .x{min-width:44px;min-height:44px}}
+.tower-signs>button[hidden]{display:none}
+.knock{position:absolute;right:14px;top:12px;z-index:3;width:min(310px,calc(100% - 28px));display:grid;grid-template-columns:minmax(0,1fr);gap:6px;background:#fff;border:3px solid var(--line);border-radius:16px;box-shadow:0 6px 0 var(--line);padding:10px 12px;animation:pop .18s ease-out}
+.knock[hidden]{display:none}.knock-h{display:flex;align-items:center;gap:6px}.knock-h b{flex:1;font-size:16px;display:flex;align-items:center;gap:6px;min-width:0}
+.knock-h .on{width:10px;height:10px;border-radius:50%;background:#21c07a;flex:none}.knock-h .x{font:inherit;border:0;background:none;font-size:16px;cursor:pointer;min-width:44px;min-height:44px;margin:-8px -8px -8px 0}
+.knock small{font-size:12.5px}.knock-room{width:100%;height:auto;border:2px solid var(--line);border-radius:10px;image-rendering:pixelated;background:#efe4d2}
+.knock-f{margin:0;font-size:13px}.knock-a{display:flex;gap:6px}.knock-a .btn{white-space:nowrap;padding-left:10px;padding-right:10px}.knock-a .primary{flex:1;min-width:0}
+@keyframes pop{from{transform:scale(.92);opacity:0}to{transform:none;opacity:1}}
+@media (max-width:720px){.tw{grid-template-columns:1fr}.elev{flex-direction:row;max-height:none;overflow-x:auto;padding:6px;gap:6px;align-items:stretch}.elev-t{display:none}
+  .elev-fl{flex-direction:row;gap:4px}.fb{flex-direction:column;gap:1px;min-width:62px;max-width:88px;padding:3px 4px;text-align:center}.fb span{font-size:11px;width:100%}
+  .elev-sc{flex-direction:row;margin:0;padding:0 0 0 6px;border-top:0;border-left:2px dashed #eee2cf}.elev-sc .btn{white-space:nowrap}
+  .knock{position:fixed;left:12px;right:12px;top:auto;bottom:12px;width:auto;z-index:50}.knock-room{width:auto;max-width:100%;max-height:130px;justify-self:center}}
+@media (pointer:coarse),(hover:none){.fb{min-height:44px}.knock-a .btn{min-height:44px}}
 .sz-h{margin:4px 0 6px;font-size:14px}.sz-h small{font-weight:400}.sz-row{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}.shop-it.sz{min-width:110px;min-height:56px}
 .float.time{color:#21c07a;margin-top:-22px}
 .shop-it .incart{position:absolute;left:3px;top:2px;font-style:normal;font-size:12px}.office-tools .cart small.bad{color:var(--bad);font-weight:700}
@@ -537,12 +570,12 @@ button.pk:hover{transform:translateY(-2px)}div.pk{cursor:default}.pk b{font-size
 <script src="prism-daily.js?v=1"></script>
 <script src="prism.js?v=6"></script>
 <script src="season-art.js?v=5"></script>
-<script src="office.js?v=27"></script>
+<script src="office.js?v=28"></script>
 <script src="wardrobe.js?v=9"></script>
 <script src="gacha.js?v=4"></script>
 <script src="hubroom.js?v=9"></script>
-<script src="tower.js?v=4"></script>
-<script src="farm.js?v=7"></script>
+<script src="tower.js?v=5"></script>
+<script src="farm.js?v=8"></script>
 <script src="cloud.js?v=10"></script>
 <script src="news.js?v=1"></script>
 <script>
@@ -591,7 +624,7 @@ $('#muteBtn').onclick=()=>{muted=!muted;store.set('muted',muted);renderMute()};
 
 /* ---------- online services (online.js, Firebase): ranking, presence, feed ---------- */
 let onlineMod=null;
-const loadRank=()=>onlineMod||(onlineMod=import('./online.js?v=22'));
+const loadRank=()=>onlineMod||(onlineMod=import('./online.js?v=23'));
 const loadOnline=loadRank;
 const PIX_AVAS=['p_office','p_woffice','p_whealth','p_tech','p_cat','p_dog'];
 const myAva=()=>{const a=store.get('partyAva','p_office');return PIX_AVAS.includes(a)?a:'p_office'};

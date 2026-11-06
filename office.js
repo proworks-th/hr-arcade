@@ -48,7 +48,9 @@ const Prog = {
   sync() {
     clearTimeout(Prog._t);
     Prog._t = setTimeout(() => { const nm = myName(); if (!nm) return; const p = Prog.get();
-      loadOnline().then(O => O.saveProfile(nm, { lv: p.lv, ti: Prog.title(p.lv), who: p.who, room: { ...p.room, cs: caseCups(p) }, b: (p.gacha && p.gacha.eq) || '', h: typeof Wardrobe !== 'undefined' ? Wardrobe.eq('h') : '', f: typeof Wardrobe !== 'undefined' ? Wardrobe.eq('f') : '' })).catch(() => {}); }, 1500);
+      // when the room last changed (the tower marks rooms decorated in the last 2 days as ใหม่!)
+      const sg = JSON.stringify([p.room.wall, p.room.floor, p.room.items, p.room.w]), was = store.get('roomSig', ''); if (sg !== was) { if (was) store.set('roomT', Date.now()); store.set('roomSig', sg); }
+      loadOnline().then(O => O.saveProfile(nm, { lv: p.lv, ti: Prog.title(p.lv), who: p.who, room: { ...p.room, cs: caseCups(p) }, rt: store.get('roomT', 0), b: (p.gacha && p.gacha.eq) || '', h: typeof Wardrobe !== 'undefined' ? Wardrobe.eq('h') : '', f: typeof Wardrobe !== 'undefined' ? Wardrobe.eq('f') : '' })).catch(() => {}); }, 1500);
   },
 };
 
