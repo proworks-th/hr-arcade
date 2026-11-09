@@ -19,6 +19,7 @@ Status (9 Nov 2026), GDD draft 2.2:
 - Build progress from hours left; caps: 5 helps/house/day, 20 🪙/day from watering friends.
 - Move-in: rooftop farm closes, farm items carry over, friend watering stays.
 - Live players like the hub room (test mode only in the prototype).
+- Name tags over everyone, drawn on top without overlapping: ⭐ you (+ pet name when beside you), 🟢 live players, neighbours (tap = their house). Pet coat colours (dye 300) + free rename.
 - Pet: Elthen cat (assets/pixel/elthen_cat.png, credited in assets/pixel/CREDITS.txt); collar + party hat drawn in code. Dogs: to be drawn later.
 - Live game: mini games pay ×2 coins since 9 Nov (GAME_PAY in office.js).
 Art rule: CC0 or written permission only. Open questions are at the end of the GDD (rush price, light players, bricks, unlock rule).
