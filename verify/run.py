@@ -161,7 +161,25 @@ def tower(page, base, shot):
         raise AssertionError('tower canvas is blank')
 
 
-SCREENS = {'office': office, 'farm': farm, 'hub': hub, 'tower': tower, 'spot': solo('spot'), 'run': solo('run'), 'whack': solo('whack'), 'stack': solo('stack', 600),
+def village(page, base, shot):
+    page.goto(base + '/index.html?test=1')
+    page.wait_for_function('window.__app', timeout=3000)
+    # hidden for real players: without test mode and without ?village=1 there is no tab
+    hidden = page.evaluate("(() => { const t = window.__TEST__; window.__TEST__ = false; store.set('vilFlag', false); const r = Village.on(); window.__TEST__ = t; return r })()")
+    if hidden:
+        raise AssertionError('village tab would show for real players')
+    page.click('[data-view=village]')
+    page.wait_for_function('Village._dbg.ready', timeout=3000)
+    page.wait_for_timeout(500)
+    shot('village')
+    page.evaluate('Village._dbg.act(Village._dbg.LOTS[4])')  # tap a lot: walk there + toast
+    page.wait_for_timeout(1500)
+    shot('village-walk')
+    if canvas_blank(page, '.vil-wrap canvas'):
+        raise AssertionError('village canvas is blank')
+
+
+SCREENS = {'office': office, 'farm': farm, 'hub': hub, 'tower': tower, 'village': village, 'spot': solo('spot'), 'run': solo('run'), 'whack': solo('whack'), 'stack': solo('stack', 600),
            'tetris': solo('tetris'), 'stamp': solo('stamp'), 'barista': solo('barista', 2500), 'toss': solo('toss'), 'slack': solo('slack', 2000), 'conga': solo('conga', 2000), 'prism': solo('prism'),
            'party': party2d}
 

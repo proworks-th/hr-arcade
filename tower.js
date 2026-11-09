@@ -385,12 +385,14 @@ const Tower = (() => {
     loadOnline().then(M => { O = M; M.watchOnline(l => people = l); }).catch(() => {});
     requestAnimationFrame(frame);
   }
-  // home page view switch: ห้องรวม (walk + chat) or ตึก (everyone's rooms)
+  // home page view switch: ห้องรวม (walk + chat), ตึก (everyone's rooms) or หมู่บ้าน (village.js, hidden until release)
   function setView(v) {
-    store.set('hubView', v); const room = document.getElementById('room');
-    if (room) room.hidden = v !== 'room'; if (el) el.hidden = v !== 'tower';
+    const vilOn = typeof Village !== 'undefined' && Village.on(); if (v === 'village' && !vilOn) v = 'room';  // village tab is hidden until release
+    store.set('hubView', v); const room = document.getElementById('room'), vil = document.getElementById('village');
+    if (room) room.hidden = v !== 'room'; if (el) el.hidden = v !== 'tower'; if (vil) vil.hidden = v !== 'village';
     document.querySelectorAll('[data-view]').forEach(b => b.classList.toggle('on', b.dataset.view === v));
     if (v === 'tower') { start(); load(); }
+    if (v === 'village') Village.show();
   }
   return {
     mount(slot) { const first = !el; if (!el) build(); slot.replaceWith(el); if (first && innerWidth < 720) zoom = 2; fit(); setView(store.get('hubView', 'room')); },
