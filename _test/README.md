@@ -22,7 +22,7 @@ Status (9 Nov 2026), GDD draft 2.2:
 - Name tags over everyone, drawn on top without overlapping: ⭐ you (+ pet name when beside you), 🟢 live players, neighbours (tap = their house). Pet coat colours (dye 300) + free rename.
 - Pet: Elthen cat (assets/pixel/elthen_cat.png, credited in assets/pixel/CREDITS.txt); collar + party hat drawn in code. Dogs: to be drawn later.
 - Live game: mini games pay ×2 coins since 9 Nov (GAME_PAY in office.js).
-Art rule: CC0 or written permission only. Open questions are at the end of the GDD (rush price, light players, bricks, unlock rule).
+Art rule: CC0 or written permission only. Decided 9 Nov: bricks from games only; unlock needs room 22 AND Lv 12. Still open (end of GDD): rush price, light players. Life skills = future plan (GDD §12).
 
 ## Other mockups
 `mockup-*.html`, `wireframe-office.html`, `wireframes.html`, `mock-*.js` (offline mocks for the mockups)
