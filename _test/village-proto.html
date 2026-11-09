@@ -80,8 +80,9 @@ const pctOf = L => HRS[L.stage - 1] ? Math.max(0, Math.min(1, 1 - L.left / HRS[L
 const HELP_CAP = 5, WATER_CAP = 20; // helps per house per day · coins a day from watering friends
 let waterEarned = 0;
 const GROW = [[14, 0, ''], [18, 10000, ''], [24, 20000, ' + 🧱40']]; // garden sizes and what the next one costs
-// crop art (Tiny Farm): sprout, growing, ripe
-const CROP = { bok: ['ผักกาด', [52, 54, 56], 6], car: ['แครอท', [4, 6, 8], 9], tom: ['มะเขือเทศ', [40, 42, 44], 12], cor: ['ข้าวโพด', [28, 30, 32], 14], pum: ['หัวผักกาด', [16, 18, 20], 16], wht: ['ข้าวสาลี', [64, 66, 68], 10] };
+// [name, Tiny Farm art (sprout, growing, ripe), sell, seed] — names and prices are the real farm.js ones (5 Nov 2026 cut);
+// only the real crops that Tiny Farm has art for (no turnip or wheat in the real game)
+const CROP = { let: ['ผักสลัด', [52, 54, 56], 11, 8], car: ['แครอท', [4, 6, 8], 17, 12], tom: ['มะเขือเทศ', [40, 42, 44], 25, 18], cor: ['ข้าวโพด', [28, 30, 32], 40, 28] };
 const CK = Object.keys(CROP);
 const plots = (n, ripeShare = .3) => Array.from({ length: n }, (_, i) => { const r = prnd(); return { c: CK[Math.floor(i / 3 + prnd() * 1.5) % CK.length], g: r < ripeShare ? 2 : r < .65 ? 1 : 0, wet: prnd() < .5 }; });
 // stage: 0 empty, 1 reserved, 2 foundation, 3 walls, 4 garden being made, 5 moved in
@@ -162,7 +163,7 @@ const me = { who: 'adam', x: 5, y: 8, path: [], dir: 'down', sp: RIDES.walk[2], 
 const pet = { n: 'ข้าวตัง', x: 4, y: 8, full: 70, premium: false, found: false, face: 1, act: null, actT: 0 };
 const STREET_CAT = [3, 17];
 // road pickups: a handful a day, only on roads, collected by walking over them
-const PICK = { coin: ['🪙 เหรียญ', 15, 'town', 93], tom: ['🍅 มะเขือเทศ', 12, 'farm', 44], car: ['🥕 แครอท', 9, 'farm', 8], clover: ['🍀 ใบโคลเวอร์สี่แฉก', 100, 'emoji', '🍀'] };
+const PICK = { coin: ['🪙 เหรียญ', 15, 'town', 93], tom: ['🍅 มะเขือเทศ', CROP.tom[2], 'farm', 44], car: ['🥕 แครอท', CROP.car[2], 'farm', 8], clover: ['🍀 ใบโคลเวอร์สี่แฉก', 100, 'emoji', '🍀'] };
 let pickups = [], picked = 0;
 function spawnPickups() {
   const r = rng(321), spots = []; for (let y = 0; y < R; y++) for (let x = 0; x < C; x++) if ([25, 40, 41].includes(base[y][x])) spots.push([x, y]);
@@ -356,7 +357,7 @@ card.addEventListener('click', e => {
   else if (a === 'deliver') { const j = jobFor(t); j.s = 2; addCoins(j.pay); toast(`📦 ส่ง${j.what}ให้${t.n}แล้ว +${j.pay} 🪙 · ${t.n}: ขอบคุณน้า ❤️`); open(t); }
   else if (a === 'next') { const n = nextLot(); if (n) visit(n); }
   else if (a === 'water' || a === 'mywater') { const d = dry(t); t.P.forEach(p => { if (p.g < 2) p.wet = true; }); const got = a === 'water' ? Math.min(d * 2, WATER_CAP - waterEarned) : 0; if (a === 'water') { addCoins(got); waterEarned += got; t.isNew = 0; } toast(`💧 รดน้ำ ${d} แปลง${a === 'water' ? (got ? ` · +${got} 🪙` : ' · วันนี้รับเหรียญรดน้ำครบ 20 แล้ว') : ''}`); rebuild(); open(t); }
-  else if (a === 'harvest') { let s = 0, k = 0; t.P.forEach(p => { if (p.g === 2) { s += CROP[p.c][2]; k++; p.g = 0; p.wet = false; } }); addCoins(s); toast(`🧺 เก็บผัก ${k} แปลง · +${s} 🪙 · ปลูกรอบใหม่ให้แล้ว`); rebuild(); open(t); }
+  else if (a === 'harvest') { let s = 0, k = 0, seed = 0; t.P.forEach(p => { if (p.g === 2) { s += CROP[p.c][2]; seed += CROP[p.c][3]; k++; p.g = 0; p.wet = false; } }); addCoins(s - seed); toast(`🧺 เก็บผัก ${k} แปลง · ขาย +${s} · เมล็ดรอบใหม่ −${seed} = +${s - seed} 🪙`); rebuild(); open(t); }
   else if (a === 'grow') { const gi = GROW.findIndex(g => g[0] === t.P.length), ng = GROW[gi + 1]; if (coins < ng[1]) return toast('เหรียญไม่พอ'); addCoins(-ng[1]); t.P.push(...plots(ng[0] - t.P.length, 0)); toast(`➕ สวนขยายเป็น ${ng[0]} แปลง`); rebuild(); open(t); }
   else if (a === 'fert') { const c = fert(t); addCoins(-c); t.P.forEach(p => { if (p.g < 2) { p.g++; p.wet = false; } }); toast(`🧪 ใส่ปุ๋ยแล้ว −${c} 🪙 · ผักโตขึ้นหนึ่งขั้น`); rebuild(); open(t); }
   else if (a === 'help') { t.helped = 1; t.helps++; t.left = Math.max(0, t.left - 2); addCoins(5); toast('🔨 ช่วยสร้างแล้ว −2 ชม. · +5 🪙'); open(t); }
