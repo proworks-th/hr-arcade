@@ -53,6 +53,13 @@ Delivery pay (§8) must follow the real canteen price per item (with mutation), 
 - Help build: −2 h, helper +5 🪙, max 5 helps/house/day. Progress bar = 1 − hours left ÷ stage hours (so 2 h is 8% of a 24 h stage, 4% of 48 h). Speed-up: 30 🪙 per hour left (open: probably too cheap, whole build ≈ 2,900).
 - Bricks 🧱: from games only, 1–3 per round, cap 12/day (keeps the office/game room daily).
 
+### Moving in: the farm goes with you (decided 9 Nov 2026)
+One player = one garden. At the move-in party:
+1. **The rooftop farm closes.** Your condo plots (4–10) are gone; the house garden (14, later 18/24) replaces them, so moving is always an upgrade.
+2. **Everything carries over:** crops still growing (same timers, same weather mutation), the basket, the vegetable book (สมุดผัก), the sprinkler, your signature fruit, and the farm stats.
+3. **Friend watering stays the same** at the house garden (−15% grow time each, max 3 friends per crop, helper +2 🪙, max 20 🪙/day). Watering is the main way people help each other, so it must keep working. Tapping a house in the village or its balcony in the tower opens the same garden.
+4. Players still in the condo keep their rooftop farm as it is.
+
 ## 5. After the house (×5)
 | Upgrade | Cost | Gives |
 |---|---|---|
@@ -101,7 +108,7 @@ Target: consumables absorb ~300–600 🪙/day for active players, which brings 
 8. Living next to friends: cosmetic perks only.
 
 ## 10. The office tower
-Starter condos for new players; lobby = party room + missions + notice board; 🎮 game room = the only brick source; 🍱 canteen = sell crops ×1.2; freed condo units become shared corners; rooftop = shared garden; the crane keeps building shared floors (office-wide goal).
+Starter condos for new players; lobby = party room + missions + notice board; 🎮 game room = the only brick source; 🍱 canteen = sell crops ×1.2; freed condo units become shared corners; rooftop = farm plots of players still in a condo (closed for each player at move-in); the crane keeps building shared floors (office-wide goal).
 
 ## 11. Open questions
 1. Games give bricks — OK? (or also farm rewards)
