@@ -474,7 +474,10 @@ const Village = (() => {
   /* ---------- drawing ---------- */
   const S = () => Z * dpr, sx = wx => (wx - cam.x) * S(), sy = wy => (wy - cam.y) * S();
   function resize() {
-    if (!cv) return; dpr = Math.min(2, window.devicePixelRatio || 1); const r = wrapEl.getBoundingClientRect(); if (!r.width) return;
+    if (!cv) return; dpr = Math.min(2, window.devicePixelRatio || 1);
+    // full-screen map: as tall as the window under the sticky header, leaving room for the bar below it
+    if (!el.hidden) wrapEl.style.height = Math.max(320, innerHeight - (document.querySelector('.top')?.offsetHeight || 0) - barEl.offsetHeight - 28) + 'px';
+    const r = wrapEl.getBoundingClientRect(); if (!r.width) return;
     cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr); Z = r.width < 720 ? 1.5 : 2;
   }
   function camTarget() {

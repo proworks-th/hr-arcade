@@ -390,6 +390,7 @@ const Tower = (() => {
     const vilOn = typeof Village !== 'undefined' && Village.on(); if (v === 'village' && !vilOn) v = 'room';  // village tab is hidden until release
     store.set('hubView', v); const room = document.getElementById('room'), vil = document.getElementById('village');
     if (room) room.hidden = v !== 'room'; if (el) el.hidden = v !== 'tower'; if (vil) vil.hidden = v !== 'village';
+    document.getElementById('hub')?.classList.toggle('vil-on', v === 'village');   // village view: map fills the screen, games list hidden
     document.querySelectorAll('[data-view]').forEach(b => b.classList.toggle('on', b.dataset.view === v));
     if (v === 'tower') { start(); load(); }
     if (v === 'village') Village.show();
