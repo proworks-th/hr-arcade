@@ -1,28 +1,46 @@
 # GDD: หมู่บ้านพนักงาน (Village)
 
-Draft 2.1 · 9 Nov 2026 (delivery pay, help progress) · prototype: `_test/village-proto.html`
+Draft 2.2 · 9 Nov 2026 (stats re-check, delivery pay, help progress) · prototype: `_test/village-proto.html`
 
 ## 1. One line
 After the biggest condo room, you save up, reserve land, and build your own house + garden over 5 stages. Neighbours are coworkers. The village is where you live; the office tower is where you work and play (games, canteen, missions).
 
-## 2. Real economy (stats 4–6 Nov 2026, economy counters only started 4 Nov, ~11–13 players a day)
-| | Coins |
-|---|---|
-| Earned per active player per day (gross) | ~2,200 |
-| Spent per active player per day | ~1,400 (seeds 54%, furniture 34%) |
-| Kept per active player per day (net) | ~750 |
-| Top players (Lv 31–33), coins in hand | 939 → 9,311 in 2 days (≈ +4,000/day net) |
-| Where coins come from | selling crops 43%, canteen 27%, games ~20% |
+## 2. Real economy (re-checked 9 Nov 2026 from rooms/_stat, full days 5–8 Nov; 7–8 Nov = weekend)
+"Active" = browsers at Lv 5+ that day (8–15 a day). One person can have 2 browsers, so treat these as rough.
 
-Draft 1 assumed ~650/day gross. Real earning is 3–4× that, so draft-1 prices would let top players buy a house in 2 days. Prices below are ×4–5.
-Only 3 days of data: re-check after 2 weeks before launch.
+| Per active player per day | 5 Nov | 6 Nov | 7 Nov | 8 Nov |
+|---|---|---|---|---|
+| Earned (gross) | 3,220 | 2,796 | 1,895 | 2,048 |
+| Spent | 1,651 | 1,846 | 935 | 681 |
+| Kept (net) | 1,569 | 950 | 960 | 1,367 |
+| Farm share of income (sell + canteen) | 67% | 76% | 84% | 84% |
+| Games share | 26% | 16% | 9% | 10% |
+| Median coins in hand | 2,617 | 5,868 | 7,112 | 10,628 |
 
-## 3. Target pace
-| Player | Net coins/day if saving | House (37,500) |
-|---|---|---|
-| Top player (Lv 30+) | ~4,000 | ~10 days (brick cap + build timers also hold them back) |
-| Average active player | ~1,500 (skips furniture) | ~25 days |
-| Light player | ~500 | ~2.5 months (aims for it as a long goal) |
+What changed since draft 2 (stats of 4–6 Nov):
+- **Canteen is now the income.** Since repeatable canteen orders, 8 Nov income was canteen 83%, plain selling 1%. Canteen pays ~38 🪙 per item on average (sell ×1.2, weather mutations ×1.5–5, +40 per filled order), not the base 1.2× of the crop price.
+- **Spending is drying up.** Furniture/wardrobe spending fell from ~6,000/day to 0 on 8 Nov; only seeds are left. Coins pile up: the median player now holds ~10,600, the top ones 11,000–18,000.
+- **Earning per day went down** (farm sell prices cut 5 Nov), but because nothing is spent, savings did not.
+
+Saving per player (change in coins in hand, same browser, 6–8 Nov):
+| Player | Level | Coins in hand 9 Nov | Kept per day |
+|---|---|---|---|
+| Top | 35–39 | 11,800–18,200 | ~2,400–3,000 |
+| Regular | 20–27 | 6,700–12,800 | ~1,500 |
+| Light | 10–13 | 500–1,300 | ~100–400 |
+
+## 3. Target pace (target 2–4 weeks for a regular player)
+Players start the village with their savings, so pace = (house − coins in hand) ÷ kept per day, but never under ~5 days (96 h of build timers, 60 🧱 at 12 a day).
+
+| Player | In hand | Kept/day | House 37,500 | House 50,000 |
+|---|---|---|---|---|
+| Top | ~15,000 | ~2,700 | **~8 days** | ~13 days |
+| Regular | ~8,000 | ~1,500 | ~20 days | ~28 days |
+| Light | ~1,000 | ~250 | ~5 months | ~7 months |
+
+At 37,500 the top players finish in about a week, faster than planned, because of their savings. Regulars land in the 2–4 week window either way. Light players can't realistically get a house at either price: they need a cheaper first step (a small house, or the garden stage on its own) or more catch-up income.
+When the village goes live, the extra consumable sinks (§7, ~300–600/day) slow everyone down by ~20–40%.
+Delivery pay (§8) must follow the real canteen price per item (with mutation), not the base crop price.
 
 ## 4. House build (×5) — total 37,500 🪙 + 60 🧱 + 30 🥬
 | # | Stage | Cost | Build time |
@@ -89,3 +107,5 @@ Starter condos for new players; lobby = party room + missions + notice board; �
 1. Games give bricks — OK? (or also farm rewards)
 2. Unlock at room 22 or Lv 12?
 3. Re-check prices with 2 weeks of stats before launch?
+4. House 37,500 or ~50,000? Savings let top players finish in ~1 week at 37,500 (§3).
+5. Light players (Lv 10–13, ~250/day) can't reach a house: add a smaller first home or catch-up income?
