@@ -406,6 +406,7 @@ button.pk:hover{transform:translateY(-2px)}div.pk{cursor:default}.pk b{font-size
 .g2pad .btn small{font-size:12px;color:var(--muted)}
 .pz-pick{max-width:560px}.pz-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin:10px 0}
 .pz-grid .btn{display:flex;flex-direction:column;align-items:center;gap:2px;min-height:76px;padding:8px 6px}.pz-grid .btn b{font-size:20px}.pz-grid .btn small{font-size:12px;line-height:1.2}.pz-grid .btn i{font-style:normal;font-size:13px}.pz-grid .btn.on{outline:3px solid var(--pink,#ff5c8a)}.pz-grid .btn:disabled{opacity:.5}
+.pz-grid .pz-day{grid-column:1/-1;flex-direction:row;justify-content:center;gap:10px;min-height:54px;background:#fff4c4}.pz-grid .pz-hard{background:#ffe6ee}
 @media (max-width:720px){.g2tip{display:none}}
 
 /* hub live panel */
@@ -439,7 +440,6 @@ button.pk:hover{transform:translateY(-2px)}div.pk{cursor:default}.pk b{font-size
 .rk-list{list-style:none;margin:8px 0 0;padding:0;text-align:left}
 .rk-list li{display:flex;gap:8px;align-items:center;padding:6px 8px;border-bottom:1px dashed #e2d8c8}
 .rk-list li.me{background:#fff3c4;border-radius:8px}
-.pz-grid .pz-day{grid-column:1/-1;flex-direction:row;justify-content:center;gap:10px;min-height:54px;background:#fff4c4}.pz-grid .pz-hard{background:#ffe6ee}
 .rk-list .pos{width:34px;font-weight:800;text-align:center}
 .rk-list .nm{flex:1;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .rk-list .sc{font-weight:800}.rk-list .ex{font-size:12px;color:var(--muted)}
@@ -884,6 +884,7 @@ function startGame(id){
           else if(res&&res.d&&i>0&&i<3)R.pushFeed(`⚡ ${nm} ติดอันดับ ${i+1} วันนี้ ${g.emoji} ${g.title}`,nm,meWho())})
           .catch(()=>{rk.textContent='ส่งคะแนนเข้าอันดับไม่ได้ (เน็ตหลุด?)'})};
       if(g.id==='spot'&&!daily)rk.innerHTML='<span class="muted">โหมดสุ่มด่านไม่นับอันดับ — เล่นด่านประจำวันเพื่อลงอันดับ</span>';
+      else if(g.id==='prism'&&!daily)rk.innerHTML='<span class="muted">ด่านปกติไม่นับอันดับ — เล่น 📅 ด่านประจำวันเพื่อลงอันดับ</span>';
       else if(score>0){const nm=store.get('name','').trim();
         if(nm)send(nm);
         else{rk.innerHTML='ใส่ชื่อเล่นเพื่อลงอันดับ: <input maxlength="20" placeholder="ชื่อเล่น"> <button class="btn sm">ส่ง</button>';
@@ -917,7 +918,6 @@ $('#homeBtn').onclick=goHome;
 
 function showPause(){
   if(!current||!current.started||current.ended||$('#pauseOv'))return;
-      else if(g.id==='prism'&&!daily)rk.innerHTML='<span class="muted">ด่านปกติไม่นับอันดับ — เล่น 📅 ด่านประจำวันเพื่อลงอันดับ</span>';
   paused=true;
   const ov=document.createElement('div');ov.className='overlay';ov.id='pauseOv';
   ov.innerHTML=`<div class="panel popin"><div class="big">⏸️</div><h2>พักเกมไว้ก่อน</h2><p class="muted">รอดตัวไปอีกรอบ 😮‍💨</p><div class="row"><button class="btn primary">▶ เล่นต่อ</button><button class="btn">🏠 หน้าหลัก</button></div></div>`;
