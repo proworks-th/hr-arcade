@@ -1,6 +1,6 @@
 # GDD: หมู่บ้านพนักงาน (Village)
 
-Draft 2 · 6 Nov 2026 · prototype: `_test/village-proto.html`
+Draft 2.1 · 9 Nov 2026 (delivery pay, help progress) · prototype: `_test/village-proto.html`
 
 ## 1. One line
 After the biggest condo room, you save up, reserve land, and build your own house + garden over 5 stages. Neighbours are coworkers. The village is where you live; the office tower is where you work and play (games, canteen, missions).
@@ -32,7 +32,7 @@ Only 3 days of data: re-check after 2 weeks before launch.
 | 3 | 🏠 Walls + roof | 10,000 + 40 🧱 | 48 h |
 | 4 | 🌳 Garden (14 plots) | 7,500 + 30 🥬 | 24 h |
 | 5 | 🎉 Move-in party | 5,000 | instant |
-- Help build: −2 h, helper +5 🪙, max 5 helps/house/day. Speed-up: 30 🪙 per hour left.
+- Help build: −2 h, helper +5 🪙, max 5 helps/house/day. Progress bar = 1 − hours left ÷ stage hours (so 2 h is 8% of a 24 h stage, 4% of 48 h). Speed-up: 30 🪙 per hour left (open: probably too cheap, whole build ≈ 2,900).
 - Bricks 🧱: from games only, 1–3 per round, cap 12/day (keeps the office/game room daily).
 
 ## 5. After the house (×5)
@@ -69,7 +69,7 @@ Target: consumables absorb ~300–600 🪙/day for active players, which brings 
 
 ## 8. Walking (fun, short)
 - Something every 5–10 seconds: daily road pickups (coin, fruit, flower, rare 🍀), a moving food cart (sells fertiliser, seeds, pet treats; parks in a different cluster daily), deliveries ("take 5 🍅 to จ๋า" pays more than the canteen), waving to online coworkers, petting street cats/dogs.
-- Deliveries (in prototype): the notice board lists 3 jobs a day, e.g. "5 🍅 → จ๋า, she's making som tam for friends". You get about 2× the canteen price (120 vs 60). The owner pays nothing (the coins come from the system), so nobody feels they owe anything. The house shows a 📦 sticker until you deliver. Jobs go to different clusters, which mixes people up.
+- Deliveries (in prototype): the notice board lists 3 jobs a day, e.g. "5 🍅 → จ๋า, she's making som tam for friends". You get the canteen price +30% (canteen = sell ×1.2, so delivery = sell ×1.56; e.g. 5 🍅 at sell 25: canteen 150, delivery 195). The owner pays nothing (the coins come from the system), so nobody feels they owe anything. The house shows a 📦 sticker until you deliver. Jobs go to different clusters, which mixes people up.
 - Tapping a far house still opens its card at once; your character walks there by itself.
 
 ## 9. Clusters without กีดกัน

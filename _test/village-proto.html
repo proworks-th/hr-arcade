@@ -72,6 +72,10 @@ let coins = 30000; const fmt = n => n.toLocaleString('en-US');
 
 // ---------- data ----------
 const STAGES = [['🪧', 'จองที่ดิน', 7500, ''], ['🧱', 'ฐานราก', 7500, '+ 🧱20 · 24 ชม.'], ['🏠', 'ผนัง + หลังคา', 10000, '+ 🧱40 · 48 ชม.'], ['🌳', 'สวนข้างบ้าน 14 แปลง', 7500, '+ 🥬30 · 24 ชม.'], ['🎉', 'ขึ้นบ้านใหม่', 5000, 'ปาร์ตี้ในซอย']];
+const HRS = [0, 24, 48, 24, 0]; // build hours per stage; progress always comes from the hours left
+const pctOf = L => HRS[L.stage - 1] ? Math.max(0, Math.min(1, 1 - L.left / HRS[L.stage - 1])) : 1;
+const HELP_CAP = 5, WATER_CAP = 20; // helps per house per day · coins a day from watering friends
+let waterEarned = 0;
 const GROW = [[14, 0, ''], [18, 10000, ''], [24, 20000, ' + 🧱40']]; // garden sizes and what the next one costs
 // crop art (Tiny Farm): sprout, growing, ripe
 const CROP = { bok: ['ผักกาด', [52, 54, 56], 6], car: ['แครอท', [4, 6, 8], 9], tom: ['มะเขือเทศ', [40, 42, 44], 12], cor: ['ข้าวโพด', [28, 30, 32], 14], pum: ['หัวผักกาด', [16, 18, 20], 16], wht: ['ข้าวสาลี', [64, 66, 68], 10] };
@@ -82,13 +86,13 @@ const LOTS = [
   { id: 1, x: 11, y: 4, stage: 5, n: 'พี่ฝน', who: 'amelia', on: 1, red: 1, lv: 2, isNew: 1, P: plots(18) },
   { id: 2, x: 23, y: 4, stage: 5, n: 'จ๋า', who: 'alex', on: 0, lv: 1, stone: 1, P: plots(14) },
   { id: 3, x: 35, y: 4, stage: 0 },
-  { id: 4, x: 11, y: 12, stage: 3, n: 'พล', who: 'adam', mine: 1, pct: .55, left: 21, helps: 3 },
-  { id: 5, x: 23, y: 12, stage: 2, n: 'เอ', who: 'bob', on: 1, pct: .3, left: 26, helps: 2 },
+  { id: 4, x: 11, y: 12, stage: 3, n: 'พล', who: 'adam', mine: 1, left: 21, helps: 3 },
+  { id: 5, x: 23, y: 12, stage: 2, n: 'เอ', who: 'bob', on: 1, left: 17, helps: 2 },
   { id: 6, x: 35, y: 12, stage: 1, n: 'แบงค์', who: 'alex', on: 0 },
-  { id: 7, x: 11, y: 19, stage: 4, n: 'นก', who: 'amelia', on: 1, red: 1, pct: .6, left: 10, helps: 1, stone: 1 },
+  { id: 7, x: 11, y: 19, stage: 4, n: 'นก', who: 'amelia', on: 1, red: 1, left: 10, helps: 1, stone: 1 },
   { id: 8, x: 23, y: 19, stage: 0 },
 ];
-const MY = LOTS.find(L => L.mine), myBuild = { stage: 3, pct: .55, left: 21, helps: 3 };
+const MY = LOTS.find(L => L.mine), myBuild = { stage: 3, left: 21, helps: 3 };
 let myMoved = false;
 function setMoved(v) {
   myMoved = v; Object.assign(MY, v ? { stage: 5, lv: 1, red: 0, P: MY.P || plots(14, .4) } : myBuild);
@@ -206,18 +210,20 @@ function lotTag(L) {
   let main;
   if (!L.stage) { main = `🪧 แปลง ${L.id} · 🪙 7,500`; o.bg = '#fff8d6'; }
   else if (L.mine && L.stage === 5) { main = `⭐ บ้านคุณ · สวน ${L.P.length} แปลง`; o.bg = '#ffe0ea'; o.line = '#d14d72'; if (ripe(L)) st.push(`🧺${ripe(L)}`); if (dry(L)) st.push(`💧${dry(L)}`); }
-  else if (L.mine) { main = `⭐ บ้านคุณ · ${STAGES[L.stage - 1][1]} ${Math.round(L.pct * 100)}%`; o.bg = '#ffe0ea'; o.line = '#d14d72'; }
+  else if (L.mine) { main = `⭐ บ้านคุณ · ${STAGES[L.stage - 1][1]} ${Math.round(pctOf(L) * 100)}%`; o.bg = '#ffe0ea'; o.line = '#d14d72'; }
   else if (L.stage === 5) { main = `${L.on ? '🟢 ' : ''}${L.n} · บ้าน Lv ${L.lv}`; if (L.isNew) st.push('ขึ้นบ้านใหม่! 🎉'); if (dry(L)) st.push(`💧${dry(L)}`); }
-  else { main = `${L.on ? '🟢 ' : ''}${L.n} · ${L.stage === 1 ? 'จองที่ดินแล้ว' : STAGES[L.stage - 1][1]}`; if (L.stage >= 2 && !L.helped) st.push('🔨 ช่วยสร้างได้'); }
+  else { main = `${L.on ? '🟢 ' : ''}${L.n} · ${L.stage === 1 ? 'จองที่ดินแล้ว' : STAGES[L.stage - 1][1]}`; if (L.stage >= 2 && !L.helped && L.helps < HELP_CAP) st.push('🔨 ช่วยสร้างได้'); }
   if (jobFor(L)) st.unshift('📦 รอของจากคุณ');
   const b = pill(cx, top, main, o);
-  if (L.stage >= 2 && L.stage <= 4) { const w = b.w * .8, x = cx - w / 2, y = b.t + b.h + 3 * dpr; ctx.fillStyle = '#fff'; ctx.strokeStyle = '#3a2a20'; ctx.lineWidth = 1.5 * dpr; ctx.fillRect(x, y, w, 6 * dpr); ctx.fillStyle = '#7ec850'; ctx.fillRect(x, y, w * L.pct, 6 * dpr); ctx.strokeRect(x, y, w, 6 * dpr); }
+  if (L.stage >= 2 && L.stage <= 4) { const w = b.w * .8, x = cx - w / 2, y = b.t + b.h + 3 * dpr; ctx.fillStyle = '#fff'; ctx.strokeStyle = '#3a2a20'; ctx.lineWidth = 1.5 * dpr; ctx.fillRect(x, y, w, 6 * dpr); ctx.fillStyle = '#7ec850'; ctx.fillRect(x, y, w * pctOf(L), 6 * dpr); ctx.strokeRect(x, y, w, 6 * dpr); }
   let x = b.l; for (const s of st) { const r = pill(x, b.t - 3 * dpr, s, { fs: 11, left: 1, bg: s.startsWith('📦') ? '#ffc98a' : s.startsWith('💧') ? '#bfe6ff' : s.startsWith('🧺') ? '#c9f2b5' : '#ffd84d', hit: L }); x += r.w + 4 * dpr; }
 }
-// deliveries: board jobs pay more than selling the same crops at the canteen, so walking is worth it
-const JOBS = [{ to: 1, e: '🍅', what: 'มะเขือเทศ 5 ลูก', why: 'จะทำส้มตำเลี้ยงเพื่อน', pay: 120, sell: 60, s: 0 },
-  { to: 4, e: '🥕', what: 'แครอท 4 หัว', why: 'ช่วงเทฐานรากไม่มีเวลาทำกับข้าว', pay: 90, sell: 36, s: 0 },
-  { to: 6, e: '🌽', what: 'ข้าวโพด 3 ฝัก', why: 'ทำสวนใหม่ อยากได้เมล็ดไปปลูก', pay: 100, sell: 42, s: 0 }];
+// deliveries: a board job pays the canteen price (sell ×1.2) +30%, so walking is worth it
+const CANTEEN = 1.2, DELIVER = 1.3;
+const JOBS = [{ to: 1, e: '🍅', c: 'tom', k: 5, what: 'มะเขือเทศ 5 ลูก', why: 'จะทำส้มตำเลี้ยงเพื่อน', s: 0 },
+  { to: 4, e: '🥕', c: 'car', k: 4, what: 'แครอท 4 หัว', why: 'ช่วงเทฐานรากไม่มีเวลาทำกับข้าว', s: 0 },
+  { to: 6, e: '🌽', c: 'cor', k: 3, what: 'ข้าวโพด 3 ฝัก', why: 'ทำสวนใหม่ อยากได้เมล็ดไปปลูก', s: 0 }];
+JOBS.forEach(j => { j.canteen = Math.round(j.k * CROP[j.c][2] * CANTEEN); j.pay = Math.round(j.canteen * DELIVER); });
 const jobFor = L => JOBS.find(j => j.s === 1 && LOTS[j.to] === L);
 const dlv = L => { const j = jobFor(L); return j ? `<button class="b p" data-a="deliver">📦 ส่ง${j.what} +${j.pay} 🪙</button>` : ''; };
 function homeSpot() { return myMoved ? [MY.front[0] + 1, MY.front[1]] : [TOWER.door[0] + 1, TOWER.door[1] + 1]; }
@@ -280,7 +286,7 @@ function frame(now) {
 const card = document.getElementById('card'), inside = document.getElementById('inside');
 function toast(t) { const el = document.getElementById('toast'); el.textContent = t; el.style.opacity = 1; clearTimeout(toast.h); toast.h = setTimeout(() => el.style.opacity = 0, 1900); }
 function addCoins(n) { coins += n; document.getElementById('coins').textContent = '🪙 ' + fmt(coins); }
-function nextLot() { const want = LOTS.filter(L => !L.mine && ((L.stage === 5 && dry(L)) || (L.stage >= 2 && L.stage <= 4 && !L.helped))); return want.sort((a, b) => Math.hypot(a.front[0] - me.x, a.front[1] - me.y) - Math.hypot(b.front[0] - me.x, b.front[1] - me.y))[0]; }
+function nextLot() { const want = LOTS.filter(L => !L.mine && ((L.stage === 5 && dry(L)) || (L.stage >= 2 && L.stage <= 4 && !L.helped && L.helps < HELP_CAP))); return want.sort((a, b) => Math.hypot(a.front[0] - me.x, a.front[1] - me.y) - Math.hypot(b.front[0] - me.x, b.front[1] - me.y))[0]; }
 function visit(target) {
   card.hidden = true;
   if (target === 'tower') return goTo([TOWER.door[0], TOWER.door[1] + 1], () => open('tower'));
@@ -298,7 +304,7 @@ function open(t) {
   else if (t === 'cat') h += `<h3>🐈‍⬛ แมวประจำลานหมู่บ้าน</h3><p>ไม่มีเจ้าของ ใครผ่านมาก็เกาคางได้ วันละครั้ง</p><div class="acts"><button class="b p" data-a="pat">✋ เกาคาง</button></div>`;
   else if (t === 'rides') h += `<h3>🚲 ยานพาหนะ</h3><p>ซื้อครั้งเดียว ไม่มีค่าน้ำมัน · เดินได้เหมือนเดิมเสมอ</p>` + Object.entries(RIDES).map(([k, r]) => `<div class="stg ${ride === k ? 'now' : ''}"><b>${r[0].split(' ')[0]}</b><span>${r[0].split(' ')[1]} · เร็ว ×${(r[2] / 3.2).toFixed(1)}${r[1] ? ` · 🪙 ${fmt(r[1])}` : ''}</span><span>${ride === k ? 'ใช้อยู่' : owned[k] ? `<button class="b" data-a="use" data-k="${k}" style="min-height:36px;padding:2px 8px">ใช้</button>` : `<button class="b" data-a="buyride" data-k="${k}" style="min-height:36px;padding:2px 8px">ซื้อ</button>`}</span></div>`).join('');
   else if (t === 'tower') h += `<h3>🏢 ตึกออฟฟิศ</h3><p>${myMoved ? 'คุณย้ายออกแล้ว ห้องเดิมกลายเป็นห้องว่างให้เพื่อนใหม่' : 'คอนโด 8 ห้อง · ฟาร์มบนดาดฟ้า (สูงสุด 10 แปลง)'}</p><div class="acts"><button class="b p" data-a="lift">🛗 ขึ้นลิฟต์</button></div>`;
-  else if (t === 'board') h += `<h3>📌 บอร์ดประกาศซอย</h3><p>🎉 พี่ฝนขึ้นบ้านใหม่เมื่อวาน · 🧱 เอเริ่มเทฐานราก · 🪧 ที่ดินว่าง 2 แปลง</p><h3 style="font-size:15px;margin-top:10px">📦 งานส่งของวันนี้</h3>` + JOBS.map((j, i) => `<div class="stg ${j.s === 1 ? 'now' : ''}"><b>${j.e}</b><span>${j.what} → ${LOTS[j.to].n}<br><small>${j.why} · ขายโรงอาหารได้ ${j.sell}</small></span><span>${j.s === 2 ? 'ส่งแล้ว ✓' : j.s === 1 ? `<button class="b" data-a="go" data-k="${i}" style="min-height:36px;padding:2px 8px">ไปส่ง →</button>` : `<button class="b" data-a="job" data-k="${i}" style="min-height:36px;padding:2px 8px">รับ +${j.pay}</button>`}</span></div>`).join('') + `<p style="font-size:12px">วันละ 3 งาน · คนส่งได้มากกว่าขายเอง · เจ้าของบ้านไม่เสียอะไร</p><div class="acts">${next}</div>`;
+  else if (t === 'board') h += `<h3>📌 บอร์ดประกาศซอย</h3><p>🎉 พี่ฝนขึ้นบ้านใหม่เมื่อวาน · 🧱 เอเริ่มเทฐานราก · 🪧 ที่ดินว่าง 2 แปลง</p><h3 style="font-size:15px;margin-top:10px">📦 งานส่งของวันนี้</h3>` + JOBS.map((j, i) => `<div class="stg ${j.s === 1 ? 'now' : ''}"><b>${j.e}</b><span>${j.what} → ${LOTS[j.to].n}<br><small>${j.why} · ขายโรงอาหารได้ ${j.canteen}</small></span><span>${j.s === 2 ? 'ส่งแล้ว ✓' : j.s === 1 ? `<button class="b" data-a="go" data-k="${i}" style="min-height:36px;padding:2px 8px">ไปส่ง →</button>` : `<button class="b" data-a="job" data-k="${i}" style="min-height:36px;padding:2px 8px">รับ +${j.pay}</button>`}</span></div>`).join('') + `<p style="font-size:12px">วันละ 3 งาน · ได้มากกว่าขายโรงอาหาร 30% · เจ้าของบ้านไม่เสียอะไร</p><div class="acts">${next}</div>`;
   else if (t.mine && t.stage === 5) {
     const r = ripe(t), d = dry(t), gi = GROW.findIndex(g => g[0] === t.P.length), ng = GROW[gi + 1];
     h += `<h3>⭐ บ้านคุณ · สวนข้างบ้าน</h3><div class="farmrow"><div><b>${t.P.length}</b>แปลง</div><div><b>${r}</b>พร้อมเก็บ</div><div><b>${d}</b>ต้องรดน้ำ</div></div><p>${cropLine(t)}</p>
@@ -307,11 +313,11 @@ function open(t) {
       <p style="font-size:12px">คอนโดได้สูงสุด 10 แปลง · บ้าน 14 → 18 → 24</p>`;
   }
   else if (t.mine) h += `<h3>⭐ บ้านของคุณ · ขั้น ${t.stage}/5</h3>` + STAGES.map((s, i) => { const k = i + 1, cls = k < t.stage ? 'done' : k === t.stage ? 'now' : '';
-      return `<div class="stg ${cls}"><b>${k}</b><span>${s[0]} ${s[1]} · 🪙 ${fmt(s[2])} ${s[3]}${k === t.stage ? `<div class="bar" style="margin-top:4px"><i style="width:${t.pct * 100}%"></i></div>เหลือ ${t.left} ชม. · เพื่อนช่วยแล้ว ${t.helps} ครั้ง` : ''}</span><span>${k < t.stage ? '✔' : k === t.stage ? `<button class="b" data-a="rush" style="min-height:36px;padding:2px 8px">⚡ 🪙${t.left * 30}</button>` : '🔒'}</span></div>`; }).join('') + `<p style="font-size:12px">ตอนย้ายเข้า ฟาร์มบนดาดฟ้าย้ายมาเป็นสวนข้างบ้านพร้อมผักที่ปลูกอยู่</p>`;
+      return `<div class="stg ${cls}"><b>${k}</b><span>${s[0]} ${s[1]} · 🪙 ${fmt(s[2])} ${s[3]}${k === t.stage ? `<div class="bar" style="margin-top:4px"><i style="width:${pctOf(t) * 100}%"></i></div>เหลือ ${t.left} ชม. · เพื่อนช่วยแล้ว ${t.helps} ครั้ง` : ''}</span><span>${k < t.stage ? '✔' : k === t.stage ? `<button class="b" data-a="rush" style="min-height:36px;padding:2px 8px">⚡ 🪙${t.left * 30}</button>` : '🔒'}</span></div>`; }).join('') + `<p style="font-size:12px">ตอนย้ายเข้า ฟาร์มบนดาดฟ้าย้ายมาเป็นสวนข้างบ้านพร้อมผักที่ปลูกอยู่</p>`;
   else if (!t.stage) h += `<h3>🪧 แปลง ${t.id} · ที่ดินว่าง</h3><p>บ้าน + สวนข้างบ้าน 14 แปลง · ต้องมีห้องคอนโดขนาด 22 หรือ Lv 12</p><div class="acts"><button class="b p" data-a="buy">🪧 จองที่ดิน 🪙 7,500</button><p style="font-size:12px">ทั้งหลัง 37,500 🪙 + 🧱60 + 🥬30 · 5 ขั้น</p></div>`;
-  else if (t.stage === 5) { const d = dry(t); h += `<h3>${t.on ? '🟢 ' : ''}บ้าน${t.n} · Lv ${t.lv}</h3><p>สวน ${t.P.length} แปลง · ${cropLine(t)}<br>${d ? `รดน้ำได้ ${d} แปลง` : 'รดน้ำครบแล้ว ✓'}</p><div class="acts">${dlv(t)}${d ? `<button class="b${jobFor(t) ? '' : ' p'}" data-a="water">💧 รดน้ำ ${d} แปลง +${d * 2} 🪙</button>` : next}<button class="b" data-a="like">❤️</button><button class="b" data-a="enter">🚪 เข้าบ้าน</button></div>`; }
+  else if (t.stage === 5) { const d = dry(t); h += `<h3>${t.on ? '🟢 ' : ''}บ้าน${t.n} · Lv ${t.lv}</h3><p>สวน ${t.P.length} แปลง · ${cropLine(t)}<br>${d ? `รดน้ำได้ ${d} แปลง` : 'รดน้ำครบแล้ว ✓'}</p><div class="acts">${dlv(t)}${d ? `<button class="b${jobFor(t) ? '' : ' p'}" data-a="water">💧 รดน้ำ ${d} แปลง${Math.min(d * 2, WATER_CAP - waterEarned) ? ` +${Math.min(d * 2, WATER_CAP - waterEarned)} 🪙` : ""}</button>` : next}<button class="b" data-a="like">❤️</button><button class="b" data-a="enter">🚪 เข้าบ้าน</button></div>`; }
   else if (t.stage === 1) h += `<h3>${t.n} · จองที่ดินแล้ว</h3><p>กำลังเก็บเงินสร้างฐานราก</p><div class="acts">${dlv(t)}<button class="b p" data-a="like">❤️ ให้กำลังใจ</button>${next}</div>`;
-  else h += `<h3>${t.on ? '🟢 ' : ''}${t.n} · กำลังทำ${STAGES[t.stage - 1][1]}</h3><div class="bar"><i style="width:${t.pct * 100}%"></i></div><p>เหลือ ${t.left} ชม. · วันนี้มีคนช่วยแล้ว ${t.helps}/5</p><div class="acts">${dlv(t)}${t.helped ? `<span style="align-self:center">ช่วยแล้ว ✓</span>${next}` : `<button class="b p" data-a="help">🔨 ช่วยสร้าง −2 ชม. +5 🪙</button>`}<button class="b" data-a="like">❤️</button></div>`;
+  else h += `<h3>${t.on ? '🟢 ' : ''}${t.n} · กำลังทำ${STAGES[t.stage - 1][1]}</h3><div class="bar"><i style="width:${pctOf(t) * 100}%"></i></div><p>เหลือ ${t.left} ชม. · วันนี้มีคนช่วยแล้ว ${t.helps}/${HELP_CAP}</p><div class="acts">${dlv(t)}${t.helped || t.helps >= HELP_CAP ? `<span style="align-self:center">${t.helped ? "ช่วยแล้ว ✓" : "วันนี้ช่วยครบแล้ว"}</span>${next}` : `<button class="b p" data-a="help">🔨 ช่วยสร้าง −2 ชม. +5 🪙</button>`}<button class="b" data-a="like">❤️</button></div>`;
   card.innerHTML = h; card.hidden = false; card._t = t;
 }
 function refreshCard() { if (!card.hidden && card._t && typeof card._t === 'object' && card._t.stage === 5) open(card._t); }
@@ -336,11 +342,11 @@ card.addEventListener('click', e => {
   else if (a === 'go') visit(LOTS[JOBS[+e.target.closest('[data-k]').dataset.k].to]);
   else if (a === 'deliver') { const j = jobFor(t); j.s = 2; addCoins(j.pay); toast(`📦 ส่ง${j.what}ให้${t.n}แล้ว +${j.pay} 🪙 · ${t.n}: ขอบคุณน้า ❤️`); open(t); }
   else if (a === 'next') { const n = nextLot(); if (n) visit(n); }
-  else if (a === 'water' || a === 'mywater') { const d = dry(t); t.P.forEach(p => { if (p.g < 2) p.wet = true; }); if (a === 'water') { addCoins(d * 2); t.isNew = 0; } toast(`💧 รดน้ำ ${d} แปลง${a === 'water' ? ` · +${d * 2} 🪙` : ''}`); rebuild(); open(t); }
+  else if (a === 'water' || a === 'mywater') { const d = dry(t); t.P.forEach(p => { if (p.g < 2) p.wet = true; }); const got = a === 'water' ? Math.min(d * 2, WATER_CAP - waterEarned) : 0; if (a === 'water') { addCoins(got); waterEarned += got; t.isNew = 0; } toast(`💧 รดน้ำ ${d} แปลง${a === 'water' ? (got ? ` · +${got} 🪙` : ' · วันนี้รับเหรียญรดน้ำครบ 20 แล้ว') : ''}`); rebuild(); open(t); }
   else if (a === 'harvest') { let s = 0, k = 0; t.P.forEach(p => { if (p.g === 2) { s += CROP[p.c][2]; k++; p.g = 0; p.wet = false; } }); addCoins(s); toast(`🧺 เก็บผัก ${k} แปลง · +${s} 🪙 · ปลูกรอบใหม่ให้แล้ว`); rebuild(); open(t); }
   else if (a === 'grow') { const gi = GROW.findIndex(g => g[0] === t.P.length), ng = GROW[gi + 1]; if (coins < ng[1]) return toast('เหรียญไม่พอ'); addCoins(-ng[1]); t.P.push(...plots(ng[0] - t.P.length, 0)); toast(`➕ สวนขยายเป็น ${ng[0]} แปลง`); rebuild(); open(t); }
   else if (a === 'fert') { const c = fert(t); addCoins(-c); t.P.forEach(p => { if (p.g < 2) { p.g++; p.wet = false; } }); toast(`🧪 ใส่ปุ๋ยแล้ว −${c} 🪙 · ผักโตขึ้นหนึ่งขั้น`); rebuild(); open(t); }
-  else if (a === 'help') { t.helped = 1; t.helps++; t.left = Math.max(0, t.left - 2); t.pct = Math.min(1, t.pct + .05); addCoins(5); toast('🔨 ช่วยสร้างแล้ว −2 ชม. · +5 🪙'); open(t); }
+  else if (a === 'help') { t.helped = 1; t.helps++; t.left = Math.max(0, t.left - 2); addCoins(5); toast('🔨 ช่วยสร้างแล้ว −2 ชม. · +5 🪙'); open(t); }
   else if (a === 'enter') enter(t);
   else if (a === 'like') toast(`❤️ ส่งหัวใจให้${t.n || ''}แล้ว`);
   else if (a === 'rush') toast(`⚡ เร่งได้ ${t.left} ชม. = 🪙${t.left * 30} (ต้นแบบ: ยังไม่หักจริง)`);
