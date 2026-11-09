@@ -14,7 +14,7 @@ Screenshots: `python _test/village-shots-a.py` / `-b.py` (Playwright, channel ch
 
 Status (6 Nov 2026): prices ×5 (house 37,500), pet dog + food 150/400, street cat, road pickups,
 fertiliser, bike 7,500 / scooter 20,000, board deliveries (3 jobs/day, ~2× canteen price).
-Next: pet/accessory art. KittyToy and Tamaweb art are NOT usable (no licence / Terms forbid);
+Pet: Elthen cat (assets/pixel/elthen_cat.png, credited in assets/pixel/CREDITS.txt); collar + party hat drawn in code. Dogs: to be drawn later.
 use CC0 art or get written permission. Open questions are at the end of the GDD.
 
 ## Other mockups

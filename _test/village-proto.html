@@ -47,13 +47,13 @@ body{margin:0;background:#f3ead9;font-family:Kanit,sans-serif;color:#3a2a20}
   <button class="demo" id="demo">🧪 บ้านฉัน: กำลังสร้าง → กดดูตอนย้ายเข้าแล้ว</button>
   <div class="seg"><button>🏢 ตึก</button><button class="on">🏡 หมู่บ้าน</button></div>
   <button class="demo" id="ride">🚲 ยานพาหนะ</button><span class="pill" id="coins">🪙 30,000</span></div>
-<div class="map" id="map"><canvas id="cv"></canvas><div class="hint" id="hint">แตะพื้นเพื่อเดิน · เดินผ่านของบนถนนเพื่อเก็บ · แตะหมาเพื่อให้อาหาร</div>
+<div class="map" id="map"><canvas id="cv"></canvas><div class="hint" id="hint">แตะพื้นเพื่อเดิน · เดินผ่านของบนถนนเพื่อเก็บ · แตะแมวเพื่อให้อาหาร</div>
   <div class="card" id="card" role="dialog" hidden></div>
   <div class="inside" id="inside" role="dialog" hidden><header><b id="inT"></b><small id="inS"></small><button class="x" data-in="x" aria-label="ออกจากบ้าน">✕</button></header>
     <div class="room"><div class="rw"><img class="bg" src="village-room.png" alt="ห้องในบ้าน"><img class="who" id="inWho" alt=""></div></div>
     <footer id="inF"></footer></div>
   <div class="toast" id="toast" style="opacity:0"></div></div>
-<div class="legend">ต้นแบบ (ข้อมูลสมมติ ยังไม่เชื่อมเกมจริง) · ฉาก <b>Kenney Tiny Town + Tiny Farm</b> (CC0) · ตัวละครและห้อง LimeZu Modern Interiors · ห้องในบ้านวาดด้วยตัววาดห้องตัวจริงของเกม · บ้านทุกหลังมีแปลงผักข้างบ้าน ดินสีเข้ม = รดน้ำแล้ว · ผักโตเองทุก ๆ ไม่กี่วินาทีในต้นแบบ · เหรียญตั้งต้น 30,000 ไว้ลองซื้อ · ราคาใหม่ (×5): บ้าน 37,500 · จักรยาน 7,500 · สกู๊ตเตอร์ 20,000 · หมา 2dPig (CC0)</div>
+<div class="legend">ต้นแบบ (ข้อมูลสมมติ ยังไม่เชื่อมเกมจริง) · ฉาก <b>Kenney Tiny Town + Tiny Farm</b> (CC0) · ตัวละครและห้อง LimeZu Modern Interiors · ห้องในบ้านวาดด้วยตัววาดห้องตัวจริงของเกม · บ้านทุกหลังมีแปลงผักข้างบ้าน ดินสีเข้ม = รดน้ำแล้ว · ผักโตเองทุก ๆ ไม่กี่วินาทีในต้นแบบ · เหรียญตั้งต้น 30,000 ไว้ลองซื้อ · ราคาใหม่ (×5): บ้าน 37,500 · จักรยาน 7,500 · สกู๊ตเตอร์ 20,000 · แมว Elthen (itch.io) · แมวจร 2dPig (CC0)</div>
 </div>
 <script>
 const T = 16, C = 48, R = 30;
@@ -61,7 +61,10 @@ const town = new Image(); town.src = 'dl-tinytown/Tilemap/tilemap_packed.png';
 const farm = new Image(); farm.src = 'dl-tinyfarm/Tilemap/tilemap_packed.png';
 const F = n => 1000 + n; // farm-sheet tiles are stored as 1000+id
 const SPR = {}; for (const w of ['adam', 'alex', 'amelia', 'bob']) for (const d of ['down', 'up', 'left', 'right']) { const i = new Image(); i.src = `../assets/mi/${w}_${d}.png`; SPR[w + d] = i; }
-const DOG = new Image(); DOG.src = '../assets/pixel/p_dog.png'; const CAT = new Image(); CAT.src = '../assets/pixel/p_cat.png';
+// pet = Elthen's cat (itch.io, free for commercial/non-commercial use): 32x32 cells, rows = animations, faces right
+const PETS = new Image(); PETS.src = '../assets/pixel/elthen_cat.png';
+const CATROW = { idle: [0, 4, 4], clean: [2, 4, 6], run: [4, 8, 14], sleep: [6, 4, 2.5], paw: [7, 6, 9], jump: [8, 7, 10], walk: [9, 8, 10] }; // row, frames, fps
+const CAT = new Image(); CAT.src = '../assets/pixel/p_cat.png';
 const rng = s => () => (s = (s * 16807) % 2147483647) / 2147483647;
 let rnd = rng(7); const prnd = rng(99);
 const grid = v => Array.from({ length: R }, () => Array(C).fill(v));
@@ -156,7 +159,7 @@ const RIDES = { walk: ['🚶 เดิน', 0, 3.2], bike: ['🚲 จักร�
 let ride = 'walk', owned = { walk: 1 };
 const me = { who: 'adam', x: 5, y: 8, path: [], dir: 'down', sp: RIDES.walk[2], me: 1 };
 // pet: follows while fed, naps at home when hungry (never runs away)
-const pet = { n: 'ข้าวตัง', x: 4, y: 8, full: 70, premium: false, found: false, face: 1 };
+const pet = { n: 'ข้าวตัง', x: 4, y: 8, full: 70, premium: false, found: false, face: 1, act: null, actT: 0 };
 const STREET_CAT = [3, 17];
 // road pickups: a handful a day, only on roads, collected by walking over them
 const PICK = { coin: ['🪙 เหรียญ', 15, 'town', 93], tom: ['🍅 มะเขือเทศ', 12, 'farm', 44], car: ['🥕 แครอท', 9, 'farm', 8], clover: ['🍀 ใบโคลเวอร์สี่แฉก', 100, 'emoji', '🍀'] };
@@ -228,12 +231,22 @@ const jobFor = L => JOBS.find(j => j.s === 1 && LOTS[j.to] === L);
 const dlv = L => { const j = jobFor(L); return j ? `<button class="b p" data-a="deliver">📦 ส่ง${j.what} +${j.pay} 🪙</button>` : ''; };
 function homeSpot() { return myMoved ? [MY.front[0] + 1, MY.front[1]] : [TOWER.door[0] + 1, TOWER.door[1] + 1]; }
 function drawPet() {
-  const w = 24 * S() * .75, h = 11 * S() * .75, x = sx((pet.x + .5) * T) - w / 2, hop = pet.moving ? Math.abs(Math.sin(performance.now() / 70)) * 1.5 * S() : 0, y = sy((pet.y + 1) * T) - h - 1 * S() - hop;
-  ctx.fillStyle = 'rgba(0,0,0,.2)'; ctx.beginPath(); ctx.ellipse(x + w / 2, y + h + hop, w * .4, 2 * S(), 0, 0, 7); ctx.fill();
-  ctx.save(); if (pet.face < 0) { ctx.translate(x + w, 0); ctx.scale(-1, 1); ctx.drawImage(DOG, 0, y, w, h); } else ctx.drawImage(DOG, x, y, w, h); ctx.restore();
-  if (pet.premium && pet.full > 0) { const hx = x + (pet.face > 0 ? w * .78 : w * .22), hy = y - 1 * S(); ctx.fillStyle = '#ff5c8a'; ctx.beginPath(); ctx.moveTo(hx - 3 * S(), hy + 2 * S()); ctx.lineTo(hx + 3 * S(), hy + 2 * S()); ctx.lineTo(hx, hy - 5 * S()); ctx.fill(); ctx.fillStyle = '#ffd84d'; ctx.fillRect(hx - S(), hy - 6 * S(), 2 * S(), 2 * S()); }
-  if (pet.full <= 0) pill(x + w / 2, y - 2 * dpr, '💤 หิวแล้ว', { fs: 10, bg: '#eee', hit: 'pet' });
-  else hitsPet = { l: x - 4 * dpr, t: y - 6 * dpr, w: w + 8 * dpr, h: h + 10 * dpr, hit: 'pet' };
+  const now = performance.now() / 1000, asleep = pet.full <= 0 && !pet.moving;
+  let a = asleep ? 'sleep' : pet.moving ? (ride === 'walk' ? 'walk' : 'run') : (Math.floor(now / 7) % 3 === 2 ? 'clean' : 'idle');
+  if (pet.act) { const r = CATROW[pet.act]; if ((now - pet.actT) * r[2] < r[1] * (pet.act === 'jump' ? 2 : 1)) a = pet.act; else pet.act = null; }
+  const [row, n, fps] = CATROW[a], fr = Math.floor((pet.act ? now - pet.actT : now) * fps) % n;
+  const s = S() * 1.15, cw = 32 * s, x = sx((pet.x + .5) * T) - cw / 2, y = sy((pet.y + 1) * T) - cw;
+  ctx.fillStyle = 'rgba(0,0,0,.2)'; ctx.beginPath(); ctx.ellipse(x + cw / 2, y + 31.5 * s, 6 * s, 1.6 * s, 0, 0, 7); ctx.fill();
+  ctx.save(); ctx.imageSmoothingEnabled = false;
+  if (pet.face < 0) { ctx.translate(x + cw, 0); ctx.scale(-1, 1); ctx.drawImage(PETS, fr * 32, row * 32, 32, 32, 0, y, cw, cw); } else ctx.drawImage(PETS, fr * 32, row * 32, 32, 32, x, y, cw, cw);
+  ctx.restore();
+  // accessories are drawn on top in our own pixels: collar always, party hat with premium food
+  if (!asleep && a !== 'jump') { const hx = x + (pet.face > 0 ? 19 : 13) * s, hy = y + (a === 'run' || a === 'walk' ? 21 : 20) * s;
+    ctx.fillStyle = '#e63946'; ctx.fillRect(hx - (pet.face > 0 ? 3 : 0) * s, hy + 4 * s, 3 * s, 1 * s); ctx.fillStyle = '#ffd84d'; ctx.fillRect(hx - (pet.face > 0 ? 2 : -1) * s, hy + 5 * s, 1 * s, 1 * s);
+    if (pet.premium && pet.full > 0) { ctx.fillStyle = '#ff5c8a'; ctx.beginPath(); ctx.moveTo(hx - 2.5 * s, hy); ctx.lineTo(hx + 2.5 * s, hy); ctx.lineTo(hx, hy - 6 * s); ctx.fill(); ctx.fillStyle = '#fff'; ctx.fillRect(hx - 1.5 * s, hy - 3 * s, 3 * s, 1 * s); ctx.fillStyle = '#ffd84d'; ctx.fillRect(hx - s, hy - 7 * s, 2 * s, 2 * s); } }
+  const top = y + 19 * s;
+  if (pet.full <= 0) pill(x + cw / 2, top - 2 * dpr, '💤 หิวแล้ว', { fs: 10, bg: '#eee', hit: 'pet' });
+  else hitsPet = { l: x + 6 * s, t: top - 6 * dpr, w: 20 * s, h: 13 * s + 6 * dpr, hit: 'pet' };
 }
 let hitsPet = null;
 function drawRide(a) {
@@ -258,7 +271,7 @@ function frame(now) {
   if (!step(me, dt) && pending) { const f = pending; pending = null; f(); }
   for (const k of pickups) if (!k.got && Math.abs(k.x - me.x) < .5 && Math.abs(k.y - me.y) < .5) { k.got = 1; picked++; const P = PICK[k.k]; addCoins(P[1]); toast(`${P[0]} +${P[1]} 🪙 · เก็บบนถนนวันนี้ ${picked}/${pickups.length}`); }
   pet.full = Math.max(0, pet.full - dt * .5);
-  { const fed = pet.full > 0, home = homeSpot(), tx = fed ? me.x - (me.dir === 'right' ? .9 : me.dir === 'left' ? -.9 : 0) : home[0], ty = fed ? me.y + (me.dir === 'up' ? .8 : me.dir === 'down' ? -.6 : 0) + .25 : home[1];
+  { const fed = pet.full > 0, home = homeSpot(), tx = fed ? me.x + (me.dir === 'right' ? -1.1 : me.dir === 'left' ? 1.1 : .95) : home[0], ty = fed ? me.y + .15 : home[1];
     const dx = tx - pet.x, dy = ty - pet.y, d = Math.hypot(dx, dy); if (d > .15) { const mv = Math.min(d, (fed ? Math.max(me.sp, 3) * 1.15 : 1.5) * dt * (d > 3 ? 2 : 1)); pet.x += dx / d * mv; pet.y += dy / d * mv; if (Math.abs(dx) > .05) pet.face = dx > 0 ? 1 : -1; } pet.moving = d > .15; }
   for (const f of folk) { if (!f.on) continue; if (!step(f, dt)) { f.wait -= dt; if (f.wait < 0) { f.wait = 2 + Math.random() * 4; const h = f.home.front, t = nearestWalk(h[0] + Math.round(Math.random() * 6 - 3), h[1] + 1); const p = t && bfs([Math.round(f.x), Math.round(f.y)], t); if (p) f.path = p; } } }
   // crops grow on their own in the prototype: a watered plot moves up a stage and dries out again
@@ -272,7 +285,7 @@ function frame(now) {
     if (P[2] === 'emoji') { ctx.font = `${11 * S()}px sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(P[3], x + 8 * S(), y + 8 * S()); }
     else { const s = P[2] === 'farm' ? farm : town; ctx.drawImage(s, (P[3] % 12) * T, Math.floor(P[3] / 12) * T, T, T, x + 2 * S(), y + 1 * S(), 12 * S(), 12 * S()); } }
   if (CAT.complete) { const [cx, cy] = STREET_CAT; ctx.drawImage(CAT, sx(cx * T), sy(cy * T + 3), 16 * S(), 13 * S()); }
-  if (DOG.complete) drawPet();
+  if (PETS.complete) drawPet();
   [...folk, me].sort((a, b) => a.y - b.y).forEach(drawPerson);
   hits = []; if (hitsPet && pet.full > 0) hits.push(hitsPet); hitsPet = null;
   if (CAT.complete) hits.push({ l: sx(STREET_CAT[0] * T), t: sy(STREET_CAT[1] * T), w: 16 * S(), h: 16 * S(), hit: 'cat' });
@@ -299,8 +312,8 @@ const cropLine = L => { const n = {}; L.P.forEach(p => n[p.c] = (n[p.c] || 0) + 
 function open(t) {
   let h = '<button class="x" data-a="x" aria-label="ปิด">✕</button>';
   const nx = nextLot(), next = nx ? `<button class="b" data-a="next">ไปบ้านถัดไป →</button>` : '';
-  if (t === 'pet') { const f = Math.round(pet.full); h += `<h3>🐶 ${pet.n} · ${f > 0 ? 'เดินตามคุณอยู่' : 'หิว เลยนอนรอที่บ้าน 💤'}</h3><div class="bar"><i style="width:${f}%;background:#ffb703"></i></div><p>อิ่ม ${f}% · อาหาร 1 มื้ออยู่ได้ 1 วัน (ต้นแบบเร่งให้หิวเร็ว)<br>หิวแล้วแค่นอนรอที่บ้าน ไม่หนี ไม่ป่วย</p>
-      <div class="acts"><button class="b p" data-a="feed">🍖 อาหารธรรมดา 150 🪙</button><button class="b" data-a="feedp">🥩 พรีเมียม 400 🪙</button></div><p style="font-size:12px">ธรรมดา: เดินตาม + วันละครั้งคาบของบนถนนมาให้ (~50 🪙) · พรีเมียม: + หมวกปาร์ตี้ + ขุดเจอเมล็ดพันธุ์</p>`; }
+  if (t === 'pet') { const f = Math.round(pet.full); h += `<h3>🐱 ${pet.n} · ${f > 0 ? 'เดินตามคุณอยู่' : 'หิว เลยนอนรอที่บ้าน 💤'}</h3><div class="bar"><i style="width:${f}%;background:#ffb703"></i></div><p>อิ่ม ${f}% · อาหาร 1 มื้ออยู่ได้ 1 วัน (ต้นแบบเร่งให้หิวเร็ว)<br>หิวแล้วแค่นอนรอที่บ้าน ไม่หนี ไม่ป่วย</p>
+      <div class="acts"><button class="b p" data-a="feed">🍖 อาหารธรรมดา 150 🪙</button><button class="b" data-a="feedp">🥩 พรีเมียม 400 🪙</button></div><p style="font-size:12px">ธรรมดา: เดินตาม + ปลอกคอ + วันละครั้งคาบของบนถนนมาให้ (~50 🪙) · พรีเมียม: + หมวกปาร์ตี้ + ขุดเจอเมล็ดพันธุ์</p>`; }
   else if (t === 'cat') h += `<h3>🐈‍⬛ แมวประจำลานหมู่บ้าน</h3><p>ไม่มีเจ้าของ ใครผ่านมาก็เกาคางได้ วันละครั้ง</p><div class="acts"><button class="b p" data-a="pat">✋ เกาคาง</button></div>`;
   else if (t === 'rides') h += `<h3>🚲 ยานพาหนะ</h3><p>ซื้อครั้งเดียว ไม่มีค่าน้ำมัน · เดินได้เหมือนเดิมเสมอ</p>` + Object.entries(RIDES).map(([k, r]) => `<div class="stg ${ride === k ? 'now' : ''}"><b>${r[0].split(' ')[0]}</b><span>${r[0].split(' ')[1]} · เร็ว ×${(r[2] / 3.2).toFixed(1)}${r[1] ? ` · 🪙 ${fmt(r[1])}` : ''}</span><span>${ride === k ? 'ใช้อยู่' : owned[k] ? `<button class="b" data-a="use" data-k="${k}" style="min-height:36px;padding:2px 8px">ใช้</button>` : `<button class="b" data-a="buyride" data-k="${k}" style="min-height:36px;padding:2px 8px">ซื้อ</button>`}</span></div>`).join('');
   else if (t === 'tower') h += `<h3>🏢 ตึกออฟฟิศ</h3><p>${myMoved ? 'คุณย้ายออกแล้ว ห้องเดิมกลายเป็นห้องว่างให้เพื่อนใหม่' : 'คอนโด 8 ห้อง · ฟาร์มบนดาดฟ้า (สูงสุด 10 แปลง)'}</p><div class="acts"><button class="b p" data-a="lift">🛗 ขึ้นลิฟต์</button></div>`;
@@ -334,7 +347,7 @@ inside.addEventListener('click', e => { const a = e.target.closest('[data-in]')?
 card.addEventListener('click', e => {
   const a = e.target.closest('[data-a]')?.dataset.a, t = card._t; if (!a) return;
   if (a === 'x') card.hidden = true;
-  else if (a === 'feed' || a === 'feedp') { const c = a === 'feed' ? 150 : 400; addCoins(-c); pet.full = 100; pet.premium = a === 'feedp'; let m = `🍖 ${pet.n} อิ่มแล้ว −${c} 🪙`; if (!pet.found) { pet.found = true; addCoins(50); m += ` · คาบเหรียญมาให้ +50`; } if (pet.premium) m += ' · ขุดเจอเมล็ดข้าวโพด 1 ถุง'; toast(m); open('pet'); }
+  else if (a === 'feed' || a === 'feedp') { const c = a === 'feed' ? 150 : 400; addCoins(-c); pet.full = 100; pet.premium = a === 'feedp'; let m = `🍖 ${pet.n} อิ่มแล้ว −${c} 🪙`; if (!pet.found) { pet.found = true; addCoins(50); m += ` · คาบเหรียญมาให้ +50`; } if (pet.premium) { m += ' · ตีลังกาโชว์ + ขุดเจอเมล็ดข้าวโพด 1 ถุง'; pet.act = 'jump'; } else pet.act = 'paw'; pet.actT = performance.now() / 1000; toast(m); open('pet'); }
   else if (a === 'pat') { toast('🐈‍⬛ แมวครางเบา ๆ ❤️ +1'); card.hidden = true; }
   else if (a === 'buyride') { const k = e.target.closest('[data-k]').dataset.k, c = RIDES[k][1]; if (coins < c) return toast('เหรียญไม่พอ'); addCoins(-c); owned[k] = 1; ride = k; me.sp = RIDES[k][2]; toast(`${RIDES[k][0]} ของคุณแล้ว!`); open('rides'); }
   else if (a === 'use') { const k = e.target.closest('[data-k]').dataset.k; ride = k; me.sp = RIDES[k][2]; open('rides'); }

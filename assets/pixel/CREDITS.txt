@@ -1,1 +1,5 @@
 "Pixel Office Asset Pack" by 2dPig - https://2dpig.itch.io/pixel-office (CC0, attribution appreciated)
+
+elthen_cat.png - "2D Pixel Art Cat Sprites" by Elthen (Elthen's Pixel Art Shop)
+  https://elthen.itch.io/2d-pixel-art-cat-sprites - free for commercial/non-commercial projects (per the itch.io page).
+  Collar and party hat are drawn in code, not part of the pack.
