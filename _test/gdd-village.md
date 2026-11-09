@@ -29,6 +29,23 @@ Saving per player (change in coins in hand, same browser, 6–8 Nov):
 | Regular | 20–27 | 6,700–12,800 | ~1,500 |
 | Light | 10–13 | 500–1,300 | ~100–400 |
 
+### 2b. Who are the light players, and what ×2 game pay does (checked 9 Nov from the same stats)
+Browsers at Lv 5+ seen 4–9 Nov (latest record each; one person may have 2 browsers):
+| Level | Browsers | Coins in hand |
+|---|---|---|
+| 30+ | 5 | 9,500–19,000 |
+| 20–29 | 8 | 5,200–13,100 |
+| 10–14 (light) | 4 | 730–1,900 |
+Plus ~3 new players a day under Lv 10 with almost no coins. So light players are about **1 in 4** of the regular crowd.
+
+Mini games pay ×2 coins since 9 Nov 08:48 (XP unchanged). Games were 17% of all income on 5–8 Nov (26% / 16% / 10% / 11%). If people play the same amount, ×2 adds that 17% again: about **+300–500 🪙 a day per player on weekdays, +200 on weekends**.
+| Player | Kept/day before | Kept/day with ×2 (estimate) | House 50,000 (from coins in hand) |
+|---|---|---|---|
+| Top | ~2,700 | ~3,100 | ~11 days (was ~13) |
+| Regular | ~1,500 | ~1,850 | ~23 days (was ~28) |
+| Light | ~250 | ~300–350 | still months |
+Still inside the 2–4 week target, so **house 50,000 stays**. Light players get the least out of ×2 (they play less), so ×2 doesn't fix them. Bricks also come from games, so ×2 makes games more worth playing either way. Re-check once a full week of ×2 stats exists (from 16 Nov).
+
 ## 3. Target pace (target 2–4 weeks for a regular player)
 Players start the village with their savings, so pace = (house − coins in hand) ÷ kept per day, but never under ~5 days (96 h of build timers, 60 🧱 at 12 a day).
 
@@ -50,7 +67,7 @@ Delivery pay (§8) must follow the real canteen price per item (with mutation), 
 | 3 | 🏠 Walls + roof | 15,000 + 40 🧱 | 48 h |
 | 4 | 🌳 Garden (14 plots) | 10,000 + 30 🥬 | 24 h |
 | 5 | 🎉 Move-in party | 5,000 | instant |
-- Help build: −2 h, helper +5 🪙, max 5 helps/house/day. Progress bar = 1 − hours left ÷ stage hours (so 2 h is 8% of a 24 h stage, 4% of 48 h). Speed-up: 30 🪙 per hour left (open: probably too cheap, whole build ≈ 2,900).
+- Help build: −2 h, helper +5 🪙, max 5 helps/house/day. Progress bar = 1 − hours left ÷ stage hours (so 2 h is 8% of a 24 h stage, 4% of 48 h). **No paid speed-up** (decided 9 Nov): coins can't skip build time; only coworkers' help makes it faster, so helping stays worth something.
 - Bricks 🧱: from games only, 1–3 per round, cap 12/day (keeps the office/game room daily).
 
 ### Moving in: the farm goes with you (decided 9 Nov 2026)
@@ -88,7 +105,7 @@ Rule: nothing punishes you for skipping. A consumable makes things nicer, it nev
 | 🎉 Plaza party | 5,000 | 30 min party at your cluster's plaza; everyone who comes gets +20 🪙 and a heart | rich players pay, everyone gains |
 | 🌸 Seasonal decor (rent) | 500 / week | flowers, lights, festival stuff on your house | ~70/day |
 
-Pets: buy once (🐶 / 🐱 6,000–10,000). A hungry pet just naps at home — it never runs away, gets sick or dies (an office game must never make people feel guilty). Pet food should cost more than the pickup it finds, so it's a pleasure, not an investment.
+Pets: buy once for **6,000** (decided 9 Nov: the lowest price in the old 6,000–10,000 range, so more people can have one). A hungry pet just naps at home — it never runs away, gets sick or dies (an office game must never make people feel guilty). Pet food should cost more than the pickup it finds, so it's a pleasure, not an investment.
 
 Target: consumables absorb ~300–600 🪙/day for active players, which brings net saving down toward the ~1,000/day the house pace assumes for regulars.
 
@@ -122,7 +139,9 @@ Starter condos for new players; lobby = party room + missions + notice board; �
 2. ~~Unlock at room 22 or Lv 12?~~ Decided 9 Nov: needs **both** room size 22 **and** Lv 12. The lock card shows both checks with progress, e.g. "ห้อง 18/22 · Lv 12 ✓".
 3. Re-check prices with 2 weeks of stats before launch?
 4. ~~House 37,500 or ~50,000?~~ Decided 9 Nov: 50,000 (10k/10k/15k/10k/5k).
-5. Light players (Lv 10–13, ~250/day) can't reach a house: add a smaller first home or catch-up income?
+5. Light players (Lv 10–13, ~250/day) can't reach a house: add a smaller first home or catch-up income? Counted 9 Nov (§2b): only ~4 browsers. Parked: think about it later.
+6. ~~Speed-up price?~~ Decided 9 Nov: no paid speed-up.
+7. ~~Pet price?~~ Decided 9 Nov: 6,000.
 
 ## 12. Future update: life skills (ความชำนาญ), after the village launch
 Owner idea, 9 Nov 2026. Not in v2.0.

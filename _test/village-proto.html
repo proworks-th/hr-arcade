@@ -364,7 +364,7 @@ const cropLine = L => { const n = {}; L.P.forEach(p => n[p.c] = (n[p.c] || 0) + 
 function open(t) {
   let h = '<button class="x" data-a="x" aria-label="ปิด">✕</button>';
   const nx = nextLot(), next = nx ? `<button class="b" data-a="next">ไปบ้านถัดไป →</button>` : '';
-  if (t === 'pet') { const f = Math.round(pet.full); h += `<h3>🐱 ${pet.n} · ${f > 0 ? 'เดินตามคุณอยู่' : 'หิว เลยนอนรอที่บ้าน 💤'}</h3><div class="bar"><i style="width:${f}%;background:#ffb703"></i></div><p>อิ่ม ${f}% · อาหาร 1 มื้ออยู่ได้ 1 วัน (ต้นแบบเร่งให้หิวเร็ว)<br>หิวแล้วแค่นอนรอที่บ้าน ไม่หนี ไม่ป่วย</p>
+  if (t === 'pet') { const f = Math.round(pet.full); h += `<h3>🐱 ${pet.n} · ${f > 0 ? 'เดินตามคุณอยู่' : 'หิว เลยนอนรอที่บ้าน 💤'}</h3><div class="bar"><i style="width:${f}%;background:#ffb703"></i></div><p>อิ่ม ${f}% · อาหาร 1 มื้ออยู่ได้ 1 วัน (ต้นแบบเร่งให้หิวเร็ว)<br>หิวแล้วแค่นอนรอที่บ้าน ไม่หนี ไม่ป่วย<br>ซื้อสัตว์เลี้ยงครั้งเดียว 🪙6,000</p>
       <div class="acts"><button class="b p" data-a="feed">🍖 อาหารธรรมดา 150 🪙</button><button class="b" data-a="feedp">🥩 พรีเมียม 400 🪙</button></div><p style="font-size:12px">ธรรมดา: เดินตาม + ปลอกคอ + วันละครั้งคาบของบนถนนมาให้ (~50 🪙) · พรีเมียม: + หมวกปาร์ตี้ + ขุดเจอเมล็ดพันธุ์</p>
       <h3 style="font-size:15px;margin-top:10px">✏️ ชื่อและสีขน</h3><div class="acts"><input id="petname" maxlength="12" value="${pet.n}" style="flex:1;min-width:0;font:inherit;font-size:16px;padding:6px 10px;border:2px solid #3a2a20;border-radius:10px"><button class="b" data-a="rename">ตั้งชื่อ</button></div>
       <div class="coats">${Object.entries(COATS).map(([k, c]) => `<button class="coat${k === pet.coat ? ' on' : ''}" data-a="coat" data-k="${k}" title="${c[0]}" style="background:linear-gradient(135deg,${c[1]} 55%,${c[2]} 55%);border-color:${c[3]}"></button>`).join('')}</div>
@@ -381,7 +381,7 @@ function open(t) {
       <p style="font-size:12px">คอนโดได้สูงสุด 10 แปลง · บ้าน 14 → 18 → 24</p>`;
   }
   else if (t.mine) h += `<h3>⭐ บ้านของคุณ · ขั้น ${t.stage}/5</h3>` + STAGES.map((s, i) => { const k = i + 1, cls = k < t.stage ? 'done' : k === t.stage ? 'now' : '';
-      return `<div class="stg ${cls}"><b>${k}</b><span>${s[0]} ${s[1]} · 🪙 ${fmt(s[2])} ${s[3]}${k === t.stage ? `<div class="bar" style="margin-top:4px"><i style="width:${pctOf(t) * 100}%"></i></div>เหลือ ${t.left} ชม. · เพื่อนช่วยแล้ว ${t.helps} ครั้ง` : ''}</span><span>${k < t.stage ? '✔' : k === t.stage ? `<button class="b" data-a="rush" style="min-height:36px;padding:2px 8px">⚡ 🪙${t.left * 30}</button>` : '🔒'}</span></div>`; }).join('') + `<p style="font-size:12px">ตอนย้ายเข้า ฟาร์มบนดาดฟ้าปิด ย้ายมาเป็นสวนข้างบ้านพร้อมผักที่ปลูกอยู่ · ตะกร้า สมุดผัก สปริงเกอร์ ผลไม้ประจำตัว ย้ายมาด้วย · เพื่อนรดน้ำได้เหมือนเดิม</p>`;
+      return `<div class="stg ${cls}"><b>${k}</b><span>${s[0]} ${s[1]} · 🪙 ${fmt(s[2])} ${s[3]}${k === t.stage ? `<div class="bar" style="margin-top:4px"><i style="width:${pctOf(t) * 100}%"></i></div>เหลือ ${t.left} ชม. · เพื่อนช่วยแล้ว ${t.helps} ครั้ง` : ''}</span><span>${k < t.stage ? '✔' : k === t.stage ? '⏳' : '🔒'}</span></div>`; }).join('') + `<p style="font-size:12px">ตอนย้ายเข้า ฟาร์มบนดาดฟ้าปิด ย้ายมาเป็นสวนข้างบ้านพร้อมผักที่ปลูกอยู่ · ตะกร้า สมุดผัก สปริงเกอร์ ผลไม้ประจำตัว ย้ายมาด้วย · เพื่อนรดน้ำได้เหมือนเดิม</p>`;
   else if (!t.stage) h += `<h3>🪧 แปลง ${t.id} · ที่ดินว่าง</h3><p>บ้าน + สวนข้างบ้าน 14 แปลง · ต้องมีห้องคอนโดขนาด 22 และ Lv 12</p><div class="acts"><button class="b p" data-a="buy">🪧 จองที่ดิน 🪙 10,000</button><p style="font-size:12px">ทั้งหลัง 50,000 🪙 + 🧱60 + 🥬30 · 5 ขั้น</p></div>`;
   else if (t.stage === 5) { const d = dry(t); h += `<h3>${t.on ? '🟢 ' : ''}บ้าน${t.n} · Lv ${t.lv}</h3><p>สวน ${t.P.length} แปลง · ${cropLine(t)}<br>${d ? `รดน้ำได้ ${d} แปลง` : 'รดน้ำครบแล้ว ✓'}</p><div class="acts">${dlv(t)}${d ? `<button class="b${jobFor(t) ? '' : ' p'}" data-a="water">💧 รดน้ำ ${d} แปลง${Math.min(d * 2, WATER_CAP - waterEarned) ? ` +${Math.min(d * 2, WATER_CAP - waterEarned)} 🪙` : ""}</button>` : next}<button class="b" data-a="like">❤️</button><button class="b" data-a="enter">🚪 เข้าบ้าน</button></div>`; }
   else if (t.stage === 1) h += `<h3>${t.n} · จองที่ดินแล้ว</h3><p>กำลังเก็บเงินสร้างฐานราก</p><div class="acts">${dlv(t)}<button class="b p" data-a="like">❤️ ให้กำลังใจ</button>${next}</div>`;
@@ -419,7 +419,6 @@ card.addEventListener('click', e => {
   else if (a === 'help') { t.helped = 1; t.helps++; t.left = Math.max(0, t.left - 2); addCoins(5); toast('🔨 ช่วยสร้างแล้ว −2 ชม. · +5 🪙'); open(t); }
   else if (a === 'enter') enter(t);
   else if (a === 'like') toast(`❤️ ส่งหัวใจให้${t.n || ''}แล้ว`);
-  else if (a === 'rush') toast(`⚡ เร่งได้ ${t.left} ชม. = 🪙${t.left * 30} (ต้นแบบ: ยังไม่หักจริง)`);
   else toast('ต้นแบบ: ปุ่มนี้ยังไม่ทำงานจริง');
 });
 document.getElementById('ride').onclick = () => visit('rides');

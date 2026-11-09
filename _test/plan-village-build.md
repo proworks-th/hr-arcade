@@ -41,9 +41,9 @@ Life skills (GDD §12) are a future update, not part of this plan.
 | 1 | **Groundwork** | `village.js` (classic script like tower.js), Kenney tilemaps → `assets/village/` + licence, `?village=1` flag, third tab "🏘️ หมู่บ้าน", verify screen `village` | Empty village map renders on desktop/phone, all old screens still pass |
 | 2 | **Village map + live players** | Map, roads, tower, board from the prototype; houses from `rooms/_vil/lots`; presence `g:'village'`; name tags (🟢 live, tap = house) | Two test tabs see each other walk |
 | 3 | **Bricks from games** | `Prog.award` adds 1–3 🧱 (cap 12/day) to `prog.vil.bricks`; shown in the game result + village bar | Verify: a game round gives bricks, cap holds. Can go live early (bricks collect before launch) |
-| 4 | **Unlock + reserve + build** | Lock card ("ห้อง 18/22 · Lv 12 ✓"), reserve via transaction, stages 2–4 with server-time timers, help build, rush 30/h, move-in party → feed message | Full build path works in test mode with fast timers (`?vilFast=1` = minutes instead of hours) |
+| 4 | **Unlock + reserve + build** | Lock card ("ห้อง 18/22 · Lv 12 ✓"), reserve via transaction, stages 2–4 with server-time timers, help build (no paid speed-up), move-in party → feed message | Full build path works in test mode with fast timers (`?vilFast=1` = minutes instead of hours) |
 | 5 | **Farm moves in** | `Farm.n` = garden size after move-in; cap 10 → 24 in farm.js + online.js; rooftop farm closes at move-in; crops/basket/book/sprinkler carry over; garden 18/24 upgrades; tower balcony shows "ย้ายไปบ้านแล้ว" | Move-in keeps every crop and timer; friends can still water |
-| 6 | **Pets** | Buy a cat (price open, GDD says 6,000–10,000), food 150/400, coat dye 300, rename; Elthen sheet → `assets/pixel` (already there) | Pet follows, sleeps when hungry, never dies |
+| 6 | **Pets** | Buy a cat for 6,000, food 150/400, coat dye 300, rename; Elthen sheet → `assets/pixel` (already there) | Pet follows, sleeps when hungry, never dies |
 | 7 | **Walking extras** | Board deliveries (canteen +30%), road pickups (daily seed from the date, same for everyone) | Jobs are the same for everyone that day |
 | 8 | **Release** | Flag off, "มีอะไรใหม่" popup once, feed message, `Stats.econ` keys `out_house/out_pet/out_dye/in_delivery/in_pickup`, CREDITS updated | Owner plays it on the live site first with `?village=1`, then everyone |
 
@@ -61,10 +61,9 @@ Life skills (GDD §12) are a future update, not part of this plan.
 | Phone performance | Draw the static map once to an offscreen canvas (prototype already does) |
 
 ## 5. Still open (decide before the step that needs it)
-1. Speed-up price: 30/h makes the whole build ≈ 2,900 → probably raise (step 4).
-2. Light players (Lv 10–13) can't afford a house → smaller first home or catch-up income? (before release)
-3. Pet price: 6,000–10,000 or a free first pet? (step 6)
-4. Mini games now pay ×2 since 9 Nov: re-check the economy once more after ~2 weeks of stats (before release).
+Decided 9 Nov: **no paid speed-up**, **pet 6,000**. Checked 9 Nov (GDD §2b): ×2 game pay ≈ +17% income, house still lands in 2–4 weeks, so 50,000 stays.
+1. Light players (only ~4 browsers at Lv 10–14) can't afford a house → parked, decide later (before release).
+2. Re-check prices with a full week of ×2 stats (from 16 Nov, before release).
 
 ## 6. Test checklist (each step adds its own lines to `verify/run.py`)
 - [ ] All existing screens pass on desktop / phone / tablet.
