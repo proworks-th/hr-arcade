@@ -393,6 +393,7 @@ const Tower = (() => {
     document.querySelectorAll('[data-view]').forEach(b => b.classList.toggle('on', b.dataset.view === v));
     if (v === 'tower') { start(); load(); }
     if (v === 'village') Village.show();
+    if (typeof presence === 'function') presence(v === 'village' ? 'village' : 'hub');   // others see you in the village or in ห้องรวม
   }
   return {
     mount(slot) { const first = !el; if (!el) build(); slot.replaceWith(el); if (first && innerWidth < 720) zoom = 2; fit(); setView(store.get('hubView', 'room')); },

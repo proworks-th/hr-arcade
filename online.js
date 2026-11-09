@@ -47,6 +47,9 @@ export function watchOnline(cb){
   return onValue(ref(db(),'rooms/_hub/on'),s=>{const now=Date.now();cb(Object.entries(s.val()||{}).map(([id,v])=>({id,me:id===SID,...v})).filter(v=>!v.t||now-v.t<180000))});
 }
 
+/* ---------- village (village.js): lots = rooms/_vil/lots/{id} {k,n,who,stage,end,g,h} ---------- */
+export function watchLots(cb){return FIREBASE_CONFIG?onValue(ref(db(),'rooms/_vil/lots'),s=>cb(s.val()||{})):()=>{}}
+
 /* ---------- activity feed ---------- */
 export function pushFeed(m,n='',a=''){if(FIREBASE_CONFIG)push(ref(db(),'rooms/_hub/feed'),{m:String(m).slice(0,120),n,a,t:serverTimestamp()})}
 export function watchFeed(cb,n=8){

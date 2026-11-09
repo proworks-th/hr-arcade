@@ -161,6 +161,14 @@ def tower(page, base, shot):
         raise AssertionError('tower canvas is blank')
 
 
+VILLAGE_SEED = """async () => {
+  localStorage.setItem('hra_name', JSON.stringify('ทดสอบ'));
+  const M = await import('/verify/mocks/firebase-database.js');
+  M.set(M.ref(null, 'rooms/_vil/lots'), { 1: { k: 'พี่ฝน', n: 'พี่ฝน', who: 'amelia', stage: 5, g: 18 }, 2: { k: 'จ๋า', n: 'จ๋า', who: 'alex', stage: 3 },
+    4: { k: 'ทดสอบ', n: 'ทดสอบ', who: 'adam', stage: 2 }, 5: { k: 'เอ', n: 'เอ', who: 'bob', stage: 1 }, 7: { k: 'นก', n: 'นก', stage: 4 } });
+}"""
+
+
 def village(page, base, shot):
     page.goto(base + '/index.html?test=1')
     page.wait_for_function('window.__app', timeout=3000)
@@ -168,10 +176,28 @@ def village(page, base, shot):
     hidden = page.evaluate("(() => { const t = window.__TEST__; window.__TEST__ = false; store.set('vilFlag', false); const r = Village.on(); window.__TEST__ = t; return r })()")
     if hidden:
         raise AssertionError('village tab would show for real players')
+    page.evaluate(VILLAGE_SEED)
     page.click('[data-view=village]')
     page.wait_for_function('Village._dbg.ready', timeout=3000)
     page.wait_for_timeout(500)
     shot('village')
+    # a second player in another tab (same mock DB): they must show up and walk in this tab
+    p2 = page.context.new_page()
+    try:
+        p2.goto(base + '/index.html?test=1')
+        p2.wait_for_function('window.__app', timeout=3000)
+        p2.evaluate("store.set('name', 'เพื่อนบี')")
+        p2.click('[data-view=village]')
+        p2.wait_for_function('Village._dbg.ready', timeout=3000)
+        p2.evaluate('Village._dbg.goTo([16, 8])')
+        page.evaluate("store.set('name', 'ทดสอบ')")  # same localStorage: give this tab its own name back
+        page.wait_for_function("Object.values(Village._dbg.others).some(a => a.p.n === 'เพื่อนบี')", timeout=3000)
+        page.wait_for_timeout(1200)
+        shot('village-live')
+        if page.evaluate("Object.values(Village._dbg.others)[0].x") < 6:  # spawned at the tower door (x 5), walking to x 16
+            raise AssertionError('the other player did not walk: ' + json.dumps(page.evaluate("Object.values(Village._dbg.others).map(a => [a.x, a.y, a.to, a.path.length, a.p.vx, a.p.vy, a.p.v])")))
+    finally:
+        p2.close()
     page.evaluate('Village._dbg.act(Village._dbg.LOTS[4])')  # tap a lot: walk there + toast
     page.wait_for_timeout(1500)
     shot('village-walk')

@@ -39,7 +39,7 @@ Life skills (GDD §12) are a future update, not part of this plan.
 | # | Step | What changes | Done when |
 |---|---|---|---|
 | 1 ✅ | **Groundwork** (done 9 Nov) | `village.js` (classic script like tower.js), Kenney tilemaps → `assets/village/` + licence, `?village=1` flag, third tab "🏘️ หมู่บ้าน", verify screen `village` | Empty village map renders on desktop/phone, all old screens still pass |
-| 2 | **Village map + live players** | Map, roads, tower, board from the prototype; houses from `rooms/_vil/lots`; presence `g:'village'`; name tags (🟢 live, tap = house) | Two test tabs see each other walk |
+| 2 ✅ | **Village map + live players** (done 9 Nov, not pushed) | Map, roads, tower, board from the prototype; houses from `rooms/_vil/lots`; presence `g:'village'`; name tags (🟢 live, tap = house) | Two test tabs see each other walk |
 | 3 | **Bricks from games** | `Prog.award` adds 1–3 🧱 (cap 12/day) to `prog.vil.bricks`; shown in the game result + village bar | Verify: a game round gives bricks, cap holds. Can go live early (bricks collect before launch) |
 | 4 | **Unlock + reserve + build** | Lock card ("ห้อง 18/22 · Lv 12 ✓"), reserve via transaction, stages 2–4 with server-time timers, help build (no paid speed-up), move-in party → feed message | Full build path works in test mode with fast timers (`?vilFast=1` = minutes instead of hours) |
 | 5 | **Farm moves in** | `Farm.n` = garden size after move-in; cap 10 → 24 in farm.js + online.js; rooftop farm closes at move-in; crops/basket/book/sprinkler carry over; garden 18/24 upgrades; tower balcony shows "ย้ายไปบ้านแล้ว" | Move-in keeps every crop and timer; friends can still water |

@@ -577,8 +577,8 @@ button.pk:hover{transform:translateY(-2px)}div.pk{cursor:default}.pk b{font-size
 <script src="wardrobe.js?v=9"></script>
 <script src="gacha.js?v=4"></script>
 <script src="hubroom.js?v=9"></script>
-<script src="tower.js?v=6"></script>
-<script src="village.js?v=1"></script>
+<script src="tower.js?v=7"></script>
+<script src="village.js?v=2"></script>
 <script src="farm.js?v=8"></script>
 <script src="cloud.js?v=10"></script>
 <script src="news.js?v=1"></script>
@@ -628,7 +628,7 @@ $('#muteBtn').onclick=()=>{muted=!muted;store.set('muted',muted);renderMute()};
 
 /* ---------- online services (online.js, Firebase): ranking, presence, feed ---------- */
 let onlineMod=null;
-const loadRank=()=>onlineMod||(onlineMod=import('./online.js?v=23'));
+const loadRank=()=>onlineMod||(onlineMod=import('./online.js?v=24'));
 const loadOnline=loadRank;
 const PIX_AVAS=['p_office','p_woffice','p_whealth','p_tech','p_cat','p_dog'];
 const myAva=()=>{const a=store.get('partyAva','p_office');return PIX_AVAS.includes(a)?a:'p_office'};
@@ -687,14 +687,14 @@ window.addEventListener('hra-party',e=>recordMission({game:'party',kind:e.detail
 {const q=store.get('pendingMissions',[]);if(q.length){store.set('pendingMissions',[]);setTimeout(()=>q.forEach(recordMission),0)}}
 
 /* ---------- hub live panel renderers (data arrives from Firebase watchers) ---------- */
-const ACT={office:'🏠 แต่งออฟฟิศ',party:'อยู่ห้องปาร์ตี้',party3d:'🎉 อยู่ห้องปาร์ตี้',hub:'อยู่ห้องรวม',busy:'🙈 แอบทำงาน',spot:'🔍 จับผิดภาพ',run:'🏃 วิ่งไปตอกบัตร',whack:'☎️ สายด่วน',stack:'📚 ซ้อนแฟ้ม',tetris:'🖨️ Printer Tetris',stamp:'🔏 ปั๊มตรา',barista:'☕ บาริสต้า',toss:'🗑️ ปากระดาษ',slack:'📱 แอบเล่นมือถือ',conga:'🍱 ขบวนไปกินข้าว'};
+const ACT={office:'🏠 แต่งออฟฟิศ',party:'อยู่ห้องปาร์ตี้',party3d:'🎉 อยู่ห้องปาร์ตี้',hub:'อยู่ห้องรวม',village:'🏘️ อยู่ในหมู่บ้าน',busy:'🙈 แอบทำงาน',spot:'🔍 จับผิดภาพ',run:'🏃 วิ่งไปตอกบัตร',whack:'☎️ สายด่วน',stack:'📚 ซ้อนแฟ้ม',tetris:'🖨️ Printer Tetris',stamp:'🔏 ปั๊มตรา',barista:'☕ บาริสต้า',toss:'🗑️ ปากระดาษ',slack:'📱 แอบเล่นมือถือ',conga:'🍱 ขบวนไปกินข้าว'};
 let onlineList=null,feedList=null;
 function renderOnline(){
   const el=document.querySelector('[data-k=onlist]');if(!el)return;
   if(!onlineList){el.innerHTML='<span class="muted">กำลังเชื่อมต่อ…</span>';return}
   const L=onlineList.slice().sort((a,b)=>(b.me-a.me));
-  const inRoom=L.filter(p=>p.g==='hub').length,away=L.filter(p=>p.g!=='hub');
-  document.querySelector('[data-k=oncount]').textContent=`${inRoom} คนในห้อง${away.length?` · ${away.length} คนกำลังเล่นเกม`:''}`;
+  const inRoom=L.filter(p=>p.g==='hub').length,inVil=L.filter(p=>p.g==='village').length,away=L.filter(p=>p.g!=='hub'),busy=away.length-inVil;
+  document.querySelector('[data-k=oncount]').textContent=`${inRoom} คนในห้อง${inVil?` · ${inVil} คนในหมู่บ้าน`:''}${busy?` · ${busy} คนกำลังเล่นเกม`:''}`;
   el.innerHTML=away.slice(0,6).map(p=>`<span class="head${p.me?' me':''}" title="${esc(p.n)} · ${ACT[p.g]||'กำลังเล่น'}"><img src="${avaSrc(p.a)}" alt=""><span><small>${esc(p.n)}${p.g==='party3d'?' 🎉':''}</small>${p.lv?`<i>Lv${p.lv} ${Prog.title(p.lv)}</i>`:''}</span></span>`).join('')
     +(away.length>6?`<span class="muted">+${away.length-6}</span>`:'');
 }
@@ -1520,7 +1520,7 @@ function renderHub(){
   $('#seaBtn').onclick=()=>Season.open();$('#ladBtn').onclick=()=>Pass.open();Pass.chip($('#ladBtn'));$('#mBtn').onclick=()=>{store.set('mOpen',!store.get('mOpen',false));renderHub()};
   $('#feedMore').onclick=()=>{feedOpen=!feedOpen;$('#feedMore').textContent=feedOpen?'ย่อ':'ดูทั้งหมด';renderFeed()};
   $('#crewMore').onclick=()=>{window.officeTab='friends';startGame('office');window.officeTab=null};
-  presence('hub');startLive();renderOnline();renderFeed();renderMissions();renderCrew();beatenAlerts().catch(()=>{});
+  presence(Village.on()&&store.get('hubView','room')==='village'?'village':'hub');startLive();renderOnline();renderFeed();renderMissions();renderCrew();beatenAlerts().catch(()=>{});
   hub.querySelectorAll('.scard').forEach(c=>c.onclick=()=>startGame(c.dataset.g));
 }
 renderHub();
