@@ -11,8 +11,15 @@
 // Step 5 = the farm moves in: at the move-in party prog.vil.g = 14 and Farm.n() becomes the house garden (farm.js);
 //   the same plots array, so every crop and friends' water carries over. The map draws the real crops in each garden
 //   (rooms/_farm rows, mine from local progress); tapping a house garden opens that farm.
+// Step 6 = pets: a cat for 6,000 (bar button 🐾). Food 150 / 400 keeps it fed for a day: it follows you, the first meal
+//   of the day it brings 50 🪙, premium adds a party hat, a trick and digs up a vegetable. Hungry = it naps at home
+//   (your house, or the tower door) — it never runs away, gets sick or dies. Dye 300, rename free.
+//   prog.vil.pet = {n, coat, fed: ms, prem, fd: day}; others see it through presence (pe) and the lot record (pet).
+// Step 7 = walking extras: the 📌 board lists 3 delivery jobs a day (same for everyone, seeded by the date): take N of a
+//   crop to a neighbour (an NPC on the plaza or a coworker's moved-in house) for the canteen price +30% (sell ×1.2 ×1.3),
+//   paid by the system so the owner owes nothing. Each player does each job once a day (prog.vil.jd/jp).
+//   The roads also hold 4 small pickups a day next to the 3 bricks (2 × 15 🪙, 1 vegetable, 1 🍀 40 🪙; prog.vil.fp).
 // The tab is open to everyone since 9 Nov 2026 (owner); ?village=0 hides it in that browser, ?village=1 shows it again.
-//   Pets (step 6) are kept off the live site on the local branch village-pets until the next update.
 // Art: Kenney Tiny Town + Tiny Farm (CC0, assets/village/). Classic script after solo-games.js / office.js / tower.js
 // (uses drawChar, drawAcc, meWho, myName, Prog, roomW, store, toast at run time).
 'use strict';
@@ -36,10 +43,23 @@ const Village = (() => {
   const STAGES = [['🪧', 'จองที่ดิน', LOT_PRICE, 0, 0, 0], ['🧱', 'ฐานราก', 10000, 20, 0, 24], ['🏠', 'ผนัง + หลังคา', 15000, 40, 0, 48],
     ['🌳', 'สวนข้างบ้าน 14 แปลง', 10000, 0, 30, 24], ['🎉', 'ขึ้นบ้านใหม่', 5000, 0, 0, 0]];
   const HELP_H = 2, HELP_CAP = 5, HELP_PAY = 5, FLOOR_N = 3;
+  // pets (GDD §7). Elthen's cat sheet: 32x32 cells, rows = animations, faces right; coats = recoloured greys
+  const PET_PRICE = 6000, FOOD = { b: [150, 'อาหารธรรมดา', '🍖'], p: [400, 'อาหารพรีเมียม', '🥩'] }, DYE = 300, PET_FIND = 50, MEAL = 24 * 3600e3;
+  const COATS = { white: ['ขาว', '#e0e0e0', '#b5b5b5', '#2f2f2e'], orange: ['ส้ม', '#f4a640', '#d9772b', '#3a2416'], grey: ['เทา', '#9aa3ad', '#717b86', '#262a30'],
+    black: ['ดำ', '#3d3a44', '#29262e', '#111013'], cream: ['ครีม', '#f3dfb8', '#d8bb8a', '#4a3524'], choc: ['ช็อกโกแลต', '#8a5a3c', '#663f28', '#24150d'], pink: ['ชมพูพาสเทล', '#ffc4d6', '#f293b2', '#4a2633'], mint: ['มิ้นต์', '#b8ecd6', '#82cdb0', '#1f3d33'] };
+  const CATROW = { idle: [0, 4, 4], clean: [2, 4, 6], run: [4, 8, 14], sleep: [6, 4, 2.5], paw: [7, 6, 9], jump: [8, 7, 10], walk: [9, 8, 10] };   // row, frames, fps
+  const PETS = new Image(), coatCache = {}, PETC = { pet: 1 };      // PETC = the pet card
   // test mode only: ?vilFast=1 makes one build hour last one second
   const HOUR = () => { if (!window.__TEST__) return 3600e3; const f = Village._dbg.fast || (/[?&]vilFast=1\b/.test(location.search) ? 1000 : 0); return f ? (f === true ? 1000 : +f) : 3600e3; };   // _dbg.fast = ms per hour
   const fmtN = n => Math.round(n).toLocaleString('en-US'), escH = s => String(s || '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const TOWER = { x: 1, y: 1, w: 8, door: [5, 6] }, BOARD = [8, 12], WELL = [5, 13];
+  // step 7: delivery jobs + road pickups
+  const NPCS = [{ n: 'ป้าแม่ครัว', who: 'amelia', at: [2, 12] }, { n: 'ลุงยาม', who: 'bob', at: [7, 15] }, { n: 'น้องฝึกงาน', who: 'alex', at: [3, 16] }];
+  const JOB_N = 3, JOB_CROPS = ['let', 'car', 'tom', 'chi', 'cor'], DELIVER = 1.2 * 1.3;
+  const WHY = ['จะทำส้มตำเลี้ยงเพื่อน', 'ทำสลัดไปกินที่ออฟฟิศ', 'ต้มแกงจืดให้ที่บ้าน', 'เตรียมข้าวกล่องพรุ่งนี้', 'ทำกับข้าวใส่บาตร', 'ทำน้ำพริกฝากเพื่อน'];
+  // road extras after the 3 bricks (index FLOOR_N + n): [emoji, name, coins] — 'veg' = one vegetable instead of coins
+  const EXTRA = [['🪙', 'เหรียญ', 15], ['🪙', 'เหรียญ', 15], ['🥕', 'veg', 0], ['🍀', 'ใบโคลเวอร์สี่แฉก', 40]];
+  const BOARDC = { board: 1 }, NPCC = NPCS.map((N, i) => ({ npc: i }));
 
   const town = new Image(), farm = new Image();
   let el = null, cv, ctx, wrapEl, barEl, world = null, wctx, started = false, loaded = 0;
@@ -47,6 +67,99 @@ const Village = (() => {
   const me = { x: TOWER.door[0], y: TOWER.door[1] + 1, path: [], dir: 'down', sp: 3.2, t: 0 };
   let O = null, people = [], lotsSig = '', sentSig = '', tags = [], offset = 0, cardEl, cardL = null, busy = false, cardTick = 0;
   let floor = [], floorDay = '', farms = {}, farmsT = 0;
+  /* ---------- pet ---------- */
+  const myPet = () => (Prog.get().vil || {}).pet || null;
+  const petFed = pt => !!pt && Date.now() < (pt.fed || 0);
+  const coatOk = c => COATS[c] ? c : 'orange';
+  const pm = { x: 0, y: 0, face: 1, moving: false, act: null, actT: 0, init: false };   // where my cat is on the map
+  function coatSheet(k) {
+    k = coatOk(k); if (coatCache[k]) return coatCache[k];
+    const c = document.createElement('canvas'); c.width = PETS.width; c.height = PETS.height; const g = c.getContext('2d'); g.drawImage(PETS, 0, 0);
+    const d = g.getImageData(0, 0, c.width, c.height), px = d.data, hex = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16)), [, b, s, o] = COATS[k], B = hex(b), Sd = hex(s), Ou = hex(o);
+    for (let i = 0; i < px.length; i += 4) { if (!px[i + 3]) continue; const v = px[i]; const m = v === 224 && px[i + 1] === 224 ? B : v === 181 && px[i + 1] === 181 ? Sd : v === 47 && px[i + 1] === 47 ? Ou : null; if (m) { px[i] = m[0]; px[i + 1] = m[1]; px[i + 2] = m[2]; } }
+    g.putImageData(d, 0, 0); return coatCache[k] = c;
+  }
+  const homeOf = L => L && L.stage === 5 ? [L.front[0] + 1, L.front[1]] : [TOWER.door[0] + 1, TOWER.door[1] + 1];
+  // a cat walks after its owner while fed, otherwise back to its home spot
+  function follow(pt, owner, fed, home, dt) {
+    const tx = fed ? owner.x + (owner.dir === 'right' ? -1.1 : owner.dir === 'left' ? 1.1 : .95) : home[0], ty = fed ? owner.y + .15 : home[1];
+    if (!pt.init) { pt.x = tx; pt.y = ty; pt.init = true; }
+    const dx = tx - pt.x, dy = ty - pt.y, d = Math.hypot(dx, dy);
+    if (d > 14) { pt.x = tx; pt.y = ty; pt.moving = false; return; }
+    if (d > .15) { const mv = Math.min(d, (fed ? Math.max(owner.sp || 3.2, 3) * 1.15 : 1.5) * dt * (d > 3 ? 2 : 1)); pt.x += dx / d * mv; pt.y += dy / d * mv; if (Math.abs(dx) > .05) pt.face = dx > 0 ? 1 : -1; }
+    pt.moving = d > .15;
+  }
+  function drawCat(pt, coat, prem, asleep, tag) {
+    if (!PETS.complete || !PETS.width) return;
+    let a = asleep ? 'sleep' : pt.moving ? 'run' : (Math.floor((t + (pt.x | 0)) / 7) % 3 === 2 ? 'clean' : 'idle');
+    if (pt.act) { const r = CATROW[pt.act]; if ((t - pt.actT) * r[2] < r[1] * (pt.act === 'jump' ? 2 : 1)) a = pt.act; else pt.act = null; }
+    const [row, n, fps] = CATROW[a], fr = Math.floor((pt.act ? t - pt.actT : t) * fps) % n;
+    const s = S() * .9, cw = 32 * s, x = sx((pt.x + .5) * T) - cw / 2, y = sy((pt.y + 1) * T) - cw;
+    ctx.fillStyle = 'rgba(0,0,0,.2)'; ctx.beginPath(); ctx.ellipse(x + cw / 2, y + 31.5 * s, 6 * s, 1.6 * s, 0, 0, 7); ctx.fill();
+    ctx.save(); ctx.imageSmoothingEnabled = false;
+    if (pt.face < 0) { ctx.translate(x + cw, 0); ctx.scale(-1, 1); ctx.drawImage(coatSheet(coat), fr * 32, row * 32, 32, 32, 0, y, cw, cw); } else ctx.drawImage(coatSheet(coat), fr * 32, row * 32, 32, 32, x, y, cw, cw);
+    ctx.restore();
+    if (!asleep && a !== 'jump') { const hx = x + (pt.face > 0 ? 19 : 13) * s, hy = y + (a === 'run' || a === 'walk' ? 21 : 20) * s;   // collar; party hat with premium food
+      ctx.fillStyle = '#e63946'; ctx.fillRect(hx - (pt.face > 0 ? 3 : 0) * s, hy + 4 * s, 3 * s, 1 * s); ctx.fillStyle = '#ffd84d'; ctx.fillRect(hx - (pt.face > 0 ? 2 : -1) * s, hy + 5 * s, 1 * s, 1 * s);
+      if (prem) { ctx.fillStyle = '#ff5c8a'; ctx.beginPath(); ctx.moveTo(hx - 2.5 * s, hy); ctx.lineTo(hx + 2.5 * s, hy); ctx.lineTo(hx, hy - 6 * s); ctx.fill(); ctx.fillStyle = '#fff'; ctx.fillRect(hx - 1.5 * s, hy - 3 * s, 3 * s, 1 * s); ctx.fillStyle = '#ffd84d'; ctx.fillRect(hx - s, hy - 7 * s, 2 * s, 2 * s); } }
+    if (tag) { const top = y + 19 * s - (prem && !asleep ? 8 : 2) * s; tags.push([x + cw / 2, top, tag[0], { fs: 10, bg: tag[1], hit: tag[2] }]);
+      if (tag[2]) hits.push({ l: x + 4 * s, t: y + 12 * s, w: 24 * s, h: 20 * s, hit: tag[2] }); }
+  }
+  const catIcon = c => coatOk(c) === 'black' ? '🐈‍⬛' : '🐱';
+  // what other players see: presence pe = [coat, name, fed 0/1, premium 0/1]; the lot record keeps {c, n} for the cat napping at home
+  const petPres = () => { const pt = myPet(); return pt ? [coatOk(pt.coat), String(pt.n || '').slice(0, 12), petFed(pt) ? 1 : 0, petFed(pt) && pt.prem ? 1 : 0] : 0; };
+  function petToLot() { const pt = myPet(), L = myLot(); if (!O || !L || !pt) return; const mk = myKey(), v = { c: coatOk(pt.coat), n: String(pt.n || '').slice(0, 12) };
+    if (L.pet && L.pet.c === v.c && L.pet.n === v.n) return;
+    O.txLot(L.id, cur => cur && cur.k === mk ? { ...cur, pet: v } : cur ? undefined : null).catch(() => {}); }
+  function petSave(pt, m) { const p = Prog.get(); p.vil = p.vil || {}; p.vil.pet = pt; Prog.put(p); if (m) toast(m); send(true); petToLot(); renderBar(); renderCard(); }
+  function adopt() {
+    const p = Prog.get(); if (myPet()) return;
+    if ((p.coins | 0) < PET_PRICE) return toast(`ต้องมี 🪙 ${fmtN(PET_PRICE)} ขาดอีก ${fmtN(PET_PRICE - (p.coins | 0))}`);
+    p.coins -= PET_PRICE; p.vil = p.vil || {}; p.vil.pet = { n: 'เหมียว', coat: 'orange', fed: Date.now() + MEAL, prem: 0, fd: '' }; Prog.put(p);   // the first day's food comes with it
+    if (typeof Stats !== 'undefined') Stats.econ('out_pet', PET_PRICE);
+    pm.init = false; pm.act = 'jump'; pm.actT = t; petSave(p.vil.pet, `🐱 รับเลี้ยงเหมียวแล้ว! −${fmtN(PET_PRICE)} 🪙 · ตั้งชื่อได้เลย`);
+    const nm = myName(); feed(`🐱 ${nm} รับเลี้ยงแมวตัวใหม่!`);
+  }
+  function feedPet(k) {
+    const pt = myPet(), f = FOOD[k], p = Prog.get(); if (!pt || !f) return;
+    if ((pt.fed || 0) - Date.now() > MEAL / 2) return toast(`${pt.n} ยังอิ่มอยู่ ค่อยให้อาหารอีกทีตอนเหลือไม่ถึงครึ่ง`);
+    if ((p.coins | 0) < f[0]) return toast('เหรียญไม่พอ');
+    p.coins -= f[0]; pt.fed = Date.now() + MEAL; pt.prem = k === 'p' ? 1 : 0;
+    let m = `${f[2]} ${pt.n} อิ่มแล้ว −${f[0]} 🪙`; const d = bkkDay(), extra = [];
+    if (pt.fd !== d) { pt.fd = d; p.coins += PET_FIND; extra.push(`คาบเหรียญมาให้ +${PET_FIND} 🪙`); if (typeof Stats !== 'undefined') Stats.econ('in_petfind', PET_FIND); }
+    if (k === 'p' && typeof CROPS !== 'undefined') { const pool = ['car', 'tom', 'chi', 'cor'].filter(id => CROPS[id]), id = pool[Math.floor(Math.random() * pool.length)];
+      if (id) { p.farm = p.farm || { plots: [], book: {}, fw: {}, bag: {} }; p.farm.bag = p.farm.bag || {}; p.farm.bag[id] = (p.farm.bag[id] || 0) + 1; extra.push(`ขุดเจอ${CROPS[id][0]} 1 ลูก`); } }
+    p.vil.pet = pt; Prog.put(p); if (typeof Stats !== 'undefined') Stats.econ('out_petfood', f[0]);
+    pm.act = k === 'p' ? 'jump' : 'paw'; pm.actT = t; petSave(pt, m + (extra.length ? ' · ' + extra.join(' · ') : ''));
+  }
+  function renamePet() {
+    const pt = myPet(), inp = cardEl && cardEl.querySelector('#vilPetName'); if (!pt || !inp) return;
+    const v = inp.value.replace(/[<>&"]/g, '').trim().slice(0, 12); if (!v) return toast('ใส่ชื่อก่อนนะ');
+    if (v === pt.n) return; pt.n = v; petSave(pt, `✏️ ตอนนี้ชื่อ ${v} แล้ว`);
+  }
+  function dyePet(k) {
+    const pt = myPet(), p = Prog.get(); if (!pt || !COATS[k] || k === pt.coat) return;
+    if ((p.coins | 0) < DYE) return toast('เหรียญไม่พอ');
+    p.coins -= DYE; pt.coat = k; p.vil.pet = pt; Prog.put(p); if (typeof Stats !== 'undefined') Stats.econ('out_dye', DYE);
+    pm.act = 'paw'; pm.actT = t; petSave(pt, `🎨 ย้อมเป็นสี${COATS[k][0]}แล้ว −${DYE} 🪙`);
+  }
+  function petCard() {
+    const pt = myPet(), coins = Prog.get().coins | 0; let h = `<button class="x" type="button" data-a="close" aria-label="ปิด">✕</button>`;
+    if (!pt) {
+      h += `<h4>🐾 รับเลี้ยงแมว</h4><p class="muted">เดินตามคุณในหมู่บ้าน · มื้อแรกของวันคาบเหรียญมาให้ ${PET_FIND} 🪙<br>หิวแล้วแค่นอนรอที่บ้าน ไม่หนี ไม่ป่วย ไม่ตาย</p>
+        <button class="btn primary" type="button" data-a="adopt"${coins < PET_PRICE ? ' disabled' : ''}>🐱 รับเลี้ยง · 🪙 ${fmtN(PET_PRICE)} (มีอาหารวันแรกให้)</button>${coins < PET_PRICE ? `<p class="vil-need">ขาดอีก 🪙 ${fmtN(PET_PRICE - coins)}</p>` : ''}`;
+    } else {
+      const fed = petFed(pt), left = Math.max(0, (pt.fed || 0) - Date.now()), full = Math.round(left / MEAL * 100), canEat = left <= MEAL / 2;
+      h += `<h4>${catIcon(pt.coat)} ${escH(pt.n)}</h4><p class="muted">${fed ? 'เดินตามคุณอยู่' : 'หิว เลยนอนรอที่บ้าน 💤'}${fed && pt.prem ? ' · 🎉 ใส่หมวกปาร์ตี้' : ''}</p>
+        <div class="vil-pb"><i style="width:${full}%;background:#ffb703"></i></div><small class="muted">อิ่ม ${full}%${fed ? ` · อยู่ได้อีก ${leftTxt(left)}` : ''} · 1 มื้ออยู่ได้ 1 วัน</small>
+        ${Object.entries(FOOD).map(([k, f]) => `<button class="btn${k === 'b' ? ' primary' : ''}" type="button" data-a="feed" data-k="${k}"${!canEat || coins < f[0] ? ' disabled' : ''}>${f[2]} ${f[1]} · 🪙 ${f[0]}</button>`).join('')}
+        <p class="muted" style="font-size:12px">${canEat ? '' : 'ยังอิ่มอยู่ ให้อาหารได้อีกตอนเหลือไม่ถึงครึ่ง · '}พรีเมียม: หมวกปาร์ตี้ + ตีลังกา + ขุดเจอผักให้ 1 ลูก${pt.fd === bkkDay() ? ' · วันนี้คาบเหรียญมาให้แล้ว' : ` · มื้อแรกของวัน +${PET_FIND} 🪙`}</p>
+        <div class="vil-name"><input id="vilPetName" maxlength="12" value="${escH(pt.n)}" aria-label="ชื่อสัตว์เลี้ยง"><button class="btn" type="button" data-a="rename">ตั้งชื่อ</button></div>
+        <div class="vil-coats">${Object.entries(COATS).map(([k, c]) => `<button class="vil-coat${k === coatOk(pt.coat) ? ' on' : ''}" type="button" data-a="coat" data-k="${k}" title="${c[0]}" aria-label="สี${c[0]}" style="background:linear-gradient(135deg,${c[1]} 55%,${c[2]} 55%);border-color:${c[3]}"${k !== coatOk(pt.coat) && coins < DYE ? ' disabled' : ''}></button>`).join('')}</div>
+        <small class="muted">สีขน${COATS[coatOk(pt.coat)][0]} · ย้อมสีใหม่ ${DYE} 🪙 · เปลี่ยนชื่อฟรี</small>`;
+    }
+    cardEl.innerHTML = h; cardEl.hidden = false;
+  }
   // everyone's public garden (rooms/_farm), refreshed every minute while the village is open
   function loadFarms() { if (!O || !O.listFarms || Date.now() - farmsT < 60e3) return; farmsT = Date.now();
     O.listFarms().then(F => { const m = {}; for (const r of F || []) if (r && r.k) m[r.k] = r; farms = m; }).catch(() => {}); }
@@ -95,6 +208,7 @@ const Village = (() => {
     for (let x = 10; x < C - 1; x++) if (free(x, 0) && rnd() < .55) plant(x, 0);
     for (let i = 0; i < 46; i++) { const x = 1 + Math.floor(rnd() * (C - 2)), y = 1 + Math.floor(rnd() * 29); if (free(x, y) && free(x, y + 1)) plant(x, y); }
     for (const [x, y] of [[2, 18], [4, 18], [7, 18]]) if (free(x, y)) put(x, y, 1083);
+    for (const N of NPCS) block[N.at[1]][N.at[0]] = 1;           // neighbours stand on the plaza
   }
   // a lot by stage (Tiny Town tiles: 96-122 foundation, 44-58 frame, 48-67 roofs, 72-89 walls; farm tiles = 1000+id)
   function lot(L, gnd, put) {
@@ -117,7 +231,7 @@ const Village = (() => {
   // rooms/_vil/lots -> houses on the map (repaint only when something changed)
   function applyLots(v) {
     const sig = JSON.stringify(v || {}); if (sig === lotsSig) return; lotsSig = sig;
-    for (const L of LOTS) { const d = (v || {})[L.id] || {}; Object.assign(L, { stage: Math.max(0, Math.min(5, d.stage | 0)), k: d.k || '', n: d.n || '', who: d.who || '', g: d.g | 0, h: d.h | 0, end: +d.end || 0, hp: d.hp || null, red: L.id % 2 === 0 }); }
+    for (const L of LOTS) { const d = (v || {})[L.id] || {}; Object.assign(L, { stage: Math.max(0, Math.min(5, d.stage | 0)), k: d.k || '', n: d.n || '', who: d.who || '', g: d.g | 0, h: d.h | 0, end: +d.end || 0, hp: d.hp || null, pet: d.pet && d.pet.c ? d.pet : null, red: L.id % 2 === 0 }); }
     if (base) { rebuild(); if (loaded >= 2) paintWorld(); }
     syncHome(); renderCard(); renderBar();
   }
@@ -139,8 +253,8 @@ const Village = (() => {
   function goTo(cell) { if (!cell) return; const p = bfs([Math.round(me.x), Math.round(me.y)], cell); if (p) { me.path = p; send(); } }
   function send(force) {                          // one write per new target cell (or tab shown/hidden)
     if (!O) return; const tg = me.path.length ? me.path[me.path.length - 1] : [Math.round(me.x), Math.round(me.y)];
-    const v = document.hidden || !visible() ? 0 : 1, sig = `${tg[0]},${tg[1]},${v}`; if (!force && sig === sentSig) return; sentSig = sig;
-    O.setPresence({ vx: tg[0], vy: tg[1], v });
+    const v = document.hidden || !visible() ? 0 : 1, pe = petPres(), sig = `${tg[0]},${tg[1]},${v},${pe}`; if (!force && sig === sentSig) return; sentSig = sig;
+    O.setPresence({ vx: tg[0], vy: tg[1], v, pe });
   }
   // live coworkers: walk each one to the cell they last sent
   function syncOthers() {
@@ -165,7 +279,7 @@ const Village = (() => {
   function lock() { const p = Prog.get(), w = roomW(p.room || {}); return { w, lv: p.lv || 1, ok: w >= UNLOCK_W && (p.lv || 1) >= UNLOCK_LV }; }
   function renderBar() {
     if (!barEl) return; const L = lock(), ck = b => b ? '✓' : '', B = Prog.bricks(), mL = myLot();
-    barEl.innerHTML = `${mL ? '<button class="btn sm" type="button" data-a="home">📍 บ้านฉัน</button>' : ''}<span class="vil-brick" title="อิฐได้จากมินิเกม รอบละ 1–3 ก้อน วันละไม่เกิน ${B.cap} + อิฐบนถนนในหมู่บ้านวันละ ${FLOOR_N} ก้อน">🧱 ${fmtN(B.n)} <small>เกม ${B.today}/${B.cap} · ถนน ${floorGot().length}/${FLOOR_N}</small></span><span class="muted">${mL ? `⭐ บ้านคุณ แปลง ${mL.id} · ${STAGE_TH[mL.stage]}${building(mL) ? ` ${Math.round(pctOf(mL) * 100)}%` : ''}`
+    barEl.innerHTML = `${mL ? '<button class="btn sm" type="button" data-a="home">📍 บ้านฉัน</button>' : ''}<button class="btn sm" type="button" data-a="pet">${(pt => pt ? `${catIcon(pt.coat)} ${escH(pt.n)}${petFed(pt) ? '' : ' 💤'}` : '🐾 สัตว์เลี้ยง')(myPet())}</button><span class="vil-brick" title="อิฐได้จากมินิเกม รอบละ 1–3 ก้อน วันละไม่เกิน ${B.cap} + อิฐบนถนนในหมู่บ้านวันละ ${FLOOR_N} ก้อน">🧱 ${fmtN(B.n)} <small>เกม ${B.today}/${B.cap} · ถนน ${bricksGot()}/${FLOOR_N}</small></span><button class="btn sm" type="button" data-a="board">📦 ส่งของ ${jobsDone().length}/${JOB_N}</button><span class="muted">${mL ? `⭐ บ้านคุณ แปลง ${mL.id} · ${STAGE_TH[mL.stage]}${building(mL) ? ` ${Math.round(pctOf(mL) * 100)}%` : ''}`
       : L.ok ? '✅ ครบเงื่อนไขแล้ว · แตะป้าย 🪧 เพื่อจองที่ดิน'
       : `🔒 สร้างบ้านได้เมื่อมีห้อง ${UNLOCK_W} + Lv ${UNLOCK_LV} · ตอนนี้ ห้อง ${L.w}/${UNLOCK_W} ${ck(L.w >= UNLOCK_W)} · Lv ${L.lv}/${UNLOCK_LV} ${ck(L.lv >= UNLOCK_LV)}`}</span>`;
   }
@@ -177,16 +291,71 @@ const Village = (() => {
     for (let y = 0; y < R; y++) for (let x = 0; x < C; x++) if ([25, 40, 41].includes(base[y][x]) && !block[y][x] && Math.hypot(x - 5, y - 8) > 6) cells.push([x, y]);
     for (let i = 0; i < 5; i++) rnd();
     floor = [];
-    while (floor.length < FLOOR_N && cells.length) { const [x, y] = cells.splice(Math.floor(rnd() * cells.length), 1)[0]; if (floor.every(f => Math.hypot(f.x - x, f.y - y) > 8)) floor.push({ x, y, i: floor.length }); }
+    while (floor.length < FLOOR_N + EXTRA.length && cells.length) { const [x, y] = cells.splice(Math.floor(rnd() * cells.length), 1)[0]; if (floor.every(f => Math.hypot(f.x - x, f.y - y) > (floor.length < FLOOR_N ? 8 : 4))) floor.push({ x, y, i: floor.length }); }
     return floor;
   }
   const floorGot = () => { const v = Prog.get().vil || {}; return v.fd === bkkDay() ? v.fp || [] : []; };
+  const bricksGot = () => floorGot().filter(i => i < FLOOR_N).length;
+  const floorIcon = f => f.i < FLOOR_N ? '🧱' : EXTRA[f.i - FLOOR_N][0];
   function pickFloor(f) {
     const p = Prog.get(), v = p.vil || (p.vil = {}), d = bkkDay();
     if (v.fd !== d) { v.fd = d; v.fp = []; } if (v.fp.includes(f.i)) return;
-    v.fp.push(f.i); v.bricks = (v.bricks || 0) + 1; Prog.put(p);
-    if (typeof Stats !== 'undefined') Stats.econ('brick_map', 1);
-    toast(`🧱 เก็บอิฐบนถนน +1 · วันนี้ ${v.fp.length}/${FLOOR_N}`); renderBar(); renderCard();
+    v.fp.push(f.i);
+    if (f.i < FLOOR_N) { v.bricks = (v.bricks || 0) + 1; Prog.put(p); if (typeof Stats !== 'undefined') Stats.econ('brick_map', 1);
+      toast(`🧱 เก็บอิฐบนถนน +1 · วันนี้ ${bricksGot()}/${FLOOR_N}`); }
+    else { const x = EXTRA[f.i - FLOOR_N];
+      if (x[1] === 'veg') { const pool = ['car', 'tom', 'let'].filter(cropOk), id = pool[(f.x + f.y) % pool.length] || 'car';
+        p.farm = p.farm || { plots: [], book: {}, fw: {}, bag: {} }; p.farm.bag = p.farm.bag || {}; p.farm.bag[id] = (p.farm.bag[id] || 0) + 1; Prog.put(p);
+        if (typeof Stats !== 'undefined') Stats.econ('pickup_veg', 1);
+        toast(`${cropEmo(id)} เจอ${cropName(id)}บนถนน +1 · เข้าตะกร้าแล้ว`); }
+      else { Prog.put(p); Prog.give(x[2], 0, 'pickup'); toast(`${x[0]} เก็บ${x[1]}บนถนน +${x[2]} 🪙`); } }
+    renderBar(); renderCard();
+  }
+
+  /* ---------- deliveries (board jobs, same for everyone that day) ---------- */
+  const cropOk = id => typeof CROPS !== 'undefined' && !!CROPS[id];
+  const cropName = id => cropOk(id) ? CROPS[id][0] : id;
+  const cropEmo = id => ({ bok: '🥬', let: '🥗', car: '🥕', tom: '🍅', chi: '🌶️', cor: '🌽', pum: '🎃', wat: '🍉' })[id] || '🥬';
+  const unitPay = id => cropOk(id) ? Math.round(CROPS[id][3] * DELIVER) : 0;
+  // who can receive: the NPCs on the plaza + every moved-in house (lots in id order, so everyone gets the same list)
+  function jobs() {
+    const d = bkkDay(), rnd = rng(+d.replace(/-/g, '') % 2147483646 + 7), houses = LOTS.filter(L => L.stage === 5 && L.k), mk = myKey(), out = [], N = NPCS.length + houses.length, used = new Set();
+    for (let i = 0; i < 3; i++) rnd();
+    for (let j = 0; j < JOB_N; j++) {
+      const c = JOB_CROPS[Math.floor(rnd() * JOB_CROPS.length)], q = 3 + Math.floor(rnd() * 4), why = WHY[Math.floor(rnd() * WHY.length)];
+      let ri = Math.floor(rnd() * N); while (used.has(ri) && used.size < N) ri = (ri + 1) % N; used.add(ri);
+      let to = ri < NPCS.length ? { npc: ri } : { L: houses[ri - NPCS.length] };
+      if (to.L && to.L.k === mk) to = { npc: j % NPCS.length };          // never a job to your own house
+      out.push({ j, c, q, why, to, pay: q * unitPay(c), name: to.L ? to.L.n || '?' : NPCS[to.npc].n });
+    }
+    return out;
+  }
+  const jobsDone = () => { const v = Prog.get().vil || {}; return v.jd === bkkDay() ? v.jp || [] : []; };
+  const jobsFor = g => jobs().filter(J => !jobsDone().includes(J.j) && (g.npc != null ? J.to.npc === g.npc : J.to.L === g));
+  function haveCrop(id) { const bag = (Prog.get().farm || {}).bag || {}; return Object.keys(bag).filter(k => k.split('.')[0] === id).reduce((a, k) => a + (bag[k] | 0), 0); }
+  function deliver(j) {
+    const J = jobs().find(x => x.j === j); if (!J || jobsDone().includes(j)) return renderCard();
+    if (haveCrop(J.c) < J.q) return toast(`มี${cropName(J.c)} ${haveCrop(J.c)}/${J.q} · ปลูกเพิ่มที่สวน แล้วค่อยมาส่งนะ`);
+    const p = Prog.get(), bag = p.farm.bag, v = p.vil || (p.vil = {}); let left = J.q;
+    for (const k of Object.keys(bag).filter(k => k.split('.')[0] === J.c).sort((a, z) => (typeof bagPrice === 'function' ? bagPrice(a) - bagPrice(z) : 0))) {
+      const u = Math.min(left, bag[k] | 0); bag[k] -= u; if (!bag[k]) delete bag[k]; left -= u; if (!left) break; }
+    if (v.jd !== bkkDay()) { v.jd = bkkDay(); v.jp = []; } v.jp.push(j); Prog.put(p);
+    Prog.give(J.pay, 10, 'delivery'); if (typeof Stats !== 'undefined') Stats.econ('delivery', 1);
+    toast(`📦 ส่งให้${J.name}แล้ว +${fmtN(J.pay)} 🪙 ❤️`);
+    renderBar(); renderCard();
+  }
+  const jobRow = (J, here) => { const done = jobsDone().includes(J.j), n = haveCrop(J.c), ok = n >= J.q;
+    return `<div class="vil-stg${done ? ' done' : ''}"><span>${cropEmo(J.c)}</span><span>${cropName(J.c)} ${J.q} → ${escH(J.name)}<br><small>${J.why} · ${done ? 'ส่งแล้ว ขอบคุณน้า ❤️' : `มี ${Math.min(n, 999)}/${J.q}`}</small></span><span>${done ? '✔'
+      : here ? `<button class="btn sm${ok ? ' primary' : ''}" type="button" data-a="deliver" data-k="${J.j}"${ok ? '' : ' disabled'}>📦 ส่ง +${fmtN(J.pay)}</button>`
+      : `<button class="btn sm" type="button" data-a="goto" data-k="${J.j}">ไปส่ง → +${fmtN(J.pay)}</button>`}</span></div>`; };
+  function boardCard() {
+    const L = jobs(), nd = jobsDone().length;
+    return `<h4>📌 บอร์ดประกาศ · งานส่งของวันนี้</h4><p class="muted">ได้มากกว่าส่งโรงอาหาร 30% · เจ้าของบ้านไม่เสียอะไร · ส่งแล้ว ${nd}/${JOB_N}</p>${L.map(J => jobRow(J, false)).join('')}
+      <p class="muted" style="font-size:12px">งานใหม่ทุกวัน เหมือนกันทุกคน · ใช้ผักในตะกร้า (ผักธรรมดาก่อนผักกลายพันธุ์)</p>`;
+  }
+  function npcCard(i) {
+    const N = NPCS[i], L = jobsFor({ npc: i });
+    return `<h4>👋 ${N.n}</h4>${L.length ? `<p class="muted">รอของจากคุณอยู่</p>${L.map(J => jobRow(J, true)).join('')}` : '<p class="muted">สวัสดีจ้า วันนี้ไม่มีอะไรฝาก · ดูงานส่งของได้ที่ 📌 บอร์ด</p>'}`;
   }
 
   /* ---------- reserve / build / help ---------- */
@@ -259,8 +428,12 @@ const Village = (() => {
   function closeCard() { cardL = null; if (cardEl) cardEl.hidden = true; }
   function renderCard() {
     if (!cardEl) return; if (!cardL) { cardEl.hidden = true; return; }
+    if (cardL === PETC) { const f = document.activeElement; if (f && f.id === 'vilPetName' && cardEl.contains(f)) return; return petCard(); }   // never wipe a name being typed
+    const X = `<button class="x" type="button" data-a="close" aria-label="ปิด">✕</button>`;
+    if (cardL === BOARDC) { cardEl.innerHTML = X + boardCard(); cardEl.hidden = false; return; }
+    if (cardL.npc != null) { cardEl.innerHTML = X + npcCard(cardL.npc); cardEl.hidden = false; return; }
     const L = cardL, mk = myKey(), mine = L.stage && L.k === mk, mL = myLot(), dis = busy ? ' disabled' : '';
-    let h = `<button class="x" type="button" data-a="close" aria-label="ปิด">✕</button>`;
+    let h = X;
     if (!L.stage) {
       const lk = lock(), s = STAGES[0], miss = missing(s);
       h += `<h4>🪧 แปลง ${L.id} · ${L.lane}</h4><p class="muted">ที่ดินว่าง · สร้างบ้าน 5 ขั้น รวม 🪙 50,000 + 🧱 60 + 🥬 30</p>`;
@@ -280,7 +453,8 @@ const Village = (() => {
         else h += `<p>🌱 สวนข้างบ้าน ${Math.max(L.g || 14, Farm.home ? Farm.home() : 0)} แปลง · ฟาร์มของคุณอยู่ที่นี่แล้ว</p><button class="btn primary" type="button" data-a="garden">🌱 ไปที่สวน</button>`;
       } else if (L.stage === 5) {
         const fr = farms[L.k], gp = (fr && fr.plots || []).filter(x => x && x.c).length;
-        h += `<p>🌱 สวนข้างบ้าน ${L.g || 14} แปลง${fr ? ` · ปลูกอยู่ ${gp}` : ''}</p><button class="btn primary" type="button" data-a="garden">🌱 ไปดูสวน · รดน้ำช่วย</button>`;
+        const jl = jobsFor(L); if (jl.length) h += `<p class="muted">📦 รอของจากคุณ</p>${jl.map(J => jobRow(J, true)).join('')}`;
+        h += `<p>🌱 สวนข้างบ้าน ${L.g || 14} แปลง${fr ? ` · ปลูกอยู่ ${gp}` : ''}</p><button class="btn${jl.length ? '' : ' primary'}" type="button" data-a="garden">🌱 ไปดูสวน · รดน้ำช่วย</button>`;
       } else if (building(L)) {
         const can = !hp[mk] && nh < HELP_CAP;
         h += `<button class="btn primary" type="button" data-a="help"${can && !busy ? '' : ' disabled'}>🔨 ช่วยสร้าง −${HELP_H} ชม. · +${HELP_PAY} 🪙</button>${hp[mk] ? '<p class="muted">วันนี้คุณช่วยบ้านนี้แล้ว ขอบคุณ 💛</p>' : nh >= HELP_CAP ? `<p class="muted">วันนี้มีคนช่วยครบ ${HELP_CAP} คนแล้ว</p>` : ''}`;
@@ -288,8 +462,11 @@ const Village = (() => {
     }
     cardEl.innerHTML = h; cardEl.hidden = false;
   }
-  function cardAct(a) {
+  function cardAct(a, b) {
     if (a === 'close') return closeCard();
+    if (a === 'adopt') return adopt(); if (a === 'feed') return feedPet(b && b.dataset.k); if (a === 'rename') return renamePet(); if (a === 'coat') return dyePet(b && b.dataset.k);
+    if (a === 'deliver') return deliver(+(b && b.dataset.k));
+    if (a === 'goto') { const J = jobs().find(x => x.j === +(b && b.dataset.k)); if (J) act(J.to.L || NPCC[J.to.npc]); return; }
     const L = cardL; if (!L) return;
     if (a === 'reserve') reserve(L); else if (a === 'next') next(L); else if (a === 'help') help(L); else if (a === 'garden') openGarden(L);
   }
@@ -347,14 +524,15 @@ const Village = (() => {
     ctx.drawImage(world, cam.x, cam.y, cv.width / S(), cv.height / S(), 0, 0, cv.width, cv.height);
     hits = [];
     pill(sx((TOWER.x + 4) * T), sy(TOWER.y * T) - 4 * dpr, '🏢 ตึกออฟฟิศ', { bg: '#e8f0ff', hit: 'tower' });
-    pill(sx((BOARD[0] + .5) * T), sy(BOARD[1] * T) - 2 * dpr, '📌 บอร์ด', { fs: 11, hit: 'board' });
+    const open = jobs().filter(J => !jobsDone().includes(J.j)), jobK = new Set(open.map(J => J.to.L ? 'L' + J.to.L.id : 'N' + J.to.npc));
+    pill(sx((BOARD[0] + .5) * T), sy(BOARD[1] * T) - 2 * dpr, open.length ? `📌 งานส่งของ ${open.length}` : '📌 บอร์ด', { fs: 11, bg: open.length ? '#fff3c4' : '#fff', hit: 'board' });
     const onK = onlineKeys(), mk = myKey();
     for (const L of LOTS) {
       const x = sx((L.x + 2.5) * T), y = sy(L.y * T) - 4 * dpr;
       if (!L.stage) pill(x, y, `🪧 แปลง ${L.id} · 🪙 ${LOT_PRICE.toLocaleString('en-US')}`, { bg: '#fff8d6', hit: L });
       else { const b = building(L), pc = b ? ` ${Math.round(pctOf(L) * 100)}%` : '';
         if (L.k && L.k === mk) pill(x, y, `⭐ บ้านคุณ · ${STAGE_TH[L.stage]}${pc}`, { bg: '#ffe0ea', line: '#d14d72', hit: L });
-        else pill(x, y, `${onK.has(L.k) ? '🟢 ' : ''}${L.n || '?'} · ${L.stage === 5 ? 'บ้าน' : STAGE_TH[L.stage] + pc}${b && !helpers(L)[mk] && Object.keys(helpers(L)).length < HELP_CAP ? ' · 🔨' : ''}`, { bg: L.stage === 5 ? '#fff' : b ? '#ffd84d' : '#f3f3f3', hit: L }); }
+        else pill(x, y, `${onK.has(L.k) ? '🟢 ' : ''}${L.n || '?'} · ${L.stage === 5 ? 'บ้าน' : STAGE_TH[L.stage] + pc}${b && !helpers(L)[mk] && Object.keys(helpers(L)).length < HELP_CAP ? ' · 🔨' : ''}${jobK.has('L' + L.id) ? ' · 📦' : ''}`, { bg: L.stage === 5 ? '#fff' : b ? '#ffd84d' : '#f3f3f3', hit: L }); }
     }
     // real crops in the house gardens (moved-in houses only)
     loadFarms(); ctx.imageSmoothingEnabled = false;
@@ -367,10 +545,24 @@ const Village = (() => {
     const got = floorGot(), bob = Math.sin(t * 3);
     for (const f of floorSpots()) { if (got.includes(f.i)) continue;
       if (Math.abs(f.x - me.x) < .6 && Math.abs(f.y - me.y) < .6) { pickFloor(f); continue; }
-      ctx.font = `${11 * S()}px sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('🧱', sx((f.x + .5) * T), sy((f.y + .5) * T) - bob * S()); }
+      ctx.font = `${11 * S()}px sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(floorIcon(f), sx((f.x + .5) * T), sy((f.y + .5) * T) - bob * S()); }
     if (cardL && (cardTick += dt) > 1) { cardTick = 0; if (building(cardL)) renderCard(); }
+    // pets: mine follows me (or naps at home); a coworker's follows them while fed; cats of people not here nap at their house
+    const pt = myPet(), list = [...Object.values(others).map(a => ({ y: a.y, d: () => drawOther(a) })), { y: me.y, d: drawMe }], away = new Set();
+    if (pt) { const fed = petFed(pt); follow(pm, me, fed, homeOf(myLot()), dt);
+      if (fed !== pm.wasFed) { pm.wasFed = fed; renderBar(); send(true); if (cardL === PETC) renderCard(); }   // got hungry while you were here
+      list.push({ y: pm.y - .01, d: () => drawCat(pm, pt.coat, fed && pt.prem, !fed && !pm.moving, [fed ? `${catIcon(pt.coat)} ${pt.n}` : `💤 ${pt.n} หิวแล้ว`, fed ? '#fff3c4' : '#eee', 'pet']) }); }
+    for (const a of Object.values(others)) { const pe = a.p.pe; if (!Array.isArray(pe)) continue; const fed = !!pe[2];
+      if (!fed) continue; away.add(a.p.k || key(a.p.n)); const c = a.cat || (a.cat = { x: 0, y: 0, face: 1, moving: false, init: false });
+      follow(c, a, true, null, dt); list.push({ y: c.y - .01, d: () => drawCat(c, pe[0], !!pe[3], false, null) }); }
+    for (const L of LOTS) { if (L.stage !== 5 || !L.pet || L.k === mk || away.has(L.k)) continue; const h = homeOf(L), c = L.cat || (L.cat = { x: h[0], y: h[1], face: -1, moving: false, init: true });
+      list.push({ y: c.y - .01, d: () => drawCat(c, L.pet.c, false, true, null) }); }
+    NPCS.forEach((N, i) => list.push({ y: N.at[1], d: () => { const px = sx((N.at[0] + .5) * T), py = sy((N.at[1] + 1) * T - 1), k = S() * .75;
+      ctx.fillStyle = 'rgba(0,0,0,.22)'; ctx.beginPath(); ctx.ellipse(px, py - 1, 6 * S(), 2.2 * S(), 0, 0, 7); ctx.fill();
+      drawChar(ctx, N.who, 'idle_anim', 'down', t + i, px, py, k);
+      tags.push([px, py - 25 * S(), `${jobK.has('N' + i) ? '📦 ' : ''}${N.n}`, { fs: 10, bg: jobK.has('N' + i) ? '#fff3c4' : '#f3f3f3', hit: NPCC[i] }]); } }));
     // people front to back; names are collected and drawn last so nobody walking in front hides a name
-    [...Object.values(others), me].sort((a, b) => a.y - b.y).forEach(a => a === me ? drawMe() : drawOther(a));
+    list.sort((a, b) => a.y - b.y).forEach(o => o.d());
     drawTags();
   }
   const visible = () => el && el.isConnected && !el.hidden && !document.getElementById('hub').hidden;
@@ -386,7 +578,9 @@ const Village = (() => {
   }
   function act(g) {
     if (g === 'tower') { goTo([TOWER.door[0], TOWER.door[1] + 1]); typeof Tower !== 'undefined' && Tower.setView('tower'); return; }
-    if (g === 'board') { goTo(nearestWalk(BOARD[0], BOARD[1] + 1)); toast('📌 บอร์ดงานส่งของ · เร็ว ๆ นี้'); return; }
+    if (g === 'pet') { openCard(PETC); return; }
+    if (g === 'board') { goTo(nearestWalk(BOARD[0], BOARD[1] + 1)); openCard(BOARDC); return; }
+    if (g && g.npc != null) { const [nx, ny] = NPCS[g.npc].at; goTo(nearestWalk(nx + 1, ny)); openCard(NPCC[g.npc]); return; }
     if (g && g.person) { const p = g.person, a = others[p.id]; if (a) goTo(nearestWalk(Math.round(a.x) + 1, Math.round(a.y))); toast(`👋 ${p.n || '?'}${p.lv ? ` · Lv ${p.lv}` : ''} อยู่ในหมู่บ้าน`); return; }
     if (g && g.id) { goTo([g.front[0], g.front[1] + 1]); openCard(g); }
   }
@@ -396,8 +590,9 @@ const Village = (() => {
     el = document.createElement('section'); el.className = 'village'; el.id = 'village'; el.hidden = true;
     el.innerHTML = `<div class="vil-wrap"><canvas aria-label="แผนที่หมู่บ้าน"></canvas><div class="vil-card" role="dialog" aria-label="ที่ดินและบ้าน" hidden></div></div><div class="vil-bar"></div>`;
     cv = el.querySelector('canvas'); ctx = cv.getContext('2d'); wrapEl = el.querySelector('.vil-wrap'); barEl = el.querySelector('.vil-bar'); cardEl = el.querySelector('.vil-card');
-    cardEl.addEventListener('click', e => { const b = e.target.closest('[data-a]'); if (b && !b.disabled) cardAct(b.dataset.a); });
-    barEl.addEventListener('click', e => { if (e.target.closest('[data-a=home]')) { const L = myLot(); if (L) act(L); } });
+    cardEl.addEventListener('click', e => { const b = e.target.closest('[data-a]'); if (b && !b.disabled) cardAct(b.dataset.a, b); });
+    cardEl.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id === 'vilPetName') renamePet(); });
+    barEl.addEventListener('click', e => { if (e.target.closest('[data-a=home]')) { const L = myLot(); if (L) act(L); } if (e.target.closest('[data-a=pet]')) act('pet'); if (e.target.closest('[data-a=board]')) act('board'); });
     el.addEventListener('keydown', e => { if (e.key === 'Escape') closeCard(); });
     cv.addEventListener('click', tap);
     window.addEventListener('resize', resize);
@@ -406,7 +601,7 @@ const Village = (() => {
   function start() {
     if (started) return; started = true; rebuild();
     const go = () => { if (++loaded < 2) return; paintWorld(); resize(); cam = camTarget(); };
-    town.onload = farm.onload = go; town.src = 'assets/village/tinytown.png'; farm.src = 'assets/village/tinyfarm.png';
+    town.onload = farm.onload = go; town.src = 'assets/village/tinytown.png'; farm.src = 'assets/village/tinyfarm.png'; PETS.src = 'assets/pixel/elthen_cat.png';
     loadOnline().then(M => { O = M; send(true); M.watchOffset(v => offset = v || 0); M.watchOnline(l => { people = l; syncOthers(); }); if (M.watchLots) M.watchLots(applyLots); }).catch(() => {});
     requestAnimationFrame(frame);
   }
@@ -415,6 +610,6 @@ const Village = (() => {
     mount(slot) { if (!slot) return; if (!on()) { slot.remove(); return; } if (!el) build(); slot.replaceWith(el); renderBar(); },
     show() { if (!el) return; start(); renderBar(); requestAnimationFrame(() => { resize(); if (world) cam = camTarget(); send(true); }); },
     setGarden,
-    _dbg: { me, LOTS, others, get farms() { return farms; }, syncHome, gCell, get hits() { return hits; }, get ready() { return !!world; }, act, lock, goTo, fast: false, floorSpots, reserve, next, help, myLot, get busy() { return busy; } },
+    _dbg: { me, LOTS, others, pm, adopt, feedPet, dyePet, renamePet, myPet, get farms() { return farms; }, syncHome, gCell, get hits() { return hits; }, get ready() { return !!world; }, act, lock, goTo, fast: false, floorSpots, reserve, jobs, jobsDone, deliver, haveCrop, NPCS, BOARDC, next, help, myLot, get busy() { return busy; } },
   };
 })();
