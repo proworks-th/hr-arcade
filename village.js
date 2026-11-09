@@ -130,8 +130,8 @@ const Village = (() => {
   /* ---------- unlock (room 22 AND Lv 12) ---------- */
   function lock() { const p = Prog.get(), w = roomW(p.room || {}); return { w, lv: p.lv || 1, ok: w >= UNLOCK_W && (p.lv || 1) >= UNLOCK_LV }; }
   function renderBar() {
-    if (!barEl) return; const L = lock(), ck = b => b ? '✓' : '';
-    barEl.innerHTML = `<span class="vil-test">🧪 ทดสอบ · ยังไม่เปิดให้ทุกคน</span><span class="muted">${L.ok ? '✅ ครบเงื่อนไขแล้ว · จองที่ดินได้เร็ว ๆ นี้'
+    if (!barEl) return; const L = lock(), ck = b => b ? '✓' : '', B = Prog.bricks();
+    barEl.innerHTML = `<span class="vil-test">🧪 ทดสอบ · ยังไม่เปิดให้ทุกคน</span><span class="vil-brick" title="อิฐได้จากมินิเกมเท่านั้น รอบละ 1–3 ก้อน วันละไม่เกิน ${B.cap}">🧱 ${B.n} <small>วันนี้ ${B.today}/${B.cap}</small></span><span class="muted">${L.ok ? '✅ ครบเงื่อนไขแล้ว · จองที่ดินได้เร็ว ๆ นี้'
       : `🔒 สร้างบ้านได้เมื่อมีห้อง ${UNLOCK_W} + Lv ${UNLOCK_LV} · ตอนนี้ ห้อง ${L.w}/${UNLOCK_W} ${ck(L.w >= UNLOCK_W)} · Lv ${L.lv}/${UNLOCK_LV} ${ck(L.lv >= UNLOCK_LV)}`}</span>`;
   }
 

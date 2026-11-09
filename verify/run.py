@@ -181,6 +181,10 @@ def village(page, base, shot):
     page.wait_for_function('Village._dbg.ready', timeout=3000)
     page.wait_for_timeout(500)
     shot('village')
+    # bricks: a weak round gives 1, a good one 3, never more than 12 a day
+    b = page.evaluate("(() => { const got = [Prog.award('spot', 60).bricks]; for (let i = 0; i < 6; i++) got.push(Prog.award('spot', 2000).bricks); Village.show(); return { got, ...Prog.bricks() } })()")
+    if b['got'][:2] != [1, 3] or sum(b['got']) != 12 or b['got'][-1] != 0 or b['n'] != 12 or b['today'] != 12:
+        raise AssertionError('bricks wrong: ' + json.dumps(b))
     # a second player in another tab (same mock DB): they must show up and walk in this tab
     p2 = page.context.new_page()
     try:

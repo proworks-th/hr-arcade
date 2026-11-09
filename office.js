@@ -8,6 +8,10 @@
 // mini games pay ×2 since 9 Nov 2026: a round averaged ~39 🪙 (games were ~10% of income, canteen ~83%)
 const GAME_PAY = 2;
 // score that pays one base coin, per game (a decent run ≈ 20–30 base coins, ×GAME_PAY)
+// village bricks (village v2.0): only mini games give them, 1–3 a round by how well it went, max 12 a day.
+// They collect for everyone from now on; the village (hidden until release) is where they get spent.
+const BRICK_DAY = 12;
+const bkkDay = () => new Date(Date.now() + 7 * 3600e3).toISOString().slice(0, 10);   // the office's day (Bangkok)
 const PROG_NORM = { spot: 60, run: 20, whack: 16, stack: .8, tetris: 80, stamp: 24, barista: 24, toss: 24, slack: 16, conga: 12, prism: 12 };
 // a new title every 2–3 levels; each title level also unlocks an accessory (ACC in wardrobe.js)
 const TITLES = [[1, 'เด็กฝึกงาน'], [2, 'พนักงานทดลองงาน'], [4, 'พนักงานใหม่'], [6, 'พนักงานขยัน'], [8, 'มือโปรประจำแผนก'], [10, 'พนักงานดีเด่น'], [12, 'รุ่นพี่ใจดี'],
@@ -40,7 +44,20 @@ const Prog = {
     return { coins, xp, ups, before, after: { lv: p.lv, xp: p.xp } };
   },
   // GAME_PAY scales coins only (XP stays on the base so levelling speed doesn't change)
-  award(game, score, mult = 1) { const c = Math.max(2, Math.min(60, Math.round(score / (PROG_NORM[game] || 20)))); return Prog.give(c * GAME_PAY * mult, c * 3 + 10, game); },
+  award(game, score, mult = 1) {
+    const c = Math.max(2, Math.min(60, Math.round(score / (PROG_NORM[game] || 20)))), r = Prog.give(c * GAME_PAY * mult, c * 3 + 10, game);
+    r.bricks = Prog.brick(c < 12 ? 1 : c < 25 ? 2 : 3); return r;
+  },
+  // add up to n bricks within today's cap; returns how many were given (0 = cap reached)
+  brick(n) {
+    const p = Prog.get(), v = p.vil || (p.vil = {}), d = bkkDay();
+    if (v.bd !== d) { v.bd = d; v.bn = 0; }
+    const k = Math.max(0, Math.min(n, BRICK_DAY - (v.bn || 0))); if (!k) return 0;
+    v.bn = (v.bn || 0) + k; v.bricks = (v.bricks || 0) + k; Prog.put(p);
+    if (typeof Stats !== 'undefined') Stats.econ('brick', k);
+    return k;
+  },
+  bricks() { const v = Prog.get().vil || {}; return { n: v.bricks || 0, today: v.bd === bkkDay() ? v.bn || 0 : 0, cap: BRICK_DAY }; },
   // every coin earned also counts for the whole office (shared office level → the hub room gets new furniture)
   office(n) {
     const nm = myName(), lvOf = typeof HubRoom !== 'undefined' ? HubRoom.officeLv : null;
