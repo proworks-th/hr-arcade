@@ -38,17 +38,17 @@ Players start the village with their savings, so pace = (house − coins in hand
 | Regular | ~8,000 | ~1,500 | ~20 days | ~28 days |
 | Light | ~1,000 | ~250 | ~5 months | ~7 months |
 
-At 37,500 the top players finish in about a week, faster than planned, because of their savings. Regulars land in the 2–4 week window either way. Light players can't realistically get a house at either price: they need a cheaper first step (a small house, or the garden stage on its own) or more catch-up income.
+**Decided (9 Nov): 50,000.** At 37,500 the top players finish in about a week, faster than planned, because of their savings. Regulars land in the 2–4 week window either way. Light players can't realistically get a house at either price: they need a cheaper first step (a small house, or the garden stage on its own) or more catch-up income.
 When the village goes live, the extra consumable sinks (§7, ~300–600/day) slow everyone down by ~20–40%.
 Delivery pay (§8) must follow the real canteen price per item (with mutation), not the base crop price.
 
-## 4. House build (×5) — total 37,500 🪙 + 60 🧱 + 30 🥬
+## 4. House build — total 50,000 🪙 (raised from 37,500 on 9 Nov 2026, see §3) + 60 🧱 + 30 🥬
 | # | Stage | Cost | Build time |
 |---|---|---|---|
-| 1 | 🪧 Reserve land | 7,500 | instant |
-| 2 | 🧱 Foundation | 7,500 + 20 🧱 | 24 h |
-| 3 | 🏠 Walls + roof | 10,000 + 40 🧱 | 48 h |
-| 4 | 🌳 Garden (14 plots) | 7,500 + 30 🥬 | 24 h |
+| 1 | 🪧 Reserve land | 10,000 | instant |
+| 2 | 🧱 Foundation | 10,000 + 20 🧱 | 24 h |
+| 3 | 🏠 Walls + roof | 15,000 + 40 🧱 | 48 h |
+| 4 | 🌳 Garden (14 plots) | 10,000 + 30 🥬 | 24 h |
 | 5 | 🎉 Move-in party | 5,000 | instant |
 - Help build: −2 h, helper +5 🪙, max 5 helps/house/day. Progress bar = 1 − hours left ÷ stage hours (so 2 h is 8% of a 24 h stage, 4% of 48 h). Speed-up: 30 🪙 per hour left (open: probably too cheap, whole build ≈ 2,900).
 - Bricks 🧱: from games only, 1–3 per round, cap 12/day (keeps the office/game room daily).
@@ -107,5 +107,5 @@ Starter condos for new players; lobby = party room + missions + notice board; �
 1. Games give bricks — OK? (or also farm rewards)
 2. Unlock at room 22 or Lv 12?
 3. Re-check prices with 2 weeks of stats before launch?
-4. House 37,500 or ~50,000? Savings let top players finish in ~1 week at 37,500 (§3).
+4. ~~House 37,500 or ~50,000?~~ Decided 9 Nov: 50,000 (10k/10k/15k/10k/5k).
 5. Light players (Lv 10–13, ~250/day) can't reach a house: add a smaller first home or catch-up income?
