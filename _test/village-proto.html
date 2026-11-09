@@ -26,6 +26,7 @@ body{margin:0;background:#f3ead9;font-family:Kanit,sans-serif;color:#3a2a20}
 .b.p{background:#ff8fab;flex:1}.b:active{transform:translateY(2px);box-shadow:0 1px 0 #3a2a20}
 .bar{height:10px;border:2px solid #3a2a20;border-radius:6px;background:#fff;overflow:hidden}.bar i{display:block;height:100%;background:#7ec850}
 .stg{display:grid;grid-template-columns:22px 1fr auto;gap:6px;align-items:center;font-size:13px;border:2px solid #d8c8b0;border-radius:8px;padding:4px 8px;background:#fff}
+.coats{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 2px}.coat{width:36px;height:36px;border-radius:50%;border:3px solid;cursor:pointer;padding:0}.coat.on{outline:3px solid #ff5c8a;outline-offset:2px}
 .stg.done{opacity:.55}.stg.now{border-color:#3a2a20}
 .farmrow{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;font-size:13px;text-align:center}
 .farmrow div{border:2px solid #d8c8b0;border-radius:8px;background:#fff;padding:4px}.farmrow b{display:block;font-size:18px}
@@ -63,6 +64,17 @@ const F = n => 1000 + n; // farm-sheet tiles are stored as 1000+id
 const SPR = {}; for (const w of ['adam', 'alex', 'amelia', 'bob']) for (const d of ['down', 'up', 'left', 'right']) { const i = new Image(); i.src = `../assets/mi/${w}_${d}.png`; SPR[w + d] = i; }
 // pet = Elthen's cat (itch.io, free for commercial/non-commercial use): 32x32 cells, rows = animations, faces right
 const PETS = new Image(); PETS.src = '../assets/pixel/elthen_cat.png';
+const COATS = { white: ['ขาว', '#e0e0e0', '#b5b5b5', '#2f2f2e'], orange: ['ส้ม', '#f4a640', '#d9772b', '#3a2416'], grey: ['เทา', '#9aa3ad', '#717b86', '#262a30'],
+  black: ['ดำ', '#3d3a44', '#29262e', '#111013'], cream: ['ครีม', '#f3dfb8', '#d8bb8a', '#4a3524'], choc: ['ช็อกโกแลต', '#8a5a3c', '#663f28', '#24150d'], pink: ['ชมพูพาสเทล', '#ffc4d6', '#f293b2', '#4a2633'], mint: ['มิ้นต์', '#b8ecd6', '#82cdb0', '#1f3d33'] };
+const DYE = 300; // changing coat colour = small coin sink; renaming is free
+const coatCache = {};
+function coatSheet(k) {
+  if (coatCache[k]) return coatCache[k];
+  const c = document.createElement('canvas'); c.width = PETS.width; c.height = PETS.height; const g = c.getContext('2d'); g.drawImage(PETS, 0, 0);
+  const d = g.getImageData(0, 0, c.width, c.height), px = d.data, hex = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16)), [, b, s, o] = COATS[k], B = hex(b), Sd = hex(s), O = hex(o);
+  for (let i = 0; i < px.length; i += 4) { if (!px[i + 3]) continue; const v = px[i]; const m = v === 224 && px[i + 1] === 224 ? B : v === 181 && px[i + 1] === 181 ? Sd : v === 47 && px[i + 1] === 47 ? O : null; if (m) { px[i] = m[0]; px[i + 1] = m[1]; px[i + 2] = m[2]; } }
+  g.putImageData(d, 0, 0); return coatCache[k] = c;
+}
 const CATROW = { idle: [0, 4, 4], clean: [2, 4, 6], run: [4, 8, 14], sleep: [6, 4, 2.5], paw: [7, 6, 9], jump: [8, 7, 10], walk: [9, 8, 10] }; // row, frames, fps
 const CAT = new Image(); CAT.src = '../assets/pixel/p_cat.png';
 const rng = s => () => (s = (s * 16807) % 2147483647) / 2147483647;
@@ -160,7 +172,7 @@ const RIDES = { walk: ['🚶 เดิน', 0, 3.2], bike: ['🚲 จักร�
 let ride = 'walk', owned = { walk: 1 };
 const me = { who: 'adam', x: 5, y: 8, path: [], dir: 'down', sp: RIDES.walk[2], me: 1 };
 // pet: follows while fed, naps at home when hungry (never runs away)
-const pet = { n: 'ข้าวตัง', x: 4, y: 8, full: 70, premium: false, found: false, face: 1, act: null, actT: 0 };
+const pet = { n: 'ข้าวตัง', coat: 'orange', x: 4, y: 8, full: 70, premium: false, found: false, face: 1, act: null, actT: 0 };
 const STREET_CAT = [3, 17];
 // road pickups: a handful a day, only on roads, collected by walking over them
 const PICK = { coin: ['🪙 เหรียญ', 15, 'town', 93], tom: ['🍅 มะเขือเทศ', CROP.tom[2], 'farm', 44], car: ['🥕 แครอท', CROP.car[2], 'farm', 8], clover: ['🍀 ใบโคลเวอร์สี่แฉก', 100, 'emoji', '🍀'] };
@@ -239,17 +251,17 @@ function drawPet() {
   const s = S() * 1.15, cw = 32 * s, x = sx((pet.x + .5) * T) - cw / 2, y = sy((pet.y + 1) * T) - cw;
   ctx.fillStyle = 'rgba(0,0,0,.2)'; ctx.beginPath(); ctx.ellipse(x + cw / 2, y + 31.5 * s, 6 * s, 1.6 * s, 0, 0, 7); ctx.fill();
   ctx.save(); ctx.imageSmoothingEnabled = false;
-  if (pet.face < 0) { ctx.translate(x + cw, 0); ctx.scale(-1, 1); ctx.drawImage(PETS, fr * 32, row * 32, 32, 32, 0, y, cw, cw); } else ctx.drawImage(PETS, fr * 32, row * 32, 32, 32, x, y, cw, cw);
+  if (pet.face < 0) { ctx.translate(x + cw, 0); ctx.scale(-1, 1); ctx.drawImage(coatSheet(pet.coat), fr * 32, row * 32, 32, 32, 0, y, cw, cw); } else ctx.drawImage(coatSheet(pet.coat), fr * 32, row * 32, 32, 32, x, y, cw, cw);
   ctx.restore();
   // accessories are drawn on top in our own pixels: collar always, party hat with premium food
   if (!asleep && a !== 'jump') { const hx = x + (pet.face > 0 ? 19 : 13) * s, hy = y + (a === 'run' || a === 'walk' ? 21 : 20) * s;
     ctx.fillStyle = '#e63946'; ctx.fillRect(hx - (pet.face > 0 ? 3 : 0) * s, hy + 4 * s, 3 * s, 1 * s); ctx.fillStyle = '#ffd84d'; ctx.fillRect(hx - (pet.face > 0 ? 2 : -1) * s, hy + 5 * s, 1 * s, 1 * s);
     if (pet.premium && pet.full > 0) { ctx.fillStyle = '#ff5c8a'; ctx.beginPath(); ctx.moveTo(hx - 2.5 * s, hy); ctx.lineTo(hx + 2.5 * s, hy); ctx.lineTo(hx, hy - 6 * s); ctx.fill(); ctx.fillStyle = '#fff'; ctx.fillRect(hx - 1.5 * s, hy - 3 * s, 3 * s, 1 * s); ctx.fillStyle = '#ffd84d'; ctx.fillRect(hx - s, hy - 7 * s, 2 * s, 2 * s); } }
   const top = y + 19 * s;
-  if (pet.full <= 0) pill(x + cw / 2, top - 2 * dpr, '💤 หิวแล้ว', { fs: 10, bg: '#eee', hit: 'pet' });
-  else hitsPet = { l: x + 6 * s, t: top - 6 * dpr, w: 20 * s, h: 13 * s + 6 * dpr, hit: 'pet' };
+  petTag = pet.full <= 0 ? [x + cw / 2, top - 2 * dpr, `💤 ${pet.n} หิวแล้ว`, '#eee'] : [x + cw / 2, top - (pet.premium ? 8 : 2) * s - 2 * dpr, `${COATS[pet.coat][0] === 'ดำ' ? '🐈‍⬛' : '🐱'} ${pet.n}`, '#fff3c4'];
+  if (pet.full > 0) hitsPet = { l: x + 6 * s, t: top - 22 * dpr, w: 20 * s, h: 13 * s + 22 * dpr, hit: 'pet' };
 }
-let hitsPet = null;
+let hitsPet = null, petTag = null;
 function drawRide(a) {
   if (!a.me || ride === 'walk') return;
   const cx = sx((a.x + .5) * T), by = sy((a.y + 1) * T) - 3 * S(), s = S();
@@ -289,6 +301,7 @@ function frame(now) {
   if (PETS.complete) drawPet();
   [...folk, me].sort((a, b) => a.y - b.y).forEach(drawPerson);
   hits = []; if (hitsPet && pet.full > 0) hits.push(hitsPet); hitsPet = null;
+  if (petTag) { pill(petTag[0], petTag[1], petTag[2], { fs: 10, bg: petTag[3], hit: 'pet' }); petTag = null; }
   if (CAT.complete) hits.push({ l: sx(STREET_CAT[0] * T), t: sy(STREET_CAT[1] * T), w: 16 * S(), h: 16 * S(), hit: 'cat' });
   pill(sx((TOWER.x + 4) * T), sy(TOWER.y * T) - 4 * dpr, myMoved ? '🏢 ตึกออฟฟิศ · คอนโดว่าง 2 ห้อง' : '🏢 ตึกออฟฟิศ · คอนโด', { bg: '#e8f0ff', hit: 'tower' });
   pill(sx((BOARD[0] + .5) * T), sy(BOARD[1] * T) - 2 * dpr, '📌 บอร์ด', { fs: 11, hit: 'board' });
@@ -314,7 +327,10 @@ function open(t) {
   let h = '<button class="x" data-a="x" aria-label="ปิด">✕</button>';
   const nx = nextLot(), next = nx ? `<button class="b" data-a="next">ไปบ้านถัดไป →</button>` : '';
   if (t === 'pet') { const f = Math.round(pet.full); h += `<h3>🐱 ${pet.n} · ${f > 0 ? 'เดินตามคุณอยู่' : 'หิว เลยนอนรอที่บ้าน 💤'}</h3><div class="bar"><i style="width:${f}%;background:#ffb703"></i></div><p>อิ่ม ${f}% · อาหาร 1 มื้ออยู่ได้ 1 วัน (ต้นแบบเร่งให้หิวเร็ว)<br>หิวแล้วแค่นอนรอที่บ้าน ไม่หนี ไม่ป่วย</p>
-      <div class="acts"><button class="b p" data-a="feed">🍖 อาหารธรรมดา 150 🪙</button><button class="b" data-a="feedp">🥩 พรีเมียม 400 🪙</button></div><p style="font-size:12px">ธรรมดา: เดินตาม + ปลอกคอ + วันละครั้งคาบของบนถนนมาให้ (~50 🪙) · พรีเมียม: + หมวกปาร์ตี้ + ขุดเจอเมล็ดพันธุ์</p>`; }
+      <div class="acts"><button class="b p" data-a="feed">🍖 อาหารธรรมดา 150 🪙</button><button class="b" data-a="feedp">🥩 พรีเมียม 400 🪙</button></div><p style="font-size:12px">ธรรมดา: เดินตาม + ปลอกคอ + วันละครั้งคาบของบนถนนมาให้ (~50 🪙) · พรีเมียม: + หมวกปาร์ตี้ + ขุดเจอเมล็ดพันธุ์</p>
+      <h3 style="font-size:15px;margin-top:10px">✏️ ชื่อและสีขน</h3><div class="acts"><input id="petname" maxlength="12" value="${pet.n}" style="flex:1;min-width:0;font:inherit;font-size:16px;padding:6px 10px;border:2px solid #3a2a20;border-radius:10px"><button class="b" data-a="rename">ตั้งชื่อ</button></div>
+      <div class="coats">${Object.entries(COATS).map(([k, c]) => `<button class="coat${k === pet.coat ? ' on' : ''}" data-a="coat" data-k="${k}" title="${c[0]}" style="background:linear-gradient(135deg,${c[1]} 55%,${c[2]} 55%);border-color:${c[3]}"></button>`).join('')}</div>
+      <p style="font-size:12px">สีขน ${COATS[pet.coat][0]} · ย้อมสีใหม่ ${DYE} 🪙 · เปลี่ยนชื่อฟรี</p>`; }
   else if (t === 'cat') h += `<h3>🐈‍⬛ แมวประจำลานหมู่บ้าน</h3><p>ไม่มีเจ้าของ ใครผ่านมาก็เกาคางได้ วันละครั้ง</p><div class="acts"><button class="b p" data-a="pat">✋ เกาคาง</button></div>`;
   else if (t === 'rides') h += `<h3>🚲 ยานพาหนะ</h3><p>ซื้อครั้งเดียว ไม่มีค่าน้ำมัน · เดินได้เหมือนเดิมเสมอ</p>` + Object.entries(RIDES).map(([k, r]) => `<div class="stg ${ride === k ? 'now' : ''}"><b>${r[0].split(' ')[0]}</b><span>${r[0].split(' ')[1]} · เร็ว ×${(r[2] / 3.2).toFixed(1)}${r[1] ? ` · 🪙 ${fmt(r[1])}` : ''}</span><span>${ride === k ? 'ใช้อยู่' : owned[k] ? `<button class="b" data-a="use" data-k="${k}" style="min-height:36px;padding:2px 8px">ใช้</button>` : `<button class="b" data-a="buyride" data-k="${k}" style="min-height:36px;padding:2px 8px">ซื้อ</button>`}</span></div>`).join('');
   else if (t === 'tower') h += `<h3>🏢 ตึกออฟฟิศ</h3><p>${myMoved ? 'คุณย้ายออกแล้ว ห้องเดิมกลายเป็นห้องว่างให้เพื่อนใหม่' : 'คอนโด 8 ห้อง · ฟาร์มบนดาดฟ้า (สูงสุด 10 แปลง)'}</p><div class="acts"><button class="b p" data-a="lift">🛗 ขึ้นลิฟต์</button></div>`;
@@ -349,6 +365,8 @@ card.addEventListener('click', e => {
   const a = e.target.closest('[data-a]')?.dataset.a, t = card._t; if (!a) return;
   if (a === 'x') card.hidden = true;
   else if (a === 'feed' || a === 'feedp') { const c = a === 'feed' ? 150 : 400; addCoins(-c); pet.full = 100; pet.premium = a === 'feedp'; let m = `🍖 ${pet.n} อิ่มแล้ว −${c} 🪙`; if (!pet.found) { pet.found = true; addCoins(50); m += ` · คาบเหรียญมาให้ +50`; } if (pet.premium) { m += ' · ตีลังกาโชว์ + ขุดเจอเมล็ดข้าวโพด 1 ถุง'; pet.act = 'jump'; } else pet.act = 'paw'; pet.actT = performance.now() / 1000; toast(m); open('pet'); }
+  else if (a === 'rename') { const v = document.getElementById('petname').value.trim().slice(0, 12); if (!v) return toast('ใส่ชื่อก่อนนะ'); pet.n = v; toast(`✏️ ตอนนี้ชื่อ ${v} แล้ว`); open('pet'); }
+  else if (a === 'coat') { const k = e.target.closest('[data-k]').dataset.k; if (k === pet.coat) return; if (coins < DYE) return toast('เหรียญไม่พอ'); addCoins(-DYE); pet.coat = k; pet.act = 'paw'; pet.actT = performance.now() / 1000; toast(`🎨 ย้อมเป็นสี${COATS[k][0]}แล้ว −${DYE} 🪙`); open('pet'); }
   else if (a === 'pat') { toast('🐈‍⬛ แมวครางเบา ๆ ❤️ +1'); card.hidden = true; }
   else if (a === 'buyride') { const k = e.target.closest('[data-k]').dataset.k, c = RIDES[k][1]; if (coins < c) return toast('เหรียญไม่พอ'); addCoins(-c); owned[k] = 1; ride = k; me.sp = RIDES[k][2]; toast(`${RIDES[k][0]} ของคุณแล้ว!`); open('rides'); }
   else if (a === 'use') { const k = e.target.closest('[data-k]').dataset.k; ride = k; me.sp = RIDES[k][2]; open('rides'); }
