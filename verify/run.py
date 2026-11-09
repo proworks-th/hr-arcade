@@ -239,6 +239,29 @@ def village(page, base, shot):
     shot('village-card')
     if canvas_blank(page, '.vil-wrap canvas'):
         raise AssertionError('village canvas is blank')
+    # step 6: pet. Adopt 6,000 (first day's food included), can't overfeed, hungry → naps, first meal of the day +50,
+    # premium digs up a vegetable, dye 300, rename free; others see it (presence pe + lot record)
+    page.evaluate("document.querySelector('.vil-card [data-a=close]').click()")
+    pt = page.evaluate('''async () => { const D = Village._dbg, M = await import('/verify/mocks/firebase-database.js'), w = ms => new Promise(r => setTimeout(r, ms));
+      const c = () => Prog.get().coins, out = { c0: c() }, bag = () => Object.values(Prog.get().farm.bag).reduce((a, n) => a + n, 0);
+      D.act('pet'); out.adoptBtn = !!document.querySelector('.vil-card [data-a=adopt]:not([disabled])');
+      D.adopt(); out.adopt = [out.c0 - c(), !!D.myPet(), D.myPet().fed > Date.now()];
+      D.feedPet('b'); out.full = out.c0 - c();                                     // still full: nothing happens
+      const pp = Prog.get(); pp.vil.pet.fed = Date.now() - 1000; Prog.put(pp); await w(300);
+      out.hungry = document.querySelector('.vil-bar [data-a=pet]').textContent.includes('💤');
+      const b0 = bag(), c1 = c(); D.feedPet('p'); out.prem = [c1 - c(), bag() - b0, Prog.get().vil.pet.prem];
+      const p2 = Prog.get(); p2.vil.pet.fed = Date.now() - 1000; Prog.put(p2); const c2 = c(); D.feedPet('b'); out.second = c2 - c();
+      const c3 = c(); D.dyePet('black'); out.dye = [c3 - c(), Prog.get().vil.pet.coat];
+      D.act('pet'); await w(100); const inp = document.querySelector('#vilPetName'); inp.value = 'ข้าวตัง'; document.querySelector('.vil-card [data-a=rename]').click();
+      await w(600); out.name = Prog.get().vil.pet.n;
+      out.lot = (await M.get(M.ref(null, 'rooms/_vil/lots/3'))).val().pet;
+      out.pres = Object.values((await M.get(M.ref(null, 'rooms/_hub/on'))).val() || {}).some(v => Array.isArray(v.pe) && v.pe[1] === 'ข้าวตัง' && v.pe[0] === 'black' && v.pe[2] === 1);
+      return out; }''')
+    want = {'adopt': [6000, True, True], 'full': 6000, 'hungry': True, 'prem': [350, 1, 1], 'second': 150, 'dye': [300, 'black'], 'name': 'ข้าวตัง', 'lot': {'c': 'black', 'n': 'ข้าวตัง'}, 'pres': True}
+    if any(pt.get(k) != v for k, v in want.items()) or not pt.get('adoptBtn'):
+        raise AssertionError('pet wrong: ' + json.dumps(pt, ensure_ascii=False))
+    page.wait_for_timeout(1500)
+    shot('village-pet')
     # step 5: the farm moved in. Tower balcony shows the sign, the farm screen has 14 plots, buying 18 updates the lot
     page.evaluate("document.querySelector('.vil-card [data-a=close]').click()")
     page.click('[data-view=tower]')
@@ -252,7 +275,7 @@ def village(page, base, shot):
     page.click('.farm [data-a=garden]')
     g = page.evaluate('''async () => { const M = await import('/verify/mocks/firebase-database.js'); await new Promise(r => setTimeout(r, 400));
       return [Farm.n(), Prog.get().coins, (await M.get(M.ref(null, 'rooms/_vil/lots/3'))).val().g, (await M.get(M.ref(null, 'rooms/_farm/' + Village._dbg.myLot().k))).val()] }''')
-    if g[0] != 18 or g[1] != 10005 or g[2] != 18:  # 20,000 left after the house + 5 from helping − 10,000
+    if g[0] != 18 or g[1] != 3205 or g[2] != 18:  # 20,000 after the house + 5 helping − pet 6,000 − 400 + 50 − 150 − 300 − garden 10,000
         raise AssertionError('garden upgrade wrong: ' + json.dumps(g[:3]))
     page.wait_for_timeout(1200)
     fr = page.evaluate('''async () => { const M = await import('/verify/mocks/firebase-database.js'); const v = (await M.get(M.ref(null, 'rooms/_farm/' + Village._dbg.myLot().k))).val(); return v && [v.n, v.plots.length, v.plots.filter(Boolean).length] }''')
