@@ -97,6 +97,13 @@ Target: consumables absorb ~300–600 🪙/day for active players, which brings 
 - Deliveries (in prototype): the notice board lists 3 jobs a day, e.g. "5 🍅 → จ๋า, she's making som tam for friends". You get the canteen price +30% (canteen = sell ×1.2, so delivery = sell ×1.56; e.g. 5 🍅 at sell 25: canteen 150, delivery 195). The owner pays nothing (the coins come from the system), so nobody feels they owe anything. The house shows a 📦 sticker until you deliver. Jobs go to different clusters, which mixes people up.
 - Tapping a far house still opens its card at once; your character walks there by itself.
 
+### Live players (decided 9 Nov 2026: same as the hub room)
+- Everyone in the village is a real person walking live, like ห้องรวม (hubroom.js). Presence = `rooms/_hub/on/{sid}` with `g:'village'`, the target cell `x,y` and the ride `r`; each client walks the others there along the same paths, so one write per tap is enough and the online box still counts them.
+- Their bike or scooter shows, and they move at its speed. Name tag = 🟢 name.
+- Offline owners don't walk: their character stands at home with a quiet "away" look; the house, garden and help/water buttons all still work.
+- Tab hidden → `v:0` → others stop seeing you (same as the hub). No position history is stored.
+- Prototype: open with `?test=1&name=…&who=adam|alex|amelia|bob` in two tabs (mock DB, never the real one); without `?test=1` the old pretend neighbours wander.
+
 ## 9. Clusters without กีดกัน
 1. Any empty lot in any cluster can be picked; no reserving lots for friends; no private clusters.
 2. No cluster leaderboard or cluster-only rewards; village-wide goals only.

@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Village prototype</title>
+<script src="../verify/testmode.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box}
@@ -191,7 +192,32 @@ function bfs(from, to) {
 }
 function nearestWalk(tx, ty) { for (let r = 0; r < 6; r++) for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) if (Math.max(Math.abs(dx), Math.abs(dy)) === r && walk(tx + dx, ty + dy)) return [tx + dx, ty + dy]; return null; }
 let pending = null;
-function goTo(t, then) { if (!t) return; const p = bfs([Math.round(me.x), Math.round(me.y)], t); if (!p) return; me.path = p; pending = then || null; if (!p.length && then) { pending = null; then(); } }
+// ---------- live players (same idea as the hub room, hubroom.js) ----------
+// presence rooms/_hub/on/{sid} = {n, a, g:'village', x, y, r} where x,y is the cell you are walking TO;
+// every client paths the others there itself, so one write per tap is enough (heartbeat lives in online.js).
+// Prototype: live only with ?test=1 (mock DB shared between tabs), so testers never show up to real staff.
+const LIVE = /[?&]test=1\b/.test(location.search), QS = new URLSearchParams(location.search);
+const live = {}; let liveO = null, liveLast = '';
+const myN = QS.get('name') || 'พล', myWho = QS.get('who');
+if (myWho && ['adam', 'alex', 'amelia', 'bob'].includes(myWho)) me.who = myWho;
+function liveSend(force) {
+  if (!liveO) return;
+  const end = me.path.length ? me.path[me.path.length - 1] : [Math.round(me.x), Math.round(me.y)];
+  const info = { n: myN, a: me.who, g: 'village', x: end[0], y: end[1], r: ride, v: document.hidden ? 0 : 1 }, k = JSON.stringify(info);
+  if (!force && k === liveLast) return; liveLast = k; liveO.setPresence(info);
+}
+function liveSync(list) {
+  const here = list.filter(p => !p.me && p.g === 'village' && p.v !== 0);
+  for (const id of Object.keys(live)) if (!here.some(p => p.id === id)) delete live[id];
+  for (const p of here) {
+    let o = live[p.id];
+    if (!o) o = live[p.id] = { live: 1, who: p.a || 'bob', n: p.n || '?', x: p.x, y: p.y, path: [], dir: 'down', sp: 3.2 };
+    o.n = p.n || o.n; o.who = SPR[(p.a || '') + 'down'] ? p.a : o.who; o.ride = p.r; o.sp = (RIDES[p.r] || RIDES.walk)[2];
+    if (o.tx !== p.x || o.ty !== p.y) { o.tx = p.x; o.ty = p.y; o.path = bfs([Math.round(o.x), Math.round(o.y)], [p.x, p.y]) || []; if (!o.path.length) { o.x = p.x; o.y = p.y; } }
+  }
+}
+document.addEventListener('visibilitychange', () => liveSend(true));
+function goTo(t, then) { if (!t) return; const p = bfs([Math.round(me.x), Math.round(me.y)], t); if (!p) return; me.path = p; liveSend(true); pending = then || null; if (!p.length && then) { pending = null; then(); } }
 function step(a, dt) {
   if (!a.path.length) return false; const [nx, ny] = a.path[0], dx = nx - a.x, dy = ny - a.y, d = Math.hypot(dx, dy), mv = a.sp * dt;
   a.dir = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up');
@@ -263,10 +289,10 @@ function drawPet() {
 }
 let hitsPet = null, petTag = null, nameTags = [];
 function drawRide(a) {
-  if (!a.me || ride === 'walk') return;
+  const rd = a.me ? ride : a.ride; if (!rd || rd === 'walk') return;
   const cx = sx((a.x + .5) * T), by = sy((a.y + 1) * T) - 3 * S(), s = S();
-  ctx.strokeStyle = '#3a2a20'; ctx.lineWidth = 1.5 * s; ctx.fillStyle = ride === 'bike' ? '#3a86ff' : '#ff5c8a';
-  if (ride === 'bike') { for (const ox of [-5, 5]) { ctx.beginPath(); ctx.arc(cx + ox * s, by, 3 * s, 0, 7); ctx.stroke(); } ctx.beginPath(); ctx.moveTo(cx - 5 * s, by); ctx.lineTo(cx, by - 4 * s); ctx.lineTo(cx + 5 * s, by); ctx.stroke(); }
+  ctx.strokeStyle = '#3a2a20'; ctx.lineWidth = 1.5 * s; ctx.fillStyle = rd === 'bike' ? '#3a86ff' : '#ff5c8a';
+  if (rd === 'bike') { for (const ox of [-5, 5]) { ctx.beginPath(); ctx.arc(cx + ox * s, by, 3 * s, 0, 7); ctx.stroke(); } ctx.beginPath(); ctx.moveTo(cx - 5 * s, by); ctx.lineTo(cx, by - 4 * s); ctx.lineTo(cx + 5 * s, by); ctx.stroke(); }
   else { ctx.beginPath(); ctx.roundRect(cx - 7 * s, by - 5 * s, 14 * s, 5 * s, 2 * s); ctx.fill(); ctx.stroke(); ctx.fillStyle = '#3a2a20'; for (const ox of [-5, 5]) { ctx.beginPath(); ctx.arc(cx + ox * s, by + 1 * s, 2.2 * s, 0, 7); ctx.fill(); } }
 }
 function drawPerson(a) {
@@ -279,6 +305,7 @@ function drawPerson(a) {
   // name tags are collected here and drawn after everyone, so a person walking in front never hides a name
   const cx = sx((a.x + .5) * T);
   if (a.me) { const withPet = pet.full > 0 && Math.hypot(pet.x - me.x, pet.y - me.y) < 1.8; nameTags.push([cx, y - 2 * dpr, withPet ? `⭐ คุณ · ${petTag ? petTag[2] : ''}` : '⭐ คุณ', { fs: 11, bg: '#ffe0ea', line: '#d14d72' }]); if (withPet) petTag = null; }
+  else if (a.live) nameTags.push([cx, y - 2 * dpr, `🟢 ${a.n}`, { fs: 10, bg: '#e8ffe0', line: '#3a9b3a' }]);
   else nameTags.push([cx, y - 2 * dpr, `${a.on ? '🟢 ' : ''}${a.home.n}`, { fs: 10, bg: a.on ? '#fff' : '#eee', hit: a.home }]);
 }
 let growT = 0;
@@ -302,7 +329,9 @@ function frame(now) {
     else { const s = P[2] === 'farm' ? farm : town; ctx.drawImage(s, (P[3] % 12) * T, Math.floor(P[3] / 12) * T, T, T, x + 2 * S(), y + 1 * S(), 12 * S(), 12 * S()); } }
   if (CAT.complete) { const [cx, cy] = STREET_CAT; ctx.drawImage(CAT, sx(cx * T), sy(cy * T + 3), 16 * S(), 13 * S()); }
   if (PETS.complete) drawPet();
-  [...folk, me].sort((a, b) => a.y - b.y).forEach(drawPerson);
+  for (const o of Object.values(live)) step(o, dt);
+  liveSend(); // only writes when something changed (target cell, ride, tab hidden)
+  [...folk, ...Object.values(live), me].sort((a, b) => a.y - b.y).forEach(drawPerson);
   hits = []; if (hitsPet && pet.full > 0) hits.push(hitsPet); hitsPet = null;
   if (CAT.complete) hits.push({ l: sx(STREET_CAT[0] * T), t: sy(STREET_CAT[1] * T), w: 16 * S(), h: 16 * S(), hit: 'cat' });
   pill(sx((TOWER.x + 4) * T), sy(TOWER.y * T) - 4 * dpr, myMoved ? '🏢 ตึกออฟฟิศ · คอนโดว่าง 2 ห้อง' : '🏢 ตึกออฟฟิศ · คอนโด', { bg: '#e8f0ff', hit: 'tower' });
@@ -414,6 +443,15 @@ window.addEventListener('resize', resize);
 window._v = { JOBS, me, pet, LOTS, visit, open, enter, setMoved, pickups };
 rebuild(); spawnPickups();
 folk = LOTS.filter(L => L.n && !L.mine).map(L => ({ who: L.who, home: L, x: L.front[0], y: L.front[1] + 1, path: [], dir: 'down', sp: 2.4, on: L.on, wait: 1 + Math.random() * 3 }));
+// in live mode the pretend neighbours stand still at home (offline look); only real players walk
+if (LIVE) { folk.forEach(f => f.on = 0); LOTS.forEach(L => L.on = 0); }
 let loaded = 0; const go = () => { if (++loaded < 2) return; world = document.createElement('canvas'); world.width = C * T; world.height = R * T; wctx = world.getContext('2d'); paintWorld(); resize(); cam = camTarget(); requestAnimationFrame(frame); };
 town.onload = go; farm.onload = go;
+</script>
+<script type="module">
+if (LIVE) {
+  const O = await import('../online.js');
+  liveO = O; O.watchOnline(liveSync); liveSend(true);
+  window._v.live = live;
+}
 </script></body></html>

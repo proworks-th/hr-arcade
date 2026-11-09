@@ -10,6 +10,7 @@ Add new files with `git add -f _test/<file>`; never `git add -A`.
 - `village-room.png` - house interior rendered by the real `drawRoom`
 
 Run: from the repo root `python -m http.server 8767`, open http://localhost:8767/_test/village-proto.html
+Live players: open `village-proto.html?test=1&name=A&who=adam` and `?test=1&name=B&who=alex` in two tabs of the same browser (mock DB).
 Screenshots: `python _test/village-shots-a.py` / `-b.py` (Playwright, channel chrome) -> `_test/village-*.png`
 
 Status (6 Nov 2026): prices ×5, house raised to 50,000 on 9 Nov, pet dog + food 150/400, street cat, road pickups,
