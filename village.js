@@ -11,8 +11,8 @@
 // Step 5 = the farm moves in: at the move-in party prog.vil.g = 14 and Farm.n() becomes the house garden (farm.js);
 //   the same plots array, so every crop and friends' water carries over. The map draws the real crops in each garden
 //   (rooms/_farm rows, mine from local progress); tapping a house garden opens that farm.
-// Until the release step the tab is hidden behind a flag:
-//   ?village=1 turns it on for this browser (remembered), ?village=0 turns it off; test mode (?test=1) always shows it.
+// The tab is open to everyone since 9 Nov 2026 (owner); ?village=0 hides it in that browser, ?village=1 shows it again.
+//   Pets (step 6) are kept off the live site on the local branch village-pets until the next update.
 // Art: Kenney Tiny Town + Tiny Farm (CC0, assets/village/). Classic script after solo-games.js / office.js / tower.js
 // (uses drawChar, drawAcc, meWho, myName, Prog, roomW, store, toast at run time).
 'use strict';
@@ -23,7 +23,7 @@ const Village = (() => {
   let flagRead = false;
   const on = () => {
     if (!flagRead) { flagRead = true; const q = /[?&]village=([01])\b/.exec(location.search); if (q) store.set('vilFlag', q[1] === '1'); }
-    return !!window.__TEST__ || !!store.get('vilFlag', false);
+    return !!window.__TEST__ || store.get('vilFlag', true) !== false;   // open to everyone since 9 Nov 2026; ?village=0 hides it in that browser
   };
 
   // 2 lanes × 6 lots (a new lane opens when most lots are taken — later steps)
@@ -165,7 +165,7 @@ const Village = (() => {
   function lock() { const p = Prog.get(), w = roomW(p.room || {}); return { w, lv: p.lv || 1, ok: w >= UNLOCK_W && (p.lv || 1) >= UNLOCK_LV }; }
   function renderBar() {
     if (!barEl) return; const L = lock(), ck = b => b ? '✓' : '', B = Prog.bricks(), mL = myLot();
-    barEl.innerHTML = `<span class="vil-test">🧪 ทดสอบ · ยังไม่เปิดให้ทุกคน</span>${mL ? '<button class="btn sm" type="button" data-a="home">📍 บ้านฉัน</button>' : ''}<span class="vil-brick" title="อิฐได้จากมินิเกม รอบละ 1–3 ก้อน วันละไม่เกิน ${B.cap} + อิฐบนถนนในหมู่บ้านวันละ ${FLOOR_N} ก้อน">🧱 ${fmtN(B.n)} <small>เกม ${B.today}/${B.cap} · ถนน ${floorGot().length}/${FLOOR_N}</small></span><span class="muted">${mL ? `⭐ บ้านคุณ แปลง ${mL.id} · ${STAGE_TH[mL.stage]}${building(mL) ? ` ${Math.round(pctOf(mL) * 100)}%` : ''}`
+    barEl.innerHTML = `${mL ? '<button class="btn sm" type="button" data-a="home">📍 บ้านฉัน</button>' : ''}<span class="vil-brick" title="อิฐได้จากมินิเกม รอบละ 1–3 ก้อน วันละไม่เกิน ${B.cap} + อิฐบนถนนในหมู่บ้านวันละ ${FLOOR_N} ก้อน">🧱 ${fmtN(B.n)} <small>เกม ${B.today}/${B.cap} · ถนน ${floorGot().length}/${FLOOR_N}</small></span><span class="muted">${mL ? `⭐ บ้านคุณ แปลง ${mL.id} · ${STAGE_TH[mL.stage]}${building(mL) ? ` ${Math.round(pctOf(mL) * 100)}%` : ''}`
       : L.ok ? '✅ ครบเงื่อนไขแล้ว · แตะป้าย 🪧 เพื่อจองที่ดิน'
       : `🔒 สร้างบ้านได้เมื่อมีห้อง ${UNLOCK_W} + Lv ${UNLOCK_LV} · ตอนนี้ ห้อง ${L.w}/${UNLOCK_W} ${ck(L.w >= UNLOCK_W)} · Lv ${L.lv}/${UNLOCK_LV} ${ck(L.lv >= UNLOCK_LV)}`}</span>`;
   }

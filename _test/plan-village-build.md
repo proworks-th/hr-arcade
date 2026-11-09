@@ -47,6 +47,8 @@ Life skills (GDD §12) are a future update, not part of this plan.
 | 7 | **Walking extras** | Board deliveries (canteen +30%), more road pickups (road bricks already done in step 3) | Jobs are the same for everyone that day |
 | 8 | **Release** | Flag off, "มีอะไรใหม่" popup once, feed message, `Stats.econ` keys `out_house/out_pet/out_dye/in_delivery/in_pickup`, CREDITS updated | Owner plays it on the live site first with `?village=1`, then everyone |
 
+**Shipping (owner, 9 Nov 2026):** steps 1–5 pushed; the village tab opened to everyone the same day (no flag needed, `?village=0` hides it). Still to do from step 8: the "มีอะไรใหม่" popup, launch feed message, CREDITS. Pets (step 6) were pushed by mistake and taken back off (74a8ca6); the work is on the local branch `village-pets` and ships in the next update with step 7.
+
 **Later (v2.1):** bike/scooter, plaza party, gift boxes, house Lv 2/3, dogs (to be drawn), seasonal decor.
 
 ## 4. Risks and how we handle them

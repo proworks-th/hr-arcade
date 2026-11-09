@@ -172,10 +172,10 @@ VILLAGE_SEED = """async () => {
 def village(page, base, shot):
     page.goto(base + '/index.html?test=1')
     page.wait_for_function('window.__app', timeout=3000)
-    # hidden for real players: without test mode and without ?village=1 there is no tab
-    hidden = page.evaluate("(() => { const t = window.__TEST__; window.__TEST__ = false; store.set('vilFlag', false); const r = Village.on(); window.__TEST__ = t; return r })()")
-    if hidden:
-        raise AssertionError('village tab would show for real players')
+    # open to everyone (9 Nov 2026): a real player with no flag stored sees the tab; ?village=0 (flag false) hides it
+    seen = page.evaluate("(() => { const t = window.__TEST__; window.__TEST__ = false; localStorage.removeItem('hra_vilFlag'); const a = Village.on(); store.set('vilFlag', false); const b = Village.on(); localStorage.removeItem('hra_vilFlag'); window.__TEST__ = t; return [a, b] })()")
+    if seen != [True, False]:
+        raise AssertionError('village tab for real players wrong (want shown, hidden with ?village=0): ' + json.dumps(seen))
     page.evaluate(VILLAGE_SEED)
     page.click('[data-view=village]')
     page.wait_for_function('Village._dbg.ready', timeout=3000)
