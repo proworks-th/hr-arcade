@@ -261,7 +261,7 @@ function drawPet() {
   petTag = pet.full <= 0 ? [x + cw / 2, top - 2 * dpr, `💤 ${pet.n} หิวแล้ว`, '#eee'] : [x + cw / 2, top - (pet.premium ? 8 : 2) * s - 2 * dpr, `${COATS[pet.coat][0] === 'ดำ' ? '🐈‍⬛' : '🐱'} ${pet.n}`, '#fff3c4'];
   if (pet.full > 0) hitsPet = { l: x + 6 * s, t: top - 22 * dpr, w: 20 * s, h: 13 * s + 22 * dpr, hit: 'pet' };
 }
-let hitsPet = null, petTag = null;
+let hitsPet = null, petTag = null, nameTags = [];
 function drawRide(a) {
   if (!a.me || ride === 'walk') return;
   const cx = sx((a.x + .5) * T), by = sy((a.y + 1) * T) - 3 * S(), s = S();
@@ -276,7 +276,10 @@ function drawPerson(a) {
   const x = sx(a.x * T), y = sy((a.y + 1) * T - 23 - bob - 2);
   ctx.fillStyle = 'rgba(0,0,0,.22)'; ctx.beginPath(); ctx.ellipse(sx((a.x + .5) * T), sy((a.y + 1) * T - 2), 6 * S(), 2.2 * S(), 0, 0, 7); ctx.fill();
   ctx.drawImage(img, x, y, 16 * S(), 23 * S());
-  if (a.me) pill(sx((a.x + .5) * T), y - 2 * dpr, '⭐ คุณ', { fs: 11, bg: '#ffe0ea', line: '#d14d72' });
+  // name tags are collected here and drawn after everyone, so a person walking in front never hides a name
+  const cx = sx((a.x + .5) * T);
+  if (a.me) { const withPet = pet.full > 0 && Math.hypot(pet.x - me.x, pet.y - me.y) < 1.8; nameTags.push([cx, y - 2 * dpr, withPet ? `⭐ คุณ · ${petTag ? petTag[2] : ''}` : '⭐ คุณ', { fs: 11, bg: '#ffe0ea', line: '#d14d72' }]); if (withPet) petTag = null; }
+  else nameTags.push([cx, y - 2 * dpr, `${a.on ? '🟢 ' : ''}${a.home.n}`, { fs: 10, bg: a.on ? '#fff' : '#eee', hit: a.home }]);
 }
 let growT = 0;
 function frame(now) {
@@ -301,11 +304,17 @@ function frame(now) {
   if (PETS.complete) drawPet();
   [...folk, me].sort((a, b) => a.y - b.y).forEach(drawPerson);
   hits = []; if (hitsPet && pet.full > 0) hits.push(hitsPet); hitsPet = null;
-  if (petTag) { pill(petTag[0], petTag[1], petTag[2], { fs: 10, bg: petTag[3], hit: 'pet' }); petTag = null; }
   if (CAT.complete) hits.push({ l: sx(STREET_CAT[0] * T), t: sy(STREET_CAT[1] * T), w: 16 * S(), h: 16 * S(), hit: 'cat' });
   pill(sx((TOWER.x + 4) * T), sy(TOWER.y * T) - 4 * dpr, myMoved ? '🏢 ตึกออฟฟิศ · คอนโดว่าง 2 ห้อง' : '🏢 ตึกออฟฟิศ · คอนโด', { bg: '#e8f0ff', hit: 'tower' });
   pill(sx((BOARD[0] + .5) * T), sy(BOARD[1] * T) - 2 * dpr, '📌 บอร์ด', { fs: 11, hit: 'board' });
   LOTS.forEach(lotTag);
+  if (petTag) { nameTags.push([petTag[0], petTag[1], petTag[2], { fs: 10, bg: petTag[3], hit: 'pet' }]); petTag = null; }
+  // people's names: front-most (lowest on screen) last; nudge a tag up if it would sit on top of one already drawn
+  { const done = []; nameTags.sort((a, b) => a[1] - b[1]);
+    for (const [x, y0, txt, o] of nameTags) { ctx.font = `600 ${o.fs * dpr}px Kanit, sans-serif`; const w = ctx.measureText(txt).width + 16 * dpr, h = (o.fs + 9) * dpr; let y = y0;
+      for (let k = 0; k < 4; k++) { const hit = done.find(r => Math.abs(r[0] - x) < (r[2] + w) / 2 && Math.abs(r[1] - y) < h); if (!hit) break; y = hit[1] - h - 2 * dpr; }
+      done.push([x, y, w]); pill(x, y, txt, o); }
+    nameTags = []; }
   requestAnimationFrame(frame);
 }
 
