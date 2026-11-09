@@ -40,11 +40,11 @@ Life skills (GDD §12) are a future update, not part of this plan.
 |---|---|---|---|
 | 1 ✅ | **Groundwork** (done 9 Nov) | `village.js` (classic script like tower.js), Kenney tilemaps → `assets/village/` + licence, `?village=1` flag, third tab "🏘️ หมู่บ้าน", verify screen `village` | Empty village map renders on desktop/phone, all old screens still pass |
 | 2 ✅ | **Village map + live players** (done 9 Nov, not pushed) | Map, roads, tower, board from the prototype; houses from `rooms/_vil/lots`; presence `g:'village'`; name tags (🟢 live, tap = house) | Two test tabs see each other walk |
-| 3 ✅ | **Bricks from games** (done 9 Nov, not pushed) | `Prog.award` adds 1–3 🧱 (cap 12/day) to `prog.vil.bricks`; shown in the game result + village bar | Verify: a game round gives bricks, cap holds. Can go live early (bricks collect before launch) |
-| 4 | **Unlock + reserve + build** | Lock card ("ห้อง 18/22 · Lv 12 ✓"), reserve via transaction, stages 2–4 with server-time timers, help build (no paid speed-up), move-in party → feed message | Full build path works in test mode with fast timers (`?vilFast=1` = minutes instead of hours) |
+| 3 ✅ | **Bricks from games** (done 9 Nov, not pushed) | `Prog.award` adds 1–3 🧱 (cap 12/day) to `prog.vil.bricks`; shown in the game result + village bar. **+ 3 bricks on the village roads a day** (owner, 9 Nov): same 3 spots for everyone (seeded by the date), walk over one to pick it up, each once (`prog.vil.fd/fp`) | Verify: a game round gives bricks, cap holds. Can go live early (bricks collect before launch) |
+| 4 ✅ | **Unlock + reserve + build** (done 9 Nov, not pushed) | Lock card ("ห้อง 18/22 · Lv 12 ✓"), reserve via transaction, stages 2–4 with server-time timers, help build (no paid speed-up), move-in party → feed message | Full build path works in test mode with fast timers (`?vilFast=1` = minutes instead of hours) |
 | 5 | **Farm moves in** | `Farm.n` = garden size after move-in; cap 10 → 24 in farm.js + online.js; rooftop farm closes at move-in; crops/basket/book/sprinkler carry over; garden 18/24 upgrades; tower balcony shows "ย้ายไปบ้านแล้ว" | Move-in keeps every crop and timer; friends can still water |
 | 6 | **Pets** | Buy a cat for 6,000, food 150/400, coat dye 300, rename; Elthen sheet → `assets/pixel` (already there) | Pet follows, sleeps when hungry, never dies |
-| 7 | **Walking extras** | Board deliveries (canteen +30%), road pickups (daily seed from the date, same for everyone) | Jobs are the same for everyone that day |
+| 7 | **Walking extras** | Board deliveries (canteen +30%), more road pickups (road bricks already done in step 3) | Jobs are the same for everyone that day |
 | 8 | **Release** | Flag off, "มีอะไรใหม่" popup once, feed message, `Stats.econ` keys `out_house/out_pet/out_dye/in_delivery/in_pickup`, CREDITS updated | Owner plays it on the live site first with `?village=1`, then everyone |
 
 **Later (v2.1):** bike/scooter, plaza party, gift boxes, house Lv 2/3, dogs (to be drawn), seasonal decor.
@@ -68,9 +68,10 @@ Decided 9 Nov: **no paid speed-up**, **pet 6,000**. Checked 9 Nov (GDD §2b): ×
 ## 6. Test checklist (each step adds its own lines to `verify/run.py`)
 - [ ] All existing screens pass on desktop / phone / tablet.
 - [ ] Village hidden without `?village=1` / `?test=1`.
-- [ ] Locked player sees what's missing (room size, level).
-- [ ] Reserve → build → help → move-in with fast timers; coins and bricks go down by the right amounts.
-- [ ] Two tabs: both try to reserve one lot → only one wins, the other keeps coins.
+- [x] Locked player sees what's missing (room size, level).
+- [x] Reserve → build → help → move-in with fast timers; coins and bricks go down by the right amounts.
+- [x] Reserve race: the lot was taken a moment ago but still looks empty here → the transaction refuses, coins kept (tested in one tab with a stale lot; same transaction path as two tabs).
+- [x] Road bricks: 3 a day, each picked up once.
 - [ ] Move-in with growing / ripe / mutated crops → all still there; friend watering still cuts time.
 - [ ] Cloud save on another device shows the same house stage.
 - [ ] Pet hungry → sleeps at home; fed → follows; dye and rename stick after reload.

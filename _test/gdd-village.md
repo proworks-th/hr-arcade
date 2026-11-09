@@ -68,7 +68,8 @@ Delivery pay (§8) must follow the real canteen price per item (with mutation), 
 | 4 | 🌳 Garden (14 plots) | 10,000 + 30 🥬 | 24 h |
 | 5 | 🎉 Move-in party | 5,000 | instant |
 - Help build: −2 h, helper +5 🪙, max 5 helps/house/day. Progress bar = 1 − hours left ÷ stage hours (so 2 h is 8% of a 24 h stage, 4% of 48 h). **No paid speed-up** (decided 9 Nov): coins can't skip build time; only coworkers' help makes it faster, so helping stays worth something.
-- Bricks 🧱: from games only, 1–3 per round, cap 12/day (keeps the office/game room daily).
+- Bricks 🧱: from games, 1–3 per round, cap 12/day (keeps the office/game room daily) **+ 3 on the village roads a day** (owner, 9 Nov 2026): same spots for everyone that day, walk over one to pick it up. Max 15/day → the 60 bricks take about 4 days at full pace.
+- Card wording (step 4): the cost and "ขาดอีก …" are always shown, so a player knows what to go and get; the move-in card says the farm moves over in the next update (step 5).
 
 ### Moving in: the farm goes with you (decided 9 Nov 2026)
 One player = one garden. At the move-in party:
@@ -135,7 +136,7 @@ Target: consumables absorb ~300–600 🪙/day for active players, which brings 
 Starter condos for new players; lobby = party room + missions + notice board; 🎮 game room = the only brick source; 🍱 canteen = sell crops ×1.2; freed condo units become shared corners; rooftop = farm plots of players still in a condo (closed for each player at move-in); the crane keeps building shared floors (office-wide goal).
 
 ## 11. Open questions
-1. ~~Games give bricks?~~ Decided 9 Nov: yes, bricks come from games only (1–3 per round, cap 12/day).
+1. ~~Games give bricks?~~ Decided 9 Nov: yes, bricks come from games (1–3 per round, cap 12/day), plus 3 a day on the village roads.
 2. ~~Unlock at room 22 or Lv 12?~~ Decided 9 Nov: needs **both** room size 22 **and** Lv 12. The lock card shows both checks with progress, e.g. "ห้อง 18/22 · Lv 12 ✓".
 3. Re-check prices with 2 weeks of stats before launch?
 4. ~~House 37,500 or ~50,000?~~ Decided 9 Nov: 50,000 (10k/10k/15k/10k/5k).

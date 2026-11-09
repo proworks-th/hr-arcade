@@ -49,6 +49,8 @@ export function watchOnline(cb){
 
 /* ---------- village (village.js): lots = rooms/_vil/lots/{id} {k,n,who,stage,end,g,h} ---------- */
 export function watchLots(cb){return FIREBASE_CONFIG?onValue(ref(db(),'rooms/_vil/lots'),s=>cb(s.val()||{})):()=>{}}
+// reserve / build / help all go through a transaction on the one lot, so two people can never take the same lot
+export function txLot(id,fn){return FIREBASE_CONFIG?runTransaction(ref(db(),`rooms/_vil/lots/${id|0}`),fn):Promise.resolve({committed:false})}
 
 /* ---------- activity feed ---------- */
 export function pushFeed(m,n='',a=''){if(FIREBASE_CONFIG)push(ref(db(),'rooms/_hub/feed'),{m:String(m).slice(0,120),n,a,t:serverTimestamp()})}
