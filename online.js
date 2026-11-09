@@ -308,6 +308,12 @@ export async function wkAnnounce(w){
   const r=await runTransaction(ref(db(),`rooms/_wk/${w}/_a`),cur=>cur?undefined:1);
   return r.committed;
 }
+// true for exactly one caller ever (per path) — one-time announcements such as a launch post
+export async function onceFlag(path){
+  if(!FIREBASE_CONFIG)return false;
+  const r=await runTransaction(ref(db(),path),cur=>cur?undefined:Date.now());
+  return r.committed;
+}
 export function watchOffice(cb){return FIREBASE_CONFIG?onValue(ref(db(),'rooms/_office/pts'),s=>cb(+s.val()||0)):()=>{}}
 export async function officeBoard(){
   if(!FIREBASE_CONFIG)return[];

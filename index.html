@@ -636,7 +636,7 @@ $('#muteBtn').onclick=()=>{muted=!muted;store.set('muted',muted);renderMute()};
 
 /* ---------- online services (online.js, Firebase): ranking, presence, feed ---------- */
 let onlineMod=null;
-const loadRank=()=>onlineMod||(onlineMod=import('./online.js?v=26'));
+const loadRank=()=>onlineMod||(onlineMod=import('./online.js?v=27'));
 const loadOnline=loadRank;
 const PIX_AVAS=['p_office','p_woffice','p_whealth','p_tech','p_cat','p_dog'];
 const myAva=()=>{const a=store.get('partyAva','p_office');return PIX_AVAS.includes(a)?a:'p_office'};
@@ -795,6 +795,8 @@ let partyAutoJoin=false,liveStarted=false;
 function startLive(){
   if(liveStarted)return;liveStarted=true;
   loadOnline().then(O=>{O.watchOnline(l=>{onlineList=l;renderOnline()});O.watchFeed(l=>{feedList=l;renderFeed()});O.pruneFeed().catch(()=>{});
+    // village launch post: the first visitor on this build posts it, once for everyone (rooms/_vil/_launch)
+    if(Village.on()&&O.onceFlag)O.onceFlag('rooms/_vil/_launch').then(ok=>ok&&O.pushFeed('🏘️ หมู่บ้านพนักงานเปิดแล้ว! กดแท็บ 🏘️ หมู่บ้าน เก็บอิฐจากมินิเกม แล้วมาสร้างบ้านเป็นเพื่อนบ้านกัน')).catch(()=>{});
     setInterval(renderFeed,60000)}).catch(()=>{onlineList=[];feedList=[];renderOnline();renderFeed()});
 }
 const esc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -1512,7 +1514,7 @@ function renderHub(){
     <section class="crew"><h3>เพื่อนร่วมออฟฟิศ <button class="linkbtn" id="crewMore">ดูห้องเพื่อน</button></h3><div class="crew-list" data-k="crew"></div></section>
     <section class="awards"><h3>🏆 รางวัลออฟฟิศ <small>ประกาศผลทุกวันจันทร์</small><button class="linkbtn" id="awShare" type="button" hidden>📋 อวดในไลน์</button></h3><div class="aw-grid" data-k="aw"></div></section>
     <section class="feedbox"><h3>ความเคลื่อนไหว <button class="linkbtn" id="feedMore">${feedOpen?'ย่อ':'ดูทั้งหมด'}</button></h3><ul class="feed" data-k="feed"></ul></section>
-    <p class="credits">🎨 <a href="https://limezu.itch.io/moderninteriors" target="_blank" rel="noopener">LimeZu Modern Interiors</a> (ฟรี ไม่แสวงหากำไร) · เสียงและ 3D: <a href="https://kenney.nl" target="_blank" rel="noopener">Kenney</a> (CC0) · <a href="https://2dpig.itch.io/pixel-office" target="_blank" rel="noopener">2dPig</a> (CC0)</p>`;
+    <p class="credits">🎨 <a href="https://limezu.itch.io/moderninteriors" target="_blank" rel="noopener">LimeZu Modern Interiors</a> (ฟรี ไม่แสวงหากำไร) · เสียง 3D และหมู่บ้าน: <a href="https://kenney.nl" target="_blank" rel="noopener">Kenney</a> (CC0, Tiny Town / Tiny Farm) · <a href="https://2dpig.itch.io/pixel-office" target="_blank" rel="noopener">2dPig</a> (CC0)</p>`;
   const ni=$('#nameIn');ni.value=store.get('name','');let nt=0;ni.oninput=()=>{store.set('name',ni.value);clearTimeout(nt);nt=setTimeout(()=>{presence();Prog.sync()},800)};
   $('#avaBtn').onclick=()=>Wardrobe.open();
   drawAva($('#avaCv'));
