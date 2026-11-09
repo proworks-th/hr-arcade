@@ -5,7 +5,9 @@
 'use strict';
 
 /* ---------- economy ---------- */
-// score that pays one coin, per game (a decent run ≈ 20–30 coins)
+// mini games pay ×2 since 9 Nov 2026: a round averaged ~39 🪙 (games were ~10% of income, canteen ~83%)
+const GAME_PAY = 2;
+// score that pays one base coin, per game (a decent run ≈ 20–30 base coins, ×GAME_PAY)
 const PROG_NORM = { spot: 60, run: 20, whack: 16, stack: .8, tetris: 80, stamp: 24, barista: 24, toss: 24, slack: 16, conga: 12, prism: 12 };
 // a new title every 2–3 levels; each title level also unlocks an accessory (ACC in wardrobe.js)
 const TITLES = [[1, 'เด็กฝึกงาน'], [2, 'พนักงานทดลองงาน'], [4, 'พนักงานใหม่'], [6, 'พนักงานขยัน'], [8, 'มือโปรประจำแผนก'], [10, 'พนักงานดีเด่น'], [12, 'รุ่นพี่ใจดี'],
@@ -37,7 +39,8 @@ const Prog = {
     }
     return { coins, xp, ups, before, after: { lv: p.lv, xp: p.xp } };
   },
-  award(game, score, mult = 1) { const c = Math.max(2, Math.min(60, Math.round(score / (PROG_NORM[game] || 20)))); return Prog.give(c * mult, c * 3 + 10, game); },
+  // GAME_PAY scales coins only (XP stays on the base so levelling speed doesn't change)
+  award(game, score, mult = 1) { const c = Math.max(2, Math.min(60, Math.round(score / (PROG_NORM[game] || 20)))); return Prog.give(c * GAME_PAY * mult, c * 3 + 10, game); },
   // every coin earned also counts for the whole office (shared office level → the hub room gets new furniture)
   office(n) {
     const nm = myName(), lvOf = typeof HubRoom !== 'undefined' ? HubRoom.officeLv : null;
