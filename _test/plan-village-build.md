@@ -1,0 +1,78 @@
+# Build plan: Village v2.0 into the real game
+
+9 Nov 2026 · design = `_test/gdd-village.md` (draft 2.2) · look and feel = `_test/village-proto.html`
+Life skills (GDD §12) are a future update, not part of this plan.
+
+## 0. Ground rules
+- **Hidden until release.** The village tab only shows with `?village=1` (remembered in `store`) or `?test=1`. Real players see nothing until we switch the flag off in the release step.
+- **Nothing old breaks.** Players who never open the village keep their condo, rooftop farm, coins and save exactly as today.
+- **Tests never touch real Firebase**: every new screen runs under `?test=1` with `verify/mocks/`.
+- **Each step lands on its own commit** with `python verify/run.py` passing, so any step can be reverted alone.
+
+## 1. How the real game works today (what the village plugs into)
+| Thing | Where | Notes for the village |
+|---|---|---|
+| Player save | `store('prog')` in localStorage → `Cloud` copies all `hra_*` keys to `rooms/_usave/{uid}` | Village state goes inside `prog` (`prog.vil`), so cloud save and "newest copy wins" cover it for free |
+| Coins, XP, level | `Prog.give / Prog.award` (office.js) | Every price is paid with `Prog.give(-n, 0, 'house')` style calls so `Stats.econ` counts it (`out_house`, `out_pet`, …) |
+| Game rewards | `Prog.award(game, score)` | Bricks hook in here (1–3 per round, cap 12/day) |
+| Room size | `ROOM_SIZES` 12/15/18/22, `roomW(p.room)` | Unlock = `roomW == 22 && lv >= 12` |
+| Farm | `farm.js`, state `prog.farm`, public copy `rooms/_farm/{key}`, friends' water `rooms/_farmw` | **Hard cap of 10 plots** in `saveFarm`, `Farm.n`, the balcony view (farm.js 99/106/176, online.js 173) → must allow 14/18/24 |
+| Public profile | `rooms/_prof/{key}` (`saveProfile`) | Add `vh` (house stage) so the tower and village can show it |
+| Live players | `rooms/_hub/on/{sid}` with `g` = view (`setPresence`, `watchOnline`) | Village uses `g:'village'` + target cell `x,y` + ride `r` (same idea as the prototype) |
+| Home views | `Tower.setView('room' / 'tower')`, buttons `[data-view]` in index.html | Add a third view `'village'` |
+| Server clock | `watchOffset` (`.info/serverTimeOffset`) | Build timers use server time, not the PC clock |
+| DB rules | `rooms/$room` open (name ≤ 16 chars), `_usave` private | New room `rooms/_vil` fits without a rules change |
+
+## 2. Data
+**Private (inside `prog.vil`, cloud-saved):**
+`{ lot, stage, end, bricks, brickDay, brickN, garden: 14|18|24, house: 1|2|3, pet: {coat, n, full, prem}, rides: {...}, ride }`
+
+**Public (`rooms/_vil`):**
+- `lots/{id}` = `{k, n, who, stage, end, g, h, t}` — claimed with a **transaction** so two people can never take the same lot
+- `help/{id}/{day}/{helperKey}` = 1 — max 5 a day per house, one per helper; the owner's client applies −2 h each
+- `jobs/{day}` = the 3 delivery jobs (made by the first client of the day, transaction)
+- Garden: keep `rooms/_farm/{key}` and `rooms/_farmw` (same paths = friend watering keeps working), only lift the 10-plot cap
+
+**Lots:** start with 2 clusters × 6 = 12 lots; a new cluster opens when 80% are taken (no empty ghost town, no waiting list).
+
+## 3. Steps (each one = a commit, verify passes, can ship hidden)
+| # | Step | What changes | Done when |
+|---|---|---|---|
+| 1 | **Groundwork** | `village.js` (classic script like tower.js), Kenney tilemaps → `assets/village/` + licence, `?village=1` flag, third tab "🏘️ หมู่บ้าน", verify screen `village` | Empty village map renders on desktop/phone, all old screens still pass |
+| 2 | **Village map + live players** | Map, roads, tower, board from the prototype; houses from `rooms/_vil/lots`; presence `g:'village'`; name tags (🟢 live, tap = house) | Two test tabs see each other walk |
+| 3 | **Bricks from games** | `Prog.award` adds 1–3 🧱 (cap 12/day) to `prog.vil.bricks`; shown in the game result + village bar | Verify: a game round gives bricks, cap holds. Can go live early (bricks collect before launch) |
+| 4 | **Unlock + reserve + build** | Lock card ("ห้อง 18/22 · Lv 12 ✓"), reserve via transaction, stages 2–4 with server-time timers, help build, rush 30/h, move-in party → feed message | Full build path works in test mode with fast timers (`?vilFast=1` = minutes instead of hours) |
+| 5 | **Farm moves in** | `Farm.n` = garden size after move-in; cap 10 → 24 in farm.js + online.js; rooftop farm closes at move-in; crops/basket/book/sprinkler carry over; garden 18/24 upgrades; tower balcony shows "ย้ายไปบ้านแล้ว" | Move-in keeps every crop and timer; friends can still water |
+| 6 | **Pets** | Buy a cat (price open, GDD says 6,000–10,000), food 150/400, coat dye 300, rename; Elthen sheet → `assets/pixel` (already there) | Pet follows, sleeps when hungry, never dies |
+| 7 | **Walking extras** | Board deliveries (canteen +30%), road pickups (daily seed from the date, same for everyone) | Jobs are the same for everyone that day |
+| 8 | **Release** | Flag off, "มีอะไรใหม่" popup once, feed message, `Stats.econ` keys `out_house/out_pet/out_dye/in_delivery/in_pickup`, CREDITS updated | Owner plays it on the live site first with `?village=1`, then everyone |
+
+**Later (v2.1):** bike/scooter, plaza party, gift boxes, house Lv 2/3, dogs (to be drawn), seasonal decor.
+
+## 4. Risks and how we handle them
+| Risk | Plan |
+|---|---|
+| Two players reserve the same lot | Firebase transaction on `lots/{id}`; the loser gets "มีคนจองแล้ว" and keeps their coins |
+| PC clock changed to skip build time | Timers use `serverTimeOffset` |
+| Losing coins on a failed write | Take coins only after the transaction succeeds |
+| Farm migration loses crops | Move-in copies `prog.farm` as is (only the plot count changes); test with a save that has growing, ripe and mutated crops |
+| Old browsers (not reloaded) still cap farms at 10 | They only show the first 10 plots of a house garden; harmless; Pages refreshes within ~10 min |
+| Coins are trusted on the client (like today) | Same as the rest of the game; stats watch for odd jumps |
+| Phone performance | Draw the static map once to an offscreen canvas (prototype already does) |
+
+## 5. Still open (decide before the step that needs it)
+1. Speed-up price: 30/h makes the whole build ≈ 2,900 → probably raise (step 4).
+2. Light players (Lv 10–13) can't afford a house → smaller first home or catch-up income? (before release)
+3. Pet price: 6,000–10,000 or a free first pet? (step 6)
+4. Mini games now pay ×2 since 9 Nov: re-check the economy once more after ~2 weeks of stats (before release).
+
+## 6. Test checklist (each step adds its own lines to `verify/run.py`)
+- [ ] All existing screens pass on desktop / phone / tablet.
+- [ ] Village hidden without `?village=1` / `?test=1`.
+- [ ] Locked player sees what's missing (room size, level).
+- [ ] Reserve → build → help → move-in with fast timers; coins and bricks go down by the right amounts.
+- [ ] Two tabs: both try to reserve one lot → only one wins, the other keeps coins.
+- [ ] Move-in with growing / ripe / mutated crops → all still there; friend watering still cuts time.
+- [ ] Cloud save on another device shows the same house stage.
+- [ ] Pet hungry → sleeps at home; fed → follows; dye and rename stick after reload.
+- [ ] Nothing reaches the real Firebase in tests.

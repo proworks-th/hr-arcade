@@ -5,6 +5,7 @@ Add new files with `git add -f _test/<file>`; never `git add -A`.
 
 ## Village (หมู่บ้านพนักงาน)
 - `gdd-village.md` - design doc, draft 2.2: real economy stats, house 50,000, pets, consumables, deliveries, clusters
+- `plan-village-build.md` - build plan for the real game: 8 hidden steps, data, risks, open decisions, test checklist (waiting for owner OK)
 - `village-proto.html` - playable prototype (Kenney Tiny Town + Tiny Farm, LimeZu characters, Elthen cat, live players with ?test=1)
 - `wireframe-village.html` - early gray wireframe
 - `village-room.png` - house interior rendered by the real `drawRoom`
