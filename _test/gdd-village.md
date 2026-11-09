@@ -118,8 +118,27 @@ Target: consumables absorb ~300–600 🪙/day for active players, which brings 
 Starter condos for new players; lobby = party room + missions + notice board; 🎮 game room = the only brick source; 🍱 canteen = sell crops ×1.2; freed condo units become shared corners; rooftop = farm plots of players still in a condo (closed for each player at move-in); the crane keeps building shared floors (office-wide goal).
 
 ## 11. Open questions
-1. Games give bricks — OK? (or also farm rewards)
-2. Unlock at room 22 or Lv 12?
+1. ~~Games give bricks?~~ Decided 9 Nov: yes, bricks come from games only (1–3 per round, cap 12/day).
+2. ~~Unlock at room 22 or Lv 12?~~ Decided 9 Nov: needs **both** room size 22 **and** Lv 12. The lock card shows both checks with progress, e.g. "ห้อง 18/22 · Lv 12 ✓".
 3. Re-check prices with 2 weeks of stats before launch?
 4. ~~House 37,500 or ~50,000?~~ Decided 9 Nov: 50,000 (10k/10k/15k/10k/5k).
 5. Light players (Lv 10–13, ~250/day) can't reach a house: add a smaller first home or catch-up income?
+
+## 12. Future update: life skills (ความชำนาญ), after the village launch
+Owner idea, 9 Nov 2026. Not in v2.0.
+
+Rule: a skill rewards doing what you already do. It is never a wall: nothing in the game needs a skill level to use.
+
+| Skill | Grows from | Rewards per tier (5 tiers) |
+|---|---|---|
+| 🌱 Farming | harvesting garden plots | rare seed varieties, garden decorations, a little faster growth (cap +10%) |
+| 🍳 Cooking | cooking/selling at the canteen | recipes that combine crops into dishes (worth more than the raw crops, so they stretch your crops further rather than print coins) |
+| 🔨 Building | stages of your own house + helping coworkers build | help gives −2.5 h instead of −2 h, house decorations, titles |
+| 🐾 Pet care | feeding, petting, tricks | new tricks, accessories (hats, collars) |
+| 📦 Errands | deliveries, road pickups | an extra delivery job some days, pickup magnet range |
+
+- Titles shown on your name tag: "เชฟประจำซอย", "ช่างใจดี", "นักปลูกผักมือทอง". Social status is the main reward.
+- No coin multipliers above a few %. The economy already inflates (§2); skills should give choices and looks, not more coins.
+- A daily XP cap per skill keeps it fair for people who play 10 minutes a day.
+- Building XP from helping others makes cooperation the fastest path, which fits rule set §9.
+- Launch with 2–3 skills (Farming, Building, Pet care: their data exists after v2.0), add Cooking with recipes later.
