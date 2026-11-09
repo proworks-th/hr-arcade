@@ -279,7 +279,7 @@ const Village = (() => {
   function lock() { const p = Prog.get(), w = roomW(p.room || {}); return { w, lv: p.lv || 1, ok: w >= UNLOCK_W && (p.lv || 1) >= UNLOCK_LV }; }
   function renderBar() {
     if (!barEl) return; const L = lock(), ck = b => b ? '✓' : '', B = Prog.bricks(), mL = myLot();
-    barEl.innerHTML = `${mL ? '<button class="btn sm" type="button" data-a="home">📍 บ้านฉัน</button>' : ''}<button class="btn sm" type="button" data-a="pet">${(pt => pt ? `${catIcon(pt.coat)} ${escH(pt.n)}${petFed(pt) ? '' : ' 💤'}` : '🐾 สัตว์เลี้ยง')(myPet())}</button><span class="vil-brick" title="อิฐได้จากมินิเกม รอบละ 1–3 ก้อน วันละไม่เกิน ${B.cap} + อิฐบนถนนในหมู่บ้านวันละ ${FLOOR_N} ก้อน">🧱 ${fmtN(B.n)} <small>เกม ${B.today}/${B.cap} · ถนน ${bricksGot()}/${FLOOR_N}</small></span><button class="btn sm" type="button" data-a="board">📦 ส่งของ ${jobsDone().length}/${JOB_N}</button><span class="muted">${mL ? `⭐ บ้านคุณ แปลง ${mL.id} · ${STAGE_TH[mL.stage]}${building(mL) ? ` ${Math.round(pctOf(mL) * 100)}%` : ''}`
+    barEl.innerHTML = `${mL ? '<button class="btn sm" type="button" data-a="home">📍 บ้านฉัน</button>' : ''}<button class="btn sm" type="button" data-a="pet">${(pt => pt ? `${catIcon(pt.coat)} ${escH(pt.n)}${petFed(pt) ? '' : ' 💤'}` : '🐾 สัตว์เลี้ยง')(myPet())}</button><span class="vil-brick">🪙 ${fmtN(Prog.get().coins)}</span><span class="vil-brick" title="อิฐได้จากมินิเกม รอบละ 1–3 ก้อน วันละไม่เกิน ${B.cap} + อิฐบนถนนในหมู่บ้านวันละ ${FLOOR_N} ก้อน">🧱 ${fmtN(B.n)} <small>เกม ${B.today}/${B.cap} · ถนน ${bricksGot()}/${FLOOR_N}</small></span><button class="btn sm" type="button" data-a="board">📦 ส่งของ ${jobsDone().length}/${JOB_N}</button><span class="muted">${mL ? `⭐ บ้านคุณ แปลง ${mL.id} · ${STAGE_TH[mL.stage]}${building(mL) ? ` ${Math.round(pctOf(mL) * 100)}%` : ''}`
       : L.ok ? '✅ ครบเงื่อนไขแล้ว · แตะป้าย 🪧 เพื่อจองที่ดิน'
       : `🔒 สร้างบ้านได้เมื่อมีห้อง ${UNLOCK_W} + Lv ${UNLOCK_LV} · ตอนนี้ ห้อง ${L.w}/${UNLOCK_W} ${ck(L.w >= UNLOCK_W)} · Lv ${L.lv}/${UNLOCK_LV} ${ck(L.lv >= UNLOCK_LV)}`}</span>`;
   }
@@ -475,8 +475,8 @@ const Village = (() => {
   const S = () => Z * dpr, sx = wx => (wx - cam.x) * S(), sy = wy => (wy - cam.y) * S();
   function resize() {
     if (!cv) return; dpr = Math.min(2, window.devicePixelRatio || 1);
-    // full-screen map: as tall as the window under the sticky header, leaving room for the bar below it
-    if (!el.hidden) wrapEl.style.height = Math.max(320, innerHeight - (document.querySelector('.top')?.offsetHeight || 0) - barEl.offsetHeight - 28) + 'px';
+    // full-screen map: the page is locked in village view, so fill everything below the tabs and above the bar
+    if (!el.hidden) wrapEl.style.height = Math.max(280, innerHeight - (wrapEl.getBoundingClientRect().top + scrollY) - barEl.offsetHeight - 22) + 'px';
     const r = wrapEl.getBoundingClientRect(); if (!r.width) return;
     cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr); Z = r.width < 720 ? 1.5 : 2;
   }
