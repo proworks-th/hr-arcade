@@ -90,7 +90,7 @@ const Tower = (() => {
     if (typeof Farm !== 'undefined') { const f = Farm.get(), n = Farm.n(f), gx = BX + 130, gw = 330, gy = y + ROOF - 16 - Farm.BALCONY_H, rp = Farm.ready(f);
       ctx.fillStyle = '#7a5a3a'; ctx.fillRect(gx - 4, gy + 6, gw + 8, Farm.BALCONY_H - 6);
       Farm.drawBalcony(ctx, { n, plots: f.plots || [] }, gx, gy, gw, Date.now(), t);
-      regions.push({ x: gx - 4, y: gy - 20, w: gw + 8, h: Farm.BALCONY_H + 20, kind: 'garden', tip: `🌱 ฟาร์มดาดฟ้าของคุณ${rp ? ` · สุกแล้ว ${rp} ต้น` : ''} — กดเพื่อไปฟาร์ม` });
+      regions.push({ x: gx - 4, y: gy - 20, w: gw + 8, h: Farm.BALCONY_H + 20, kind: 'garden', tip: `${Farm.home && Farm.home() ? '🏡 ฟาร์มย้ายไปสวนข้างบ้านแล้ว' : '🌱 ฟาร์มดาดฟ้าของคุณ'}${rp ? ` · สุกแล้ว ${rp} ต้น` : ''} — กดเพื่อไปฟาร์ม` });
       signs.push({ x: gx + 60, y: y + ROOF - 8, w: gw - 120, cls: 'roof-s', act: 'garden', html: `🌱 ฟาร์มของฉัน${rp ? ` <em>🧺 สุก ${rp}</em>` : ''}` }); }
     // crane building the next shared floor
     const cx = BX + BW - 90, base = y + ROOF - 16, pc = Math.max(0, Math.min(1, (off.pts - off.from) / Math.max(1, off.to - off.from)));

@@ -175,7 +175,7 @@ export async function addOffice(n,name){
 const cleanPlot=x=>x&&x.c?{c:String(x.c).slice(0,6),t:+x.t||0,w:x.w?1:0}:0;
 export function saveFarm(name,f){
   if(!FIREBASE_CONFIG||!name)return;
-  return set(ref(db(),`rooms/_farm/${nameKey(name)}`),{nm:name.trim().slice(0,20),who:String(f.who||'adam').slice(0,10),n:Math.min(10,f.n|0),plots:Array.from({length:Math.min(10,f.n|0)},(_,i)=>cleanPlot((f.plots||[])[i])),t:serverTimestamp()});
+  return set(ref(db(),`rooms/_farm/${nameKey(name)}`),{nm:name.trim().slice(0,20),who:String(f.who||'adam').slice(0,10),n:Math.min(24,f.n|0),plots:Array.from({length:Math.min(24,f.n|0)},(_,i)=>cleanPlot((f.plots||[])[i])),t:serverTimestamp()});
 }
 export async function listFarms(){
   if(!FIREBASE_CONFIG)return[];

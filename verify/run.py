@@ -213,7 +213,8 @@ def village(page, base, shot):
       const D = Village._dbg, M = await import('/verify/mocks/firebase-database.js'), w = ms => new Promise(r => setTimeout(r, ms));
       const L = id => D.LOTS.find(l => l.id === id), until = async f => { for (let i = 0; i < 100 && !f(); i++) await w(100); return f(); };
       D.fast = 100; await M.set(M.ref(null, 'rooms/_vil/lots/4'), null);
-      const p = Prog.get(); p.lv = 12; p.room = { ...(p.room || {}), w: 22 }; p.coins = 70000; p.vil.bricks = 70; p.farm = { ...(p.farm || {}), bag: { tom: 40 } }; Prog.put(p);
+      const p = Prog.get(); p.lv = 12; p.room = { ...(p.room || {}), w: 22 }; p.coins = 70000; p.vil.bricks = 70; p.farm = { ...(p.farm || {}), bag: { tom: 40 }, plots: Array.from({ length: 10 }, (_, i) => ({ c: i % 2 ? 'tom' : 'bok', t: Date.now() - i * 60e3, w: i % 3 ? 1 : 0 })) }; Prog.put(p);
+      const before = JSON.stringify(Prog.get().farm.plots), nBefore = Farm.n();
       const out = {};
       // someone else took lot 6 a moment ago but this tab still shows it empty: the transaction must refuse
       await M.set(M.ref(null, 'rooms/_vil/lots/6'), { k: 'คนอื่น', n: 'คนอื่น', stage: 1 }); Object.assign(L(6), { stage: 0, k: '' });
@@ -224,19 +225,42 @@ def village(page, base, shot):
         out.stages.push(L(3).stage); if (s === 1) { out.card = !!document.querySelector('.vil-card:not([hidden]) .vil-pb'); }
         await until(() => !(L(3).end > Date.now())); }
       const q = Prog.get(); out.after = [q.coins, q.vil.bricks, q.farm.bag.tom || 0, L(3).g];
+      out.move = [nBefore, Farm.n(), Farm.home(), JSON.stringify(q.farm.plots) === before];
       // help: not on my own house; once a day on a coworker's house that is building
       const end = Date.now() + 60000; await M.set(M.ref(null, 'rooms/_vil/lots/7'), { k: 'นก', n: 'นก', stage: 4, end }); await until(() => L(7).end === end);
       const c0 = Prog.get().coins; await D.help(L(7)); await until(() => L(7).end < end);
       out.help = [end - L(7).end, Prog.get().coins - c0, Object.keys((L(7).hp || {}).by || {}).length];
       await D.help(L(7)); out.help2 = Prog.get().coins - c0;
       D.fast = false; D.act(L(7)); return out; }''')
-    want = {'race': [70000, 'คนอื่น'], 'res': [3, 60000, 3], 'stages': [2, 3, 4, 5], 'after': [20000, 10, 10, 14], 'help': [200, 5, 1], 'help2': 5}
+    want = {'race': [70000, 'คนอื่น'], 'res': [3, 60000, 3], 'stages': [2, 3, 4, 5], 'after': [20000, 10, 10, 14], 'move': [10, 14, 14, True], 'help': [200, 5, 1], 'help2': 5}
     if any(r.get(k) != v for k, v in want.items()) or not r.get('card'):
         raise AssertionError('build path wrong: ' + json.dumps(r, ensure_ascii=False))
     page.wait_for_timeout(1500)
     shot('village-card')
     if canvas_blank(page, '.vil-wrap canvas'):
         raise AssertionError('village canvas is blank')
+    # step 5: the farm moved in. Tower balcony shows the sign, the farm screen has 14 plots, buying 18 updates the lot
+    page.evaluate("document.querySelector('.vil-card [data-a=close]').click()")
+    page.click('[data-view=tower]')
+    page.evaluate('scrollTo(0, 0)')
+    page.wait_for_timeout(800)
+    shot('village-tower')
+    page.evaluate("startGame('farm')")
+    page.wait_for_selector('.farm [data-a=garden]', timeout=3000)
+    page.wait_for_timeout(600)
+    shot('village-farm14')
+    page.click('.farm [data-a=garden]')
+    g = page.evaluate('''async () => { const M = await import('/verify/mocks/firebase-database.js'); await new Promise(r => setTimeout(r, 400));
+      return [Farm.n(), Prog.get().coins, (await M.get(M.ref(null, 'rooms/_vil/lots/3'))).val().g, (await M.get(M.ref(null, 'rooms/_farm/' + Village._dbg.myLot().k))).val()] }''')
+    if g[0] != 18 or g[1] != 10005 or g[2] != 18:  # 20,000 left after the house + 5 from helping − 10,000
+        raise AssertionError('garden upgrade wrong: ' + json.dumps(g[:3]))
+    page.wait_for_timeout(1200)
+    fr = page.evaluate('''async () => { const M = await import('/verify/mocks/firebase-database.js'); const v = (await M.get(M.ref(null, 'rooms/_farm/' + Village._dbg.myLot().k))).val(); return v && [v.n, v.plots.length, v.plots.filter(Boolean).length] }''')
+    if fr != [18, 18, 10]:
+        raise AssertionError('public farm copy wrong: ' + json.dumps(fr))
+    shot('village-farm18')
+    if canvas_blank(page, '.farm canvas'):
+        raise AssertionError('farm canvas is blank')
 
 
 SCREENS = {'office': office, 'farm': farm, 'hub': hub, 'tower': tower, 'village': village, 'spot': solo('spot'), 'run': solo('run'), 'whack': solo('whack'), 'stack': solo('stack', 600),

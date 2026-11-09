@@ -585,9 +585,9 @@ button.pk:hover{transform:translateY(-2px)}div.pk{cursor:default}.pk b{font-size
 <script src="wardrobe.js?v=9"></script>
 <script src="gacha.js?v=4"></script>
 <script src="hubroom.js?v=9"></script>
-<script src="tower.js?v=7"></script>
-<script src="village.js?v=4"></script>
-<script src="farm.js?v=8"></script>
+<script src="tower.js?v=8"></script>
+<script src="village.js?v=5"></script>
+<script src="farm.js?v=9"></script>
 <script src="cloud.js?v=10"></script>
 <script src="news.js?v=1"></script>
 <script>
@@ -636,7 +636,7 @@ $('#muteBtn').onclick=()=>{muted=!muted;store.set('muted',muted);renderMute()};
 
 /* ---------- online services (online.js, Firebase): ranking, presence, feed ---------- */
 let onlineMod=null;
-const loadRank=()=>onlineMod||(onlineMod=import('./online.js?v=25'));
+const loadRank=()=>onlineMod||(onlineMod=import('./online.js?v=26'));
 const loadOnline=loadRank;
 const PIX_AVAS=['p_office','p_woffice','p_whealth','p_tech','p_cat','p_dog'];
 const myAva=()=>{const a=store.get('partyAva','p_office');return PIX_AVAS.includes(a)?a:'p_office'};

@@ -96,7 +96,14 @@ const Farm = {
   BALCONY_H: 24,
   plotsFor,
   get() { const p = Prog.get(); return p.farm || { plots: [], book: {}, fw: {}, bag: {} }; },
-  n(f = Farm.get(), p = Prog.get()) { return Math.max(plotsFor(roomW(p.room)), Math.min(10, f.n || 0)); },
+  // village v2.0 step 5: after the move-in party the farm is the house garden (14, then 18/24 plots); same plots array,
+  // so crops, timers, friends' water (rooms/_farmw/{me}/{i}), basket, book and sprinkler all carry over as they are
+  GARDEN_UP: [[18, 10000, 0], [24, 20000, 40]],                   // [plots, coins, bricks] (GDD §5)
+  home(p = Prog.get()) { return p.vil && p.vil.g ? Math.min(24, p.vil.g | 0) : 0; },   // garden size, 0 = still on the rooftop
+  n(f = Farm.get(), p = Prog.get()) { return Farm.home(p) || Math.max(plotsFor(roomW(p.room)), Math.min(10, f.n || 0)); },
+  // the sprite for one plot (the village draws real crops in the house gardens)
+  plotImg(pl, now = Date.now()) { if (!pl || !CROPS[pl.c]) return null; const g = growMs(pl), e = now - pl.t, st = e >= g ? 3 : e < g * .15 ? 0 : e < g * .5 ? 1 : 2;
+    return st === 3 ? cropImg(pl.c, MUT_AT(pl)) : pxa(['crop_seed', 'crop_sprout', 'crop_grow'][st]); },
   // how many of my crops are ripe right now (fw = friends' water counts last seen)
   ready(f = Farm.get(), now = Date.now()) { return f.plots.filter((pl, i) => pl && CROPS[pl.c] && now >= ripeAt(pl, (f.fw || {})[i] || 0)).length; },
   weatherNow: () => wxWindow(Date.now()),
@@ -105,6 +112,11 @@ const Farm = {
   drawBalcony(ctx, row, x, y, w, now = Date.now(), t = 0) {
     const n = row ? Math.min(10, row.n || 4) : 4, plots = row ? row.plots || [] : [], H = Farm.BALCONY_H;
     ctx.fillStyle = '#8a93a3'; ctx.fillRect(x, y + H - 6, w, 6); ctx.fillStyle = '#6b7385'; ctx.fillRect(x, y + H - 2, w, 2);
+    if (row && row.n > 10) {                                     // moved to a house in the village: the rooftop farm is closed
+      ctx.fillStyle = '#fff8e6'; ctx.strokeStyle = '#6b3e26'; ctx.lineWidth = 1.5; const sw = Math.min(w - 8, 150);
+      ctx.fillRect(x + w / 2 - sw / 2, y + H - 22, sw, 15); ctx.strokeRect(x + w / 2 - sw / 2, y + H - 22, sw, 15);
+      ctx.fillStyle = '#6b3e26'; ctx.font = '600 10px Kanit, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('🏡 ย้ายไปบ้านในหมู่บ้านแล้ว', x + w / 2, y + H - 14, sw - 6); return; }
     const step = w / n;
     for (let i = 0; i < n; i++) {
       const cx = Math.round(x + step * (i + .5)), pl = plots[i] && CROPS[plots[i].c] ? plots[i] : null;
@@ -168,12 +180,18 @@ function farmMount(root, api) {
   const me = { x: 320, tx: 320, dir: 'down', who: p.who || 'adam', act: 0 };
   const wk = () => { const d = new Date(Date.now() + 7 * 3600e3), mon = new Date(d.getTime() - ((d.getUTCDay() + 6) % 7) * 864e5); return `${mon.getUTCFullYear()}${String(mon.getUTCMonth() + 1).padStart(2, '0')}${String(mon.getUTCDate()).padStart(2, '0')}`; };
 
-  /* ---------- layout: 2 raised beds of up to 5 plots ---------- */
-  const PW = 104, PH = 64, GAPX = 8, X0 = (W - (PW * 5 + GAPX * 4)) / 2, ROWY = [196, 306], AISLE = 228;
-  const plotRect = i => ({ x: X0 + (i % 5) * (PW + GAPX), y: ROWY[Math.floor(i / 5)] - PH, w: PW, h: PH });
+  /* ---------- layout: rooftop = 2 beds of up to 5 plots; house garden = rows of 8 (2 rows up to 16, 3 rows up to 24) ---------- */
   const plots = () => visit ? visit.plots : f.plots;
   const nMine = () => Farm.n(f, Prog.get());
-  const nPlots = () => visit ? Math.min(10, visit.n || 4) : nMine();
+  const nPlots = () => visit ? Math.min(24, visit.n || 4) : nMine();
+  function layout() {
+    const n = nPlots() + (!visit && nextUp() ? 1 : 0);
+    if (n <= 10) return { cols: 5, PW: 104, PH: 64, G: 8, X0: (W - (104 * 5 + 8 * 4)) / 2, ROWY: [196, 306], AISLE: 228 };
+    const b = { cols: 8, PW: 64, G: 6, X0: (W - 40 - (64 * 8 + 6 * 7)) / 2 };
+    return n <= 16 ? { ...b, PH: 60, ROWY: [196, 306], AISLE: 228 } : { ...b, PH: 46, ROWY: [196, 270, 344], AISLE: 204 };
+  }
+  let LY = null;                                  // set every frame (layout() needs nextUp, defined below)
+  const plotRect = i => (LY = LY || layout(), { x: LY.X0 + (i % LY.cols) * (LY.PW + LY.G), y: LY.ROWY[Math.floor(i / LY.cols)] - LY.PH, w: LY.PW, h: LY.PH });
   const fwOf = i => visit ? Object.keys((visit.w || {})[i] || {}).filter(k => visit.w[i][k].s === (visit.plots[i] || {}).t).length : fwMine(i);
   const fwMine = i => { const pl = f.plots[i]; if (!pl) return 0; return Object.values(myWaters[i] || {}).filter(v => v.s === pl.t).length; };
   const stage = (pl, fw, now) => { const g = growMs(pl, fw), e = now - pl.t; return e >= g ? 3 : e < g * .15 ? 0 : e < g * .5 ? 1 : 2; };
@@ -181,6 +199,9 @@ function farmMount(root, api) {
   const bagValue = () => Object.entries(f.bag).reduce((a, [k, n]) => a + bagPrice(k) * n, 0);
   // the next room size up and how many plots it brings
   const nextRoom = () => ROOM_SIZES.find(z => z[0] > roomW(Prog.get().room));
+  // the next way to get more plots: a bigger room (rooftop) or a bigger house garden (after move-in)
+  const nextGarden = () => Farm.home() ? Farm.GARDEN_UP.find(u => u[0] > Farm.home()) : null;
+  const nextUp = () => Farm.home() ? nextGarden() : nextRoom();
 
   /* ---------- saving: local progress + the public copy friends read ---------- */
   function save() { const pp = Prog.get(); pp.farm = f; Prog.put(pp); p = pp; publish(); }
@@ -250,7 +271,7 @@ function farmMount(root, api) {
     if (!quiet) { walkTo(i); api.sfx(m ? 'level' : 'good'); }
     pop(i, m ? `${WEATHER[weatherAt(ripeAt(pl, fwMine(i)))][1]} ${bagName(key)}!` : `+1 ${c[0]}`, m ? PAL.orange : PAL.ink);
     const r = plotRect(i); fx.burst(r.x + r.w / 2, r.y + 24, { n: m ? 30 : 12, colors: m ? CONFETTI : ['#21c07a', '#ffd23f', '#fff'] });
-    if (m && m !== 'w' && nm) loadOnline().then(O => O.pushFeed(`${m === 'r' ? '🌈' : '✨'} ${nm} ได้${bagName(key)}จากฟาร์มดาดฟ้า!`, nm, myAva())).catch(() => {});
+    if (m && m !== 'w' && nm) loadOnline().then(O => O.pushFeed(`${m === 'r' ? '🌈' : '✨'} ${nm} ได้${bagName(key)}จาก${Farm.home() ? 'สวนข้างบ้าน' : 'ฟาร์มดาดฟ้า'}!`, nm, myAva())).catch(() => {});
     return key;
   }
   function harvestAll() { fresh(); const now = Date.now(); let n = 0;
@@ -269,7 +290,15 @@ function farmMount(root, api) {
     if (p.lv < lv) { toast(`ปลดล็อกสปริงเกอร์ที่ Lv ${lv}`); return; }
     if (p.coins < price) { toast(`เหรียญไม่พอ ขาดอีก 🪙 ${fmt(price - p.coins)}`); return; }
     p.coins -= price; store.set('prog', p); typeof Stats !== 'undefined' && Stats.econ('out_sprinkler', price); f.spr = 1; api.sfx('level'); toast('💧 ติดสปริงเกอร์แล้ว ผักที่ปลูกใหม่ได้น้ำเองทุกต้น'); save(); render(); }
-  function growRoom() { window.officeTab = 'style'; startGame('office'); window.officeTab = null; }
+  function growRoom() { if (Farm.home()) { tab = 'seed'; list(); return; } window.officeTab = 'style'; startGame('office'); window.officeTab = null; }
+  function growGarden() {
+    const up = nextGarden(); if (!up) return; const pp = Prog.get(), v = pp.vil || {};
+    if (pp.coins < up[1] || (v.bricks | 0) < up[2]) { toast(`ขยายสวนเป็น ${up[0]} แปลง ใช้ 🪙 ${fmt(up[1])}${up[2] ? ` + 🧱 ${up[2]}` : ''} · ยังไม่พอ`); return; }
+    pp.coins -= up[1]; v.bricks = (v.bricks | 0) - up[2]; v.g = up[0]; pp.vil = v; pp.farm = f; Prog.put(pp); p = pp;
+    if (typeof Stats !== 'undefined') { Stats.econ('out_garden', up[1]); if (up[2]) Stats.econ('brick_use', up[2]); }
+    if (typeof Village !== 'undefined' && Village.setGarden) Village.setGarden(up[0]);
+    api.sfx('good'); toast(`🌱 สวนข้างบ้าน ${up[0]} แปลงแล้ว!`); publish(); render();
+  }
 
   // canteen: deliver basket items toward this week's shared order (pays a bit more than selling)
   // rounds of each order I helped fill and have not been paid for yet → [[slot, round]]
@@ -333,7 +362,7 @@ function farmMount(root, api) {
   function render() { hud(); tools(); list(); }
   function hud() {
     p = Prog.get();
-    q('title').innerHTML = visit ? `สวนของ <b>${esc(visit.nm)}</b>` : `<b>🌱 ฟาร์มดาดฟ้า</b>`;
+    q('title').innerHTML = visit ? `สวนของ <b>${esc(visit.nm)}</b>` : Farm.home() ? `<b>🏡 สวนข้างบ้าน</b>` : `<b>🌱 ฟาร์มดาดฟ้า</b>`;
     q('coins').textContent = fmt(p.coins);
   }
   function wxHud(now) {
@@ -379,14 +408,17 @@ function farmMount(root, api) {
         <div class="shop-grid">${seedBtn(mySig)}</div>
         <h4 class="sz-h">อุปกรณ์</h4>
         <div class="farm-gear">
-          <div><b>🌱 แปลงผัก ${nMine()} แปลง</b><small class="muted">${nr ? `ขยายห้องเป็น ${nr[0]} ช่อง ได้ ${plotsFor(nr[0])} แปลง` : 'ห้องใหญ่สุดแล้ว ได้ครบ 10 แปลง'}</small></div>
-          ${nr ? '<button class="btn sm" data-a="room">📐 ขยายห้อง</button>' : ''}
+          ${Farm.home() ? (ng => `<div><b>🏡 สวนข้างบ้าน ${nMine()} แปลง</b><small class="muted">${ng ? `ขยายเป็น ${ng[0]} แปลง` : 'สวนใหญ่สุดแล้ว ครบ 24 แปลง'}</small></div>
+          ${ng ? `<button class="btn sm" data-a="garden">🪙 ${fmt(ng[1])}${ng[2] ? ` + 🧱 ${ng[2]}` : ''}</button>` : ''}`)(nextGarden())
+          : `<div><b>🌱 แปลงผัก ${nMine()} แปลง</b><small class="muted">${nr ? `ขยายห้องเป็น ${nr[0]} ช่อง ได้ ${plotsFor(nr[0])} แปลง` : 'ห้องใหญ่สุดแล้ว ได้ครบ 10 แปลง'}</small></div>
+          ${nr ? '<button class="btn sm" data-a="room">📐 ขยายห้อง</button>' : ''}`}
           <div><b>💧 สปริงเกอร์</b><small class="muted">${f.spr ? 'ติดแล้ว ผักที่ปลูกใหม่ได้น้ำเอง' : 'รดน้ำให้ทุกต้นที่ปลูกใหม่ ไม่ต้องกดเอง'}</small></div>
           ${f.spr ? '<span class="muted">✓</span>' : `<button class="btn sm" data-a="spr" ${p.lv < SPRINKLER[1] ? 'disabled' : ''}>${p.lv < SPRINKLER[1] ? `🔒 Lv ${SPRINKLER[1]}` : `🪙 ${SPRINKLER[0]}`}</button>`}
         </div>
         <button class="farm-card" data-t="book"><span>📖 <b>สมุดผัก</b> <small class="muted">${Object.keys(f.book).filter(id => CROPS[id]).length}/${Object.keys(CROPS).length} อย่าง</small></span><i>›</i></button>`;
       L.querySelectorAll('[data-seed]').forEach(b => b.onclick = () => { seed = b.dataset.seed; store.set('farmSeed', seed); api.sfx('tick'); tools(); list(); });
       const rb = L.querySelector('[data-a=room]'); if (rb) rb.onclick = growRoom;
+      const gb = L.querySelector('[data-a=garden]'); if (gb) gb.onclick = growGarden;
       const sb = L.querySelector('[data-a=spr]'); if (sb) sb.onclick = buySprinkler;
     } else if (tab === 'bag') {
       const keys = Object.keys(f.bag).filter(k => CROPS[k.split('.')[0]]).sort((a, b) => bagPrice(b) - bagPrice(a));
@@ -432,7 +464,7 @@ function farmMount(root, api) {
   }
 
   /* ---------- input ---------- */
-  function plotAt(e) { const { x, y } = at(e); for (let i = 0; i < 10; i++) { const r = plotRect(i); if (x >= r.x && x < r.x + r.w && y >= r.y - 40 && y < r.y + r.h) return i; } return -1; }
+  function plotAt(e) { const { x, y } = at(e); LY = LY || layout(); for (let i = 0; i < LY.cols * LY.ROWY.length; i++) { const r = plotRect(i); if (x >= r.x && x < r.x + r.w && y >= r.y - 40 && y < r.y + r.h) return i; } return -1; }
   cv.addEventListener('pointermove', e => { const P = at(e); hover = onBasket(P.x, P.y) ? 99 : plotAt(e); if (hover === 99) { cv.style.cursor = 'pointer'; return; } cv.style.cursor = hover >= 0 && (hover < nPlots() || (!visit && hover === nPlots())) ? 'pointer' : 'default'; });
   cv.addEventListener('pointerleave', () => { hover = -1; });
   cv.addEventListener('pointerdown', e => {
@@ -461,6 +493,18 @@ function farmMount(root, api) {
     if (wx === 'rainbow') { ['#ff5c8a', '#ff9f1c', '#ffd23f', '#21c07a', '#4cc3ff', '#8338ec'].forEach((c, i) => { ctx.strokeStyle = c; ctx.globalAlpha = .55; ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(W / 2, 150, 150 - i * 5, Math.PI, 0); ctx.stroke(); }); ctx.globalAlpha = 1; }
     ctx.imageSmoothingEnabled = false;
     for (const c of clouds) { const x = ((c[0] + t * 8 * c[2]) % (W + 80)) - 60; ctx.globalAlpha = wx === 'rain' ? 1 : .9; ctx.drawImage(pxa('cloud'), x, c[1], 60, 24); ctx.globalAlpha = 1; }
+    const yard = visit ? (visit.n | 0) > 10 : Farm.home() > 0;      // a house garden in the village, not the rooftop
+    if (yard) {
+      ctx.fillStyle = night ? '#2f5a3a' : wx === 'rain' ? '#6f9a74' : '#7cc46a';
+      for (let x = -10; x < W; x += 34) { ctx.beginPath(); ctx.arc(x + 17, 104, 22, Math.PI, 0); ctx.fill(); } ctx.fillRect(0, 100, W, 22);
+      ctx.fillStyle = '#c8955a'; ctx.fillRect(0, 106, W, 4); ctx.fillRect(0, 116, W, 4);
+      ctx.fillStyle = '#e3b57a'; for (let x = 6; x < W; x += 22) ctx.fillRect(x, 96, 8, 26);
+      ctx.fillStyle = wx === 'rain' ? '#9cc48a' : '#b5dc8f'; ctx.fillRect(0, 122, W, H - 122);
+      ctx.fillStyle = 'rgba(80,140,60,.25)'; for (let i = 0; i < 90; i++) ctx.fillRect((i * 131) % W, 126 + (i * 71) % (H - 130), 3, 5);
+      ctx.fillStyle = 'rgba(43,33,64,.15)'; ctx.fillRect(0, 122, W, 4);
+      if (!(LY && LY.ROWY.length > 2)) for (const [n, x] of [['plant_small', 70], ['crate', 180], ['plant_pot', 470], ['fruit_veg', 570]]) drawPixAt(ctx, n, x, H - 4, 2);
+      return;
+    }
     ctx.fillStyle = night ? '#3a4278' : wx === 'rain' ? '#9aa6b8' : '#b9d6ea';
     [[0, 70, 50], [46, 54, 40], [84, 80, 60], [150, 46, 44], [200, 66, 70], [276, 40, 36], [318, 74, 54], [380, 58, 62], [448, 82, 40], [494, 50, 56], [556, 70, 48], [600, 60, 40]].forEach(([x, hh, w]) => ctx.fillRect(x, 120 - hh, w, hh));
     ctx.fillStyle = '#c96f4a'; ctx.fillRect(0, 100, W, 22); ctx.fillStyle = '#a95a3a'; for (let y = 104; y < 122; y += 8) ctx.fillRect(0, y, W, 2);
@@ -479,13 +523,14 @@ function farmMount(root, api) {
     const r = plotRect(i), open = i < nPlots(), pl = open ? plots()[i] : null;
     if (!open) {
       if (visit || i !== nPlots()) return;
-      const nr = nextRoom();
+      const nr = nextUp(), small = r.w < 90;
       ctx.setLineDash([6, 5]); rrect(ctx, r.x + 4, r.y + 14, r.w - 8, r.h - 14, 8, hover === i ? 'rgba(255,255,255,.8)' : 'rgba(255,255,255,.5)', '#b0a48f'); ctx.setLineDash([]);
-      if (nr) { txt(ctx, `📐 ขยายห้อง`, r.x + r.w / 2, r.y + 34, 12, '#7a6f8c', 'center', 700); txt(ctx, `ได้ ${plotsFor(nr[0])} แปลง`, r.x + r.w / 2, r.y + 50, 11, '#7a6f8c'); }
+      if (nr) { txt(ctx, small ? (Farm.home() ? '🌱 ขยาย' : '📐 ขยาย') : Farm.home() ? '🌱 ขยายสวน' : '📐 ขยายห้อง', r.x + r.w / 2, r.y + r.h / 2 + 2, small ? 11 : 12, '#7a6f8c', 'center', 700);
+        txt(ctx, `${Farm.home() ? nr[0] : plotsFor(nr[0])} แปลง`, r.x + r.w / 2, r.y + r.h / 2 + 17, 11, '#7a6f8c'); }
       return;
     }
     rrect(ctx, r.x, r.y + 12, r.w, r.h - 12, 6, '#a5683f', '#6b3e26');
-    rrect(ctx, r.x + 6, r.y + 18, r.w - 12, r.h - 30, 4, pl && (pl.w || fwOf(i)) ? '#5a3a22' : '#7a5034');
+    rrect(ctx, r.x + 6, r.y + 18, r.w - 12, Math.max(10, r.h - 30), 4, pl && (pl.w || fwOf(i)) ? '#5a3a22' : '#7a5034');
     ctx.fillStyle = '#6b3e26'; ctx.fillRect(r.x + 4, r.y + r.h - 10, r.w - 8, 2);
     if (hover === i) rrect(ctx, r.x - 3, r.y + 9, r.w + 6, r.h - 6, 8, null, PAL.yel);
     if (!pl) { if (!visit && hover === i) { ctx.globalAlpha = .7; ctx.drawImage(pxa('crop_' + seed), r.x + r.w / 2 - 18, r.y + 2, 36, 32); ctx.globalAlpha = 1; } return; }
@@ -521,26 +566,27 @@ function farmMount(root, api) {
       if (!pl) s = visit ? 'แปลงว่าง' : `แตะเพื่อปลูก${CROPS[seed][0]} (${CROPS[seed][2]} 🪙)`;
       else { const fw = fwOf(hover), left = ripeAt(pl, fw) - now, by = visit ? null : Object.values(myWaters[hover] || {}).filter(v => v.s === pl.t).map(v => v.n), wxR = WEATHER[weatherAt(ripeAt(pl, fw))];
         s = `${CROPS[pl.c][0]} · ${left <= 0 ? (visit ? 'สุกแล้ว' : 'แตะเพื่อเก็บ') : `สุก ${hhmm(ripeAt(pl, fw))}${wxR[3] ? ` ตอน${wxR[0]} → ${MUT[wxR[3]][0]}` : ''}`}${(pl.w ? 1 : 0) + fw ? ` · 💧×${Math.min(WATER_MAX, (pl.w ? 1 : 0) + fw)}` : left > 0 && !visit ? ' · แตะเพื่อรดน้ำ' : ''}${by && by.length ? ` (${by.join(', ')} รดให้)` : ''}`; } }
-    else if (hover === nPlots() && !visit && nextRoom()) s = 'ขยายห้องในออฟฟิศของฉัน แปลงผักเพิ่มตาม';
+    else if (hover === nPlots() && !visit && nextUp()) s = Farm.home() ? 'ขยายสวนข้างบ้าน (ดูราคาที่แถบร้านค้า)' : 'ขยายห้องในออฟฟิศของฉัน แปลงผักเพิ่มตาม';
     else if (hover === 99) s = bagN() ? `ตะกร้า ${bagN()} ชิ้น · มูลค่า ${fmt(bagValue())} 🪙` : 'ตะกร้าว่าง';
     else if (visit) s = `แตะต้นที่ยังไม่สุก รดน้ำช่วย ${visit.nm} ให้โตเร็วขึ้น 15%`;
     return s;
   }
   function tip(s) {
-    ctx.font = '600 13px Kanit, sans-serif'; const w = ctx.measureText(s).width + 24, x = W / 2 - w / 2, y = H - 30;
+    ctx.font = '600 13px Kanit, sans-serif'; const w = ctx.measureText(s).width + 24, x = W / 2 - w / 2, y = LY && LY.ROWY.length > 2 ? 4 : H - 30;
     rrect(ctx, x, y, w, 24, 12, 'rgba(43,33,64,.86)'); txt(ctx, s, W / 2, y + 12, 13, '#fff');
   }
   let cdT = 0;
   const off = api.loop(dt => {
     t += dt; const d = fx.step(dt), now = Date.now(), wx = wxWindow(now).id;
     if (Math.abs(me.tx - me.x) > 1) { me.x += Math.sign(me.tx - me.x) * Math.min(160 * d, Math.abs(me.tx - me.x)); me.dir = me.tx > me.x ? 'right' : 'left'; } else me.dir = 'down';
-    fx.pre(ctx); scene(wx);
-    for (let i = 0; i < 5; i++) bed(i, now);
+    LY = layout(); fx.pre(ctx); scene(wx);
+    for (let i = 0; i < LY.cols; i++) bed(i, now);
     const moving = Math.abs(me.tx - me.x) > 1, anim = moving ? 'run' : 'idle_anim';
-    drawChar(ctx, me.who, anim, me.dir, t, me.x, AISLE + 14, 2);
-    if (!visit) { drawAcc(ctx, Wardrobe.eq('f'), me.who, anim, me.dir, t, me.x, AISLE + 14, 2); drawAcc(ctx, Wardrobe.eq('h'), me.who, anim, me.dir, t, me.x, AISLE + 14, 2); }
-    if (me.act > 0) { me.act -= dt; ctx.drawImage(pxa('can'), me.x + 10, AISLE - 40, 30, 24); }
-    for (let i = 5; i < 10; i++) bed(i, now);
+    const AY = LY.AISLE + 14;
+    drawChar(ctx, me.who, anim, me.dir, t, me.x, AY, 2);
+    if (!visit) { drawAcc(ctx, Wardrobe.eq('f'), me.who, anim, me.dir, t, me.x, AY, 2); drawAcc(ctx, Wardrobe.eq('h'), me.who, anim, me.dir, t, me.x, AY, 2); }
+    if (me.act > 0) { me.act -= dt; ctx.drawImage(pxa('can'), me.x + 10, LY.AISLE - 40, 30, 24); }
+    for (let i = LY.cols; i < LY.cols * LY.ROWY.length; i++) bed(i, now);
     if (!visit) basket();
     weatherFX(wx);
     fx.post(ctx, W, H);

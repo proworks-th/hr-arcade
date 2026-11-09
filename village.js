@@ -8,6 +8,9 @@
 // Step 4 = build: tap a lot → card. Reserve (room 22 + Lv 12, 10,000) and every stage go through a transaction on
 //   rooms/_vil/lots/{id}; coins/bricks/vegetables are only taken after it commits. Timers use the server clock.
 //   Coworkers help: −2 h each, max 5 helpers a house a day, helper +5 🪙. No paid speed-up (decided 9 Nov 2026).
+// Step 5 = the farm moves in: at the move-in party prog.vil.g = 14 and Farm.n() becomes the house garden (farm.js);
+//   the same plots array, so every crop and friends' water carries over. The map draws the real crops in each garden
+//   (rooms/_farm rows, mine from local progress); tapping a house garden opens that farm.
 // Until the release step the tab is hidden behind a flag:
 //   ?village=1 turns it on for this browser (remembered), ?village=0 turns it off; test mode (?test=1) always shows it.
 // Art: Kenney Tiny Town + Tiny Farm (CC0, assets/village/). Classic script after solo-games.js / office.js / tower.js
@@ -43,7 +46,19 @@ const Village = (() => {
   let base, obj, block, Z = 2, dpr = 1, cam = { x: 0, y: 0 }, hits = [], t = 0, last = 0;
   const me = { x: TOWER.door[0], y: TOWER.door[1] + 1, path: [], dir: 'down', sp: 3.2, t: 0 };
   let O = null, people = [], lotsSig = '', sentSig = '', tags = [], offset = 0, cardEl, cardL = null, busy = false, cardTick = 0;
-  let floor = [], floorDay = '';
+  let floor = [], floorDay = '', farms = {}, farmsT = 0;
+  // everyone's public garden (rooms/_farm), refreshed every minute while the village is open
+  function loadFarms() { if (!O || !O.listFarms || Date.now() - farmsT < 60e3) return; farmsT = Date.now();
+    O.listFarms().then(F => { const m = {}; for (const r of F || []) if (r && r.k) m[r.k] = r; farms = m; }).catch(() => {}); }
+  const gardenPlots = L => L.k === myKey() ? (Prog.get().farm || {}).plots || [] : (farms[L.k] || {}).plots || [];
+  // garden size bought in the farm screen → the lot record, so everyone's map shows the right number of beds
+  function setGarden(g) { const L = myLot(); if (!O || !L || (L.g | 0) >= g) return; const mk = myKey();
+    O.txLot(L.id, cur => cur && cur.k === mk ? { ...cur, g: Math.max(g, cur.g | 0) } : cur ? undefined : null).catch(() => {}); }
+  // moved in on another device, or before step 5 existed: make the farm follow the house
+  function syncHome() { const L = myLot(), p = Prog.get(); if (!L || L.stage < 5) return;
+    const g = Math.max(L.g || 14, (p.vil && p.vil.g) | 0); if (((p.vil || {}).g | 0) < g) { p.vil = p.vil || {}; p.vil.g = g; Prog.put(p); }
+    if ((L.g | 0) < g) setGarden(g); }
+  function openGarden(L) { if (L.k !== myKey()) window.farmVisit = L.k; if (typeof startGame === 'function') startGame('farm'); }
   const srvNow = () => Date.now() + offset;
   const myLot = () => LOTS.find(L => L.stage && L.k && L.k === myKey());
   const building = L => L.stage >= 2 && L.end > srvNow();
@@ -93,7 +108,8 @@ const Village = (() => {
     row(Y, L.red ? [52, 55, 53, 54] : [48, 51, 49, 50]); row(Y + 1, L.red ? [64, 65, 67, 66] : [60, 61, 63, 62]); row(Y + 2, wall);
     garden(L, gnd); if (L.stage === 4) put(X + 4, Y + 2, 57); else put(X + 4, Y + 3, 1085);
   }
-  function garden(L, gnd) {                       // empty beds for now; the real crops move in with step 5
+  const gCell = (L, i) => { const per = Math.min(24, L.g || 14) >= 18 ? 6 : 5; return [L.x + 5 + i % per, L.y + Math.floor(i / per)]; };
+  function garden(L, gnd) {                       // the beds; the crops on them are drawn live in frame()
     const n = Math.min(24, L.g || 14), per = n >= 18 ? 6 : 5, fx = L.x + 5;
     for (let i = 0; i < n; i++) { const r = Math.floor(i / per), c = i % per, k = Math.min(per, n - r * per);
       gnd(fx + c, L.y + r, 1000 + (k === 1 ? 0 : (c === 0 ? 48 : c === k - 1 ? 51 : 49 + (c % 2)) + 12)); block[L.y + r][fx + c] = 1; }
@@ -103,7 +119,7 @@ const Village = (() => {
     const sig = JSON.stringify(v || {}); if (sig === lotsSig) return; lotsSig = sig;
     for (const L of LOTS) { const d = (v || {})[L.id] || {}; Object.assign(L, { stage: Math.max(0, Math.min(5, d.stage | 0)), k: d.k || '', n: d.n || '', who: d.who || '', g: d.g | 0, h: d.h | 0, end: +d.end || 0, hp: d.hp || null, red: L.id % 2 === 0 }); }
     if (base) { rebuild(); if (loaded >= 2) paintWorld(); }
-    renderCard(); renderBar();
+    syncHome(); renderCard(); renderBar();
   }
   const tile = (g, tl, x, y) => { const s = tl >= 1000 ? farm : town, n = tl % 1000; g.drawImage(s, (n % 12) * T, Math.floor(n / 12) * T, T, T, x * T, y * T, T, T); };
   function paintWorld() {
@@ -216,7 +232,8 @@ const Village = (() => {
     });
     if (!ok) { toast('ยังทำขั้นนี้ไม่ได้ ลองใหม่อีกครั้ง'); return renderCard(); }
     pay(s[2], s[3], s[4]);
-    if (st + 1 === 5) { toast('🎉 ขึ้นบ้านใหม่แล้ว! ยินดีด้วย'); feed(`🎉 ${myName()} ขึ้นบ้านใหม่ที่${L.lane} แปลง ${L.id}! แวะไปเยี่ยมกันได้`); }
+    if (st + 1 === 5) { const pp = Prog.get(); pp.vil.g = Math.max(14, pp.vil.g | 0); Prog.put(pp);   // the farm moves to the house garden
+      toast('🎉 ขึ้นบ้านใหม่! ผักย้ายมาสวนครบ'); feed(`🎉 ${myName()} ขึ้นบ้านใหม่ที่${L.lane} แปลง ${L.id}! แวะไปเยี่ยมกันได้`); }
     else toast(`${s[0]} เริ่ม${s[1]} · เสร็จใน ${s[5]} ชม. · ชวนเพื่อนมาช่วยให้เร็วขึ้น`);
     renderCard(); renderBar();
   }
@@ -260,7 +277,10 @@ const Village = (() => {
         const s = STAGES[L.stage];
         if (building(L)) h += `<p class="muted">ไม่มีปุ่มเร่ง · ชวนเพื่อนมาแตะ "ช่วยสร้าง" ได้วันละ ${HELP_CAP} คน คนละ −${HELP_H} ชม.</p>`;
         else if (s) { const miss = missing(s); h += `<button class="btn primary" type="button" data-a="next"${miss.length || busy ? ' disabled' : ''}>${s[0]} เริ่ม${s[1]} · ${costTxt(s)}</button>${miss.length ? `<p class="vil-need">ขาดอีก ${miss.join(' · ')}${s[3] ? ' · อิฐได้จากมินิเกมและบนถนน' : ''}${s[4] ? ' · ผักได้จากฟาร์ม' : ''}</p>` : ''}`; }
-        else h += `<p>สวนข้างบ้าน ${L.g || 14} แปลง · ย้ายฟาร์มมาที่บ้านได้ในอัปเดตถัดไป</p>`;
+        else h += `<p>🌱 สวนข้างบ้าน ${Math.max(L.g || 14, Farm.home ? Farm.home() : 0)} แปลง · ฟาร์มของคุณอยู่ที่นี่แล้ว</p><button class="btn primary" type="button" data-a="garden">🌱 ไปที่สวน</button>`;
+      } else if (L.stage === 5) {
+        const fr = farms[L.k], gp = (fr && fr.plots || []).filter(x => x && x.c).length;
+        h += `<p>🌱 สวนข้างบ้าน ${L.g || 14} แปลง${fr ? ` · ปลูกอยู่ ${gp}` : ''}</p><button class="btn primary" type="button" data-a="garden">🌱 ไปดูสวน · รดน้ำช่วย</button>`;
       } else if (building(L)) {
         const can = !hp[mk] && nh < HELP_CAP;
         h += `<button class="btn primary" type="button" data-a="help"${can && !busy ? '' : ' disabled'}>🔨 ช่วยสร้าง −${HELP_H} ชม. · +${HELP_PAY} 🪙</button>${hp[mk] ? '<p class="muted">วันนี้คุณช่วยบ้านนี้แล้ว ขอบคุณ 💛</p>' : nh >= HELP_CAP ? `<p class="muted">วันนี้มีคนช่วยครบ ${HELP_CAP} คนแล้ว</p>` : ''}`;
@@ -271,7 +291,7 @@ const Village = (() => {
   function cardAct(a) {
     if (a === 'close') return closeCard();
     const L = cardL; if (!L) return;
-    if (a === 'reserve') reserve(L); else if (a === 'next') next(L); else if (a === 'help') help(L);
+    if (a === 'reserve') reserve(L); else if (a === 'next') next(L); else if (a === 'help') help(L); else if (a === 'garden') openGarden(L);
   }
 
   /* ---------- drawing ---------- */
@@ -336,6 +356,13 @@ const Village = (() => {
         if (L.k && L.k === mk) pill(x, y, `⭐ บ้านคุณ · ${STAGE_TH[L.stage]}${pc}`, { bg: '#ffe0ea', line: '#d14d72', hit: L });
         else pill(x, y, `${onK.has(L.k) ? '🟢 ' : ''}${L.n || '?'} · ${L.stage === 5 ? 'บ้าน' : STAGE_TH[L.stage] + pc}${b && !helpers(L)[mk] && Object.keys(helpers(L)).length < HELP_CAP ? ' · 🔨' : ''}`, { bg: L.stage === 5 ? '#fff' : b ? '#ffd84d' : '#f3f3f3', hit: L }); }
     }
+    // real crops in the house gardens (moved-in houses only)
+    loadFarms(); ctx.imageSmoothingEnabled = false;
+    if (typeof Farm !== 'undefined' && Farm.plotImg) { const now = Date.now(), ts = T * S();
+      for (const L of LOTS) { if (L.stage !== 5) continue; const pls = gardenPlots(L), n = Math.min(24, L.g || 14);
+        for (let i = 0; i < n; i++) { const im = Farm.plotImg(pls[i], now); if (!im) continue; const [cx, cy] = gCell(L, i), x0 = sx(cx * T), y0 = sy(cy * T);
+          if (x0 < -ts || y0 < -ts || x0 > cv.width || y0 > cv.height) continue;
+          const k = ts * .9 / Math.max(im.width, im.height); ctx.drawImage(im, Math.round(x0 + ts / 2 - im.width * k / 2), Math.round(y0 + ts * .95 - im.height * k), Math.round(im.width * k), Math.round(im.height * k)); } } }
     // bricks lying on the roads today
     const got = floorGot(), bob = Math.sin(t * 3);
     for (const f of floorSpots()) { if (got.includes(f.i)) continue;
@@ -354,7 +381,7 @@ const Village = (() => {
     const h = hits.slice().reverse().find(r => px >= r.l && px <= r.l + r.w && py >= r.t && py <= r.t + r.h);
     if (h) return act(h.hit);
     const wx = Math.floor((px / S() + cam.x) / T), wy = Math.floor((py / S() + cam.y) / T);
-    const L = LOTS.find(L => wx >= L.x && wx <= L.x + 3 && wy >= L.y && wy <= L.y + 2); if (L) return act(L);   // tapping a house itself
+    const L = LOTS.find(L => wx >= L.x && wx <= L.x + (L.stage >= 4 ? 10 : 3) && wy >= L.y && wy <= L.y + 3); if (L) return act(L);   // tapping a house or its garden
     goTo(nearestWalk(wx, wy));
   }
   function act(g) {
@@ -387,6 +414,7 @@ const Village = (() => {
     on,
     mount(slot) { if (!slot) return; if (!on()) { slot.remove(); return; } if (!el) build(); slot.replaceWith(el); renderBar(); },
     show() { if (!el) return; start(); renderBar(); requestAnimationFrame(() => { resize(); if (world) cam = camTarget(); send(true); }); },
-    _dbg: { me, LOTS, others, get hits() { return hits; }, get ready() { return !!world; }, act, lock, goTo, fast: false, floorSpots, reserve, next, help, myLot, get busy() { return busy; } },
+    setGarden,
+    _dbg: { me, LOTS, others, get farms() { return farms; }, syncHome, gCell, get hits() { return hits; }, get ready() { return !!world; }, act, lock, goTo, fast: false, floorSpots, reserve, next, help, myLot, get busy() { return busy; } },
   };
 })();
