@@ -7,6 +7,7 @@ Add new files with `git add -f _test/<file>`; never `git add -A`.
 - `gdd-village.md` - design doc, draft 2.2: real economy stats, house 50,000, pets, consumables, deliveries, clusters
 - `plan-village-build.md` - build plan for the real game: 8 hidden steps, data, risks, open decisions, test checklist (waiting for owner OK)
 - `village-proto.html` - playable prototype (Kenney Tiny Town + Tiny Farm, LimeZu characters, Elthen cat, live players with ?test=1)
+- `starter-house-proto.html` - starter house prototype (10 Nov): farm moves at จองที่ดิน, move in at a small cottage, roof/wall colours (tinted Tiny Town tiles) + front extras; `starter-house-mockup.png` = first sketch
 - `wireframe-village.html` - early gray wireframe
 - `village-room.png` - house interior rendered by the real `drawRoom`
 

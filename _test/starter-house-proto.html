@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Starter House Prototype</title>
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f3ead9;font-family:Kanit,sans-serif;color:#3a2a20}
+.wrap{max-width:1100px;margin:0 auto;padding:12px 16px 40px}
+h1{font-size:20px;margin:4px 0 2px}.sub{color:#7a6a5a;font-size:13.5px;margin:0 0 10px}
+.grid{display:grid;grid-template-columns:1fr 330px;gap:14px;align-items:start}
+@media (max-width:820px){.grid{grid-template-columns:1fr}}
+.scene{border:3px solid #3a2a20;border-radius:14px;box-shadow:0 5px 0 #3a2a20;overflow:hidden;background:#5a9b3a}
+canvas{display:block;width:100%;image-rendering:pixelated}
+.panel{background:#fff;border:3px solid #3a2a20;border-radius:14px;box-shadow:0 5px 0 #3a2a20;padding:12px 14px;font-size:14px}
+.panel h3{margin:0 0 6px;font-size:16px}.panel h4{margin:12px 0 6px;font-size:14px}
+.steps{list-style:none;margin:0;padding:0}
+.steps li{display:grid;grid-template-columns:26px 1fr auto;gap:6px;align-items:center;padding:6px 0;border-top:1px dashed #ddd}
+.steps li.done{opacity:.5}.steps li.cur{font-weight:600}.steps small{color:#7a6a5a;font-weight:400;display:block}
+.btn{font:inherit;font-size:14px;border:2px solid #3a2a20;border-radius:10px;background:#fff;padding:6px 12px;cursor:pointer;box-shadow:0 3px 0 #3a2a20;min-height:40px}
+.btn.pri{background:#ffd84d}.btn:disabled{opacity:.4;cursor:default;box-shadow:none}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.sw{width:40px;height:40px;border-radius:50%;border:3px solid #3a2a20;cursor:pointer;padding:0}
+.sw.on{outline:3px solid #e2557b;outline-offset:2px}
+.chip{font:inherit;font-size:13px;border:2px solid #3a2a20;border-radius:999px;background:#fff;padding:4px 10px;cursor:pointer;min-height:36px}
+.chip.on{background:#ffd84d;font-weight:600}
+.note{background:#fff7d6;border:2px dashed #d9b84a;border-radius:10px;padding:8px 10px;font-size:13px;margin-top:10px}
+.cost{color:#7a6a5a;font-size:12.5px}
+.street h3{font-size:15px;margin:16px 0 6px}
+.muted{color:#7a6a5a}
+input[type=range]{width:100%}
+</style></head><body>
+<div class="wrap">
+  <h1>🏡 บ้านหลังแรก · ต้นแบบ</h1>
+  <p class="sub">ต้นแบบ ยังไม่ใช่เกมจริง · กดปุ่มเหลืองทีละขั้น (ข้ามเวลาสร้างได้) · ลองเปลี่ยนสีหลังคา ผนัง และของแต่งหน้าบ้าน</p>
+  <div class="grid">
+    <div>
+      <div class="scene"><canvas id="cv"></canvas></div>
+      <div class="street"><h3>ตัวอย่างซอย: บ้านหลังแรกของเพื่อน ๆ ที่แต่งไม่เหมือนกัน</h3><div class="scene"><canvas id="cv2"></canvas></div></div>
+    </div>
+    <div class="panel">
+      <h3>ขั้นตอนบ้านคุณ</h3>
+      <ul class="steps" id="steps"></ul>
+      <div class="row" style="margin-top:8px"><button class="btn pri" id="go"></button><button class="btn" id="reset">↺ เริ่มใหม่</button></div>
+      <div id="farmBox"><h4>🌱 ฟาร์มบนดาดฟ้าคอนโดตอนนี้</h4>
+        <input type="range" id="roof" min="4" max="10" step="1" value="6"><div class="muted" id="roofN"></div></div>
+      <div id="custom"><h4>🎨 สีหลังคา</h4><div class="row" id="roofs"></div>
+        <h4>🧱 ผนัง</h4><div class="row" id="walls"></div>
+        <h4>🪴 ของแต่งหน้าบ้าน</h4><div class="row" id="extras"></div>
+        <div class="cost" id="costNote"></div></div>
+      <div class="note" id="note"></div>
+    </div>
+  </div>
+</div>
+<script>
+const T = 16, town = new Image(), farm = new Image();
+town.src = '../assets/village/tinytown.png'; farm.src = '../assets/village/tinyfarm.png';
+// [name, Tiny Farm art (sprout, growing, ripe)] — same crops as the village prototype
+const CROPS = [[52, 54, 56], [4, 6, 8], [40, 42, 44], [28, 30, 32]];
+const ROOFS = { blue: ['ฟ้าเทา', null], red: ['แดงอิฐ', '#c8553d'], green: ['เขียว', '#5f9e4f'], purple: ['ม่วง', '#8b6bbf'],
+  brown: ['น้ำตาล', '#8a5a3c'], pink: ['ชมพู', '#e98bab'], teal: ['เขียวน้ำทะเล', '#3f9e9b'], navy: ['กรมท่า', '#3d4f8a'] };
+const WALLS = { wood: ['ไม้', null], stone: ['หิน', null], white: ['ทาสีขาว', '#efe7da'], yellow: ['ทาสีเหลือง', '#f2cf63'], mint: ['ทาสีมิ้นต์', '#a9dcc4'], peach: ['ทาสีพีช', '#f4b38c'] };
+const EXTRAS = { tree: ['🌳 ต้นไม้', 28], pot: ['🏺 โอ่ง', 107], mail: ['🪧 ป้ายชื่อ', 83], fence: ['🪵 รั้ว', 81], flowers: ['🌼 ดอกไม้', 2] };
+// the new path: farm moves at จองที่ดิน, you move in at the starter house, the rest are upgrades
+const STEPS = [['🪧', 'จองที่ดิน', '10,000 🪙 · ฟาร์มย้ายมาที่ดินทันที', 0],
+  ['🏡', 'บ้านหลังแรก', '10,000 🪙 + 🧱20 · 24 ชม. · ย้ายเข้าอยู่ได้เลย', 24],
+  ['🏠', 'ต่อเติม: ผนัง + หลังคาใหญ่', '15,000 🪙 + 🧱40 · 48 ชม.', 48],
+  ['🌳', 'ขยายสวน 14 แปลง', '10,000 🪙 + 🥬30 · 24 ชม.', 24],
+  ['🎉', 'ปาร์ตี้ขึ้นบ้านใหม่', '5,000 🪙', 0]];
+const S = { done: 0, building: false, roofN: 6, roof: 'red', wall: 'wood', ex: { tree: 1, pot: 1 }, paid: false };
+let seed = 7; const rnd = () => (seed = seed * 16807 % 2147483647) / 2147483647;
+const PL = Array.from({ length: 14 }, (_, i) => ({ c: i % 4, g: [2, 1, 2, 0, 2, 1][i % 6] }));
+
+/* ---------- recoloured sheets: roof tiles (blue-grey pixels) and wall tiles (wood planks) ---------- */
+const cache = {};
+const ROOF_T = [48, 49, 50, 51, 60, 61, 62, 63], WOOD_T = [72, 73, 74, 75, 84, 85, 86, 87];
+const hex = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+function sheet(roof, wall) {
+  const k = roof + '|' + wall; if (cache[k]) return cache[k];
+  const c = document.createElement('canvas'); c.width = town.width; c.height = town.height; const g = c.getContext('2d'); g.drawImage(town, 0, 0);
+  const tint = (tiles, col, test) => { if (!col) return; const [tr, tg, tb] = hex(col);
+    for (const t of tiles) { const x0 = t % 12 * 16, y0 = Math.floor(t / 12) * 16, d = g.getImageData(x0, y0, 16, 16), p = d.data;
+      for (let i = 0; i < p.length; i += 4) { const r = p[i], gg = p[i + 1], b = p[i + 2]; if (!p[i + 3] || !test(r, gg, b)) continue;
+        const L = (r + gg + b) / 765, f = .45 + L * .85; p[i] = Math.min(255, tr * f); p[i + 1] = Math.min(255, tg * f); p[i + 2] = Math.min(255, tb * f); }
+      g.putImageData(d, x0, y0); } };
+  tint(ROOF_T, ROOFS[roof][1], (r, gg, b) => b > r + 8 && r + gg + b > 150);                 // blue-grey shingles only, not the outline
+  tint(WOOD_T, WALLS[wall][1], (r, gg, b) => r > b + 40 && r + gg + b > 330);                 // the light planks, not the door or frames
+  return cache[k] = c;
+}
+
+/* ---------- one lot: house at X..X+3, garden beds from X+5 ---------- */
+function drawLot(g, X, Y, st, o) {
+  const sh = sheet(o.roof, o.wall), put = (x, y, t) => { if (t >= 1000) g.drawImage(farm, (t - 1000) % 12 * 16, Math.floor((t - 1000) / 12) * 16, 16, 16, x * T, y * T, T, T);
+    else g.drawImage(sh, t % 12 * 16, Math.floor(t / 12) * 16, 16, 16, x * T, y * T, T, T); };
+  const row = (y, a, x0 = X) => a.forEach((t, i) => t >= 0 && put(x0 + i, y, t));
+  put(X + 2, Y + 3, 43);                                                   // front path
+  const stone = o.wall === 'stone', ex = o.ex || {};
+  if (st.done === 0) { put(X + 2, Y + 1, 83); return; }
+  // done = steps finished (or started, while building): 1 reserved, 2 starter, 3 big house, 4 garden 14, 5 party
+  const d = st.done, b = st.building;
+  if (d === 1) { [[12, 13, 13, 14], [24, 25, 25, 26], [36, 37, 37, 38]].forEach((a, j) => row(Y + j, a)); put(X + 3, Y + 3, 83); }   // dirt + sign
+  else if (d === 2 && b) { row(Y, [96, 97, 97, 98]); row(Y + 1, [108, 109, 109, 110]); row(Y + 2, [120, 121, 121, 122]); put(X + 4, Y + 2, 57); }  // slab
+  else if (d === 2) starter();
+  else if (d === 3 && b) { row(Y, [44, 45, 45, 46]); row(Y + 1, [56, -1, -1, 58]); row(Y + 1, o.roofT, X + 1); row(Y + 2, stone ? [76, 88, 89, 79] : [72, 84, 85, 75]); put(X + 4, Y + 2, 57); }  // scaffold round the starter
+  else full();
+  if (o.n) beds(d >= 5 || (d === 4 && !b) ? 14 : o.n);
+  function starter() {
+    row(Y + 1, o.roofT, X + 1); row(Y + 2, stone ? [88, 89] : [84, 85], X + 1);
+    if (ex.flowers) { put(X, Y + 3, 2); put(X + 3, Y + 3, 2); }
+    if (ex.tree) put(X, Y + 2, 28); if (ex.pot) put(X + 3, Y + 2, 107);
+    if (ex.fence) { put(X, Y + 3, 80); put(X + 1, Y + 3, 82); } if (ex.mail) put(X + 3, Y + 3, 83);
+  }
+  function full() {
+    row(Y, o.red ? [52, 55, 53, 54] : [48, 51, 49, 50]); row(Y + 1, o.red ? [64, 65, 67, 66] : [60, 61, 63, 62]);
+    row(Y + 2, stone ? [76, 88, 89, 79] : [72, 84, 85, 75]);
+    if (ex.flowers) { put(X, Y + 3, 2); put(X + 3, Y + 3, 2); }
+    if (ex.tree) put(X - 1, Y + 2, 28); if (ex.pot) put(X + 4, Y + 2, 107);
+    if (ex.fence) { put(X, Y + 3, 80); put(X + 1, Y + 3, 82); } if (ex.mail) put(X + 3, Y + 3, 83);
+    if (st.done === 4 && st.building) put(X + 4, Y + 2, 57);
+    if (st.done >= 5) put(X + 4, Y + 3, 1085);
+  }
+  function beds(n) {
+    const per = 5, fx = X + 5;
+    for (let i = 0; i < n; i++) { const r = Math.floor(i / per), c = i % per, k = Math.min(per, n - r * per);
+      put(fx + c, Y + r, 1000 + (k === 1 ? 0 : (c === 0 ? 48 : c === k - 1 ? 51 : 49 + (c % 2)) + 12));
+      const p = PL[i]; put(fx + c, Y + r, 1000 + CROPS[p.c][p.g]); }
+  }
+}
+// the red sheet already has red shingles; every other colour is tinted from the blue-grey one
+const roofTiles = o => o.roof === 'red' ? [52, 54] : [48, 50];
+
+/* ---------- scenes ---------- */
+const cv = document.getElementById('cv'), cv2 = document.getElementById('cv2');
+function ground(g, C, R, roadY) {
+  for (let y = 0; y < R; y++) for (let x = 0; x < C; x++) g.drawImage(town, 0, 0, 16, 16, x * T, y * T, T, T);
+  for (let x = 0; x < C; x++) g.drawImage(town, 40 % 12 * 16, Math.floor(40 / 12) * 16, 16, 16, x * T, roadY * T, T, T);
+  [[0, 0, 4], [0, 1, 16], [C - 1, 0, 28], [C - 1, 3, 27], [5, 0, 5], [C - 3, 0, 28]].forEach(([x, y, t]) => g.drawImage(town, t % 12 * 16, Math.floor(t / 12) * 16, 16, 16, x * T, y * T, T, T));
+}
+function render() {
+  const C = 13, R = 6; cv.width = C * T; cv.height = R * T; const g = cv.getContext('2d'); g.imageSmoothingEnabled = false;
+  ground(g, C, R, 5);
+  const o = { roof: S.roof, wall: S.wall, ex: S.ex, n: S.roofN, red: S.roof === 'red', roofT: roofTiles(S) };
+  drawLot(g, 2, 1, S, o);
+  // the street: four friends' starter houses, all different
+  const C2 = 20, R2 = 5; cv2.width = C2 * T; cv2.height = R2 * T; const g2 = cv2.getContext('2d'); g2.imageSmoothingEnabled = false;
+  ground(g2, C2, R2, 4);
+  [{ roof: 'green', wall: 'white', ex: { tree: 1, flowers: 1 } }, { roof: 'purple', wall: 'wood', ex: { pot: 1, mail: 1 } },
+   { roof: 'navy', wall: 'stone', ex: { fence: 1, tree: 1 } }, { roof: 'pink', wall: 'peach', ex: { flowers: 1, pot: 1 } }]
+    .forEach((f, i) => { f.roofT = roofTiles(f); f.n = 0; drawLotHouseOnly(g2, 1 + i * 5, 0, f); });
+}
+function drawLotHouseOnly(g, X, Y, o) { const st = { done: 2, building: false }; o.ex = o.ex || {}; drawLot(g, X, Y, st, Object.assign({}, o, { n: 0 })); }
+
+/* ---------- panel ---------- */
+const $ = id => document.getElementById(id);
+function ui() {
+  $('steps').innerHTML = STEPS.map((s, i) => { const done = i < S.done && !(S.building && i === S.done - 1), cur = i === S.done || (S.building && i === S.done - 1);
+    return `<li class="${done ? 'done' : cur ? 'cur' : ''}"><span>${done ? '✅' : s[0]}</span><span>${s[1]}<small>${s[2]}</small></span><span>${S.building && i === S.done - 1 ? '⏳' : ''}</span></li>`; }).join('');
+  const go = $('go');
+  if (S.building) go.textContent = '⏩ ข้ามเวลาสร้าง';
+  else if (S.done >= STEPS.length) go.textContent = '🎉 ครบแล้ว';
+  else go.textContent = `${STEPS[S.done][0]} ${STEPS[S.done][1]}`;
+  go.disabled = !S.building && S.done >= STEPS.length;
+  $('roofN').textContent = S.done >= 1 ? (S.done >= 5 || S.done === 4 && !S.building ? '14 แปลง (ขยายแล้ว)' : `${S.roofN} แปลง ย้ายมาอยู่ข้างที่ดินแล้ว · ผักและน้ำที่เพื่อนรดตามมาด้วย`) : `${S.roofN} แปลง (ตามขนาดห้อง 4–10) · ยังอยู่บนดาดฟ้า`;
+  $('roof').disabled = S.done >= 1;
+  const canPaint = S.done >= 2;
+  $('custom').style.opacity = canPaint ? 1 : .45; $('custom').querySelectorAll('button').forEach(b => b.disabled = !canPaint);
+  $('roofs').innerHTML = Object.entries(ROOFS).map(([k, v]) => `<button class="sw${S.roof === k ? ' on' : ''}" data-r="${k}" title="${v[0]}" style="background:${v[1] || '#8796ad'}"></button>`).join('');
+  $('walls').innerHTML = Object.entries(WALLS).map(([k, v]) => `<button class="chip${S.wall === k ? ' on' : ''}" data-w="${k}">${v[0]}</button>`).join('');
+  $('extras').innerHTML = Object.entries(EXTRAS).map(([k, v]) => `<button class="chip${S.ex[k] ? ' on' : ''}" data-e="${k}">${v[0]}</button>`).join('');
+  $('costNote').textContent = canPaint ? (S.paid ? 'เปลี่ยนสีครั้งต่อไป 300 🪙 · ของแต่งชิ้นละ 200 🪙 (ในต้นแบบไม่หักเงิน)' : 'สีแรกตอนย้ายเข้าฟรี · เปลี่ยนทีหลัง 300 🪙 · ของแต่งชิ้นละ 200 🪙') : 'เลือกสีได้เมื่อบ้านหลังแรกสร้างเสร็จ';
+  $('roofs').querySelectorAll('[data-r]').forEach(b => b.disabled = !canPaint);
+  const N = ['ยังไม่มีที่ดิน · ฟาร์มยังอยู่บนดาดฟ้าคอนโด',
+    'จองที่ดินแล้ว! 🌱 ฟาร์มย้ายมาที่ดินทันที (แปลงเท่าเดิม) เพื่อนเห็นและรดน้ำในหมู่บ้านได้เลย · ระเบียงคอนโดขึ้นป้าย "ฟาร์มย้ายไปหมู่บ้านแล้ว"',
+    'บ้านหลังแรกเสร็จ = ย้ายเข้าแล้ว! ชื่อขึ้นแผนที่ เพื่อนมาเยี่ยมได้ รับงานส่งของได้ · เลือกสีหลังคา/ผนังได้ฟรีครั้งแรก',
+    'บ้านใหญ่แล้ว · สีที่เลือกไว้ตามมาด้วย', 'สวน 14 แปลง', 'ครบทุกขั้น 🎉'];
+  $('note').innerHTML = S.building ? `⏳ กำลังสร้าง ${STEPS[S.done - 1][1]} (${STEPS[S.done - 1][3]} ชม.) · ระหว่างนี้ยังปลูกผักได้ตามปกติ` : N[Math.min(S.done, N.length - 1)];
+  render();
+}
+document.addEventListener('click', e => { const b = e.target.closest('button'); if (!b || b.disabled) return;
+  if (b.dataset.r) { S.roof = b.dataset.r; S.paid = true; } else if (b.dataset.w) { S.wall = b.dataset.w; S.paid = true; }
+  else if (b.dataset.e) { S.ex[b.dataset.e] = !S.ex[b.dataset.e]; } else return; ui(); });
+$('go').onclick = () => { if (S.building) S.building = false; else if (S.done < STEPS.length) { S.done++; S.building = STEPS[S.done - 1][3] > 0; } ui(); };
+$('reset').onclick = () => { Object.assign(S, { done: 0, building: false, paid: false }); ui(); };
+$('roof').oninput = e => { S.roofN = +e.target.value; ui(); };
+let n = 0; [town, farm].forEach(i => i.onload = () => ++n === 2 && ui());
+</script>
+</body></html>
