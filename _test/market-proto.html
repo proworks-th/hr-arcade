@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Market Prototype</title>
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f3ead9;font-family:Kanit,sans-serif;color:#3a2a20}
+.wrap{max-width:1180px;margin:0 auto;padding:12px 16px 40px}
+h1{font-size:20px;margin:4px 0 2px}.sub{color:#7a6a5a;font-size:13.5px;margin:0 0 10px}
+.panel{background:#fff;border:3px solid #3a2a20;border-radius:14px;box-shadow:0 5px 0 #3a2a20;padding:12px 14px;font-size:14px;min-width:0}
+.panel h3{margin:0 0 6px;font-size:16px}
+.muted{color:#7a6a5a}small{font-size:12.5px}
+.btn{font:inherit;font-size:14px;border:2px solid #3a2a20;border-radius:10px;background:#fff;padding:4px 12px;cursor:pointer;box-shadow:0 3px 0 #3a2a20;min-height:44px;color:inherit}
+.btn:active{transform:translateY(2px);box-shadow:0 1px 0 #3a2a20}.btn:disabled{opacity:.4;cursor:default;box-shadow:none;transform:none}
+.btn.pri{background:#ff6b93;color:#fff;font-weight:600}.btn.yel{background:#ffd84d;font-weight:600}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.top{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+.coins{font-weight:600;background:#fff7d6;border:2px solid #3a2a20;border-radius:999px;padding:4px 14px}
+.clock{background:#fff;border:2px solid #e3d8c4;border-radius:999px;padding:4px 12px;font-size:13.5px}
+.grid{display:grid;grid-template-columns:360px 1fr;gap:16px;align-items:start}
+@media (max-width:900px){.grid{grid-template-columns:1fr}}
+/* price board */
+.board{list-style:none;margin:0;padding:0;display:grid;gap:4px}
+.board li{display:grid;grid-template-columns:30px 1fr 78px 64px;gap:8px;align-items:center;padding:4px 8px;border:2px solid #eee3d0;border-radius:10px;cursor:pointer;min-height:44px}
+.board li.on{border-color:#ff6b93;background:#fff4f7}
+.board img{height:22px;image-rendering:pixelated;justify-self:center}
+.board .pr{text-align:right;font-weight:600;line-height:1.1}.board .pr small{display:block;font-weight:400}
+.up{color:#1f9d55}.dn{color:#d1453b}
+.tag{font-size:11px;border-radius:999px;padding:0 6px;margin-left:4px;white-space:nowrap}
+.tag.hot{background:#ffe1d6;color:#b23a12}.tag.cold{background:#e3f1ff;color:#24557d}
+.spark{width:64px;height:26px}
+/* stall */
+.chart{width:100%;height:140px;display:block;background:#fffaf0;border:2px solid #eee3d0;border-radius:10px}
+.axis{display:flex;justify-content:space-between;font-size:11.5px;color:#a08e7c;margin-top:2px}
+.book{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:10px 0}
+@media (max-width:520px){.book{grid-template-columns:1fr}}
+.book h4{margin:0 0 4px;font-size:14px}
+.ob{list-style:none;margin:0;padding:0;font-size:13.5px}
+.ob li{display:grid;grid-template-columns:70px 44px 1fr;gap:6px;padding:3px 6px;border-radius:6px}
+.ob.ask li{background:#fff1ec}.ob.bid li{background:#eefaf1}.ob li+li{margin-top:3px}
+.ob li.mine{outline:2px solid #ff6b93}
+.ob .who{color:#7a6a5a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.form{border:2px dashed #d9c9ae;border-radius:12px;padding:10px;display:grid;gap:8px}
+.seg{display:flex;gap:6px}.seg .btn{flex:1}.seg .btn.on{background:#3a2a20;color:#fff}
+.step{display:flex;align-items:center;gap:4px}.step .btn{min-width:44px;padding:0;font-weight:700;font-size:17px}.step b{min-width:56px;text-align:center;font-size:16px}
+.lbl{min-width:58px;color:#7a6a5a}
+.hint{font-size:13px;background:#f3f8ec;border-radius:8px;padding:5px 8px}
+.hint.warn{background:#fff3e0}
+.mine-ls{list-style:none;margin:0;padding:0;display:grid;gap:4px}
+.mine-ls li{display:flex;gap:8px;align-items:center;border:2px solid #eee3d0;border-radius:10px;padding:4px 8px}
+.mine-ls li>span{flex:1;min-width:0}
+.log{list-style:none;margin:0;padding:0;font-size:13px;max-height:180px;overflow:auto}
+.log li{padding:2px 0;border-bottom:1px dashed #eee}
+.bag{display:flex;gap:6px;flex-wrap:wrap}
+.bag span{display:inline-flex;align-items:center;gap:3px;background:#fff;border:2px solid #eee3d0;border-radius:999px;padding:0 8px 0 4px;font-size:13px}
+.bag img{height:18px;image-rendering:pixelated}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#2b2140;color:#fff;padding:8px 16px;border-radius:999px;font-size:14px;opacity:0;transition:.25s;pointer-events:none;max-width:calc(100vw - 24px);text-align:center;z-index:9}
+.toast.on{opacity:1}
+.note{background:#fff7d6;border:2px dashed #d9b84a;border-radius:10px;padding:8px 10px;font-size:13px;margin-top:14px}
+.note li{margin:2px 0}
+.sec{margin-top:14px}
+</style></head><body>
+<div class="wrap">
+  <h1>📈 ตลาดผัก · ต้นแบบ</h1>
+  <p class="sub">ต้นแบบ ยังไม่ใช่เกมจริง · ราคาเปลี่ยนทุก 2 ชม. เหมือนกันทุกคน · วางคำสั่งซื้อ/ขายที่แผงตลาด จับคู่กับเพื่อนอัตโนมัติ</p>
+  <div class="top">
+    <span class="coins" id="coins"></span>
+    <span class="clock" id="clock"></span>
+    <button class="btn" id="skip">⏩ ข้ามไป 2 ชม.</button>
+    <button class="btn" id="bots">🤖 ให้เพื่อนเทรด 1 รอบ</button>
+    <button class="btn" id="reset">↺ เริ่มใหม่</button>
+  </div>
+  <div class="bag" id="bag"></div>
+  <div class="grid" style="margin-top:12px">
+    <div class="panel"><h3>📈 ราคาตลาดตอนนี้</h3><p class="muted" style="margin:0 0 6px;font-size:12.5px">ขายให้ตลาดได้ราคานี้ทันที · 🔥 ราคาดี ❄️ ราคาตก · เส้นเล็ก = 24 ชม. ที่ผ่านมา</p><ul class="board" id="board"></ul></div>
+    <div class="panel" id="stall"></div>
+  </div>
+  <div class="grid">
+    <div class="panel sec"><h3>📋 คำสั่งของฉัน <small class="muted" id="mineN"></small></h3><ul class="mine-ls" id="mine"></ul></div>
+    <div class="panel sec"><h3>📜 ความเคลื่อนไหว</h3><ul class="log" id="log"></ul></div>
+  </div>
+  <div class="note"><b>ลองดู</b><ul>
+    <li>เลือกผักทางซ้าย → ดูกราฟ 24 ชม. และแผงตลาด (ฝั่งขาย = คนตั้งขาย, ฝั่งซื้อ = คนตั้งรับซื้อ)</li>
+    <li><b>ตั้งขาย</b>: ผักถูกกันไว้จากตะกร้า ถ้ามีคนตั้งรับซื้อราคาเท่าหรือสูงกว่า จะขายให้ทันทีที่ราคาของเขา</li>
+    <li><b>ตั้งรับซื้อ</b>: เหรียญถูกกันไว้ ถ้ามีคนตั้งขายราคาเท่าหรือต่ำกว่า จะซื้อทันทีที่ราคาของเขา (ส่วนต่างคืนให้)</li>
+    <li>ราคาที่ตั้งได้ 50–200% ของราคาตลาดตอนนั้น · ตั้งได้ 5 คำสั่ง · ไม่มีคนจับคู่ใน 24 ชม. ของ/เหรียญคืนเอง · ยกเลิกได้ตลอด</li>
+    <li>กด ⏩ ให้ราคาเปลี่ยน, กด 🤖 ให้เพื่อนจำลองมาซื้อขาย</li>
+  </ul></div>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+const PXA_PAL = { k: '#2b2140', w: '#ffffff', y: '#ffd23f', o: '#c77d0a', r: '#ff4d6d', R: '#b3203a', b: '#4cc3ff', B: '#2266cc', l: '#bfe9ff',
+  g: '#21c07a', G: '#14804f', c: '#6b3e26', C: '#a5683f', m: '#fffdf6', t: '#e0913b', p: '#ff5c8a', s: '#d9dde3', S: '#8a93a3', v: '#8338ec' };
+const PXA_ART = {};
+const CROPS = {
+  bok: ['ผักบุ้ง', 3, 4, 5, 1, ['g...g...g', 'gg.gGg.gg', '.gGgGgGg.', '.gGgGgGg.', '..gGGGg..', '..GgGgG..', '..GgGgG..', '...GGG...']],
+  let: ['ผักสลัด', 10, 8, 11, 1, ['...ggg...', '.ggwgwgg.', 'gGgggggGg', 'ggGgwgGgg', 'gGgggggGg', '.gGgGgGg.', '..ggggg..']],
+  car: ['แครอท', 20, 12, 17, 2, ['..g.g.g..', '..gGgGg..', '...gGg...', '...kGk...', '..ktttk..', '..ktttk..', '...kttk..', '...ktk...', '....k....']],
+  tom: ['มะเขือเทศ', 40, 18, 25, 3, ['..gGgGg..', '.gGrrGgg.', 'gGrwrRgGg', 'gGrrRGrrg', '.gGRgGrwr', '.gGgGgrrR', '..gGGGg..', '...GGG...']],
+  chi: ['พริก', 60, 22, 32, 5, ['...gGg...', '.ggGgGgg.', 'gGrgGgRgg', 'gGRgGgrGg', '.grGgGrg.', '.gRgGgRg.', '..gGGGg..', '...GGG...']],
+  cor: ['ข้าวโพด', 90, 28, 40, 7, ['....g.....', '...ggk....', '..gGkyk...', '..gkyyyk..', '.gGkyoyk..', 'gGgkyyyk.g', '.g.kyoykgG', '...gkyyGg.', '....gGGg..', '.....GG...']],
+  pum: ['ฟักทอง', 120, 35, 48, 9, ['....Gc....', '...gGc....', '.kkkkkkkk.', 'ktottottok', 'kttottotok', 'kttottotok', 'ktottottok', '.kkkkkkkk.']],
+  wat: ['แตงโม', 180, 45, 64, 12, ['.....gG....', '..kkkkkkk..', '.kgGgGgGgk.', 'kgGgGgGgGgk', 'kGgGgGgGgGk', 'kgGgGgGgGgk', '.kGgGgGgGk.', '..kkkkkkk..']],
+  // signature fruits: everyone is dealt one (from their name); only its owner can plant it
+  mgo: ['มะม่วง', 60, 20, 30, 1, ['....Gg...', '...kkkk..', '..kyyyok.', '.kyyyyyok', '.kyyytyok', '.kyyttook', '..kyttok.', '...kkkk..']],
+  mgs: ['มังคุด', 60, 20, 30, 1, ['...gGg...', '..gGkGg..', '.kkvvvkk.', 'kvvvvvvvk', 'kvwvvvvvk', 'kvvvvvvvk', '.kvvvvvk.', '..kkkkk..']],
+  lyc: ['ลิ้นจี่', 60, 20, 30, 1, ['...Gg....', '..kkkk...', '.krRrRk..', 'kRrRrRrk.', 'krRrRrRk.', 'kRrRrRrk.', '.krRrRk..', '..kkkk...']],
+  ram: ['เงาะ', 60, 20, 30, 1, ['.r.r.r.r.', 'r.kkkkk.r', '.krrrrrk.', 'rkrwrrrkr', '.krrrrrk.', 'rkrrrrRkr', '.kkrrrkk.', 'r..kkk..r']],
+  coc: ['มะพร้าว', 60, 20, 30, 1, ['..kkkkk..', '.kcCcCck.', 'kcCcCcCck', 'kCcCcCcCk', 'kcCcCckck', '.kcCckck.', '..kkkkk..']],
+  dur: ['ทุเรียน', 60, 20, 30, 1, ['....c....', '..kykyk..', '.kygyyyk.', 'kyygyGyyk', 'kgyyGyygk', 'kyyGyyGyk', '.kGyygyk.', '..kkkkk..']],
+};
+for (const [id, c] of Object.entries(CROPS)) PXA_ART['crop_' + id] = c[5];
+const PX = {};
+function pxa(key) { if (PX[key]) return PX[key]; const rows = PXA_ART[key], c = document.createElement('canvas'); c.width = Math.max(...rows.map(r => r.length)); c.height = rows.length;
+  const g = c.getContext('2d'); rows.forEach((r, y) => [...r].forEach((ch, x) => { if (ch !== '.') { g.fillStyle = PXA_PAL[ch]; g.fillRect(x, y, 1, 1); } })); return (PX[key] = c); }
+const URL_ = {}; const img = (id, h) => { if (!URL_[id]) { const im = pxa('crop_' + id), c = document.createElement('canvas'), k = 3; c.width = im.width * k; c.height = im.height * k;
+  const g = c.getContext('2d'); g.imageSmoothingEnabled = false; g.drawImage(im, 0, 0, c.width, c.height); URL_[id] = c.toDataURL(); } return `<img alt="" src="${URL_[id]}" height="${h}">`; };
+const IDS = Object.keys(CROPS), NM = id => CROPS[id][0], BASE = id => CROPS[id][3];
+const fmt = n => Math.round(n).toLocaleString('en-US'), $ = id => document.getElementById(id);
+
+/* ---------- market price: changes every 2 h, worked out from the clock (same for everyone, nothing stored) ---------- */
+const HR = 3600e3, PERIOD = 2 * HR, BAND = [0.5, 2];
+function h01(s) { let h = 2166136261; for (const ch of s) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); } return ((h >>> 0) % 100000) / 100000; }
+function noise(id, x, sc) { const a = Math.floor(x / sc), f = x / sc - a, t = f * f * (3 - 2 * f); return (h01(id + ':' + sc + ':' + a) * (1 - t) + h01(id + ':' + sc + ':' + (a + 1)) * t) * 2 - 1; }
+function mult(id, P) { return Math.max(0.55, Math.min(2, 1 + 0.42 * noise(id, P, 1) + 0.3 * noise(id, P, 6) + 0.12 * noise(id, P, 24))); }   // short swings + slow trends
+const per = t => Math.floor(t / PERIOD);
+const price = (id, t = S.t) => Math.max(1, Math.round(BASE(id) * mult(id, per(t))));
+const prevPrice = id => Math.max(1, Math.round(BASE(id) * mult(id, per(S.t) - 1)));
+const mood = id => { const m = mult(id, per(S.t)); return m >= 1.5 ? 'hot' : m <= 0.72 ? 'cold' : ''; };
+const band = id => [Math.ceil(price(id) * BAND[0]), Math.floor(price(id) * BAND[1])];
+
+/* ---------- state ---------- */
+const BOTS = ['มิ้น', 'jjib', '1 ST', 'น้องเปรม', 'ป้าแดง', 'พี่โต้ง'];
+let S, oid = 1;
+function reset() {
+  S = { t: Date.UTC(2026, 10, 10, 2, 0), coins: 3000, bag: { bok: 20, car: 8, tom: 6, wat: 5, pum: 4, dur: 6 }, orders: [], log: [], sel: 'wat', side: 'sell', q: 1, p: 0 };
+  oid = 1; for (let i = 0; i < 14; i++) botOrder(true); pickCrop('wat'); render();
+}
+const mineOpen = () => S.orders.filter(o => o.mine && o.left > 0);
+function log(m) { S.log.unshift(`<b>${clock(S.t)}</b> ${m}`); S.log.length = Math.min(S.log.length, 40); }
+function clock(t) { const d = new Date(t + 7 * HR); return `${d.getUTCDate()}/${d.getUTCMonth() + 1} ${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`; }
+
+/* ---------- orders: sell = crops held, buy = coins held; matching takes the best price on the other side, oldest first ---------- */
+function place(o) {   // o: { side, c, q, p, who, mine }
+  o.id = oid++; o.left = o.q; o.t = S.t;
+  if (o.mine) { if (o.side === 'sell') { S.bag[o.c] -= o.q; if (!S.bag[o.c]) delete S.bag[o.c]; } else S.coins -= o.q * o.p; }
+  const other = S.orders.filter(x => x.c === o.c && x.side !== o.side && x.left > 0 && (o.side === 'sell' ? x.p >= o.p : x.p <= o.p) && !(x.mine && o.mine))
+    .sort((a, b) => (o.side === 'sell' ? b.p - a.p : a.p - b.p) || a.t - b.t);
+  let got = 0;
+  for (const x of other) { if (!o.left) break; const u = Math.min(o.left, x.left); fill(o.side === 'sell' ? o : x, o.side === 'buy' ? o : x, u, x.p); got += u; }
+  if (o.left) S.orders.push(o);
+  return got;
+}
+// u units change hands at price p (the resting order's price); a buyer who offered more gets the difference back
+function fill(sell, buy, u, p) {
+  sell.left -= u; buy.left -= u;
+  if (sell.mine) { S.coins += u * p; log(`✅ ขาย${NM(sell.c)} ${u} ให้ ${buy.who} @${p} = +${fmt(u * p)} 🪙`); toast(`✅ ขาย${NM(sell.c)} ${u} ชิ้น +${fmt(u * p)} 🪙`); }
+  if (buy.mine) { S.bag[buy.c] = (S.bag[buy.c] || 0) + u; const back = (buy.p - p) * u; S.coins += back;
+    log(`✅ ซื้อ${NM(buy.c)} ${u} จาก ${sell.who} @${p}${back ? ` (คืนส่วนต่าง ${fmt(back)} 🪙)` : ''}`); toast(`✅ ได้${NM(buy.c)} ${u} ชิ้น`); }
+  if (!sell.mine && !buy.mine) log(`<span class="muted">${buy.who} ซื้อ${NM(sell.c)} ${u} จาก ${sell.who} @${p}</span>`);
+}
+function cancel(id) { const o = S.orders.find(x => x.id === id); if (!o || !o.left) return;
+  if (o.side === 'sell') S.bag[o.c] = (S.bag[o.c] || 0) + o.left; else S.coins += o.left * o.p;
+  log(`↩️ ยกเลิก${o.side === 'sell' ? 'ขาย' : 'รับซื้อ'}${NM(o.c)} ${o.left} · ได้${o.side === 'sell' ? 'ผัก' : 'เหรียญ'}คืน`); o.left = 0; }
+function expire() { for (const o of S.orders) if (o.left && S.t - o.t >= 24 * HR) { if (o.mine) { cancel(o.id); log(`⌛ คำสั่งครบ 24 ชม. คืนของให้แล้ว`); } else o.left = 0; } S.orders = S.orders.filter(o => o.left); }
+
+// pretend coworkers: they want what is cheap and sell what is hot, inside the same price band
+function botOrder(quiet) {
+  const c = IDS[Math.floor(Math.random() * IDS.length)], m = price(c), side = Math.random() < .5 ? 'sell' : 'buy', who = BOTS[Math.floor(Math.random() * BOTS.length)];
+  const p = Math.max(band(c)[0], Math.min(band(c)[1], Math.round(m * (side === 'sell' ? 1 + Math.random() * .35 : 0.95 + Math.random() * .35))));
+  const got = place({ side, c, q: 1 + Math.floor(Math.random() * 6), p, who, mine: false });
+  if (!quiet && !got) log(`<span class="muted">🏪 ${who} ตั้ง${side === 'sell' ? 'ขาย' : 'รับซื้อ'}${NM(c)} @${p}</span>`);
+}
+
+/* ---------- UI ---------- */
+function pickCrop(id) { S.sel = id; S.p = price(id); S.q = 1; }
+function spark(id, w, h, n) {   // last n periods + now
+  const pts = []; for (let i = n; i >= 0; i--) pts.push(Math.round(BASE(id) * mult(id, per(S.t) - i)));
+  const lo = Math.min(...pts), hi = Math.max(...pts), y = v => hi === lo ? h / 2 : h - 3 - (v - lo) / (hi - lo) * (h - 6), x = i => 2 + i / n * (w - 4);
+  return { pts, lo, hi, d: pts.map((v, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(''), x, y };
+}
+function render() {
+  $('coins').textContent = '🪙 ' + fmt(S.coins);
+  const next = (per(S.t) + 1) * PERIOD - S.t;
+  $('clock').innerHTML = `🕑 ${clock(S.t)} · ราคาเปลี่ยนใน ${Math.floor(next / HR)} ชม. ${Math.round(next % HR / 60e3)} น.`;
+  $('bag').innerHTML = '<b style="font-size:13px">🧺 ตะกร้า:</b> ' + (Object.keys(S.bag).map(k => `<span>${img(k, 18)}${NM(k)} ×${S.bag[k]}</span>`).join('') || '<span>ว่าง</span>');
+  $('board').innerHTML = IDS.map(id => { const p = price(id), pv = prevPrice(id), ch = Math.round((p - pv) / pv * 100), sp = spark(id, 64, 26, 12), md = mood(id);
+    return `<li data-c="${id}" class="${S.sel === id ? 'on' : ''}">${img(id, 22)}<span>${NM(id)}${md === 'hot' ? '<span class="tag hot">🔥</span>' : md === 'cold' ? '<span class="tag cold">❄️</span>' : ''}</span>
+      <span class="pr">${p} 🪙<small class="${ch > 0 ? 'up' : ch < 0 ? 'dn' : 'muted'}">${ch > 0 ? '▲' : ch < 0 ? '▼' : '•'} ${Math.abs(ch)}%</small></span>
+      <svg class="spark" viewBox="0 0 64 26"><path d="${sp.d}" fill="none" stroke="${ch >= 0 ? '#1f9d55' : '#d1453b'}" stroke-width="2"/></svg></li>`; }).join('');
+  renderStall(); renderMine();
+  $('log').innerHTML = S.log.map(m => `<li>${m}</li>`).join('') || '<li class="muted">ยังไม่มีอะไร</li>';
+}
+function renderStall() {
+  const id = S.sel, mp = price(id), [lo, hi] = band(id), asks = S.orders.filter(o => o.c === id && o.side === 'sell' && o.left).sort((a, b) => a.p - b.p || a.t - b.t),
+    bids = S.orders.filter(o => o.c === id && o.side === 'buy' && o.left).sort((a, b) => b.p - a.p || a.t - b.t);
+  const W = 600, H = 140, sp = spark(id, W, H, 12), have = S.bag[id] || 0, md = mood(id);
+  S.p = Math.max(lo, Math.min(hi, S.p || mp)); const maxQ = S.side === 'sell' ? have : Math.max(1, Math.floor(S.coins / S.p)); S.q = Math.max(1, Math.min(S.q, maxQ || 1));
+  // how much would match right now
+  const opp = S.side === 'sell' ? bids.filter(b => b.p >= S.p && !b.mine) : asks.filter(a => a.p <= S.p && !a.mine); let m = 0, mv = 0;
+  for (const o of opp) { const u = Math.min(S.q - m, o.left); m += u; mv += u * o.p; if (m >= S.q) break; }
+  const can = S.side === 'sell' ? have >= S.q && have > 0 : S.coins >= S.q * S.p, full = mineOpen().length >= 5;
+  const grid = '';
+  $('stall').innerHTML = `<div class="row" style="justify-content:space-between"><h3>${img(id, 22)} แผงตลาด · ${NM(id)} ${md === 'hot' ? '<span class="tag hot">🔥 ราคาดี</span>' : md === 'cold' ? '<span class="tag cold">❄️ ราคาตก</span>' : ''}</h3><span class="muted">ราคาตลาด <b style="color:#3a2a20">${mp} 🪙</b> · ต่ำสุด–สูงสุด 24 ชม. ${sp.lo}–${sp.hi}</span></div>
+    <svg class="chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><line x1="0" x2="${W}" y1="${sp.y(BASE(id))}" y2="${sp.y(BASE(id))}" stroke="#d9c9ae" stroke-dasharray="4 4"/>
+      <path d="${sp.d}" fill="none" stroke="#ff6b93" stroke-width="3" vector-effect="non-scaling-stroke"/>${sp.pts.map((v, i) => `<circle cx="${sp.x(i)}" cy="${sp.y(v)}" r="${i === 12 ? 5 : 2.5}" fill="${i === 12 ? '#ff6b93' : '#3a2a20'}"/>`).join('')}</svg><div class="axis"><span>−24 ชม.</span><span>−18</span><span>−12</span><span>−6</span><span>ตอนนี้</span></div>
+    <div class="book">
+      <div><h4>🔴 ตั้งขาย <small class="muted">(ถูกสุดก่อน)</small></h4><ul class="ob ask">${asks.slice(0, 6).map(o => `<li class="${o.mine ? 'mine' : ''}"><b>${o.p} 🪙</b><span>×${o.left}</span><span class="who">${o.mine ? '⭐ คุณ' : o.who}</span></li>`).join('') || '<li class="muted">ไม่มีคนตั้งขาย</li>'}</ul></div>
+      <div><h4>🟢 ตั้งรับซื้อ <small class="muted">(แพงสุดก่อน)</small></h4><ul class="ob bid">${bids.slice(0, 6).map(o => `<li class="${o.mine ? 'mine' : ''}"><b>${o.p} 🪙</b><span>×${o.left}</span><span class="who">${o.mine ? '⭐ คุณ' : o.who}</span></li>`).join('') || '<li class="muted">ไม่มีคนรับซื้อ</li>'}</ul></div>
+    </div>
+    <div class="form">
+      <div class="seg"><button class="btn${S.side === 'sell' ? ' on' : ''}" data-side="sell">ตั้งขาย (มี ${have})</button><button class="btn${S.side === 'buy' ? ' on' : ''}" data-side="buy">ตั้งรับซื้อ</button></div>
+      <div class="row"><span class="lbl">จำนวน</span><span class="step"><button class="btn" data-q="-1">−</button><b>${S.q}</b><button class="btn" data-q="1">+</button></span>${S.side === 'sell' && have ? `<button class="btn" data-q="max">ทั้งหมด</button>` : ''}</div>
+      <div class="row"><span class="lbl">ราคา/ชิ้น</span><span class="step"><button class="btn" data-p="-5">−5</button><button class="btn" data-p="-1">−</button><b>${S.p}</b><button class="btn" data-p="1">+</button><button class="btn" data-p="5">+5</button></span><button class="btn" data-p="mkt">ราคาตลาด</button></div>
+      <div class="hint${!can || full ? ' warn' : ''}">${full ? 'ตั้งได้ครั้งละ 5 คำสั่ง · ยกเลิกหรือรอให้มีคนจับคู่ก่อน' : !can ? (S.side === 'sell' ? `ไม่มี${NM(id)}ในตะกร้า` : 'เหรียญไม่พอ') :
+        m ? `⚡ จับคู่ได้ทันที ${m} ชิ้น (${fmt(mv)} 🪙)${m < S.q ? ` · อีก ${S.q - m} ชิ้นวางรอที่แผง` : ''}` : `วางรอที่แผง · ${S.side === 'sell' ? 'ผักถูกกันไว้' : `กันเหรียญไว้ ${fmt(S.q * S.p)} 🪙`} จนมีคนจับคู่ (ไม่เกิน 24 ชม.)`}
+        <br><small class="muted">ตั้งราคาได้ ${lo}–${hi} 🪙 (50–200% ของราคาตลาด)</small></div>
+      <div class="row"><button class="btn pri" data-go ${can && !full ? '' : 'disabled'}>${S.side === 'sell' ? `🔴 ตั้งขาย ${S.q} × ${S.p}` : `🟢 ตั้งรับซื้อ ${S.q} × ${S.p}`} = ${fmt(S.q * S.p)} 🪙</button>
+        ${S.side === 'sell' && have ? `<button class="btn yel" data-npc>💰 ขายให้ตลาดทันที ${S.q} × ${mp}</button>` : ''}</div>
+    </div>`;
+}
+function renderMine() { const L = mineOpen(); $('mineN').textContent = `${L.length}/5`;
+  $('mine').innerHTML = L.map(o => `<li>${img(o.c, 20)}<span>${o.side === 'sell' ? '🔴 ขาย' : '🟢 รับซื้อ'}${NM(o.c)} <b>${o.left}</b>/${o.q} @${o.p} 🪙<br><small class="muted">ครบ 24 ชม. ใน ${Math.max(0, Math.round((o.t + 24 * HR - S.t) / HR))} ชม. · ราคาตลาดตอนนี้ ${price(o.c)}</small></span><button class="btn" data-x="${o.id}">ยกเลิก</button></li>`).join('') || '<li class="muted">ยังไม่มีคำสั่ง</li>'; }
+
+document.addEventListener('click', e => {
+  const b = e.target.closest('button, .board li'); if (!b || b.disabled) return; const d = b.dataset;
+  if (d.c) pickCrop(d.c);
+  else if (d.side) { S.side = d.side; S.p = price(S.sel); S.q = 1; }
+  else if (d.q) S.q = d.q === 'max' ? S.bag[S.sel] || 1 : S.q + +d.q;
+  else if (d.p) S.p = d.p === 'mkt' ? price(S.sel) : S.p + +d.p;
+  else if ('go' in d) { const got = place({ side: S.side, c: S.sel, q: S.q, p: S.p, who: 'คุณ', mine: true });
+    if (S.q - got) { log(`🏪 ตั้ง${S.side === 'sell' ? 'ขาย' : 'รับซื้อ'}${NM(S.sel)} ${S.q - got} ชิ้น @${S.p}`); toast(`🏪 วางที่แผงแล้ว ${S.q - got} ชิ้น`); } S.q = 1; }
+  else if ('npc' in d) { const p = price(S.sel), u = Math.min(S.q, S.bag[S.sel] || 0); S.bag[S.sel] -= u; if (!S.bag[S.sel]) delete S.bag[S.sel]; S.coins += u * p; log(`💰 ขาย${NM(S.sel)} ${u} ให้ตลาด @${p} = +${fmt(u * p)} 🪙`); toast(`💰 +${fmt(u * p)} 🪙`); S.q = 1; }
+  else if (d.x) cancel(+d.x);
+  else if (b.id === 'skip') { S.t += PERIOD; expire(); for (let i = 0; i < 4; i++) botOrder(); log(`⏩ ราคาตลาดรอบใหม่`); S.p = price(S.sel); }
+  else if (b.id === 'bots') { for (let i = 0; i < 6; i++) botOrder(); }
+  else if (b.id === 'reset') { reset(); return; }
+  else return;
+  render();
+});
+let tt; function toast(m) { const t = $('toast'); t.textContent = m; t.classList.add('on'); clearTimeout(tt); tt = setTimeout(() => t.classList.remove('on'), 2200); }
+reset();
+</script>
+</body></html>

@@ -87,3 +87,11 @@ Decided 9 Nov: **no paid speed-up**, **pet 6,000**. Checked 9 Nov (GDD §2b): ×
 - Decorate on your own card: roof 8 colours (tinted Tiny Town tiles), walls 6, extras tree/pot/sign/fence/flowers. First choice free, repaint 300, extra 200, removing free. Lot fields rc/wc/xs/cz.
 - Prototype: _test/starter-house-proto.html. News entry 6.
 - Price change (10 Nov, after nobody got past จองที่ดิน on day 1: players were short of 🧱 20): บ้านหลังแรก 5,000 🪙 + 🧱 8, 12 h; ต่อเติมบ้านหลังใหญ่ 20,000 🪙 + 🧱 40. Move-in = 15,000 + 8 bricks, full house still 55,000. The ขาดอีก line shows มี x/y and where bricks come from.
+
+## Farm economy roadmap (owner, 10 Nov 2026)
+Feedback: "money is hard to find" — stats 3–9 Nov: 71% of coins come from the farm, a mini game pays 40–70 per play, move-in = 15,000.
+Owner rejected game-pay bonuses; wants farming-game mechanics, in this order:
+1. **Market prices that change over time** (every 2 h, same for everyone, 24 h chart) + **market stalls with buy orders and sell orders** (order book, auto-match, escrow, price band). Prototype: `_test/market-proto.html`.
+2. **Kitchen** — cook crops into dishes, with a **proficiency level per dish type** (cook more of one dish → better results).
+3. **Animal farm** (needs new sprites).
+Before trading ships for real: lock down DB rules for the market paths (trades move coins between players).

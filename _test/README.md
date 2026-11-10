@@ -9,6 +9,7 @@ Add new files with `git add -f _test/<file>`; never `git add -A`.
 - `village-proto.html` - playable prototype (Kenney Tiny Town + Tiny Farm, LimeZu characters, Elthen cat, live players with ?test=1)
 - `starter-house-proto.html` - starter house prototype (10 Nov): farm moves at จองที่ดิน, move in at a small cottage, roof/wall colours (tinted Tiny Town tiles) + front extras; `starter-house-mockup.png` = first sketch
 - `basket-proto.html` - farm basket prototype (10 Nov): pink button only harvests/plants/waters, per-crop quantity picker + one bulk sell bar, "pick all" keeps what village deliveries and the house stage still need, warning before selling those
+- `market-proto.html` - market prototype (10 Nov): prices change every 2 h from the clock (same for everyone, 24 h chart, 🔥/❄️), stalls with sell + buy orders (escrow, auto-match at the resting price, 50–200% band, 5 orders, 24 h expiry), pretend coworkers trade on ⏩ / 🤖
 - `wireframe-village.html` - early gray wireframe
 - `village-room.png` - house interior rendered by the real `drawRoom`
 
