@@ -297,6 +297,24 @@ const Village = (() => {
   }
   function nearestWalk(tx, ty) { for (let r = 0; r < 6; r++) for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) if (Math.max(Math.abs(dx), Math.abs(dy)) === r && walk(tx + dx, ty + dy)) return [tx + dx, ty + dy]; return null; }
   function goTo(cell) { if (!cell) return; const p = bfs([Math.round(me.x), Math.round(me.y)], cell); if (p) { me.path = p; send(); } }
+  // keyboard: arrows / WASD walk one cell at a time while held (presence is written when you stop, or every 1.5 s)
+  const KEYS = { ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0], w: [0, -1], s: [0, 1], a: [-1, 0], d: [1, 0] }, held = [];
+  let keyWalk = false, keySendT = 0;
+  const typing = e => { const t = e.target; return t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)); };
+  function onKey(e) {
+    const k = KEYS[e.key] ? e.key : KEYS[e.key && e.key.toLowerCase()] ? e.key.toLowerCase() : null;
+    if (!k || e.ctrlKey || e.metaKey || e.altKey || typing(e) || !visible()) return;
+    e.preventDefault(); const i = held.indexOf(k);
+    if (e.type === 'keydown') { if (i < 0) held.push(k); if (me.path.length > 1) me.path.length = 1; }   // stop a tap-walk after the current step
+    else if (i >= 0) held.splice(i, 1);
+  }
+  function keyStep(dt) {
+    if (!held.length) { if (keyWalk && !me.path.length) { keyWalk = false; send(); } return; }
+    keyWalk = true; if ((keySendT -= dt) < 0) { keySendT = 1.5; send(); }
+    if (me.path.length) return;
+    const [dx, dy] = KEYS[held[held.length - 1]], nx = Math.round(me.x) + dx, ny = Math.round(me.y) + dy;
+    if (walk(nx, ny)) me.path = [[nx, ny]]; else me.dir = dx ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up');
+  }
   function send(force) {                          // one write per new target cell (or tab shown/hidden)
     if (!O) return; const tg = me.path.length ? me.path[me.path.length - 1] : [Math.round(me.x), Math.round(me.y)];
     const v = document.hidden || !visible() ? 0 : 1, pe = petPres(), sig = `${tg[0]},${tg[1]},${v},${pe}`; if (!force && sig === sentSig) return; sentSig = sig;
@@ -596,7 +614,7 @@ const Village = (() => {
     if (!world || !visible()) return; t += dt;
     if (cv.width !== Math.round(wrapEl.clientWidth * dpr)) resize();
     if ((bsT -= dt) < 0) { bsT = 2; const bs = LOTS.map(L => building(L) ? 1 : 0).join(''); if (bs !== bsSig) { const first = !bsSig; bsSig = bs; if (!first) { rebuild(); paintWorld(); syncHome(); renderCard(); renderBar(); } } }
-    step(me, dt); for (const a of Object.values(others)) step(a, dt);
+    keyStep(dt); step(me, dt); for (const a of Object.values(others)) step(a, dt);
     const tg = camTarget(); cam.x += (tg.x - cam.x) * Math.min(1, dt * 8); cam.y += (tg.y - cam.y) * Math.min(1, dt * 8);
     ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.imageSmoothingEnabled = false; ctx.fillStyle = '#5a9b3a'; ctx.fillRect(0, 0, cv.width, cv.height);
     ctx.drawImage(world, cam.x, cam.y, cv.width / S(), cv.height / S(), 0, 0, cv.width, cv.height);
@@ -674,7 +692,8 @@ const Village = (() => {
     el.addEventListener('keydown', e => { if (e.key === 'Escape') closeCard(); });
     cv.addEventListener('click', tap);
     window.addEventListener('resize', resize);
-    document.addEventListener('visibilitychange', () => send(true));
+    document.addEventListener('visibilitychange', () => { held.length = 0; send(true); });
+    window.addEventListener('keydown', onKey); window.addEventListener('keyup', onKey); window.addEventListener('blur', () => { held.length = 0; });
   }
   function start() {
     if (started) return; started = true; rebuild();
@@ -688,6 +707,6 @@ const Village = (() => {
     mount(slot) { if (!slot) return; if (!on()) { slot.remove(); return; } if (!el) build(); slot.replaceWith(el); renderBar(); },
     show() { if (!el) return; start(); renderBar(); requestAnimationFrame(() => { resize(); if (world) cam = camTarget(); send(true); }); },
     setGarden,
-    _dbg: { me, LOTS, others, pm, adopt, feedPet, dyePet, renamePet, myPet, get farms() { return farms; }, syncHome, gCell, get hits() { return hits; }, get ready() { return !!world; }, act, lock, goTo, fast: false, floorSpots, reserve, jobs, jobsDone, deliver, haveCrop, NPCS, BOARDC, next, help, myLot, get busy() { return busy; }, decorate, movedIn, gSize, tinted, roofOf, wallOf },
+    _dbg: { me, LOTS, others, pm, adopt, feedPet, dyePet, renamePet, myPet, get farms() { return farms; }, syncHome, gCell, get hits() { return hits; }, get ready() { return !!world; }, act, lock, goTo, fast: false, floorSpots, reserve, jobs, jobsDone, deliver, haveCrop, NPCS, BOARDC, next, help, myLot, get busy() { return busy; }, decorate, movedIn, held, gSize, tinted, roofOf, wallOf },
   };
 })();

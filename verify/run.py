@@ -202,6 +202,15 @@ def village(page, base, shot):
             raise AssertionError('the other player did not walk: ' + json.dumps(page.evaluate("Object.values(Village._dbg.others).map(a => [a.x, a.y, a.to, a.path.length, a.p.vx, a.p.vy, a.p.v])")))
     finally:
         p2.close()
+    # keyboard: holding an arrow / WASD walks cell by cell and stops on a whole cell when let go
+    page.evaluate('() => { const D = Village._dbg; D.me.path.length = 0; D.me.x = Math.round(D.me.x); D.me.y = Math.round(D.me.y); }')
+    k0 = page.evaluate('() => [Village._dbg.me.x, Village._dbg.me.y]')
+    page.keyboard.down('ArrowRight'); page.wait_for_timeout(700); page.keyboard.up('ArrowRight'); page.wait_for_timeout(600)
+    k1 = page.evaluate('() => [Village._dbg.me.x, Village._dbg.me.y, Village._dbg.me.path.length]')
+    page.keyboard.down('a'); page.wait_for_timeout(400); page.keyboard.up('a'); page.wait_for_timeout(600)
+    k2 = page.evaluate('() => [Village._dbg.me.x, Village._dbg.me.y, Village._dbg.me.path.length, Village._dbg.held.length]')
+    if not (k1[0] >= k0[0] + 2 and k1[1] == k0[1] and k1[2] == 0 and k1[0] == int(k1[0]) and k2[0] < k1[0] and k2[2] == 0 and k2[3] == 0):
+        raise AssertionError('arrow keys wrong: ' + json.dumps([k0, k1, k2]))
     # road pickups: 3 bricks + 4 extras a day (2 x 15 coins, 1 vegetable, a clover 40); walking over one picks it up, each only once
     fl = page.evaluate('''async () => { const D = Village._dbg, w = ms => new Promise(r => setTimeout(r, ms)), b0 = Prog.bricks().n, c0 = Prog.get().coins;
       const veg = () => Object.values((Prog.get().farm || {}).bag || {}).reduce((a, n) => a + n, 0), v0 = veg();
