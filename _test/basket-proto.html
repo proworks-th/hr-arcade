@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Basket Prototype</title>
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f3ead9;font-family:Kanit,sans-serif;color:#3a2a20}
+.wrap{max-width:1100px;margin:0 auto;padding:12px 16px 40px}
+h1{font-size:20px;margin:4px 0 2px}.sub{color:#7a6a5a;font-size:13.5px;margin:0 0 12px}
+.grid{display:grid;grid-template-columns:380px 1fr;gap:16px;align-items:start}
+@media (max-width:860px){.grid{grid-template-columns:1fr}}
+.panel{background:#fff;border:3px solid #3a2a20;border-radius:14px;box-shadow:0 5px 0 #3a2a20;padding:12px 14px;font-size:14px}
+.panel h3{margin:0 0 4px;font-size:16px}
+.muted{color:#7a6a5a}small{font-size:12.5px}
+.btn{font:inherit;font-size:14px;border:2px solid #3a2a20;border-radius:10px;background:#fff;padding:4px 12px;cursor:pointer;box-shadow:0 3px 0 #3a2a20;min-height:40px;color:inherit}
+.btn:active{transform:translateY(2px);box-shadow:0 1px 0 #3a2a20}
+.btn:disabled{opacity:.4;cursor:default;box-shadow:none;transform:none}
+.coins{font-weight:600;background:#fff7d6;border:2px solid #3a2a20;border-radius:999px;padding:2px 12px;display:inline-block}
+/* farm side */
+.plots{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin:10px 0}
+.plot{aspect-ratio:1.3;border:3px solid #6b3f1f;border-radius:8px;background:#5b3a22;display:grid;place-items:center;position:relative}
+.plot img{height:30px;image-rendering:pixelated}.plot .dry{position:absolute;left:3px;bottom:1px;font-size:11px}
+.smart{display:block;width:100%;font:inherit;font-weight:600;font-size:16px;border:3px solid #2b2140;border-radius:12px;background:#ff6b93;color:#fff;padding:10px;cursor:pointer;box-shadow:0 4px 0 #2b2140;min-height:50px}
+.smart.quiet{background:#f3eee6;color:#7a6a5a;font-weight:400;font-size:14px;cursor:default;box-shadow:none}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.gone{margin-top:10px;background:#f3eee6;border-radius:10px;padding:8px 10px;font-size:13px}
+.gone s{color:#a08e7c}
+/* basket */
+.need{background:#eef7ff;border:2px dashed #7fb6e0;border-radius:10px;padding:6px 10px;font-size:13px;margin:8px 0}
+.bag{list-style:none;margin:0;padding:0}
+.bag li{display:grid;grid-template-columns:40px 1fr auto 44px;gap:8px;align-items:center;border:2px solid #e3d8c4;border-radius:12px;padding:6px 8px;margin-bottom:6px;background:#fff}
+.bag li.pick{border-color:#ff6b93;background:#fff4f7}
+.bag li>img{height:28px;image-rendering:pixelated;justify-self:center}
+.nm b{font-size:15px}.nm i{font-style:normal;color:#7a6a5a;font-weight:400}
+.tag{display:inline-block;font-size:11.5px;border-radius:999px;padding:0 7px;margin-left:4px;background:#e3f1ff;color:#24557d}
+.tag.h{background:#fff0d6;color:#8a5a00}
+.qty{display:flex;align-items:center;gap:4px}
+.qty .btn{min-width:40px;padding:0;font-size:18px;font-weight:600}
+.qty .n{min-width:34px;text-align:center;font-weight:600;font-size:16px}
+.qty .all{font-size:12.5px;min-width:0;padding:0 8px;font-weight:400}
+.gift{min-width:44px;padding:0}
+@media (max-width:520px){
+  .bag li{grid-template-columns:34px 1fr 44px;row-gap:6px}
+  .qty{grid-column:1/-1;justify-content:flex-end}
+  .bag li .gift{grid-column:3;grid-row:1}
+}
+.bar{position:sticky;bottom:0;background:#fff;border-top:2px solid #e3d8c4;margin:8px -14px -12px;padding:10px 14px;border-radius:0 0 11px 11px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.bar .sell{margin-left:auto;background:#ffd84d;font-weight:600}
+.bar .sell.warn{background:#ffb04d}
+.warnbox{flex-basis:100%;background:#fff3e0;border:2px solid #ffb04d;border-radius:10px;padding:6px 10px;font-size:13px}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#2b2140;color:#fff;padding:8px 16px;border-radius:999px;font-size:14px;opacity:0;transition:.25s;pointer-events:none;max-width:calc(100vw - 24px);text-align:center}
+.toast.on{opacity:1}
+.note{background:#fff7d6;border:2px dashed #d9b84a;border-radius:10px;padding:8px 10px;font-size:13px;margin-top:14px}
+.note li{margin:2px 0}
+</style></head><body>
+<div class="wrap">
+  <h1>🧺 ตะกร้าใหม่ · ต้นแบบ</h1>
+  <p class="sub">ต้นแบบ ยังไม่ใช่เกมจริง · ปุ่มชมพูทำแค่ เก็บ / ปลูก / รดน้ำ · ผักอยู่ในตะกร้าจนกว่าจะเลือกขายเอง</p>
+  <div class="grid">
+    <div class="panel">
+      <div class="row" style="justify-content:space-between"><h3>🌱 ฟาร์ม</h3><span class="coins" id="coins"></span></div>
+      <div class="plots" id="plots"></div>
+      <button class="smart" id="smart"></button>
+      <div class="row" style="margin-top:10px"><button class="btn" id="skip">⏩ ข้ามเวลา (ผักสุก)</button><button class="btn" id="reset">↺ เริ่มใหม่</button></div>
+      <div class="gone">ปุ่มชมพูแบบเดิม: <s>💰 ขายตะกร้า +1,639</s> → ไม่มีแล้ว<br><span class="muted">เมื่อไม่มีอะไรต้องทำ ปุ่มจะบอกเวลาผักต้นถัดไปแทน</span></div>
+    </div>
+    <div class="panel">
+      <h3>🧺 ตะกร้า</h3>
+      <div class="need" id="need"></div>
+      <ul class="bag" id="bag"></ul>
+      <div class="bar" id="bar"></div>
+    </div>
+  </div>
+  <div class="note"><b>ลองดู</b><ul>
+    <li>กด + / − หรือ "ทั้งหมด" ที่แต่ละผล แล้วกดขายทีเดียวที่แถบล่าง</li>
+    <li>"เลือกทั้งหมด" จะเว้นของที่ยังต้องใช้ (📦 งานส่งของ, 🏠 ผักสร้างบ้าน) ไว้ให้ · กดอีกครั้งเพื่อเลือกหมดจริง ๆ</li>
+    <li>ถ้าเลือกขายเกินของที่ต้องใช้ จะมีคำเตือนก่อน แต่ยังขายได้</li>
+    <li>🎁 ยังส่งให้เพื่อนได้ทีละ 1 ชิ้นเหมือนเดิม</li>
+  </ul></div>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+const PXA_PAL = { k: '#2b2140', w: '#ffffff', y: '#ffd23f', o: '#c77d0a', r: '#ff4d6d', R: '#b3203a', b: '#4cc3ff', B: '#2266cc', l: '#bfe9ff',
+  g: '#21c07a', G: '#14804f', c: '#6b3e26', C: '#a5683f', m: '#fffdf6', t: '#e0913b', p: '#ff5c8a', s: '#d9dde3', S: '#8a93a3', v: '#8338ec' };
+const PXA_ART = {};
+const CROPS = {
+  bok: ['ผักบุ้ง', 3, 4, 5, 1, ['g...g...g', 'gg.gGg.gg', '.gGgGgGg.', '.gGgGgGg.', '..gGGGg..', '..GgGgG..', '..GgGgG..', '...GGG...']],
+  let: ['ผักสลัด', 10, 8, 11, 1, ['...ggg...', '.ggwgwgg.', 'gGgggggGg', 'ggGgwgGgg', 'gGgggggGg', '.gGgGgGg.', '..ggggg..']],
+  car: ['แครอท', 20, 12, 17, 2, ['..g.g.g..', '..gGgGg..', '...gGg...', '...kGk...', '..ktttk..', '..ktttk..', '...kttk..', '...ktk...', '....k....']],
+  tom: ['มะเขือเทศ', 40, 18, 25, 3, ['..gGgGg..', '.gGrrGgg.', 'gGrwrRgGg', 'gGrrRGrrg', '.gGRgGrwr', '.gGgGgrrR', '..gGGGg..', '...GGG...']],
+  chi: ['พริก', 60, 22, 32, 5, ['...gGg...', '.ggGgGgg.', 'gGrgGgRgg', 'gGRgGgrGg', '.grGgGrg.', '.gRgGgRg.', '..gGGGg..', '...GGG...']],
+  cor: ['ข้าวโพด', 90, 28, 40, 7, ['....g.....', '...ggk....', '..gGkyk...', '..gkyyyk..', '.gGkyoyk..', 'gGgkyyyk.g', '.g.kyoykgG', '...gkyyGg.', '....gGGg..', '.....GG...']],
+  pum: ['ฟักทอง', 120, 35, 48, 9, ['....Gc....', '...gGc....', '.kkkkkkkk.', 'ktottottok', 'kttottotok', 'kttottotok', 'ktottottok', '.kkkkkkkk.']],
+  wat: ['แตงโม', 180, 45, 64, 12, ['.....gG....', '..kkkkkkk..', '.kgGgGgGgk.', 'kgGgGgGgGgk', 'kGgGgGgGgGk', 'kgGgGgGgGgk', '.kGgGgGgGk.', '..kkkkkkk..']],
+  // signature fruits: everyone is dealt one (from their name); only its owner can plant it
+  mgo: ['มะม่วง', 60, 20, 30, 1, ['....Gg...', '...kkkk..', '..kyyyok.', '.kyyyyyok', '.kyyytyok', '.kyyttook', '..kyttok.', '...kkkk..']],
+  mgs: ['มังคุด', 60, 20, 30, 1, ['...gGg...', '..gGkGg..', '.kkvvvkk.', 'kvvvvvvvk', 'kvwvvvvvk', 'kvvvvvvvk', '.kvvvvvk.', '..kkkkk..']],
+  lyc: ['ลิ้นจี่', 60, 20, 30, 1, ['...Gg....', '..kkkk...', '.krRrRk..', 'kRrRrRrk.', 'krRrRrRk.', 'kRrRrRrk.', '.krRrRk..', '..kkkk...']],
+  ram: ['เงาะ', 60, 20, 30, 1, ['.r.r.r.r.', 'r.kkkkk.r', '.krrrrrk.', 'rkrwrrrkr', '.krrrrrk.', 'rkrrrrRkr', '.kkrrrkk.', 'r..kkk..r']],
+  coc: ['มะพร้าว', 60, 20, 30, 1, ['..kkkkk..', '.kcCcCck.', 'kcCcCcCck', 'kCcCcCcCk', 'kcCcCckck', '.kcCckck.', '..kkkkk..']],
+  dur: ['ทุเรียน', 60, 20, 30, 1, ['....c....', '..kykyk..', '.kygyyyk.', 'kyygyGyyk', 'kgyyGyygk', 'kyyGyyGyk', '.kGyygyk.', '..kkkkk..']],
+};
+for (const [id, c] of Object.entries(CROPS)) PXA_ART['crop_' + id] = c[5];
+Object.assign(PXA_ART, {
+  crop_sprout: ['.gg...gg.', 'gggg.gggg', '.gGGgGGg.', '...GgG...', '....G....', '....G....'],
+});
+const MUT = { w: ['ฉ่ำ', 1.5], g: ['ทอง', 3], r: ['สายรุ้ง', 5] };
+const PX = {};
+function pxa(key) { if (PX[key]) return PX[key]; const rows = PXA_ART[key], c = document.createElement('canvas'); c.width = Math.max(...rows.map(r => r.length)); c.height = rows.length;
+  const g = c.getContext('2d'); rows.forEach((r, y) => [...r].forEach((ch, x) => { if (ch !== '.') { g.fillStyle = PXA_PAL[ch]; g.fillRect(x, y, 1, 1); } })); return (PX[key] = c); }
+function cropImg(id, m) { const base = pxa('crop_' + id); if (!m) return base; const c = document.createElement('canvas'); c.width = base.width; c.height = base.height; const g = c.getContext('2d');
+  g.drawImage(base, 0, 0); g.globalCompositeOperation = 'source-atop'; g.fillStyle = m === 'g' ? 'rgba(255,200,40,.55)' : 'rgba(120,200,255,.35)'; g.fillRect(0, 0, c.width, c.height); return c; }
+const img = (key, h) => { const [id, m] = key.split('.'), im = cropImg(id, m), c = document.createElement('canvas'), k = 3; c.width = im.width * k; c.height = im.height * k;
+  const g = c.getContext('2d'); g.imageSmoothingEnabled = false; g.drawImage(im, 0, 0, c.width, c.height); return `<img alt="" src="${c.toDataURL()}" height="${h}">`; };
+const name = k => { const [id, m] = k.split('.'); return CROPS[id][0] + (m ? MUT[m][0] : ''); };
+const price = k => { const [id, m] = k.split('.'); return Math.round(CROPS[id][3] * (m ? MUT[m][1] : 1)); };
+const fmt = n => n.toLocaleString('en-US'), $ = id => document.getElementById(id);
+
+// what the village still needs (same rules as the game: deliveries want one crop, a house stage takes any vegetables, cheapest first)
+const JOBS = [{ c: 'wat', q: 2, who: 'ป้าแดง' }, { c: 'tom', q: 3, who: 'โรงอาหาร' }];
+const HOUSE = { veg: 30, stage: '🌳 ขยายสวน' };
+let S;
+function reset() {
+  S = { coins: 12400, bag: { 'wat.w': 8, wat: 8, pum: 4, dur: 4, mgs: 1, car: 1, tom: 6, bok: 22 }, pick: {}, all: 0, warned: false,
+    plots: ['ripe', 'ripe', 'ripe', 'grow', 'grow', 'grow', 'grow', 'grow', '', ''], seed: 'wat', dry: [3, 4] };
+  render();
+}
+// how many of each key to keep for the village: delivery crops first, then house vegetables from the cheapest
+function reserve() {
+  const keep = {}, left = { ...S.bag }; keep.job = {}; keep.house = {};
+  for (const J of JOBS) { let q = J.q; for (const k of Object.keys(left).filter(k => k.split('.')[0] === J.c).sort((a, b) => price(a) - price(b))) { const u = Math.min(q, left[k]); keep[k] = (keep[k] || 0) + u; keep.job[k] = (keep.job[k] || 0) + u; left[k] -= u; q -= u; } }
+  let v = HOUSE.veg; for (const k of Object.keys(left).sort((a, b) => price(a) - price(b))) { const u = Math.min(v, left[k]); if (!u) continue; keep[k] = (keep[k] || 0) + u; keep.house[k] = (keep.house[k] || 0) + u; left[k] -= u; v -= u; }
+  return keep;
+}
+function render() {
+  $('coins').textContent = '🪙 ' + fmt(S.coins);
+  $('plots').innerHTML = S.plots.map((p, i) => `<div class="plot">${p === 'ripe' ? img(S.pc && S.pc[i] || 'wat', 30) : p === 'grow' ? `<img alt="" src="${(() => { const c = document.createElement('canvas'), im = pxa('crop_sprout'); c.width = im.width * 3; c.height = im.height * 3; const g = c.getContext('2d'); g.imageSmoothingEnabled = false; g.drawImage(im, 0, 0, c.width, c.height); return c.toDataURL(); })()}">` : ''}${p === 'grow' && S.dry.includes(i) ? '<span class="dry">🥀</span>' : p === 'grow' ? '<span class="dry">💧</span>' : ''}</div>`).join('');
+  const ripe = S.plots.filter(p => p === 'ripe').length, empty = S.plots.filter(p => !p).length, dry = S.dry.length, sm = $('smart');
+  sm.className = 'smart'; sm.disabled = false;
+  if (ripe) { sm.textContent = `🧺 เก็บทั้งหมด ${ripe}`; sm.onclick = () => { S.plots = S.plots.map(p => p === 'ripe' ? '' : p); S.bag.wat = (S.bag.wat || 0) + ripe; toast(`🧺 เก็บแตงโม ${ripe} ลูกเข้าตะกร้า`); render(); }; }
+  else if (empty) { sm.innerHTML = `${img(S.seed, 20)} ปลูกแตงโม ${empty} แปลง`; sm.onclick = () => { S.plots = S.plots.map(p => p || 'grow'); S.coins -= 45 * empty; S.dry.push(...S.plots.map((p, i) => i).slice(-empty)); toast(`ปลูกแตงโม ${empty} แปลง (−${45 * empty} 🪙)`); render(); }; }
+  else if (dry) { sm.textContent = `💧 รดน้ำ ${dry} ต้น`; sm.onclick = () => { S.dry = []; toast('💧 รดน้ำแล้ว'); render(); }; }
+  else { sm.className = 'smart quiet'; sm.textContent = 'ผักต้นถัดไปสุกใน 2 ชม. 32 น. · ไปเล่นเกมก่อนก็ได้'; sm.onclick = null; }
+  renderBag();
+}
+function renderBag() {
+  const keys = Object.keys(S.bag).filter(k => S.bag[k] > 0).sort((a, b) => price(b) - price(a)), keep = reserve();
+  const vegHave = Object.values(S.bag).reduce((a, n) => a + n, 0);
+  $('need').innerHTML = `ยังต้องใช้ในหมู่บ้าน: ${JOBS.map(J => `📦 ${CROPS[J.c][0]} ${J.q} (${J.who})`).join(' · ')} · 🏠 ${HOUSE.stage} ใช้ผัก ${HOUSE.veg} ชิ้น <span class="muted">(มี ${vegHave})</span>`;
+  if (!keys.length) { $('bag').innerHTML = '<p class="muted">ตะกร้าว่าง · ผักที่เก็บจะมาอยู่ที่นี่</p>'; } else
+  $('bag').innerHTML = keys.map(k => { const n = S.bag[k], p = S.pick[k] || 0, jb = keep.job[k] || 0, hv = keep.house[k] || 0;
+    return `<li class="${p ? 'pick' : ''}">${img(k, 28)}<span class="nm"><b>${name(k)} <i>×${n}</i></b><br><small class="muted">ชิ้นละ ${price(k)} 🪙</small>${jb ? `<span class="tag">📦 ส่งของใช้ ${jb}</span>` : ''}${hv ? `<span class="tag h">🏠 สร้างบ้าน ${hv}</span>` : ''}</span>
+      <span class="qty"><button class="btn" data-m="${k}" ${p ? '' : 'disabled'} aria-label="ลด">−</button><span class="n">${p}</span><button class="btn" data-p="${k}" ${p < n ? '' : 'disabled'} aria-label="เพิ่ม">+</button><button class="btn all" data-a="${k}">${p === n ? 'ล้าง' : 'ทั้งหมด'}</button></span>
+      <button class="btn gift" data-g="${k}" title="ส่งให้เพื่อน 1 ชิ้น">🎁</button></li>`; }).join('');
+  const tot = keys.reduce((a, k) => a + (S.pick[k] || 0), 0), val = keys.reduce((a, k) => a + (S.pick[k] || 0) * price(k), 0);
+  const over = keys.filter(k => (S.pick[k] || 0) > S.bag[k] - (keep[k] || 0));
+  const warn = S.warned && over.length;
+  $('bar').innerHTML = `<button class="btn" id="pickAll">${S.all ? 'เลือกหมดจริง ๆ' : 'เลือกทั้งหมด'}</button><button class="btn" id="clear" ${tot ? '' : 'disabled'}>ล้าง</button>
+    <button class="btn sell${warn ? ' warn' : ''}" id="sell" ${tot ? '' : 'disabled'}>${warn ? '⚠️ ขายอยู่ดี' : '💰 ขาย'} ${tot} ชิ้น +${fmt(val)}</button>
+    ${warn ? `<div class="warnbox">มี${over.map(k => name(k)).join(', ')} ที่ยังต้องใช้ส่งของ/สร้างบ้าน · ขายไปก็ได้ แต่ต้องปลูกใหม่นะ</div>` : ''}`;
+}
+document.addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b || b.disabled) return; const d = b.dataset;
+  if (d.p) { S.pick[d.p] = Math.min(S.bag[d.p], (S.pick[d.p] || 0) + 1); S.warned = false; }
+  else if (d.m) { S.pick[d.m] = Math.max(0, (S.pick[d.m] || 0) - 1); S.warned = false; }
+  else if (d.a) { S.pick[d.a] = S.pick[d.a] === S.bag[d.a] ? 0 : S.bag[d.a]; S.warned = false; }
+  else if (d.g) { S.bag[d.g]--; S.pick[d.g] = Math.min(S.pick[d.g] || 0, S.bag[d.g]); toast(`🎁 ส่ง${name(d.g)}ให้เพื่อนแล้ว`); }
+  else if (b.id === 'pickAll') { const keep = reserve(); if (!S.all) { for (const k in S.bag) S.pick[k] = S.bag[k] - (keep[k] || 0); S.all = 1; toast('เลือกทั้งหมด เว้นของที่ยังต้องใช้ไว้'); } else { for (const k in S.bag) S.pick[k] = S.bag[k]; S.all = 0; } S.warned = false; }
+  else if (b.id === 'clear') { S.pick = {}; S.all = 0; S.warned = false; }
+  else if (b.id === 'sell') { const keep = reserve(), over = Object.keys(S.pick).some(k => S.pick[k] > S.bag[k] - (keep[k] || 0));
+    if (over && !S.warned) { S.warned = true; renderBag(); return; }
+    let n = 0, c = 0; for (const k in S.pick) { const u = S.pick[k]; n += u; c += u * price(k); S.bag[k] -= u; if (!S.bag[k]) delete S.bag[k]; }
+    S.coins += c; S.pick = {}; S.all = 0; S.warned = false; toast(`💰 ขาย ${n} ชิ้น +${fmt(c)} 🪙`); render(); return; }
+  else if (b.id === 'skip') { S.plots = S.plots.map(p => p === 'grow' ? 'ripe' : p); S.dry = []; render(); return; }
+  else if (b.id === 'reset') { reset(); return; }
+  else return;
+  renderBag();
+});
+let tt; function toast(m) { const t = $('toast'); t.textContent = m; t.classList.add('on'); clearTimeout(tt); tt = setTimeout(() => t.classList.remove('on'), 2000); }
+reset();
+</script>
+</body></html>
