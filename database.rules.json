@@ -2,14 +2,37 @@
   "rules": {
     "rooms": {
       "$room": {
-        ".read": "$room !== '_usave'",
-        ".write": "$room !== '_usave'",
+        ".read": "$room !== '_usave' && $room !== '_mkt'",
+        ".write": "$room !== '_usave' && $room !== '_mkt'",
         ".validate": "$room.length <= 16"
       },
       "_usave": {
         "$uid": {
           ".read": "auth != null && auth.uid === $uid",
           ".write": "auth != null && auth.uid === $uid"
+        }
+      },
+      "_mkt": {
+        ".read": true,
+        "o": {
+          "$id": {
+            ".write": true,
+            ".validate": "newData.hasChildren(['s','c','q','l','p','k','n','t']) && (newData.child('s').val() === 's' || newData.child('s').val() === 'b') && newData.child('c').isString() && newData.child('c').val().length <= 4 && newData.child('q').isNumber() && newData.child('q').val() >= 1 && newData.child('q').val() <= 999 && newData.child('l').isNumber() && newData.child('l').val() >= 1 && newData.child('l').val() <= newData.child('q').val() && newData.child('p').isNumber() && newData.child('p').val() >= 1 && newData.child('p').val() <= 2000 && newData.child('k').isString() && newData.child('k').val().length <= 24 && (!data.exists() || (newData.child('l').val() < data.child('l').val() && newData.child('p').val() === data.child('p').val() && newData.child('q').val() === data.child('q').val() && newData.child('s').val() === data.child('s').val() && newData.child('c').val() === data.child('c').val() && newData.child('k').val() === data.child('k').val() && newData.child('t').val() === data.child('t').val()))"
+          }
+        },
+        "c": {
+          "$key": {
+            "$id": {
+              ".write": true,
+              ".validate": "newData.hasChildren(['s','c','u','p','t']) && newData.child('u').isNumber() && newData.child('u').val() >= 1 && newData.child('u').val() <= 999 && newData.child('p').isNumber() && newData.child('p').val() <= 2000"
+            }
+          }
+        },
+        "bt": {
+          "$id": {
+            ".write": true,
+            ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 999 && (!data.exists() || newData.val() > data.val())"
+          }
         }
       }
     }

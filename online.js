@@ -196,6 +196,37 @@ export async function takeGifts(me){
   s.forEach(c=>{const v=c.val();if(v&&v.c){out.push(v);remove(c.ref)}});
   return out;
 }
+/* ---------- farm market: rooms/_mkt/o/{id}={s:'s'|'b',c,q,l,p,k,n,d,t} resting orders (d = hours it stays up) (crops or coins already held by the owner);
+   a fill owed to a resting order's owner waits in rooms/_mkt/c/{key}/{id}={s,c,u,p,n,t}; NPC vendor lots taken: rooms/_mkt/bt/{slot}=n ---------- */
+export function watchMkt(cb){return FIREBASE_CONFIG?onValue(ref(db(),'rooms/_mkt/o'),s=>cb(s.val()||{})):()=>{}}
+export function watchNpc(cb){return FIREBASE_CONFIG?onValue(ref(db(),'rooms/_mkt/bt'),s=>cb(s.val()||{})):()=>{}}
+export async function mktPut(o){const r=await push(ref(db(),'rooms/_mkt/o'),{s:o.s,c:String(o.c).slice(0,4),q:o.q|0,l:o.q|0,p:o.p|0,k:o.k,n:String(o.n).trim().slice(0,20),d:Math.max(1,Math.min(24,o.d|0||24)),t:serverTimestamp()});return r.key}
+// take up to n from a resting order (own=true: only my own, for cancelling; otherwise never my own); returns how many were taken
+export async function mktTake(id,n,me,own){
+  if(!FIREBASE_CONFIG)return 0;let got=0;
+  const r=await runTransaction(ref(db(),`rooms/_mkt/o/${id}`),cur=>{got=0;if(!cur)return cur;if(own?cur.k!==me:cur.k===me)return;
+    got=Math.min(n|0,cur.l|0);if(got<=0)return;const l=cur.l-got;return l>0?{...cur,l}:null});
+  return r.committed?got:0;
+}
+// take up to n from an NPC vendor lot of size q
+export async function npcTake(id,n,q){
+  if(!FIREBASE_CONFIG)return 0;let got=0;
+  const r=await runTransaction(ref(db(),`rooms/_mkt/bt/${id}`),cur=>{got=Math.min(n|0,q-(cur|0));if(got<=0)return;return (cur|0)+got});
+  return r.committed?got:0;
+}
+export function mktClaim(toKey,v){return FIREBASE_CONFIG?push(ref(db(),`rooms/_mkt/c/${toKey}`),{s:v.s,c:v.c,u:v.u|0,p:v.p|0,n:String(v.n).trim().slice(0,20),t:serverTimestamp()}):Promise.resolve()}
+export function watchMktClaims(me,cb){return FIREBASE_CONFIG?onValue(ref(db(),`rooms/_mkt/c/${me}`),s=>cb(Object.keys(s.val()||{}))):()=>{}}
+// each claim is removed in a transaction, so two open tabs never pay it twice
+export async function takeMktClaim(me,id){
+  if(!FIREBASE_CONFIG)return null;let v=null;
+  const r=await runTransaction(ref(db(),`rooms/_mkt/c/${me}/${id}`),cur=>{v=cur;return null});
+  return r.committed&&v&&v.c?v:null;
+}
+// vendor counts from before the last 24 h are no longer needed
+export async function pruneNpc(minP){
+  if(!FIREBASE_CONFIG)return;const s=await get(ref(db(),'rooms/_mkt/bt'));
+  s.forEach(c=>{if((parseInt(c.key,10)||0)<minP)remove(c.ref)});
+}
 // canteen orders: rooms/_canteen/{week}={q:{slot:{r,got,done,by,prev:{r,by}}},by:{key:{n,p}}} (by = the week's helpers board).
 // A filled order (done = time) waits cd ms, then the next delivery opens round r+1 (prev keeps who helped, so they can still claim).
 // Returns how many were accepted (never past the goal); 0 when the round changed or the order is cooling down.

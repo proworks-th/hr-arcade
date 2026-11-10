@@ -133,7 +133,7 @@ def farm(page, base, shot):
     page.evaluate("""() => { const p = Prog.get(); p.farm.bag = { wat: 8, 'wat.w': 2, bok: 22, let: 5, car: 5, tom: 6, chi: 4, cor: 3 }; Prog.put(p); __farm.f.bag = { ...p.farm.bag }; }""")
     page.click('.farm [data-t=bag]')
     page.wait_for_selector('.farm [data-qb=sell]', timeout=3000)
-    b0 = page.evaluate("() => ({ c: Prog.get().coins, smart: (__farm.smart(Date.now()).html || '').replace(/<img[^>]*>/g, ''), keep: __farm.keepFor(), bag: { ...__farm.f.bag } })")
+    b0 = page.evaluate("() => ({ exp: 3 * mktPrice('wat') + mktPrice('wat.w'), c: Prog.get().coins, smart: (__farm.smart(Date.now()).html || '').replace(/<img[^>]*>/g, ''), keep: __farm.keepFor(), bag: { ...__farm.f.bag } })")
     for _ in range(3):
         page.click('.farm [data-qp="wat"]')
     page.click('.farm [data-qp="wat.w"]')
@@ -156,12 +156,74 @@ def farm(page, base, shot):
         warn.append(page.evaluate("k => Prog.get().farm.bag[k] | 0", k))
     else:
         shot('farm-bag')
-    checks = {'no sell on pink': 'ขาย' not in b0['smart'], 'bar text': '4 ชิ้น +288' in sell_txt, 'coins': b1['c'] - b0['c'] == 3 * 64 + 96,
+    checks = {'no sell on pink': 'ขาย' not in b0['smart'], 'bar text': '4 ชิ้น +%s' % format(b0['exp'], ',') in sell_txt, 'coins': b1['c'] - b0['c'] == b0['exp'],
               'left after sell': [b1['bag'].get('wat'), b1['bag'].get('wat.w')] == [5, 1], 'pick all keeps': all(b2.get(k, 0) == n for k, n in keep.items()),
               'something kept': sum(keep.values()) > 0, 'warn then sell': bool(warn) and warn[0] == 1 and warn[1] > 0 and warn[2] == 0}
     bad = [k for k, v in checks.items() if not v]
     if bad:
         raise AssertionError('basket wrong: ' + ', '.join(bad) + ' ' + json.dumps([sell_txt, b1, keep, b2, warn], ensure_ascii=False))
+    market(page, shot)
+
+
+# market: orders fill at the resting price (buyer gets the difference back), claims pay the resting side, cancel and timers give back
+# what was held, NPC vendors fill on placing and fill resting orders later (even ones placed before you came back)
+MARKET_TEST = """async () => {
+  const w = ms => new Promise(r => setTimeout(r, ms)), M = await import('/verify/mocks/firebase-database.js'), F = __farm, now = Date.now(), P = mktPer(now);
+  const set = (k, v) => M.set(M.ref(null, k), v), val = async k => (await M.get(M.ref(null, k))).val();
+  // no vendors for wat / tom so the player orders below are the only ones
+  const bt = {}; for (const id of ['wat', 'tom', 'car']) for (let q = P - 13; q <= P; q++) for (const o of npcSlots(id, q)) bt[o.id] = o.q;
+  await set('rooms/_mkt/bt', bt); await set('rooms/_mkt/o', null); await set('rooms/_mkt/c', null); await w(50);
+  const mw = mktAt('wat'), mt = mktAt('tom'), out = {};
+  await set('rooms/_mkt/o/x1', { s: 'b', c: 'wat', q: 2, l: 2, p: mw + 10, k: 'บอท', n: 'บอท', d: 4, t: now - 6e4 });
+  await set('rooms/_mkt/o/x2', { s: 's', c: 'tom', q: 4, l: 4, p: mt, k: 'บอท', n: 'บอท', d: 4, t: now - 6e4 });
+  await w(50);
+  const pr = Prog.get(); pr.coins = 5000; pr.farm.bag = { wat: 5 }; Prog.put(pr); F.f.bag = { wat: 5 };
+  // sell 3 at market: 2 go to the bid at mw+10, 1 rests
+  let c0 = Prog.get().coins; out.sell = [await F.mktPlace('s', 'wat', 3, mw), Prog.get().coins - c0 === 2 * (mw + 10), Prog.get().farm.bag.wat, F.mineOpen().length];
+  out.claimBot = Object.values((await val('rooms/_mkt/c/บอท')) || {}).map(v => [v.s, v.c, v.u, v.p === mw + 10]);
+  // buy 2 at mt+5 against the ask at mt: pay mt each, 2 left on the bot order
+  c0 = Prog.get().coins; out.buy = [await F.mktPlace('b', 'tom', 2, mt + 5), c0 - Prog.get().coins === 2 * mt, Prog.get().farm.bag.tom, (await val('rooms/_mkt/o/x2')).l];
+  // someone took my resting wat sell: the claim pays me
+  c0 = Prog.get().coins; await set('rooms/_mkt/c/ทดสอบ/z1', { s: 's', c: 'wat', u: 1, p: mw, n: 'เอ', t: now }); await w(300);
+  out.claim = [Prog.get().coins - c0 === mw, !Object.keys((await val('rooms/_mkt/c/ทดสอบ')) || {}).length];
+  // cancel my resting order: crops come back
+  const mine = F.mineOpen(); const b0 = Prog.get().farm.bag.wat | 0; if (mine[0]) await F.mktCancel(mine[0].id); out.cancel = [mine.length, (Prog.get().farm.bag.wat | 0) - b0, F.mineOpen().length];
+  // timer: a 1 h order from 2 h ago vanishes and the 3 carrots come back
+  await set('rooms/_mkt/o/x3', { s: 's', c: 'car', q: 3, l: 3, p: mktAt('car'), k: 'ทดสอบ', n: 'ทดสอบ', d: 1, t: now - 2 * 3600e3 }); await w(50);
+  out.hiddenFromBook = !F.ordersOf('car').some(o => o.id === 'x3');
+  await F.mktHouse(); await w(50); out.expire = [await val('rooms/_mkt/o/x3'), Prog.get().farm.bag.car | 0];
+  // NPC: find a crop whose vendor is buying right now; selling at its price fills from the vendor
+  const pick = Object.keys(CROPS).map(id => [id, npcOpen(id, {}, now).filter(o => o.s === 'b').sort((a, b) => b.p - a.p)[0]]).find(x => x[1] && !['wat', 'tom', 'car'].includes(x[0]));
+  if (pick) { const [id, v] = pick; await set('rooms/_mkt/bt/' + v.id, null); await w(30);
+    const pp = Prog.get(); pp.farm.bag[id] = 3; Prog.put(pp); F.f.bag[id] = 3; c0 = Prog.get().coins;
+    const got = await F.mktPlace('s', id, 1, Math.min(v.p, mktBand(id)[1])); out.npc = [got, Prog.get().coins - c0 === v.p, (await val('rooms/_mkt/bt/' + v.id)) === 1]; }
+  // NPC later: a vendor that was buying while my order rested (placed before it opened) fills it on the next housekeeping
+  let late = null; for (const id of Object.keys(CROPS)) { if (['wat', 'tom', 'car'].includes(id)) continue;
+    const v = npcOpen(id, {}, now - 10 * 3600e3, now - 6e4).find(o => o.s === 'b' && o.from > now - 10 * 3600e3 + 6e5 && o.to < now); if (v) { late = [id, v]; break; } }
+  if (late) { const [id, v] = late; await set('rooms/_mkt/bt/' + v.id, null); c0 = Prog.get().coins;
+    await set('rooms/_mkt/o/x4', { s: 's', c: id, q: 1, l: 1, p: v.p, k: 'ทดสอบ', n: 'ทดสอบ', d: 24, t: v.from - 6e5 }); await w(50);
+    await F.mktHouse(); await w(50); out.late = [await val('rooms/_mkt/o/x4'), Prog.get().coins - c0 === v.p]; }
+  // leave one resting order and a bot order for the screenshots
+  await set('rooms/_mkt/o/x5', { s: 'b', c: 'wat', q: 3, l: 3, p: mw - 2, k: 'ทดสอบ', n: 'ทดสอบ', d: 12, t: now - 3e5 });
+  return out; }"""
+
+
+def market(page, shot):
+    page.click('.farm [data-t=mkt]')
+    page.wait_for_selector('.farm .mk-board', timeout=3000)
+    r = page.evaluate(MARKET_TEST)
+    want = {'sell': [2, True, 2, 1], 'claimBot': [['b', 'wat', 2, True]], 'buy': [2, True, 2, 2], 'claim': [True, True], 'cancel': [1, 1, 0],
+            'hiddenFromBook': True, 'expire': [None, 3], 'npc': [1, True, True], 'late': [None, True]}
+    bad = [k for k, v in want.items() if r.get(k) != v]
+    if bad:
+        raise AssertionError('market wrong: ' + json.dumps({k: r.get(k) for k in bad}, ensure_ascii=False))
+    page.evaluate("() => __farm.setTab('mkt')")
+    page.wait_for_timeout(200)
+    shot('farm-market')
+    page.click('.farm [data-mc="wat"]')
+    page.wait_for_selector('.farm .mk-form', timeout=3000)
+    page.wait_for_timeout(200)
+    shot('farm-stall')
 
 
 

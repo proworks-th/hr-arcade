@@ -68,6 +68,39 @@ const hhmm = ts => { const d = new Date(ts); return `${d.getHours()}:${String(d.
 const bagName = key => { const [id, m] = key.split('.'); return CROPS[id][0] + (m ? MUT[m][0] : ''); };
 const bagPrice = key => { const [id, m] = key.split('.'); return Math.round(CROPS[id][3] * (m ? MUT[m][1] : 1)); };
 
+/* ---------- market (ตลาด): prices change every 2 h, worked out from the clock like the weather (same on every screen, nothing stored) ---------- */
+// base = CROPS sell price; short swings + a slow trend, kept inside 55–200%. The canteen and village deliveries keep the base price.
+const MKT_PERIOD = 2 * 3600e3, MKT_BAND = [.5, 2], MKT_MAX = 5, MKT_HRS = [1, 4, 12, 24];
+// every order has a timer: players pick 1/4/12/24 h (d), vendors stay 40–120 min; when it runs out the order vanishes from the stall
+// and whatever it still held goes back to its owner
+const mktEnd = o => o.npc ? o.to : (o.t || Date.now()) + Math.min(24, o.d || 24) * 3600e3;
+const h01 = s => (hashStr(s) % 100000) / 100000;
+const mNoise = (id, x, sc) => { const a = Math.floor(x / sc), fr = x / sc - a, k = fr * fr * (3 - 2 * fr); return (h01(`mk:${id}:${sc}:${a}`) * (1 - k) + h01(`mk:${id}:${sc}:${a + 1}`) * k) * 2 - 1; };
+const mktMult = (id, P) => Math.max(.55, Math.min(2, 1 + .42 * mNoise(id, P, 1) + .3 * mNoise(id, P, 6) + .12 * mNoise(id, P, 24)));
+const mktPer = (t = Date.now()) => Math.floor(t / MKT_PERIOD);
+const mktAt = (id, P = mktPer()) => Math.max(1, Math.round(CROPS[id][3] * mktMult(id, P)));
+const mktMood = (id, P = mktPer()) => { const m = mktMult(id, P); return m >= 1.5 ? 'hot' : m <= .72 ? 'cold' : ''; };
+const mktBand = id => { const m = mktAt(id); return [Math.ceil(m * MKT_BAND[0]), Math.floor(m * MKT_BAND[1])]; };
+// what the market pays for a basket item now (mutations multiply the market price)
+const mktPrice = key => { const [id, m] = key.split('.'); return Math.max(1, Math.round(mktAt(id) * (m ? MUT[m][1] : 1))); };
+const moodTag = (id, long) => { const md = mktMood(id); return md === 'hot' ? `<em class="mk-tag hot">🔥${long ? ' ราคาดี' : ''}</em>` : md === 'cold' ? `<em class="mk-tag cold">❄️${long ? ' ราคาตก' : ''}</em>` : ''; };
+// NPC vendors (พ่อค้าแม่ค้า): buy 85–112% of market, sell 115–140%, and a lot never outlives its 2 h price round (so no free loop between
+// vendors); 4 slots per crop per round, each opens at a random minute for 40–120 minutes, all from the clock,
+// so every screen sees the same ones; how many were already taken is shared in rooms/_mkt/bt/{id}. Fixed names, never coworkers'.
+const NPC = ['ป้าแดง', 'ลุงชม', 'เจ๊หมวย', 'น้าสมศรี', 'พี่ต้อม', 'ยายบุญ'];
+function npcSlots(id, P) {
+  const out = [], m = mktAt(id, P), big = Math.max(1, Math.round(40 / CROPS[id][3]));     // cheap crops come in bigger lots
+  for (let k = 0; k < 4; k++) { const r = i => h01(`npc:${id}:${P}:${k}:${i}`), s = r(0) < .5 ? 's' : 'b', from = P * MKT_PERIOD + Math.floor(r(1) * (MKT_PERIOD - 40 * 60e3));
+    out.push({ id: `${P}_${id}_${k}`, npc: 1, s, c: id, q: Math.max(1, Math.round((1 + r(2) * 5) * big)), from, to: Math.min((P + 1) * MKT_PERIOD, from + (40 + Math.floor(r(3) * 80)) * 60e3),
+      p: s === 's' ? Math.max(2, Math.ceil(m * (1.15 + r(4) * .25))) : Math.max(1, Math.floor(m * (.85 + r(4) * .27))), n: NPC[Math.floor(r(5) * NPC.length)], t: from }); }
+  return out;
+}
+// vendors open at time t (or any time in [t0, t1]) with what is left after taken counts bt
+// time left on an order: "55 น." / "1 ชม. 0 น."
+const hm = ms => { const m = Math.max(1, Math.ceil(ms / 60e3)); return m >= 60 ? `${Math.floor(m / 60)} ชม. ${m % 60} น.` : `${m} น.`; };
+const npcOpen = (id, bt, t0, t1 = t0) => { const out = []; for (let P = mktPer(t0) - 1; P <= mktPer(t1); P++) for (const o of npcSlots(id, P)) {
+  const l = o.q - ((bt || {})[o.id] | 0); if (l > 0 && o.from <= t1 && o.to > t0) out.push({ ...o, l }); } return out; };
+
 // mutated crop art: tinted copies of the pixel art (gold / rainbow / dewy)
 const MUT_IMG = {};
 function cropImg(id, m) {
@@ -178,6 +211,9 @@ function farmMount(root, api) {
   let p = Prog.get(), f = p.farm || (p.farm = { plots: [], book: {}, fw: {}, bag: {} }), tab = 'seed', seed = store.get('farmSeed', 'bok'), hover = -1, t = 0;
   f.bag = f.bag || {}; f.book = f.book || {}; f.fw = f.fw || {}; f.plots = f.plots || [];
   let visit = null, myWaters = {}, O = null, offW = null, offC = null, friends = null, cant = null, giftTo = store.get('giftTo', '');
+  // market: resting orders + NPC vendor taken counts (both live), the stall being looked at and its form
+  let mkt = null, bt = {}, offM = null, offN = null, offMC = null, mSel = store.get('mktSel', 'wat'), mSide = 's', mQ = 1, mP = 0, mD = store.get('mktD', 4), mBusy = false, mPer = mktPer();
+  if (!CROPS[mSel]) mSel = 'wat';
   const okSeed = id => CROPS[id] && (SIG.includes(id) ? id === mySig : p.lv >= CROPS[id][4]);
   if (!okSeed(seed)) seed = 'bok';
   const me = { x: 320, tx: 320, dir: 'down', who: p.who || 'adam', act: 0 };
@@ -199,7 +235,7 @@ function farmMount(root, api) {
   const fwMine = i => { const pl = f.plots[i]; if (!pl) return 0; return Object.values(myWaters[i] || {}).filter(v => v.s === pl.t).length; };
   const stage = (pl, fw, now) => { const g = growMs(pl, fw), e = now - pl.t; return e >= g ? 3 : e < g * .15 ? 0 : e < g * .5 ? 1 : 2; };
   const bagN = () => Object.values(f.bag).reduce((a, n) => a + n, 0);
-  const bagValue = () => Object.entries(f.bag).reduce((a, [k, n]) => a + bagPrice(k) * n, 0);
+  const bagValue = () => Object.entries(f.bag).reduce((a, [k, n]) => a + mktPrice(k) * n, 0);
   // the next room size up and how many plots it brings
   const nextRoom = () => ROOM_SIZES.find(z => z[0] > roomW(Prog.get().room));
   // the next way to get more plots: a bigger room (rooftop) or a bigger house garden (after move-in)
@@ -235,6 +271,10 @@ function farmMount(root, api) {
         toast('🎁 ' + Object.entries(by).map(([n, a]) => `${n} ส่ง${a.join(', ')}ให้คุณ`).join(' · ')); render(); }).catch(() => {});
     }
     offC = O.watchCanteen(wk(), v => { if (dead) return; cant = v; if (tab === 'cant') list(); });
+    offM = O.watchMkt(v => { if (dead) return; mkt = v || {}; mktHouse(); if (tab === 'mkt' || tab === 'stall') list(); });
+    offN = O.watchNpc(v => { if (dead) return; bt = v || {}; mktHouse(); if (tab === 'mkt' || tab === 'stall') list(); });
+    if (nm) offMC = O.watchMktClaims(myKey, ids => { if (!dead) ids.forEach(takeClaim); });
+    if (Math.random() < .1) O.pruneNpc(mktPer() - 14).catch(() => {});
     // opened from a balcony in the office tower
     const fv = window.farmVisit; window.farmVisit = null;
     if (fv) O.listFarms().then(rows => { const r = rows.find(x => x.k === fv); if (r && !dead) openFriend(r); }).catch(() => {});
@@ -289,8 +329,89 @@ function farmMount(root, api) {
     if (n) { save(); render(); } }
   // sell exactly what was picked: { key: qty } (the basket never sells by itself any more)
   function sell(picks) { fresh(); let c = 0, n = 0;
-    for (const [k, q] of Object.entries(picks || {})) { const cnt = Math.min(q | 0, f.bag[k] || 0); if (cnt <= 0) continue; c += bagPrice(k) * cnt; n += cnt; f.bag[k] -= cnt; if (!f.bag[k]) delete f.bag[k]; }
+    for (const [k, q] of Object.entries(picks || {})) { const cnt = Math.min(q | 0, f.bag[k] || 0); if (cnt <= 0) continue; c += mktPrice(k) * cnt; n += cnt; f.bag[k] -= cnt; if (!f.bag[k]) delete f.bag[k]; }
     if (!n) return 0; save(); typeof Stats !== 'undefined' && Stats.econ('sold', n); Prog.give(c, 0, 'sell'); api.sfx('good'); fly(c); toast(`💰 ขาย ${n} ชิ้น +${fmt(c)} 🪙`); render(); return c; }
+  /* ---------- market: orders hold what they offer (crops for a sell, coins for a buy) until filled or cancelled ---------- */
+  const isMine = o => o.k === myKey && !o.npc;
+  const live = (o, now = Date.now()) => o.l > 0 && now < mktEnd(o);
+  const allOrders = () => Object.entries(mkt || {}).map(([id, o]) => ({ ...o, id })).filter(o => o && CROPS[o.c] && o.l > 0);
+  const mineOpen = () => allOrders().filter(isMine);
+  const ordersOf = id => { const now = Date.now(); return [...allOrders().filter(o => o.c === id && live(o, now)), ...npcOpen(id, bt, now)]; };
+  const whoOf = o => o.npc ? `🧺 ${o.n}` : isMine(o) ? 'คุณ' : esc(o.n || '?');
+  function addCoins(n) { fresh(); const pp = Prog.get(); pp.coins += n; pp.farm = f; Prog.put(pp); p = pp; }
+  function addCrop(id, n) { fresh(); f.bag[id] = (f.bag[id] || 0) + n; save(); }
+  const stat = (k, n) => { if (n > 0 && typeof Stats !== 'undefined') Stats.econ(k, n); };
+  // a sell order fills against the best buy orders at or above its price (a buy, the cheapest sells at or below), oldest first,
+  // always at the resting order's price; a buyer who offered more gets the difference back; whatever is left rests at the stall
+  async function mktPlace(side, id, qn, pr) {
+    if (mBusy) return 0; qn |= 0; const [lo, hi] = mktBand(id); pr = Math.max(lo, Math.min(hi, pr | 0));
+    if (!O || !nm) { toast('ตลาดต้องต่อเน็ตและตั้งชื่อก่อน'); return 0; }
+    if (qn < 1) return 0;
+    if (mineOpen().length >= MKT_MAX) { toast(`ตั้งได้ครั้งละ ${MKT_MAX} คำสั่ง ยกเลิกหรือรอให้มีคนจับคู่ก่อน`); return 0; }
+    fresh(); p = Prog.get();
+    if (side === 's' ? (f.bag[id] | 0) < qn : p.coins < qn * pr) { toast(side === 's' ? `${CROPS[id][0]}ในตะกร้าไม่พอ` : 'เหรียญไม่พอ'); return 0; }
+    mBusy = true;
+    if (side === 's') { f.bag[id] -= qn; if (!f.bag[id]) delete f.bag[id]; save(); } else addCoins(-qn * pr);
+    const opp = ordersOf(id).filter(o => o.s !== side && !isMine(o) && (side === 's' ? o.p >= pr : o.p <= pr))
+      .sort((a, b) => (side === 's' ? b.p - a.p : a.p - b.p) || (a.t || 0) - (b.t || 0));
+    let left = qn, got = 0, cP = 0, cN = 0; const who = [];
+    for (const o of opp) { if (!left) break;
+      let u = 0; try { u = o.npc ? await O.npcTake(o.id, left, o.q) : await O.mktTake(o.id, left, myKey, false); } catch (e) { u = 0; }
+      if (!u) continue; left -= u; got += u; who.push(o.npc ? o.n : o.n || '?');
+      if (o.npc) cN += u * o.p; else { cP += u * o.p; O.mktClaim(o.k, { s: o.s, c: id, u, p: o.p, n: nm }).catch(() => {}); } }
+    let rest = 0;
+    if (left) { try { await O.mktPut({ s: side, c: id, q: left, p: pr, k: myKey, n: nm, d: mD }); rest = left; } catch (e) { rest = 0; } }
+    const back = left - rest;                                       // could not be put up: give it back
+    if (side === 's') { if (back) addCrop(id, back); if (cP) Prog.give(cP, 0, 'mkt'); if (cN) Prog.give(cN, 0, 'npc'); }
+    else { if (got) addCrop(id, got); const refund = got * pr - cP - cN + back * pr; if (refund) addCoins(refund); stat('out_mkt', cP); stat('out_npc', cN); }
+    mBusy = false;
+    if (got) { api.sfx('good'); if (side === 's') fly(cP + cN);
+      toast(`✅ ${side === 's' ? `ขาย${CROPS[id][0]} ${got} ชิ้น +${fmt(cP + cN)} 🪙` : `ซื้อ${CROPS[id][0]} ${got} ชิ้น −${fmt(cP + cN)} 🪙`} · กับ ${[...new Set(who)].join(', ')}${rest ? ` · อีก ${rest} ชิ้นวางที่แผง` : ''}`); }
+    else if (rest) { api.sfx('tick'); toast(`🏪 วางที่แผงแล้ว ${rest} ชิ้น @${pr} 🪙 · มีคนจับคู่เมื่อไหร่ได้ทันที`); }
+    render(); return got;
+  }
+  async function mktCancel(oid, why) {
+    const o = (mkt || {})[oid]; if (!o || !O || mBusy || o.k !== myKey) return; mBusy = true;
+    let u = 0; try { u = await O.mktTake(oid, o.l, myKey, true); } catch (e) { u = 0; }
+    if (u) { if (o.s === 's') addCrop(o.c, u); else addCoins(u * o.p);
+      toast(`${why ? '⌛ หมดเวลาแล้ว ' : '↩️ ยกเลิกแล้ว '}ได้${o.s === 's' ? `${CROPS[o.c][0]} ${u} ชิ้น` : `เหรียญ ${fmt(u * o.p)} 🪙`}คืน`); }
+    mBusy = false; render();
+  }
+  // a fill owed to me from someone who took my resting order
+  const claiming = new Set();
+  async function takeClaim(cid) {
+    if (claiming.has(cid)) return; claiming.add(cid);
+    let v = null; try { v = await O.takeMktClaim(myKey, cid); } catch (e) { v = null; }
+    if (dead || !v || !CROPS[v.c]) return;
+    if (v.s === 's') { Prog.give(v.u * v.p, 0, 'mkt'); fly(v.u * v.p); toast(`✅ ${v.n} ซื้อ${CROPS[v.c][0]}ของคุณ ${v.u} ชิ้น +${fmt(v.u * v.p)} 🪙`); }
+    else { addCrop(v.c, v.u); stat('out_mkt', v.u * v.p); toast(`✅ ได้${CROPS[v.c][0]} ${v.u} ชิ้นจาก ${v.n}`); }
+    api.sfx('good'); render();
+  }
+  // housekeeping for my orders: 24 h old → back to me; NPC vendors that crossed my price while it rested (even while I was away) fill it
+  let mhT = 0, mhRun = false;
+  async function mktHouse() {
+    mhT = Date.now(); if (!mkt || !O || !nm || mBusy || mhRun || dead) return; const now = mhT; mhRun = true;
+    try {
+    for (const o of mineOpen()) {
+      if (now >= mktEnd(o)) { await mktCancel(o.id, 1); continue; }
+      const vs = npcOpen(o.c, bt, o.t || now, Math.min(now, mktEnd(o))).filter(v => v.s !== o.s && (o.s === 's' ? v.p >= o.p : v.p <= o.p) && v.to > (o.t || now)).sort((a, b) => a.from - b.from);
+      let l = o.l;
+      for (const v of vs) { if (!l || mBusy) break; mBusy = true;
+        let u = 0; try { u = await O.npcTake(v.id, Math.min(l, v.l), v.q); if (u) u = await O.mktTake(o.id, u, myKey, true); } catch (e) { u = 0; }
+        mBusy = false; if (!u) continue; l -= u;
+        if (o.s === 's') { Prog.give(u * o.p, 0, 'npc'); toast(`✅ 🧺 ${v.n} ซื้อ${CROPS[o.c][0]}ของคุณ ${u} ชิ้น +${fmt(u * o.p)} 🪙`); }
+        else { addCrop(o.c, u); stat('out_npc', u * o.p); toast(`✅ ได้${CROPS[o.c][0]} ${u} ชิ้นจาก 🧺 ${v.n}`); }
+        api.sfx('good'); render(); }
+    }
+    } finally { mhRun = false; }
+  }
+  // sell a plain crop straight to the market at today's price (same as the basket)
+  function sellNow(id, n) { return sell({ [id]: n }); }
+  const spark = (id, w, h, n = 12) => { const P = mktPer(), pts = []; for (let i = n; i >= 0; i--) pts.push(mktAt(id, P - i));
+    const lo = Math.min(...pts), hi = Math.max(...pts), y = v => hi === lo ? h / 2 : h - 4 - (v - lo) / (hi - lo) * (h - 8), x = i => 3 + i / n * (w - 6);
+    return { pts, lo, hi, x, y, d: pts.map((v, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join('') }; };
+  const chg = id => { const a = mktAt(id), b = mktAt(id, mktPer() - 1); return Math.round((a - b) / b * 100); };
+  const leftOf = o => hm(mktEnd(o) - Date.now());
   function buySprinkler() { fresh(); p = Prog.get(); const [price, lv] = SPRINKLER;
     if (p.lv < lv) { toast(`ปลดล็อกสปริงเกอร์ที่ Lv ${lv}`); return; }
     if (p.coins < price) { toast(`เหรียญไม่พอ ขาดอีก 🪙 ${fmt(price - p.coins)}`); return; }
@@ -408,10 +529,11 @@ function farmMount(root, api) {
     const next = f.plots.map((pl, i) => pl ? ripeAt(pl, fwMine(i)) : Infinity).reduce((a, b) => Math.min(a, b), Infinity);
     return { html: next < Infinity ? `ผักต้นถัดไปสุกใน ${mmss(next - now)} · ไปเล่นเกมก่อนก็ได้` : 'เลือกเมล็ดทางขวา แล้วแตะแปลงเพื่อปลูก' };
   }
+  const IDS_HOT = () => Object.keys(CROPS).some(id => mktMood(id) === 'hot' && (f.bag[id] | 0) > 0);
   function list() {
     const T = q('tabs'), L = q('list'), bn = bagN();
-    const top = { cant: 'bag', book: 'seed' }[tab] || tab, backTo = to => `<button class="linkbtn farm-back" data-t="${to}">← กลับ</button>`;
-    T.innerHTML = [['seed', 'ปลูก'], ['bag', `ตะกร้า${bn ? ` <i class="tab-n">${bn}</i>` : ''}`], ['friends', 'เพื่อน']]
+    const top = { cant: 'bag', book: 'seed', stall: 'mkt' }[tab] || tab, backTo = to => `<button class="linkbtn farm-back" data-t="${to}">← กลับ</button>`;
+    T.innerHTML = [['seed', 'ปลูก'], ['bag', `ตะกร้า${bn ? ` <i class="tab-n">${bn}</i>` : ''}`], ['mkt', `ตลาด${IDS_HOT() ? ' 🔥' : ''}`], ['friends', 'เพื่อน']]
       .map(([k, n]) => `<button class="btn${top === k ? ' on' : ''}" data-t="${k}">${n}</button>`).join('');
     T.querySelectorAll('[data-t]').forEach(b => b.onclick = () => { tab = b.dataset.t; list(); });
     L.onclick = e => { const b = e.target.closest('[data-t]'); if (b) { tab = b.dataset.t; api.sfx('tick'); list(); } };
@@ -444,13 +566,13 @@ function farmMount(root, api) {
       if (!keys.length) { L.innerHTML = card + '<p class="muted farm-empty">ตะกร้าว่าง · ผักที่เก็บจะมาอยู่ที่นี่</p>'; return; }
       for (const k of Object.keys(pick)) { pick[k] = Math.max(0, Math.min(pick[k] | 0, f.bag[k] | 0)); if (!pick[k]) delete pick[k]; }
       const K = keepFor(), keepN = k => (K.job[k] | 0) + (K.house[k] | 0), nd = K.nd, jobs = nd ? Object.entries(nd.job) : [];
-      const tot = keys.reduce((a, k) => a + (pick[k] | 0), 0), val = keys.reduce((a, k) => a + (pick[k] | 0) * bagPrice(k), 0);
+      const tot = keys.reduce((a, k) => a + (pick[k] | 0), 0), val = keys.reduce((a, k) => a + (pick[k] | 0) * mktPrice(k), 0);
       const over = keys.filter(k => (pick[k] | 0) > f.bag[k] - keepN(k)), warn = warned && over.length;
       const need = jobs.length || (nd && nd.house) ? `<p class="bag-need">ยังต้องใช้ในหมู่บ้าน: ${[...jobs.map(([c, q]) => `📦 ${CROPS[c][0]} ${q}`),
         nd.house ? `🏠 ${nd.house.stage} ใช้ผัก ${nd.house.veg} ชิ้น` : ''].filter(Boolean).join(' · ')}</p>` : '';
       L.innerHTML = card + `<div class="gift-to">🎁 ส่งให้ <select data-k="giftTo"><option value="">เลือกเพื่อน…</option></select></div>${need}
         <ul class="farm-ls farm-bag">${keys.map(k => { const n = f.bag[k], pk = pick[k] | 0;
-          return `<li class="${pk ? 'pick' : ''}">${cropURL(k, 26)}<span class="bag-n"><b>${bagName(k)} <i>×${n}</i></b><small>ชิ้นละ ${bagPrice(k)} 🪙${K.job[k] ? ` <em class="bag-tag">📦 ส่งของใช้ ${K.job[k]}</em>` : ''}${K.house[k] ? ` <em class="bag-tag h">🏠 สร้างบ้าน ${K.house[k]}</em>` : ''}</small></span>
+          return `<li class="${pk ? 'pick' : ''}">${cropURL(k, 26)}<span class="bag-n"><b>${bagName(k)} <i>×${n}</i></b><small>ชิ้นละ ${mktPrice(k)} 🪙${moodTag(k.split('.')[0])}${K.job[k] ? ` <em class="bag-tag">📦 ส่งของใช้ ${K.job[k]}</em>` : ''}${K.house[k] ? ` <em class="bag-tag h">🏠 สร้างบ้าน ${K.house[k]}</em>` : ''}</small></span>
           <span class="bag-q"><button class="btn sm" data-qm="${k}" ${pk ? '' : 'disabled'} aria-label="ลด${bagName(k)}">−</button><b>${pk}</b><button class="btn sm" data-qp="${k}" ${pk < n ? '' : 'disabled'} aria-label="เพิ่ม${bagName(k)}">+</button><button class="btn sm bag-all" data-qa="${k}">${pk === n ? 'ล้าง' : 'ทั้งหมด'}</button></span>
           <button class="btn sm" data-gift="${k}" title="ส่งให้เพื่อน 1 ชิ้น">🎁</button></li>`; }).join('')}</ul>
         <div class="bag-bar"><button class="btn sm" data-qb="all">${pickAll ? 'เลือกหมดจริง ๆ' : 'เลือกทั้งหมด'}</button><button class="btn sm" data-qb="clear" ${tot ? '' : 'disabled'}>ล้าง</button>
@@ -468,6 +590,53 @@ function farmMount(root, api) {
       const sel = L.querySelector('[data-k=giftTo]'); sel.onchange = () => { giftTo = sel.value; store.set('giftTo', giftTo); };
       (friends ? Promise.resolve(friends) : loadFriends()).then(fr => { if (!sel.isConnected) return;
         sel.innerHTML = '<option value="">เลือกเพื่อน…</option>' + fr.map(r => `<option value="${esc(r.k)}"${r.k === giftTo ? ' selected' : ''}>${esc(r.nm)} (ผลไม้ประจำตัว: ${CROPS[sigOf(r.k)][0]})</option>`).join(''); }).catch(() => {});
+    } else if (tab === 'mkt') {
+      const now = Date.now(), nx = (mktPer() + 1) * MKT_PERIOD - now, mine = mineOpen().sort((a, b) => (a.t || 0) - (b.t || 0));
+      const ids = Object.keys(CROPS).filter(id => !SIG.includes(id) || id === mySig || (f.bag[id] | 0) || ordersOf(id).some(o => !o.npc));
+      L.innerHTML = `<p class="muted farm-tip">ราคาตลาดเปลี่ยนทุก 2 ชม. (รอบหน้าอีก ${Math.floor(nx / 3600e3)} ชม. ${Math.ceil(nx % 3600e3 / 60e3)} น.) · ขายในตะกร้าได้ราคาตลาดตอนนี้ · แตะผักเพื่อตั้งขาย/รับซื้อกับเพื่อนและ 🧺 แม่ค้า</p>
+        ${mkt === null && !O ? '<p class="muted">กำลังต่อตลาด…</p>' : ''}
+        ${mine.length ? `<h4 class="sz-h">คำสั่งของฉัน <small class="muted">${mine.length}/${MKT_MAX}</small></h4><ul class="farm-ls mk-mine">${mine.map(o => `<li>${cropURL(o.c, 22)}<span class="bag-n"><b>${o.s === 's' ? '🔴 ขาย' : '🟢 รับซื้อ'}${CROPS[o.c][0]} ${o.l}/${o.q}</b><small>@${o.p} 🪙 · ⏳ หมดเวลาใน <b data-mend="${mktEnd(o)}">${leftOf(o)}</b></small></span><button class="btn sm" data-mx="${o.id}">ยกเลิก</button></li>`).join('')}</ul>` : ''}
+        <ul class="farm-ls mk-board">${ids.map(id => { const pr = mktAt(id), c = chg(id), sp = spark(id, 64, 26), os = ordersOf(id), na = os.filter(o => o.s === 's').length, nb = os.filter(o => o.s === 'b').length, have = f.bag[id] | 0;
+          return `<li><button class="mk-row" data-mc="${id}">${pxImg('crop_' + id, 24)}<span class="mk-nm"><b>${CROPS[id][0]}${moodTag(id)}</b><small>${have ? `มี ${have} · ` : ''}ขาย ${na} · ซื้อ ${nb}</small></span>
+            <span class="mk-pr"><b>${pr} 🪙</b><small class="${c > 0 ? 'up' : c < 0 ? 'dn' : ''}">${c > 0 ? '▲' : c < 0 ? '▼' : '•'} ${Math.abs(c)}%</small></span>
+            <svg class="mk-spark" viewBox="0 0 64 26" aria-hidden="true"><path d="${sp.d}" fill="none" stroke="${c >= 0 ? '#1f9d55' : '#d1453b'}" stroke-width="2"/></svg></button></li>`; }).join('')}</ul>`;
+      L.querySelectorAll('[data-mc]').forEach(b => b.onclick = () => { mSel = b.dataset.mc; store.set('mktSel', mSel); mSide = (f.bag[mSel] | 0) ? 's' : 'b'; mQ = 1; mP = mktAt(mSel); tab = 'stall'; api.sfx('tick'); list();
+        const bx = T.closest('.box'); if (bx) { bx.scrollTop = 0; L.scrollTop = 0; if (T.getBoundingClientRect().top < 0) T.scrollIntoView({ block: 'center' }); } });
+      L.querySelectorAll('[data-mx]').forEach(b => b.onclick = () => mktCancel(b.dataset.mx));
+    } else if (tab === 'stall') {
+      const id = mSel, mp = mktAt(id), [lo, hi] = mktBand(id), os = ordersOf(id), have = f.bag[id] | 0; p = Prog.get();
+      const asks = os.filter(o => o.s === 's').sort((a, b) => a.p - b.p || (a.t || 0) - (b.t || 0)), bids = os.filter(o => o.s === 'b').sort((a, b) => b.p - a.p || (a.t || 0) - (b.t || 0));
+      mP = Math.max(lo, Math.min(hi, mP || mp)); const maxQ = mSide === 's' ? have : Math.max(1, Math.floor(p.coins / mP)); mQ = Math.max(1, Math.min(mQ, maxQ || 1));
+      const opp = (mSide === 's' ? bids.filter(o => o.p >= mP) : asks.filter(o => o.p <= mP)).filter(o => !isMine(o)); let m = 0, mv = 0;
+      for (const o of opp) { const u = Math.min(mQ - m, o.l); m += u; mv += u * o.p; if (m >= mQ) break; }
+      const can = mSide === 's' ? have >= mQ && have > 0 : p.coins >= mQ * mP, full = mineOpen().length >= MKT_MAX, off = !O || !nm;
+      const CW = 320, CH = 110, sp = spark(id, CW, CH), base = CROPS[id][3], by = Math.max(4, Math.min(CH - 4, sp.y(base)));
+      const row = o => `<li class="${isMine(o) ? 'mine' : o.npc ? 'npc' : ''}"><b>${o.p} 🪙</b><span>×${o.l}</span><span class="who">${whoOf(o)}</span><span class="mk-t" data-mend="${mktEnd(o)}" title="หมดเวลาใน">⏳${leftOf(o)}</span></li>`;
+      L.innerHTML = backTo('mkt') + `<h4 class="sz-h mk-h">${pxImg('crop_' + id, 24)} แผง${CROPS[id][0]} ${moodTag(id, 1)}<small class="muted">ราคาตลาด <b>${mp} 🪙</b> · ราคากลาง ${base}</small></h4>
+        <div class="mk-chart"><svg viewBox="0 0 ${CW} ${CH}" preserveAspectRatio="none" aria-label="ราคา 24 ชั่วโมง"><line x1="0" x2="${CW}" y1="${by}" y2="${by}" stroke="#d9c9ae" stroke-dasharray="4 4"/>
+          <path d="${sp.d}" fill="none" stroke="#ff6b93" stroke-width="2.5" vector-effect="non-scaling-stroke"/></svg>
+          <div class="mk-ax"><span>24 ชม.ก่อน</span><span>สูง ${sp.hi} · ต่ำ ${sp.lo}</span><span>ตอนนี้</span></div></div>
+        <div class="mk-book"><div><h5>🔴 ตั้งขาย <small class="muted">ถูกสุดก่อน</small></h5><ul class="mk-ob">${asks.slice(0, 5).map(row).join('') || '<li class="muted">ยังไม่มี</li>'}</ul></div>
+          <div><h5>🟢 รับซื้อ <small class="muted">แพงสุดก่อน</small></h5><ul class="mk-ob">${bids.slice(0, 5).map(row).join('') || '<li class="muted">ยังไม่มี</li>'}</ul></div></div>
+        <div class="mk-form">
+          <div class="mk-seg"><button class="btn sm${mSide === 's' ? ' on' : ''}" data-ms="s">🔴 ตั้งขาย (มี ${have})</button><button class="btn sm${mSide === 'b' ? ' on' : ''}" data-ms="b">🟢 ตั้งรับซื้อ</button></div>
+          <div class="mk-line"><span>จำนวน</span><span class="bag-q"><button class="btn sm" data-mq="-1" ${mQ > 1 ? '' : 'disabled'} aria-label="ลดจำนวน">−</button><b>${mQ}</b><button class="btn sm" data-mq="1" ${mQ < maxQ ? '' : 'disabled'} aria-label="เพิ่มจำนวน">+</button>${mSide === 's' && have > 1 ? '<button class="btn sm" data-mq="max">ทั้งหมด</button>' : ''}</span></div>
+          <div class="mk-line"><span>ราคา/ชิ้น</span><span class="bag-q"><button class="btn sm" data-mp="-5" ${mP > lo ? '' : 'disabled'}>−5</button><button class="btn sm" data-mp="-1" ${mP > lo ? '' : 'disabled'} aria-label="ลดราคา">−</button><b>${mP}</b><button class="btn sm" data-mp="1" ${mP < hi ? '' : 'disabled'} aria-label="เพิ่มราคา">+</button><button class="btn sm" data-mp="5" ${mP < hi ? '' : 'disabled'}>+5</button><button class="btn sm" data-mp="mkt">ตลาด</button></span></div>
+          <div class="mk-line"><span>ตั้งไว้นาน</span><span class="bag-q">${MKT_HRS.map(h => `<button class="btn sm${mD === h ? ' on' : ''}" data-md="${h}">${h} ชม.</button>`).join('')}</span></div>
+          <p class="mk-hint${!can || full || off ? ' warn' : ''}">${off ? 'ตลาดต้องต่อเน็ตและตั้งชื่อก่อน' : full ? `ตั้งได้ครั้งละ ${MKT_MAX} คำสั่ง · ยกเลิกหรือรอให้มีคนจับคู่ก่อน` : !can ? (mSide === 's' ? `ไม่มี${CROPS[id][0]}ในตะกร้า (ผักกลายพันธุ์ขายที่ตะกร้า)` : 'เหรียญไม่พอ')
+            : m ? `⚡ จับคู่ได้ทันที ${m} ชิ้น (${fmt(mv)} 🪙)${m < mQ ? ` · อีก ${mQ - m} ชิ้นวางรอที่แผง` : ''}` : `วางรอที่แผง · ${mSide === 's' ? 'ผักออกจากตะกร้าไปวางไว้' : 'เหรียญถูกกันไว้'} ยกเลิกได้ ครบ ${mD} ชม. แล้วคำสั่งหายไป ได้ของคืนเอง`}
+            <br><small class="muted">ตั้งราคาได้ ${lo}–${hi} 🪙 (50–200% ของราคาตลาด)</small></p>
+          <div class="mk-go"><button class="btn primary" data-mg ${can && !full && !off ? '' : 'disabled'}>${mSide === 's' ? '🔴 ตั้งขาย' : '🟢 ตั้งรับซื้อ'} ${mQ} × ${mP} = ${fmt(mQ * mP)} 🪙</button>
+            ${mSide === 's' && have ? `<button class="btn" data-mn>💰 ขายให้ตลาดเลย ${Math.min(mQ, have)} × ${mp}</button>` : ''}</div>
+        </div>`;
+      L.querySelectorAll('[data-ms],[data-mq],[data-mp],[data-md]').forEach(b => b.onclick = () => { const d = b.dataset; api.sfx('tick');
+        if (d.md) { mD = +d.md; store.set('mktD', mD); }
+        else if (d.ms) { mSide = d.ms; mQ = 1; mP = mp; }
+        else if (d.mq) mQ = d.mq === 'max' ? have : mQ + +d.mq;
+        else if (d.mp) mP = d.mp === 'mkt' ? mp : mP + +d.mp;
+        list(); });
+      const g = L.querySelector('[data-mg]'); if (g) g.onclick = () => { g.disabled = true; mktPlace(mSide, id, mQ, mP).then(() => { mQ = 1; if (tab === 'stall') list(); }); };
+      const nb = L.querySelector('[data-mn]'); if (nb) nb.onclick = () => { sellNow(id, Math.min(mQ, have)); mQ = 1; list(); };
     } else if (tab === 'cant') {
       const now = Date.now(), by = Object.values((cant && cant.by) || {}).sort((a, b) => b.p - a.p), claims = cantClaims(now);
       L.innerHTML = backTo('bag') + `<p class="muted farm-tip">ออเดอร์ของทั้งออฟฟิศ ช่วยกันส่งให้ครบ · ส่งได้ราคาดีกว่าขาย 20% · ครบแต่ละออเดอร์ คนที่ช่วยส่งได้ ${CANTEEN_REWARD} 🪙 · แล้วออเดอร์ใหม่มาใน 30 นาที</p>
@@ -628,11 +797,16 @@ function farmMount(root, api) {
     wxHud(now);
     // keep the smart button current (crops ripen, the countdown ticks)
     if (!visit && smart(now).html !== toolSig) tools();
+    if (mktPer(now) !== mPer) { mPer = mktPer(now); if (tab === 'mkt' || tab === 'stall' || tab === 'bag') list(); }
+    if (now - mhT > 20e3) mktHouse();
+    if ((tab === 'mkt' || tab === 'stall') && now - cdT > 1000) { cdT = now; let up = false;
+      document.querySelectorAll('.farm [data-mend]').forEach(e => { const ms = +e.dataset.mend - now; if (ms <= 0) up = true; else { const v = hm(ms); const t = e.classList.contains('mk-t') ? '⏳' + v : v; if (e.textContent !== t) e.textContent = t; } });
+      if (up) { list(); mktHouse(); } }
     if (tab === 'cant' && now - cdT > 500) { cdT = now; let up = false;     // canteen countdowns; a finished one brings the next order
       document.querySelectorAll('.farm [data-cd]').forEach(e => { const ms = +e.dataset.cd - now; if (ms <= 0) up = true; else e.textContent = mmss(ms); });
       if (up) list(); }
   });
   render();
-  if (/[?&]test=1/.test(location.search)) window.__farm = { get f() { return f; }, harvestAll, sell, keepFor, smart, harvest, fwMine, ripeAt };
-  return { destroy() { dead = true; off(); offW && offW(); offC && offC(); clearTimeout(pubT); publish(); } };
+  if (/[?&]test=1/.test(location.search)) window.__farm = { get f() { return f; }, harvestAll, sell, keepFor, smart, harvest, fwMine, ripeAt, mktPlace, mktCancel, mktHouse, mineOpen, ordersOf, get mkt() { return mkt; }, get bt() { return bt; }, setTab(t, c) { tab = t; if (c) mSel = c; list(); } };
+  return { destroy() { dead = true; off(); offW && offW(); offC && offC(); offM && offM(); offN && offN(); offMC && offMC(); clearTimeout(pubT); publish(); } };
 }
