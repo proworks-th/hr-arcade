@@ -84,13 +84,13 @@ const mktBand = id => { const m = mktAt(id); return [Math.ceil(m * MKT_BAND[0]),
 // what the market pays for a basket item now (mutations multiply the market price)
 const mktPrice = key => { const [id, m] = key.split('.'); return Math.max(1, Math.round(mktAt(id) * (m ? MUT[m][1] : 1))); };
 const moodTag = (id, long) => { const md = mktMood(id); return md === 'hot' ? `<em class="mk-tag hot">🔥${long ? ' ราคาดี' : ''}</em>` : md === 'cold' ? `<em class="mk-tag cold">❄️${long ? ' ราคาตก' : ''}</em>` : ''; };
-// NPC vendors (พ่อค้าแม่ค้า): buy 85–112% of market, sell 115–140%, and a lot never outlives its 2 h price round (so no free loop between
-// vendors); 4 slots per crop per round, each opens at a random minute for 40–120 minutes, all from the clock,
+// NPC vendors (พ่อค้าแม่ค้า) only BUY (owner 10 Nov: no NPC sell orders), at 85–112% of market; a lot never outlives its 2 h price round.
+// 4 slots per crop per round (the sell half of them is skipped, so about 2 buyers), each opens at a random minute for 40–120 minutes, all from the clock,
 // so every screen sees the same ones; how many were already taken is shared in rooms/_mkt/bt/{id}. Fixed names, never coworkers'.
 const NPC = ['ป้าแดง', 'ลุงชม', 'เจ๊หมวย', 'น้าสมศรี', 'พี่ต้อม', 'ยายบุญ'];
 function npcSlots(id, P) {
   const out = [], m = mktAt(id, P), big = Math.max(1, Math.round(40 / CROPS[id][3]));     // cheap crops come in bigger lots
-  for (let k = 0; k < 4; k++) { const r = i => h01(`npc:${id}:${P}:${k}:${i}`), s = r(0) < .5 ? 's' : 'b', from = P * MKT_PERIOD + Math.floor(r(1) * (MKT_PERIOD - 40 * 60e3));
+  for (let k = 0; k < 4; k++) { const r = i => h01(`npc:${id}:${P}:${k}:${i}`), s = r(0) < .5 ? 's' : 'b'; if (s === 's') continue; const from = P * MKT_PERIOD + Math.floor(r(1) * (MKT_PERIOD - 40 * 60e3));
     out.push({ id: `${P}_${id}_${k}`, npc: 1, s, c: id, q: Math.max(1, Math.round((1 + r(2) * 5) * big)), from, to: Math.min((P + 1) * MKT_PERIOD, from + (40 + Math.floor(r(3) * 80)) * 60e3),
       p: s === 's' ? Math.max(2, Math.ceil(m * (1.15 + r(4) * .25))) : Math.max(1, Math.floor(m * (.85 + r(4) * .27))), n: NPC[Math.floor(r(5) * NPC.length)], t: from }); }
   return out;
@@ -593,7 +593,7 @@ function farmMount(root, api) {
     } else if (tab === 'mkt') {
       const now = Date.now(), nx = (mktPer() + 1) * MKT_PERIOD - now, mine = mineOpen().sort((a, b) => (a.t || 0) - (b.t || 0));
       const ids = Object.keys(CROPS).filter(id => !SIG.includes(id) || id === mySig || (f.bag[id] | 0) || ordersOf(id).some(o => !o.npc));
-      L.innerHTML = `<p class="muted farm-tip">ราคาตลาดเปลี่ยนทุก 2 ชม. (รอบหน้าอีก ${Math.floor(nx / 3600e3)} ชม. ${Math.ceil(nx % 3600e3 / 60e3)} น.) · ขายในตะกร้าได้ราคาตลาดตอนนี้ · แตะผักเพื่อตั้งขาย/รับซื้อกับเพื่อนและ 🧺 แม่ค้า</p>
+      L.innerHTML = `<p class="muted farm-tip">ราคาตลาดเปลี่ยนทุก 2 ชม. (รอบหน้าอีก ${Math.floor(nx / 3600e3)} ชม. ${Math.ceil(nx % 3600e3 / 60e3)} น.) · ขายในตะกร้าได้ราคาตลาดตอนนี้ · แตะผักเพื่อตั้งขาย/รับซื้อกับเพื่อน · 🧺 แม่ค้าแวะมารับซื้อเป็นช่วง ๆ</p>
         ${mkt === null && !O ? '<p class="muted">กำลังต่อตลาด…</p>' : ''}
         ${mine.length ? `<h4 class="sz-h">คำสั่งของฉัน <small class="muted">${mine.length}/${MKT_MAX}</small></h4><ul class="farm-ls mk-mine">${mine.map(o => `<li>${cropURL(o.c, 22)}<span class="bag-n"><b>${o.s === 's' ? '🔴 ขาย' : '🟢 รับซื้อ'}${CROPS[o.c][0]} ${o.l}/${o.q}</b><small>@${o.p} 🪙 · ⏳ หมดเวลาใน <b data-mend="${mktEnd(o)}">${leftOf(o)}</b></small></span><button class="btn sm" data-mx="${o.id}">ยกเลิก</button></li>`).join('')}</ul>` : ''}
         <ul class="farm-ls mk-board">${ids.map(id => { const pr = mktAt(id), c = chg(id), sp = spark(id, 64, 26), os = ordersOf(id), na = os.filter(o => o.s === 's').length, nb = os.filter(o => o.s === 'b').length, have = f.bag[id] | 0;
