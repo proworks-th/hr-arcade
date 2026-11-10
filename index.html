@@ -258,7 +258,7 @@ button.pk:hover{transform:translateY(-2px)}div.pk{cursor:default}.pk b{font-size
 .vil-stg.done{opacity:.55}.vil-stg.cur{font-weight:600}
 .vil-pb{height:8px;background:#eee;border:1.5px solid var(--line);border-radius:6px;overflow:hidden;margin:3px 0 1px}.vil-pb i{display:block;height:100%;background:#7ec850}
 .vil-card .btn{width:100%;margin-top:8px}.vil-name{display:flex;gap:6px;margin-top:10px}.vil-name input{flex:1;min-width:0;font:inherit;font-size:16px;padding:6px 10px;border:2px solid var(--line);border-radius:10px}.vil-name .btn{width:auto;margin:0}
-.vil-coats{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 4px}.vil-coat{width:44px;height:44px;border:3px solid;border-radius:50%;cursor:pointer;padding:0}.vil-coat.on{outline:3px solid var(--pri);outline-offset:2px}.vil-coat:disabled{opacity:.4;cursor:default}.vil-card .btn:disabled{opacity:.45;cursor:default;box-shadow:none}.vil-need{color:var(--bad);font-size:12.5px}
+.vil-deco{margin-top:10px;padding-top:8px;border-top:2px dashed #e6dccb}.vil-chips{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}.vil-chip{font:inherit;font-size:13px;border:2px solid var(--line);border-radius:999px;background:#fff;padding:3px 10px;min-height:40px;cursor:pointer;display:inline-flex;align-items:center;gap:5px}.vil-chip i{width:14px;height:14px;border-radius:4px;border:1.5px solid var(--line)}.vil-chip.on{background:#ffd84d;font-weight:600}.vil-chip:disabled{opacity:.4;cursor:default}.vil-coats{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 4px}.vil-coat{width:44px;height:44px;border:3px solid;border-radius:50%;cursor:pointer;padding:0}.vil-coat.on{outline:3px solid var(--pri);outline-offset:2px}.vil-coat:disabled{opacity:.4;cursor:default}.vil-card .btn:disabled{opacity:.45;cursor:default;box-shadow:none}.vil-need{color:var(--bad);font-size:12.5px}
 @media (max-width:719px){.vil-card{top:auto;bottom:8px;max-height:70%}}
 .vil-brick{flex:none;font-weight:700}.vil-brick small{font-weight:400;color:var(--muted,#776)}.vil-test{flex:none;background:#fff3c4;border:2px solid var(--line);border-radius:8px;padding:1px 8px;font-weight:600}
 .tower-wrap{position:relative;max-height:min(70vh,640px);overflow:auto;border:3px solid var(--line);border-radius:14px;box-shadow:0 6px 0 var(--line);background:#7cc4ff}
@@ -587,10 +587,10 @@ button.pk:hover{transform:translateY(-2px)}div.pk{cursor:default}.pk b{font-size
 <script src="gacha.js?v=4"></script>
 <script src="hubroom.js?v=9"></script>
 <script src="tower.js?v=10"></script>
-<script src="village.js?v=11"></script>
-<script src="farm.js?v=9"></script>
+<script src="village.js?v=12"></script>
+<script src="farm.js?v=10"></script>
 <script src="cloud.js?v=10"></script>
-<script src="news.js?v=3"></script>
+<script src="news.js?v=4"></script>
 <script>
 'use strict';
 /* ---------- utils ---------- */
@@ -637,7 +637,7 @@ $('#muteBtn').onclick=()=>{muted=!muted;store.set('muted',muted);renderMute()};
 
 /* ---------- online services (online.js, Firebase): ranking, presence, feed ---------- */
 let onlineMod=null;
-const loadRank=()=>onlineMod||(onlineMod=import('./online.js?v=27'));
+const loadRank=()=>onlineMod||(onlineMod=import('./online.js?v=28'));
 const loadOnline=loadRank;
 const PIX_AVAS=['p_office','p_woffice','p_whealth','p_tech','p_cat','p_dog'];
 const myAva=()=>{const a=store.get('partyAva','p_office');return PIX_AVAS.includes(a)?a:'p_office'};

@@ -79,3 +79,10 @@ Decided 9 Nov: **no paid speed-up**, **pet 6,000**. Checked 9 Nov (GDD §2b): ×
 - [ ] Cloud save on another device shows the same house stage.
 - [ ] Pet hungry → sleeps at home; fed → follows; dye and rename stick after reload.
 - [ ] Nothing reaches the real Firebase in tests.
+
+
+## Starter house (10 Nov 2026, built in the game, local commit)
+- Farm moves to the lot at จองที่ดิน (prog.vil.g = rooftop size 10; public farm row gets y:1, balcony sign uses it).
+- Stage 2 = บ้านหลังแรก (small cottage); built = moved in (movedIn): name on map, deliveries, home spot. Stage 3 grows it into the big house; stage 4 makes the garden 14; 18/24 only after 14.
+- Decorate on your own card: roof 8 colours (tinted Tiny Town tiles), walls 6, extras tree/pot/sign/fence/flowers. First choice free, repaint 300, extra 200, removing free. Lot fields rc/wc/xs/cz.
+- Prototype: _test/starter-house-proto.html. News entry 6.

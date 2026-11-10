@@ -100,6 +100,9 @@ const Farm = {
   // so crops, timers, friends' water (rooms/_farmw/{me}/{i}), basket, book and sprinkler all carry over as they are
   GARDEN_UP: [[18, 10000, 0], [24, 20000, 40]],                   // [plots, coins, bricks] (GDD §5)
   home(p = Prog.get()) { return p.vil && p.vil.g ? Math.min(24, p.vil.g | 0) : 0; },   // garden size, 0 = still on the rooftop
+  // the public copy (rooms/_farm) from outside the farm screen, e.g. right after the farm moves to the village (y = moved)
+  pub() { const nm = typeof myName === 'function' ? myName() : '', p = Prog.get(); if (!nm) return;
+    loadOnline().then(O => O.saveFarm(nm, { who: p.who, n: Farm.n(), plots: Farm.get().plots, y: Farm.home() ? 1 : 0 })).catch(() => {}); },
   n(f = Farm.get(), p = Prog.get()) { return Farm.home(p) || Math.max(plotsFor(roomW(p.room)), Math.min(10, f.n || 0)); },
   // the sprite for one plot (the village draws real crops in the house gardens)
   plotImg(pl, now = Date.now()) { if (!pl || !CROPS[pl.c]) return null; const g = growMs(pl), e = now - pl.t, st = e >= g ? 3 : e < g * .15 ? 0 : e < g * .5 ? 1 : 2;
@@ -112,7 +115,7 @@ const Farm = {
   drawBalcony(ctx, row, x, y, w, now = Date.now(), t = 0) {
     const n = row ? Math.min(10, row.n || 4) : 4, plots = row ? row.plots || [] : [], H = Farm.BALCONY_H;
     ctx.fillStyle = '#8a93a3'; ctx.fillRect(x, y + H - 6, w, 6); ctx.fillStyle = '#6b7385'; ctx.fillRect(x, y + H - 2, w, 2);
-    if (row && row.n > 10) {                                     // moved to a house in the village: the rooftop farm is closed
+    if (row && (row.y || row.n > 10)) {                          // moved to the village (from จองที่ดิน on): the rooftop farm is closed
       ctx.fillStyle = '#fff8e6'; ctx.strokeStyle = '#6b3e26'; ctx.lineWidth = 1.5; const sw = Math.min(w - 8, 150);
       ctx.fillRect(x + w / 2 - sw / 2, y + H - 22, sw, 15); ctx.strokeRect(x + w / 2 - sw / 2, y + H - 22, sw, 15);
       ctx.fillStyle = '#6b3e26'; ctx.font = '600 10px Kanit, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -200,7 +203,8 @@ function farmMount(root, api) {
   // the next room size up and how many plots it brings
   const nextRoom = () => ROOM_SIZES.find(z => z[0] > roomW(Prog.get().room));
   // the next way to get more plots: a bigger room (rooftop) or a bigger house garden (after move-in)
-  const nextGarden = () => Farm.home() ? Farm.GARDEN_UP.find(u => u[0] > Farm.home()) : null;
+  // in the village the garden reaches 14 through the house's garden stage; 18 / 24 are bought here after that
+  const nextGarden = () => Farm.home() >= 14 ? Farm.GARDEN_UP.find(u => u[0] > Farm.home()) : null;
   const nextUp = () => Farm.home() ? nextGarden() : nextRoom();
 
   /* ---------- saving: local progress + the public copy friends read ---------- */
@@ -208,7 +212,7 @@ function farmMount(root, api) {
   let pubT = 0;
   function publish() {
     clearTimeout(pubT); if (!nm) return;
-    pubT = setTimeout(() => loadOnline().then(O => O.saveFarm(nm, { who: p.who, n: nMine(), plots: f.plots })).catch(() => {}), 800);
+    pubT = setTimeout(() => loadOnline().then(O => O.saveFarm(nm, { who: p.who, n: nMine(), plots: f.plots, y: Farm.home() ? 1 : 0 })).catch(() => {}), 800);
   }
   let dead = false;
   loadOnline().then(o => { if (dead) return; O = o;
@@ -408,7 +412,7 @@ function farmMount(root, api) {
         <div class="shop-grid">${seedBtn(mySig)}</div>
         <h4 class="sz-h">อุปกรณ์</h4>
         <div class="farm-gear">
-          ${Farm.home() ? (ng => `<div><b>🏡 สวนข้างบ้าน ${nMine()} แปลง</b><small class="muted">${ng ? `ขยายเป็น ${ng[0]} แปลง` : 'สวนใหญ่สุดแล้ว ครบ 24 แปลง'}</small></div>
+          ${Farm.home() ? (ng => `<div><b>🏡 สวนข้างบ้าน ${nMine()} แปลง</b><small class="muted">${ng ? `ขยายเป็น ${ng[0]} แปลง` : Farm.home() < 14 ? 'ได้ 14 แปลงเมื่อบ้านถึงขั้นขยายสวน (ในหมู่บ้าน)' : 'สวนใหญ่สุดแล้ว ครบ 24 แปลง'}</small></div>
           ${ng ? `<button class="btn sm" data-a="garden">🪙 ${fmt(ng[1])}${ng[2] ? ` + 🧱 ${ng[2]}` : ''}</button>` : ''}`)(nextGarden())
           : `<div><b>🌱 แปลงผัก ${nMine()} แปลง</b><small class="muted">${nr ? `ขยายห้องเป็น ${nr[0]} ช่อง ได้ ${plotsFor(nr[0])} แปลง` : 'ห้องใหญ่สุดแล้ว ได้ครบ 10 แปลง'}</small></div>
           ${nr ? '<button class="btn sm" data-a="room">📐 ขยายห้อง</button>' : ''}`}
@@ -493,7 +497,7 @@ function farmMount(root, api) {
     if (wx === 'rainbow') { ['#ff5c8a', '#ff9f1c', '#ffd23f', '#21c07a', '#4cc3ff', '#8338ec'].forEach((c, i) => { ctx.strokeStyle = c; ctx.globalAlpha = .55; ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(W / 2, 150, 150 - i * 5, Math.PI, 0); ctx.stroke(); }); ctx.globalAlpha = 1; }
     ctx.imageSmoothingEnabled = false;
     for (const c of clouds) { const x = ((c[0] + t * 8 * c[2]) % (W + 80)) - 60; ctx.globalAlpha = wx === 'rain' ? 1 : .9; ctx.drawImage(pxa('cloud'), x, c[1], 60, 24); ctx.globalAlpha = 1; }
-    const yard = visit ? (visit.n | 0) > 10 : Farm.home() > 0;      // a house garden in the village, not the rooftop
+    const yard = visit ? !!visit.y || (visit.n | 0) > 10 : Farm.home() > 0;      // a house garden in the village, not the rooftop
     if (yard) {
       ctx.fillStyle = night ? '#2f5a3a' : wx === 'rain' ? '#6f9a74' : '#7cc46a';
       for (let x = -10; x < W; x += 34) { ctx.beginPath(); ctx.arc(x + 17, 104, 22, Math.PI, 0); ctx.fill(); } ctx.fillRect(0, 100, W, 22);

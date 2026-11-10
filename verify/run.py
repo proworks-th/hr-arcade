@@ -214,28 +214,40 @@ def village(page, base, shot):
       const D = Village._dbg, M = await import('/verify/mocks/firebase-database.js'), w = ms => new Promise(r => setTimeout(r, ms));
       const L = id => D.LOTS.find(l => l.id === id), until = async f => { for (let i = 0; i < 100 && !f(); i++) await w(100); return f(); };
       D.fast = 100; await M.set(M.ref(null, 'rooms/_vil/lots/4'), null);
-      const p = Prog.get(); p.lv = 12; p.room = { ...(p.room || {}), w: 22 }; p.coins = 70000; p.vil.bricks = 70; p.farm = { ...(p.farm || {}), bag: { tom: 40 }, plots: Array.from({ length: 10 }, (_, i) => ({ c: i % 2 ? 'tom' : 'bok', t: Date.now() - i * 60e3, w: i % 3 ? 1 : 0 })) }; Prog.put(p);
+      const p = Prog.get(); p.lv = 12; p.room = { ...(p.room || {}), w: 22 }; p.coins = 70000; p.vil.bricks = 70; p.vil.g = 0; p.farm = { ...(p.farm || {}), bag: { tom: 40 }, plots: Array.from({ length: 10 }, (_, i) => ({ c: i % 2 ? 'tom' : 'bok', t: Date.now() - i * 60e3, w: i % 3 ? 1 : 0 })) }; Prog.put(p);
       const before = JSON.stringify(Prog.get().farm.plots), nBefore = Farm.n();
       const out = {};
       // someone else took lot 6 a moment ago but this tab still shows it empty: the transaction must refuse
       await M.set(M.ref(null, 'rooms/_vil/lots/6'), { k: 'คนอื่น', n: 'คนอื่น', stage: 1 }); Object.assign(L(6), { stage: 0, k: '' });
       await D.reserve(L(6)); out.race = [Prog.get().coins, (await M.get(M.ref(null, 'rooms/_vil/lots/6'))).val().k];
       await D.reserve(L(3)); await until(() => D.myLot()); out.res = [D.myLot() && D.myLot().id, Prog.get().coins, Prog.get().vil.lot];
+      // starter house rules: the farm moves at จองที่ดิน (same 10 plots, same crops), no 18-plot upgrade before the garden stage
+      await w(300); out.early = [Farm.home(), Farm.n(), L(3).g, D.gSize(L(3)), JSON.stringify(Prog.get().farm.plots) === before, D.movedIn(L(3))];
       D.act(L(3)); out.stages = [];
       for (let s = 1; s < 5; s++) { await D.next(L(3)); await until(() => L(3).stage === s + 1);
-        out.stages.push(L(3).stage); if (s === 1) { out.card = !!document.querySelector('.vil-card:not([hidden]) .vil-pb'); }
-        await until(() => !(L(3).end > Date.now())); }
+        out.stages.push(L(3).stage); if (s === 1) { out.card = !!document.querySelector('.vil-card:not([hidden]) .vil-pb'); out.notYet = D.movedIn(L(3)); }
+        await until(() => !(L(3).end > Date.now()));
+        if (s === 1) { out.moved = D.movedIn(L(3)); out.jobsHome = D.jobs().length === 3; await w(2300); out.deco = !!document.querySelector('.vil-card:not([hidden]) .vil-deco'); } }
       const q = Prog.get(); out.after = [q.coins, q.vil.bricks, q.farm.bag.tom || 0, L(3).g];
       out.move = [nBefore, Farm.n(), Farm.home(), JSON.stringify(q.farm.plots) === before];
+      // colours: first choice free, then repaint 300, extra 200, removing free; the lot record keeps rc / wc / xs
+      const k0 = Prog.get().coins, dc = () => k0 - Prog.get().coins, lotDb = async () => (await M.get(M.ref(null, 'rooms/_vil/lots/3'))).val();
+      await D.decorate(L(3), { r: 'teal' }); await until(() => L(3).rc === 'teal'); const c1 = dc();
+      await D.decorate(L(3), { w: 'white' }); await until(() => L(3).wc === 'white'); const c2 = dc();
+      await D.decorate(L(3), { x: 't' }); await until(() => L(3).xs === 't'); const c3 = dc();
+      await D.decorate(L(3), { x: 't' }); await until(() => L(3).xs === ''); const c4 = dc();
+      await D.decorate(L(3), { x: 'o' }); await until(() => L(3).xs === 'o'); const v = await lotDb();
+      out.decor = [c1, c2, c3, c4, dc(), v.rc, v.wc, v.xs, v.cz];
+      const pc = Prog.get(); pc.coins = k0; Prog.put(pc);   // back to the old total so the later coin checks stay the same
       // help: not on my own house; once a day on a coworker's house that is building
       const end = Date.now() + 60000; await M.set(M.ref(null, 'rooms/_vil/lots/7'), { k: 'นก', n: 'นก', stage: 4, end }); await until(() => L(7).end === end);
       const c0 = Prog.get().coins; await D.help(L(7)); await until(() => L(7).end < end);
       out.help = [end - L(7).end, Prog.get().coins - c0, Object.keys((L(7).hp || {}).by || {}).length];
       await D.help(L(7)); out.help2 = Prog.get().coins - c0;
       D.fast = false; D.act(L(7)); return out; }''')
-    want = {'race': [70000, 'คนอื่น'], 'res': [3, 60000, 3], 'stages': [2, 3, 4, 5], 'after': [20000, 10, 10, 14], 'move': [10, 14, 14, True], 'help': [200, 5, 1], 'help2': 5}
+    want = {'race': [70000, 'คนอื่น'], 'res': [3, 60000, 3], 'stages': [2, 3, 4, 5], 'after': [20000, 10, 10, 14], 'move': [10, 14, 14, True], 'help': [200, 5, 1], 'help2': 5, 'early': [10, 10, 10, 10, True, False], 'notYet': False, 'moved': True, 'jobsHome': True, 'deco': True, 'decor': [0, 300, 500, 500, 700, 'teal', 'white', 'o', 1]}
     if any(r.get(k) != v for k, v in want.items()) or not r.get('card'):
-        raise AssertionError('build path wrong: ' + json.dumps(r, ensure_ascii=False))
+        raise AssertionError('build path wrong: ' + json.dumps({k: [r.get(k), v] for k, v in want.items() if r.get(k) != v}, ensure_ascii=False) + (' no card' if not r.get('card') else ''))
     page.wait_for_timeout(1500)
     shot('village-card')
     if canvas_blank(page, '.vil-wrap canvas'):
