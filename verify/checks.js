@@ -37,12 +37,13 @@
   // 5. tap targets on touch screens
   if (touch) for (const el of inter) { const r = el.getBoundingClientRect(); if (r.width < 44 || r.height < 44) fail.push(`tap target ${Math.round(r.width)}x${Math.round(r.height)} < 44x44: ${label(el)}`); }
 
-  // 6. overlapping / covered controls
+  // 6. overlapping / covered controls (content scrolled under a sticky bar — the page header, the basket sell bar — is fine)
+  const STICKY = 'header.top, .bag-bar';
   for (let i = 0; i < inter.length; i++) {
     const a = inter[i], ra = a.getBoundingClientRect();
     for (let j = i + 1; j < inter.length; j++) {
       const b = inter[j]; if (a.contains(b) || b.contains(a)) continue;
-      if (!a.closest('header.top') !== !b.closest('header.top')) continue;   // page content scrolled under the sticky header is not an overlap
+      if (!a.closest(STICKY) !== !b.closest(STICKY)) continue;
       const rb = b.getBoundingClientRect(), ox = Math.min(ra.right, rb.right) - Math.max(ra.left, rb.left), oy = Math.min(ra.bottom, rb.bottom) - Math.max(ra.top, rb.top);
       if (ox > 4 && oy > 4) fail.push(`controls overlap: ${label(a)} × ${label(b)}`);
     }
@@ -50,7 +51,7 @@
     if (cx >= 0 && cy >= 0 && cx < W && cy < H) { const top = document.elementFromPoint(cx, cy);
       // a modal (dialog/overlay) deliberately covers everything behind it; only controls outside the modal count
       const modal = top && top.closest(MODAL);
-      if (top && top !== a && !(top.closest('header.top') && !a.closest('header.top')) && !a.contains(top) && !top.contains(a) && !(modal && !modal.contains(a))) fail.push(`control covered by ${label(top)}: ${label(a)}`); }
+      if (top && top !== a && !(top.closest(STICKY) && !a.closest(STICKY)) && !a.contains(top) && !top.contains(a) && !(modal && !modal.contains(a))) fail.push(`control covered by ${label(top)}: ${label(a)}`); }
   }
   return { fail, warn, height: document.documentElement.scrollHeight };
 }

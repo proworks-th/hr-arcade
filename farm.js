@@ -287,9 +287,10 @@ function farmMount(root, api) {
     else toast(p.coins < CROPS[seed][2] ? 'เหรียญไม่พอซื้อเมล็ด' : 'ไม่มีแปลงว่าง'); }
   function waterAll() { fresh(); let n = 0; f.plots.forEach((pl, i) => { if (pl && !pl.w && fwMine(i) < WATER_MAX && Date.now() < ripeAt(pl, fwMine(i)) && water(i)) n++; });
     if (n) { save(); render(); } }
-  function sell(key, all) { fresh(); const keys = key ? [key] : Object.keys(f.bag); let c = 0, n = 0;
-    for (const k of keys) { const cnt = all || !key ? f.bag[k] || 0 : Math.min(1, f.bag[k] || 0); if (!cnt) continue; c += bagPrice(k) * cnt; n += cnt; f.bag[k] -= cnt; if (!f.bag[k]) delete f.bag[k]; }
-    if (!n) return; save(); typeof Stats !== 'undefined' && Stats.econ('sold', n); Prog.give(c, 0, 'sell'); api.sfx('good'); fly(c); toast(`💰 ขาย ${n} ชิ้น +${fmt(c)} 🪙`); render(); }
+  // sell exactly what was picked: { key: qty } (the basket never sells by itself any more)
+  function sell(picks) { fresh(); let c = 0, n = 0;
+    for (const [k, q] of Object.entries(picks || {})) { const cnt = Math.min(q | 0, f.bag[k] || 0); if (cnt <= 0) continue; c += bagPrice(k) * cnt; n += cnt; f.bag[k] -= cnt; if (!f.bag[k]) delete f.bag[k]; }
+    if (!n) return 0; save(); typeof Stats !== 'undefined' && Stats.econ('sold', n); Prog.give(c, 0, 'sell'); api.sfx('good'); fly(c); toast(`💰 ขาย ${n} ชิ้น +${fmt(c)} 🪙`); render(); return c; }
   function buySprinkler() { fresh(); p = Prog.get(); const [price, lv] = SPRINKLER;
     if (p.lv < lv) { toast(`ปลดล็อกสปริงเกอร์ที่ Lv ${lv}`); return; }
     if (p.coins < price) { toast(`เหรียญไม่พอ ขาดอีก 🪙 ${fmt(price - p.coins)}`); return; }
@@ -328,6 +329,18 @@ function farmMount(root, api) {
   function claimCanteen(s, r) {
     const k = `cantq_${wk()}_${s}_${r}`; if (store.get(k, false)) return; store.set(k, true);
     Prog.give(CANTEEN_REWARD, 7, 'canteen'); api.sfx('level'); fly(CANTEEN_REWARD); toast(`🎉 ออเดอร์ครบ! รางวัลคนช่วยส่ง +${CANTEEN_REWARD} 🪙`); list(); hud();
+  }
+  // basket picks (what will be sold, per key) and what the village still needs (kept back by "เลือกทั้งหมด")
+  let pick = {}, pickAll = false, warned = false;
+  function keepFor() {
+    const nd = typeof Village !== 'undefined' && Village.needs ? Village.needs() : null, job = {}, house = {};
+    if (!nd) return { job, house, nd }; const left = { ...f.bag }, cheap = ks => ks.sort((a, b) => bagPrice(a) - bagPrice(b));
+    // same order the village takes them: a delivery uses the cheapest of that crop, a house stage the cheapest vegetables overall
+    for (const [c, q0] of Object.entries(nd.job)) { let q = q0;
+      for (const k of cheap(Object.keys(left).filter(k => k.split('.')[0] === c))) { const u = Math.min(q, left[k]); if (!u) continue; job[k] = (job[k] || 0) + u; left[k] -= u; q -= u; if (!q) break; } }
+    let v = nd.house ? nd.house.veg : 0;
+    for (const k of cheap(Object.keys(left).filter(k => CROPS[k.split('.')[0]]))) { if (!v) break; const u = Math.min(v, left[k]); if (!u) continue; house[k] = (house[k] || 0) + u; left[k] -= u; v -= u; }
+    return { job, house, nd };
   }
   // gifts: one item to a friend, claimed when they next open the farm
   function gift(key) {
@@ -391,7 +404,6 @@ function farmMount(root, api) {
       dry = f.plots.filter((pl, i) => pl && !pl.w && fwMine(i) < WATER_MAX && now < ripeAt(pl, fwMine(i))).length;
     if (ripe) return { html: `🧺 เก็บทั้งหมด ${ripe}`, fn: harvestAll };
     if (empty && Prog.get().coins >= CROPS[seed][2]) return { html: `${pxImg('crop_' + seed, 20)} ปลูก${CROPS[seed][0]} ${empty} แปลง`, fn: plantAll };
-    if (bn) return { html: `💰 ขายตะกร้า +${fmt(bagValue())}`, fn: () => sell() };
     if (dry && !f.spr) return { html: `💧 รดน้ำ ${dry} ต้น`, fn: waterAll };
     const next = f.plots.map((pl, i) => pl ? ripeAt(pl, fwMine(i)) : Infinity).reduce((a, b) => Math.min(a, b), Infinity);
     return { html: next < Infinity ? `ผักต้นถัดไปสุกใน ${mmss(next - now)} · ไปเล่นเกมก่อนก็ได้` : 'เลือกเมล็ดทางขวา แล้วแตะแปลงเพื่อปลูก' };
@@ -430,10 +442,28 @@ function farmMount(root, api) {
       const cg = qs.reduce((a, q, s) => a + (q.done ? 0 : q.got), 0), ct = qs.reduce((a, q, s) => a + (q.done ? 0 : canteenQuest(wk(), s, q.r)[1]), 0) || 1;
       const card = `<button class="farm-card" data-t="cant"><span>🍱 <b>ออเดอร์โรงอาหาร</b> <small class="muted">${cl ? `🎁 มีรางวัลรอรับ ${cl}` : open ? `รอส่ง ${open} ออเดอร์` : 'ครบหมดแล้ว รอออเดอร์ใหม่'}</small><span class="xpbar"><i style="width:${cg / ct * 100}%"></i></span></span><i>›</i></button>`;
       if (!keys.length) { L.innerHTML = card + '<p class="muted farm-empty">ตะกร้าว่าง · ผักที่เก็บจะมาอยู่ที่นี่</p>'; return; }
-      L.innerHTML = card + `<div class="gift-to">🎁 ส่งให้ <select data-k="giftTo"><option value="">เลือกเพื่อน…</option></select></div>
-        <ul class="farm-ls farm-bag">${keys.map(k => `<li>${cropURL(k, 26)}<span class="bag-n"><b>${bagName(k)} <i>×${f.bag[k]}</i></b><small>ชิ้นละ ${bagPrice(k)} 🪙</small></span>
-          <button class="btn sm" data-sell="${k}">ขาย</button><button class="btn sm" data-gift="${k}" title="ส่งให้เพื่อน 1 ชิ้น">🎁</button></li>`).join('')}</ul>`;
-      L.querySelectorAll('[data-sell]').forEach(b => b.onclick = () => sell(b.dataset.sell, true));
+      for (const k of Object.keys(pick)) { pick[k] = Math.max(0, Math.min(pick[k] | 0, f.bag[k] | 0)); if (!pick[k]) delete pick[k]; }
+      const K = keepFor(), keepN = k => (K.job[k] | 0) + (K.house[k] | 0), nd = K.nd, jobs = nd ? Object.entries(nd.job) : [];
+      const tot = keys.reduce((a, k) => a + (pick[k] | 0), 0), val = keys.reduce((a, k) => a + (pick[k] | 0) * bagPrice(k), 0);
+      const over = keys.filter(k => (pick[k] | 0) > f.bag[k] - keepN(k)), warn = warned && over.length;
+      const need = jobs.length || (nd && nd.house) ? `<p class="bag-need">ยังต้องใช้ในหมู่บ้าน: ${[...jobs.map(([c, q]) => `📦 ${CROPS[c][0]} ${q}`),
+        nd.house ? `🏠 ${nd.house.stage} ใช้ผัก ${nd.house.veg} ชิ้น` : ''].filter(Boolean).join(' · ')}</p>` : '';
+      L.innerHTML = card + `<div class="gift-to">🎁 ส่งให้ <select data-k="giftTo"><option value="">เลือกเพื่อน…</option></select></div>${need}
+        <ul class="farm-ls farm-bag">${keys.map(k => { const n = f.bag[k], pk = pick[k] | 0;
+          return `<li class="${pk ? 'pick' : ''}">${cropURL(k, 26)}<span class="bag-n"><b>${bagName(k)} <i>×${n}</i></b><small>ชิ้นละ ${bagPrice(k)} 🪙${K.job[k] ? ` <em class="bag-tag">📦 ส่งของใช้ ${K.job[k]}</em>` : ''}${K.house[k] ? ` <em class="bag-tag h">🏠 สร้างบ้าน ${K.house[k]}</em>` : ''}</small></span>
+          <span class="bag-q"><button class="btn sm" data-qm="${k}" ${pk ? '' : 'disabled'} aria-label="ลด${bagName(k)}">−</button><b>${pk}</b><button class="btn sm" data-qp="${k}" ${pk < n ? '' : 'disabled'} aria-label="เพิ่ม${bagName(k)}">+</button><button class="btn sm bag-all" data-qa="${k}">${pk === n ? 'ล้าง' : 'ทั้งหมด'}</button></span>
+          <button class="btn sm" data-gift="${k}" title="ส่งให้เพื่อน 1 ชิ้น">🎁</button></li>`; }).join('')}</ul>
+        <div class="bag-bar"><button class="btn sm" data-qb="all">${pickAll ? 'เลือกหมดจริง ๆ' : 'เลือกทั้งหมด'}</button><button class="btn sm" data-qb="clear" ${tot ? '' : 'disabled'}>ล้าง</button>
+          <button class="btn bag-sell${warn ? ' warn' : ''}" data-qb="sell" ${tot ? '' : 'disabled'}>${warn ? '⚠️ ขายอยู่ดี' : '💰 ขาย'} ${tot} ชิ้น +${fmt(val)}</button>
+          ${warn ? `<p class="bag-warn">${over.map(bagName).join(', ')} ยังต้องใช้ส่งของ/สร้างบ้าน · ขายไปก็ได้ แต่ต้องปลูกใหม่นะ</p>` : ''}</div>`;
+      L.querySelectorAll('[data-qp],[data-qm],[data-qa],[data-qb]').forEach(b => b.onclick = () => { const d = b.dataset; api.sfx('tick');
+        if (d.qp) pick[d.qp] = Math.min(f.bag[d.qp] | 0, (pick[d.qp] | 0) + 1);
+        else if (d.qm) pick[d.qm] = Math.max(0, (pick[d.qm] | 0) - 1);
+        else if (d.qa) pick[d.qa] = (pick[d.qa] | 0) === (f.bag[d.qa] | 0) ? 0 : f.bag[d.qa] | 0;
+        else if (d.qb === 'all') { for (const k of keys) pick[k] = pickAll ? f.bag[k] : Math.max(0, f.bag[k] - keepN(k)); pickAll = !pickAll; if (pickAll) toast('เลือกทั้งหมด เว้นของที่ยังต้องใช้ในหมู่บ้านไว้'); }
+        else if (d.qb === 'clear') { pick = {}; pickAll = false; }
+        else if (d.qb === 'sell') { if (over.length && !warned) { warned = true; list(); return; } const pk = pick; pick = {}; pickAll = false; warned = false; sell(pk); return; }
+        if (d.qb !== 'all') pickAll = false; warned = false; list(); });
       L.querySelectorAll('[data-gift]').forEach(b => b.onclick = () => gift(b.dataset.gift));
       const sel = L.querySelector('[data-k=giftTo]'); sel.onchange = () => { giftTo = sel.value; store.set('giftTo', giftTo); };
       (friends ? Promise.resolve(friends) : loadFriends()).then(fr => { if (!sel.isConnected) return;
@@ -603,6 +633,6 @@ function farmMount(root, api) {
       if (up) list(); }
   });
   render();
-  if (/[?&]test=1/.test(location.search)) window.__farm = { get f() { return f; }, harvestAll, harvest, fwMine, ripeAt };
+  if (/[?&]test=1/.test(location.search)) window.__farm = { get f() { return f; }, harvestAll, sell, keepFor, smart, harvest, fwMine, ripeAt };
   return { destroy() { dead = true; off(); offW && offW(); offC && offC(); clearTimeout(pubT); publish(); } };
 }

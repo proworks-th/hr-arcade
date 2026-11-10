@@ -129,6 +129,39 @@ def farm(page, base, shot):
     if canvas_blank(page, '.farm canvas'):
         raise AssertionError('farm canvas is blank')
     shot('farm')
+    # basket: the pink button never sells; + / − picks per crop, one bulk sell; "pick all" keeps what village deliveries need; selling those warns first
+    page.evaluate("""() => { const p = Prog.get(); p.farm.bag = { wat: 8, 'wat.w': 2, bok: 22, let: 5, car: 5, tom: 6, chi: 4, cor: 3 }; Prog.put(p); __farm.f.bag = { ...p.farm.bag }; }""")
+    page.click('.farm [data-t=bag]')
+    page.wait_for_selector('.farm [data-qb=sell]', timeout=3000)
+    b0 = page.evaluate("() => ({ c: Prog.get().coins, smart: (__farm.smart(Date.now()).html || '').replace(/<img[^>]*>/g, ''), keep: __farm.keepFor(), bag: { ...__farm.f.bag } })")
+    for _ in range(3):
+        page.click('.farm [data-qp="wat"]')
+    page.click('.farm [data-qp="wat.w"]')
+    sell_txt = page.inner_text('.farm [data-qb=sell]')
+    page.click('.farm [data-qb=sell]')
+    b1 = page.evaluate("() => ({ c: Prog.get().coins, bag: { ...Prog.get().farm.bag } })")
+    page.click('.farm [data-qb=all]')
+    keep = page.evaluate("() => { const K = __farm.keepFor(); const o = {}; for (const k of Object.keys(__farm.f.bag)) o[k] = (K.job[k] | 0) + (K.house[k] | 0); return o; }")
+    page.click('.farm [data-qb=sell]')
+    b2 = page.evaluate("() => ({ ...Prog.get().farm.bag })")
+    kept_job = [k for k, n in keep.items() if n]
+    warn = None
+    if kept_job:
+        k = kept_job[0]
+        page.click('.farm [data-qa="%s"]' % k)
+        page.click('.farm [data-qb=sell]')
+        warn = [page.locator('.farm .bag-warn').count(), page.evaluate("k => Prog.get().farm.bag[k] | 0", k)]
+        shot('farm-bag')
+        page.click('.farm [data-qb=sell]')
+        warn.append(page.evaluate("k => Prog.get().farm.bag[k] | 0", k))
+    else:
+        shot('farm-bag')
+    checks = {'no sell on pink': 'ขาย' not in b0['smart'], 'bar text': '4 ชิ้น +288' in sell_txt, 'coins': b1['c'] - b0['c'] == 3 * 64 + 96,
+              'left after sell': [b1['bag'].get('wat'), b1['bag'].get('wat.w')] == [5, 1], 'pick all keeps': all(b2.get(k, 0) == n for k, n in keep.items()),
+              'something kept': sum(keep.values()) > 0, 'warn then sell': bool(warn) and warn[0] == 1 and warn[1] > 0 and warn[2] == 0}
+    bad = [k for k, v in checks.items() if not v]
+    if bad:
+        raise AssertionError('basket wrong: ' + ', '.join(bad) + ' ' + json.dumps([sell_txt, b1, keep, b2, warn], ensure_ascii=False))
 
 
 

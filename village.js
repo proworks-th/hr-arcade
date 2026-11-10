@@ -422,6 +422,17 @@ const Village = (() => {
     return `<h4>👋 ${N.n}</h4>${L.length ? `<p class="muted">รอของจากคุณอยู่</p>${L.map(J => jobRow(J, true)).join('')}` : '<p class="muted">สวัสดีจ้า วันนี้ไม่มีอะไรฝาก · ดูงานส่งของได้ที่ 📌 บอร์ด</p>'}`;
   }
 
+  // what the farm basket should keep: today's open deliveries (crop -> qty) and the vegetables the next house stage takes.
+  // The lots only load once the village has been opened, so the house part is cached for the farm screen.
+  function needs() {
+    if (!on()) return null; const job = {}, done = jobsDone();
+    for (const J of jobs()) if (!done.includes(J.j)) job[J.c] = (job[J.c] || 0) + J.q;
+    const L = myLot(), lot = (Prog.get().vil || {}).lot; let house = null;
+    if (L) { const s = STAGES[L.stage]; house = s && s[4] ? { veg: s[4], stage: s[0] + ' ' + s[1] } : null; try { localStorage.setItem('vilNeed', JSON.stringify({ lot: L.id, house })); } catch (e) {} }
+    else if (lot) { try { const c = JSON.parse(localStorage.getItem('vilNeed') || 'null'); if (c && c.lot === lot) house = c.house; } catch (e) {} }
+    return { job, house };
+  }
+
   /* ---------- reserve / build / help ---------- */
   const vegKeys = bag => Object.keys(bag || {}).filter(k => typeof CROPS === 'undefined' || CROPS[k.split('.')[0]]);
   function have() { const p = Prog.get(), bag = (p.farm && p.farm.bag) || {}; return { coins: p.coins | 0, bricks: (p.vil && p.vil.bricks) | 0, veg: vegKeys(bag).reduce((a, k) => a + (bag[k] | 0), 0) }; }
@@ -706,7 +717,7 @@ const Village = (() => {
     on,
     mount(slot) { if (!slot) return; if (!on()) { slot.remove(); return; } if (!el) build(); slot.replaceWith(el); renderBar(); },
     show() { if (!el) return; start(); renderBar(); requestAnimationFrame(() => { resize(); if (world) cam = camTarget(); send(true); }); },
-    setGarden,
+    setGarden, needs,
     _dbg: { me, LOTS, others, pm, adopt, feedPet, dyePet, renamePet, myPet, get farms() { return farms; }, syncHome, gCell, get hits() { return hits; }, get ready() { return !!world; }, act, lock, goTo, fast: false, floorSpots, reserve, jobs, jobsDone, deliver, haveCrop, NPCS, BOARDC, next, help, myLot, get busy() { return busy; }, decorate, movedIn, held, gSize, tinted, roofOf, wallOf },
   };
 })();
