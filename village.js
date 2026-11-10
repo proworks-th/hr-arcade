@@ -43,7 +43,7 @@ const Village = (() => {
   // stage: 0 empty, 1 reserved, 2 foundation, 3 walls + roof, 4 garden being made, 5 moved in
   const STAGE_TH = ['ว่าง', 'จองที่ดินแล้ว', 'บ้านหลังแรก', 'บ้านหลังใหญ่', 'สวน 14 แปลง', 'ขึ้นบ้านใหม่'];
   // GDD §4: [icon, name, coins, bricks, vegetables, build hours] — index = stage − 1
-  const STAGES = [['🪧', 'จองที่ดิน', LOT_PRICE, 0, 0, 0], ['🏡', 'บ้านหลังแรก', 10000, 20, 0, 24], ['🏠', 'ต่อเติมบ้านหลังใหญ่', 15000, 40, 0, 48],
+  const STAGES = [['🪧', 'จองที่ดิน', LOT_PRICE, 0, 0, 0], ['🏡', 'บ้านหลังแรก', 5000, 8, 0, 12], ['🏠', 'ต่อเติมบ้านหลังใหญ่', 20000, 40, 0, 48],   // 10 Nov: move in sooner (was 10,000 + 🧱 20, 24 h), same 55,000 in total
     ['🌳', 'ขยายสวนเป็น 14 แปลง', 10000, 0, 30, 24], ['🎉', 'ขึ้นบ้านใหม่', 5000, 0, 0, 0]];
   // house colours: roof keys tint the blue-grey shingles (red = the sheet's own red tiles); painted walls tint the wood planks
   const ROOFS = { blue: ['ฟ้าเทา', '#8796ad'], red: ['แดงอิฐ', '#c8553d'], green: ['เขียว', '#5f9e4f'], purple: ['ม่วง', '#8b6bbf'],
@@ -447,7 +447,7 @@ const Village = (() => {
   const costTxt = s => [s[2] ? `🪙 ${fmtN(s[2])}` : '', s[3] ? `🧱 ${s[3]}` : '', s[4] ? `🥬 ${s[4]}` : ''].filter(Boolean).join(' + ') + (s[5] ? ` · ${s[5]} ชม.` : '');
   function missing(s) {
     const H = have(), m = [];
-    if (H.coins < s[2]) m.push(`🪙 ${fmtN(s[2] - H.coins)}`); if (H.bricks < s[3]) m.push(`🧱 ${s[3] - H.bricks}`); if (H.veg < s[4]) m.push(`🥬 ${s[4] - H.veg}`);
+    if (H.coins < s[2]) m.push(`🪙 ${fmtN(s[2] - H.coins)}`); if (H.bricks < s[3]) m.push(`🧱 ${s[3] - H.bricks} (มี ${H.bricks}/${s[3]})`); if (H.veg < s[4]) m.push(`🥬 ${s[4] - H.veg} (มี ${H.veg}/${s[4]})`);
     return m;
   }
   const feed = m => { const nm = myName(); if (O && nm) O.pushFeed(m, nm, typeof myAva === 'function' ? myAva() : ''); };
@@ -549,7 +549,7 @@ const Village = (() => {
       if (mine) {
         const s = STAGES[L.stage];
         if (building(L)) h += `<p class="muted">ไม่มีปุ่มเร่ง · ชวนเพื่อนมาแตะ "ช่วยสร้าง" ได้วันละ ${HELP_CAP} คน คนละ −${HELP_H} ชม.</p>`;
-        else if (s) { const miss = missing(s); h += `<button class="btn primary" type="button" data-a="next"${miss.length || busy ? ' disabled' : ''}>${s[0]} เริ่ม${s[1]} · ${costTxt(s)}</button>${miss.length ? `<p class="vil-need">ขาดอีก ${miss.join(' · ')}${s[3] ? ' · อิฐได้จากมินิเกมและบนถนน' : ''}${s[4] ? ' · ผักได้จากฟาร์ม' : ''}</p>` : ''}`; }
+        else if (s) { const miss = missing(s); h += `<button class="btn primary" type="button" data-a="next"${miss.length || busy ? ' disabled' : ''}>${s[0]} เริ่ม${s[1]} · ${costTxt(s)}</button>${miss.length ? `<p class="vil-need">ขาดอีก ${miss.join(' · ')}${s[3] && have().bricks < s[3] ? '<br>🧱 เล่นมินิเกมไหนก็ได้ ได้อิฐเกมละ 1–3 ก้อน (วันละ 12) + เก็บบนถนนวันละ 3' : ''}${s[4] ? ' · ผักได้จากฟาร์ม' : ''}</p>` : ''}`; }
         h += `<p>🌱 ฟาร์มของคุณ ${Math.max(gSize(L), Farm.home ? Farm.home() : 0)} แปลง อยู่ข้างบ้านแล้ว</p><button class="btn${s && !building(L) ? '' : ' primary'}" type="button" data-a="garden">🌱 ไปที่สวน</button>`;
         if (movedIn(L)) h += decorBox(L);
       } else if (movedIn(L) && !building(L)) {

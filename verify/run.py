@@ -287,7 +287,7 @@ def village(page, base, shot):
       out.help = [end - L(7).end, Prog.get().coins - c0, Object.keys((L(7).hp || {}).by || {}).length];
       await D.help(L(7)); out.help2 = Prog.get().coins - c0;
       D.fast = false; D.act(L(7)); return out; }''')
-    want = {'race': [70000, 'คนอื่น'], 'res': [3, 60000, 3], 'stages': [2, 3, 4, 5], 'after': [20000, 10, 10, 14], 'move': [10, 14, 14, True], 'help': [200, 5, 1], 'help2': 5, 'early': [10, 10, 10, 10, True, False], 'notYet': False, 'moved': True, 'jobsHome': True, 'deco': True, 'decor': [0, 300, 500, 500, 700, 'teal', 'white', 'o', 1]}
+    want = {'race': [70000, 'คนอื่น'], 'res': [3, 60000, 3], 'stages': [2, 3, 4, 5], 'after': [20000, 22, 10, 14], 'move': [10, 14, 14, True], 'help': [200, 5, 1], 'help2': 5, 'early': [10, 10, 10, 10, True, False], 'notYet': False, 'moved': True, 'jobsHome': True, 'deco': True, 'decor': [0, 300, 500, 500, 700, 'teal', 'white', 'o', 1]}
     if any(r.get(k) != v for k, v in want.items()) or not r.get('card'):
         raise AssertionError('build path wrong: ' + json.dumps({k: [r.get(k), v] for k, v in want.items() if r.get(k) != v}, ensure_ascii=False) + (' no card' if not r.get('card') else ''))
     page.wait_for_timeout(1500)

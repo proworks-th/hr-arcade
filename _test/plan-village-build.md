@@ -86,3 +86,4 @@ Decided 9 Nov: **no paid speed-up**, **pet 6,000**. Checked 9 Nov (GDD §2b): ×
 - Stage 2 = บ้านหลังแรก (small cottage); built = moved in (movedIn): name on map, deliveries, home spot. Stage 3 grows it into the big house; stage 4 makes the garden 14; 18/24 only after 14.
 - Decorate on your own card: roof 8 colours (tinted Tiny Town tiles), walls 6, extras tree/pot/sign/fence/flowers. First choice free, repaint 300, extra 200, removing free. Lot fields rc/wc/xs/cz.
 - Prototype: _test/starter-house-proto.html. News entry 6.
+- Price change (10 Nov, after nobody got past จองที่ดิน on day 1: players were short of 🧱 20): บ้านหลังแรก 5,000 🪙 + 🧱 8, 12 h; ต่อเติมบ้านหลังใหญ่ 20,000 🪙 + 🧱 40. Move-in = 15,000 + 8 bricks, full house still 55,000. The ขาดอีก line shows มี x/y and where bricks come from.
