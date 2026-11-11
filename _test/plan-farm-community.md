@@ -12,6 +12,8 @@
 - **Farm = one farm.** The lot's backyard *is* your farm.js plots (already true since Step 5), now laid out
   Stardew-style by you. The south "community farm" is shared, not a second personal farm.
 - **Game time (owner, 11 Nov):** 1 game day = 20 real minutes, the same clock for everyone. Done in sample 2.
+- **Crops stay on the real timer (owner, 11 Nov)**; only the sky, villagers and shop hours follow the 20-minute day.
+- **Community farm prototype is playable** in sample 2 (`?farm=1`).
 - **No stealing (owner, 11 Nov):** you can only harvest what you planted. Others can water and help, never take.
 - **Bus stop moves to the dungeon + combat update** (owner, 11 Nov), not this one.
 - Everything purchasable keeps the **preview → second click to buy** rule.
@@ -30,11 +32,11 @@
 - Clock = (server time − start) mod 20 min, so every player sees the same hour. 1 game hour = 50 s. 72 game days per real day.
 - Sample 2 shows "วัน N · HH:MM" and the sky, window light and villager schedules follow it (`_test/village-cozy-big.html`).
 - **What follows game time:** sky and night lights, villager schedules (canteen at lunch etc.), shop open hours,
-  the Stardew loop "water once per game day" (see below), daily villager talk.
+  daily villager talk. (Crops do NOT follow game time — see below.)
 - **What stays real time:** build timers (12–24 h), coworker-help and gift limits per real day, pet meals, weekly awards,
   festivals on real dates (Loy Krathong). Otherwise a busy worker who plays 20 min at lunch falls 20 days behind.
-- To decide: crop growth in **game days** (Stardew feel: a tomato = 3 game days = 1 h real) or keep today's real minutes.
-  My pick: game days, but a crop never dies or wilts when you are away; it just waits.
+- **Decided (owner, 11 Nov): crops grow on the real timer** (farm.js minutes: ผักบุ้ง 3 นาที … แตงโม 3 ชม.), same as the live farm.
+  Watering = −15% grow time each, up to 3 waters (owner 1 + friends 2) = up to 45% faster. Crops never die or wilt; they wait.
 
 ## No stealing: who can do what
 | On | Owner | Friends / anyone |
@@ -47,10 +49,23 @@
 - Max claims per player on the community farm (e.g. 6) so one person can't fill it.
 
 ## Stardew loop: loosen → plant → water
-- 🪓 **Loosen** the soil (tap with the hoe) → 🌱 **plant** a seed from the bag → 💧 **water** once per game day
-  → the crop grows one stage each watered game day → 🧺 **harvest** when ripe.
-- A dry day doesn't kill: the crop just doesn't grow that day. Friends' watering counts as yours.
+- 🪓 **Loosen** the soil (tap with the hoe) → 🌱 **plant** a seed from the bag → 💧 **water** (once by you, up to 2 friends)
+  → each water makes it grow 15% faster (real timer) → 🧺 **harvest** when ripe (2 per plot). The soil stays loosened, so you replant straight away.
+- Not watering doesn't kill: the crop just grows at normal speed. Friends' watering counts too (max 2 friends a crop).
 - Same loop on the backyard farm and the community farm, so you learn it once.
+
+## Playable prototype: community farm (11 Nov)
+In `_test/village-cozy-big.html` (south of the village, or open with `?farm=1`; `?fresh=1` resets, `?fast=60` = test speed).
+- 44 plots (4 rows × 11). Tool bar at the farm: 🪓 พรวนดิน · 🌱 เมล็ด (tap again = seed bag) · 💧 รดน้ำ · 🧺 เก็บ. Keys 1–4 + E/Space on the plot in front.
+- Tap a plot → you walk next to it → the tool is used. Wrong tool → a hint and the bar switches to the right one.
+- Loosen = claim (max 6 a player, coloured flag = owner). Only the owner plants and harvests; others can only water.
+- Neighbours แพร / ฝน / ต้น farm their own plots, water yours first ("รดน้ำให้พลนะ 💧"), and when your crop is ripe they say
+  they'll wait for you; they never harvest it. Their harvests go into the village order.
+- 🛒 Seed shop: tap a seed = preview (growth stages, time, yield, sell price, ×1/×5/×10), then a separate "ซื้อ" click pays. Sell crops 1 by 1.
+- 📋 Village order: one shared bar (e.g. ผักบุ้ง 30 for the canteen) with who gave what; when full, everyone who gave is paid
+  (50 + 8 a crop, +3 น้ำใจ) and the next order starts.
+- HUD: 🪙 coins · 💗 น้ำใจ (kindness: +1 per friend watering, +1 per delivery, +3 per finished order) · 🌾 plots n/6.
+- Saved in this browser only (localStorage `cozyFarm1`); the live version would keep plots in Firebase with a transaction per action.
 
 ## The 5 questions — my take
 
@@ -114,7 +129,7 @@ It fits HR Arcade (coworkers, not strangers) and the code already rewards helpin
 4. Condo furniture moves into a bigger house; condo stays for people without a house — go?
 5. One farm: backyard = farm plots you lay out yourself + a shared community farm — go?
 6. Which extra first: mailbox · help flag · village board orders?
-7. Crops grow in game days (watered once per game day) or keep real minutes?
+7. ~~Crops grow in game days or real minutes?~~ Decided: real timer.
 
 ## Order once decided
 A. Map v2 (park centre, lot ring, game clock) in `_test` → B. Relocation + preview → C. House interior from the condo →
