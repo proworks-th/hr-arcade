@@ -11,6 +11,9 @@
   The condo stays for players without a house.
 - **Farm = one farm.** The lot's backyard *is* your farm.js plots (already true since Step 5), now laid out
   Stardew-style by you. The south "community farm" is shared, not a second personal farm.
+- **Game time (owner, 11 Nov):** 1 game day = 20 real minutes, the same clock for everyone. Done in sample 2.
+- **No stealing (owner, 11 Nov):** you can only harvest what you planted. Others can water and help, never take.
+- **Bus stop moves to the dungeon + combat update** (owner, 11 Nov), not this one.
 - Everything purchasable keeps the **preview → second click to buy** rule.
 
 ## Today's numbers (from the code)
@@ -22,6 +25,32 @@
 | Condo room sizes | 12 → 15 (300) → 18 (700) → 22 (1,500) tiles wide; farm plots 4 / 6 / 8 / 10 |
 | Helping | build helper −2 h, +5 🪙 (max 5 a day) · friend watering up to 20 a day |
 | Income | mini-games about +20 to +30 a round, cat 50 a day |
+
+## Game time: 1 day = 20 minutes
+- Clock = (server time − start) mod 20 min, so every player sees the same hour. 1 game hour = 50 s. 72 game days per real day.
+- Sample 2 shows "วัน N · HH:MM" and the sky, window light and villager schedules follow it (`_test/village-cozy-big.html`).
+- **What follows game time:** sky and night lights, villager schedules (canteen at lunch etc.), shop open hours,
+  the Stardew loop "water once per game day" (see below), daily villager talk.
+- **What stays real time:** build timers (12–24 h), coworker-help and gift limits per real day, pet meals, weekly awards,
+  festivals on real dates (Loy Krathong). Otherwise a busy worker who plays 20 min at lunch falls 20 days behind.
+- To decide: crop growth in **game days** (Stardew feel: a tomato = 3 game days = 1 h real) or keep today's real minutes.
+  My pick: game days, but a crop never dies or wilts when you are away; it just waits.
+
+## No stealing: who can do what
+| On | Owner | Friends / anyone |
+|---|---|---|
+| My backyard farm | loosen soil, plant, water, harvest | water (+ kindness), leave a gift in the mailbox; cannot harvest or dig |
+| Community farm plot | the player who loosened it owns that plot until harvest; only they harvest | water it (+ kindness, and the owner gets the speed-up) |
+| Community order fields | crops go straight to the board order, credited to the planter | anyone can water |
+- A plot is claimed when you loosen it; ripe crops wait for their owner (no rot, nobody can take them).
+- Unused claims free up after 3 real days, and the seeds return to the owner's bag, so nobody loses anything.
+- Max claims per player on the community farm (e.g. 6) so one person can't fill it.
+
+## Stardew loop: loosen → plant → water
+- 🪓 **Loosen** the soil (tap with the hoe) → 🌱 **plant** a seed from the bag → 💧 **water** once per game day
+  → the crop grows one stage each watered game day → 🧺 **harvest** when ripe.
+- A dry day doesn't kill: the crop just doesn't grow that day. Friends' watering counts as yours.
+- Same loop on the backyard farm and the community farm, so you learn it once.
 
 ## The 5 questions — my take
 
@@ -58,17 +87,20 @@ It fits HR Arcade (coworkers, not strangers) and the code already rewards helpin
   same plots array as farm.js, so crops and friends' watering already carry over.
 - New: **plan your yard** — a grid behind the house (e.g. 8 × 6 at cottage, 10 × 8 at big house) where you place
   plots, paths, sprinkler, scarecrow, flower beds, a bench. Friends see it live when they walk by and can water it.
-- **Community farm (south)** = shared fields for village orders and festival crops: anyone can plant/harvest there,
-  the harvest goes to the board. That is where "farming together" happens.
+- **Community farm (south)** = shared fields for village orders and festival crops. You claim a plot by loosening it and
+  only you harvest it (see "No stealing"); friends water. That is where "farming together" happens.
 
 ## Extra ideas (ranked: easy + fits the goal first)
-1. **Bus stop fast-travel** — the walk across the map is ~30 s; 4 stops (park, town, farm, tower), free.
-2. **Mailbox at every house** — friends leave a crop gift or a note; you open it when you come home.
-3. **"ขอความช่วยเหลือ" flag** — raise a flag on your house ("รดน้ำให้หน่อย" / "ขาดอิฐ 3 ก้อน"); friends see it on the map.
-4. **Village level** unlocks park pieces (fountain, gazebo, food stalls, night lights) — shared pride.
-5. **Neighbour bonus** — two houses side by side that help each other weekly get a small shared fence/garden arch.
-6. **Seasonal crops + festival crops** (krathong flowers before Loy Krathong) grown on the community farm.
-7. **Canteen recipes** — deliver crops, the canteen cooks a dish for the whole village for an hour (a buff for everyone).
+1. **Mailbox at every house** — friends leave a crop gift or a note; you open it when you come home.
+2. **"ขอความช่วยเหลือ" flag** — raise a flag on your house ("รดน้ำให้หน่อย" / "ขาดอิฐ 3 ก้อน"); friends see it on the map.
+3. **Village level** unlocks park pieces (fountain, gazebo, food stalls, night lights) — shared pride.
+4. **Neighbour bonus** — two houses side by side that help each other weekly get a small shared fence/garden arch.
+5. **Seasonal crops + festival crops** (krathong flowers before Loy Krathong) grown on the community farm.
+6. **Canteen recipes** — deliver crops, the canteen cooks a dish for the whole village for an hour (a buff for everyone).
+
+## Later: dungeon + combat update
+- Bus stop fast-travel ships with the new dungeon map (Kenney Tiny Dungeon pack is already in `_test/kenney/`):
+  the bus takes you to the village stops and to the dungeon gate.
 
 ## Revisions I'd suggest
 - Keep **coin sinks soft**: relocation, paint and decor are the sinks; nothing that makes friends lose things.
@@ -81,8 +113,9 @@ It fits HR Arcade (coworkers, not strangers) and the code already rewards helpin
 3. Relocation: 1st free, then 5,000, 7-day cooldown, no move during builds — go?
 4. Condo furniture moves into a bigger house; condo stays for people without a house — go?
 5. One farm: backyard = farm plots you lay out yourself + a shared community farm — go?
-6. Which extra first: bus stop · mailbox · help flag · village board orders?
+6. Which extra first: mailbox · help flag · village board orders?
+7. Crops grow in game days (watered once per game day) or keep real minutes?
 
 ## Order once decided
-A. Map v2 (park centre, lot ring, bus stops) in `_test` → B. Relocation + preview → C. House interior from the condo →
-D. Yard planner → E. Community farm + board orders + village level. Each behind a flag, test mode only, commit locally.
+A. Map v2 (park centre, lot ring, game clock) in `_test` → B. Relocation + preview → C. House interior from the condo →
+D. Yard planner → E. Community farm (claimed plots) + board orders + village level. Later: dungeon + combat + bus. Each behind a flag, test mode only, commit locally.

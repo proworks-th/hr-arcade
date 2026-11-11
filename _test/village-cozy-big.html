@@ -60,7 +60,7 @@ html,body{margin:0;height:100%;overflow:hidden;background:#1b1422;font-family:Ka
 <canvas id="cv"></canvas>
 <div id="fade"></div>
 <div class="chip" id="title">🏘️ <span id="where">หมู่บ้าน</span> <small style="font-weight:400;color:var(--muted)">· ตัวอย่าง 2</small></div>
-<div class="chip" id="clock">🕒 <b id="tm"></b><input id="hour" type="range" min="6" max="23.5" step=".5" aria-label="ดูเวลาอื่น"><button id="real" type="button" class="on">เวลาจริง</button></div>
+<div class="chip" id="clock">🕒 <b id="tm"></b><input id="hour" type="range" min="6" max="23.5" step=".5" aria-label="ดูเวลาอื่น"><button id="real" type="button" class="on">เวลาเกม</button></div>
 <button class="btn" id="exit" type="button">🚪 ออกไปข้างนอก</button>
 <div class="side">
   <button class="btn" id="friends" type="button">💗 เพื่อนบ้าน</button>
@@ -471,14 +471,18 @@ NPCS.forEach(N => N.P.el.textContent = tagOf(N));
 /* ============ time ============ */
 const hourIn = document.getElementById('hour'), tmEl = document.getElementById('tm'), realB = document.getElementById('real');
 let real = true, hour = 10;
-const thaiNow = () => { const s = new Date().toLocaleTimeString('en-GB', { timeZone: 'Asia/Bangkok', hour12: false }).split(':'); return +s[0] + +s[1] / 60; };
+// game clock: 1 game day = 20 real minutes (1 game hour = 50 s), the same for everyone (from the clock, later the server's).
+// GAME_T0 = 00:00 of day 1 (so 11 Nov 2026 00:00 UTC is 06:00 of day 1); move it to shift the day.
+const DAY_MS = 20 * 60e3, GAME_T0 = Date.UTC(2026, 10, 11) - DAY_MS / 4;
+const gameDay = (t = Date.now()) => Math.floor((t - GAME_T0) / DAY_MS) + 1;
+const thaiNow = (t = Date.now()) => ((t - GAME_T0) % DAY_MS) / DAY_MS * 24;
 const hhmm = h => `${String(Math.floor(h) % 24).padStart(2, '0')}:${String(Math.round(h % 1 * 60)).padStart(2, '0')}`;
 const spotOf = (N, h) => { let s = N.sched[N.sched.length - 1]; if (h < N.sched[0][0]) return s; for (const e of N.sched) if (h >= e[0]) s = e; return s; };
-function setHour(h, fromSlider) { hour = h; tmEl.textContent = hhmm(h); if (!fromSlider) hourIn.value = Math.max(6, Math.min(23.5, h));
+function setHour(h, fromSlider) { hour = h; tmEl.textContent = `วัน ${gameDay()} · ${hhmm(Math.floor(h * 6) / 6)}`; if (!fromSlider) hourIn.value = Math.max(6, Math.min(23.5, h));
   for (const N of NPCS) { const s = spotOf(N, h); if (N.at !== s) { N.at = s; travel(N.P, spotCell(s[1])); } } }
 hourIn.oninput = () => { real = false; realB.classList.remove('on'); setHour(+hourIn.value, true); };
 realB.onclick = () => { real = true; realB.classList.add('on'); setHour(thaiNow()); };
-setInterval(() => { if (real) setHour(thaiNow()); }, 30e3);
+setInterval(() => { if (real) setHour(thaiNow()); }, 1000);
 function tint(h, inside) { const night = h < 6 || h >= 18.75; if (inside) return night ? ['#3e4f9a', .28] : null;
   if (h < 6) return ['#3e4f9a', .55]; if (h < 7.5) return ['#ffcf9e', .25]; if (h < 9) return ['#ffe2bf', .1]; if (h < 16) return null;
   if (h < 17.5) return ['#ffc27a', .16]; if (h < 18.75) return ['#c58bd6', .3]; return ['#3e4f9a', .55]; }
@@ -635,7 +639,7 @@ document.getElementById('friends').onclick = friendsCard;
 setHour(real ? thaiNow() : hour);
 for (const N of NPCS) { const c = near(...spotCell(N.at[1])); place(N.P, c); N.P.after = null; }
 requestAnimationFrame(loop);
-window.__cb = { tick: n => { for (let i = 0; i < n; i++) frame(performance.now(), 1 / 30); return cellOf(me).join(',') + ' ' + (scene ? scene.title : 'village'); },
+window.__cb = { DAY_MS, gameDay, thaiNow, tick: n => { for (let i = 0; i < n; i++) frame(performance.now(), 1 / 30); return cellOf(me).join(',') + ' ' + (scene ? scene.title : 'village'); },
   me, NPCS, LOTS, ROOMS, ROOM, BUILDINGS, setHour, npcCard, friendsCard, lotCard, give, INV, go, travel, enter, cellOf, sceneOf, get scene() { return scene; } };
 })().catch(e => { document.body.insertAdjacentHTML('beforeend', `<pre style="position:absolute;top:120px;left:12px;background:#fff;padding:8px;white-space:pre-wrap;z-index:9">${e && e.stack || e}</pre>`); console.error(e); });
 </script>
