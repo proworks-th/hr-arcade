@@ -51,6 +51,12 @@ export function watchOnline(cb){
 export function watchLots(cb){return FIREBASE_CONFIG?onValue(ref(db(),'rooms/_vil/lots'),s=>cb(s.val()||{})):()=>{}}
 // reserve / build / help all go through a transaction on the one lot, so two people can never take the same lot
 export function txLot(id,fn){return FIREBASE_CONFIG?runTransaction(ref(db(),`rooms/_vil/lots/${id|0}`),fn):Promise.resolve({committed:false})}
+// community farm: rooms/_vil/cfarm/{x_y} = {o,by,bn,c,t,w,fw,rt,hk,hn} (one record per plot, kept forever, anyone may harvest)
+export function watchCFarm(cb){return FIREBASE_CONFIG?onValue(ref(db(),'rooms/_vil/cfarm'),s=>cb(s.val()||{})):()=>{}}
+export function txCPlot(id,fn){return FIREBASE_CONFIG?runTransaction(ref(db(),`rooms/_vil/cfarm/${String(id).replace(/[^0-9_]/g,'')}`),fn):Promise.resolve({committed:false})}
+// the village order everyone fills together: rooms/_vil/corder = {i,n,by:{key:count},nm:{key:name},h:{i:{key:count}}}
+export function watchCOrder(cb){return FIREBASE_CONFIG?onValue(ref(db(),'rooms/_vil/corder'),s=>cb(s.val())):()=>{}}
+export function txCOrder(fn){return FIREBASE_CONFIG?runTransaction(ref(db(),'rooms/_vil/corder'),fn):Promise.resolve({committed:false})}
 
 /* ---------- activity feed ---------- */
 export function pushFeed(m,n='',a=''){if(FIREBASE_CONFIG)push(ref(db(),'rooms/_hub/feed'),{m:String(m).slice(0,120),n,a,t:serverTimestamp()})}

@@ -669,10 +669,10 @@ const helpNeed = p => p.c && !ripe(p) && !p.fw.includes('me') && waterN(p) < 3;
 // walk plot to plot doing one job (water / pick) — the same rules as tapping each plot yourself
 function runPlots(list, tool, n = 0) { const p = list.shift();
   if (!p) { if (n) toast(tool === 'can' ? `💧 รดน้ำแล้ว ${n} แปลง` : `🧺 เก็บผักแล้ว ${n} แปลง`); save(); hud(); return; }
-  const doIt = () => { faceTo(me, p); const r = act('me', p, tool);
+  const doIt = () => { faceTo(me, p); doAct(p, tool).then(r => {
     if (!r.ok) { if (/วันนี้|กระเป๋าเต็ม/.test(r.m)) { toast(r.m); list.length = 0; } }
     else { n++; say(me, EMO[tool], 700, true); }
-    hud(); runPlots(list, tool, n); };
+    hud(); runPlots(list, tool, n); }); };
   if (nearPlot(me, p)) doIt(); else { go(me, [p.x, p.y]); me.after = doIt; } }
 
 /* ============ community farm: loosen → plant → water → harvest · real-time crops · shared: anyone plants and harvests ============ */
@@ -759,7 +759,7 @@ const COMM = () => PLOTS.filter(p => !p.home), growingN = () => COMM().filter(p 
 const nameOf = k => FARMER[k] ? FARMER[k].n : 'เพื่อนบ้าน';
 const notMine = p => `แปลงของ${nameOf(p.o)} — ช่วยได้แค่รดน้ำ 💧`;
 // one rule book for everyone (player and neighbours): returns { ok, m, hint, crop }
-function act(k, p, tool, seed) {
+function act(k, p, tool, seed, dry) {
   // community plot: anyone may plant / harvest; "mine" = I planted this crop (so my own watering is the 15% one, others are help)
   const pub = !p.home, mine = pub ? p.by === k : p.o === k, may = pub ? !!p.o : mine, fx = kind => { p.fx = gameT; p.fk = kind; };
   if (tool === 'hoe') {
@@ -770,7 +770,7 @@ function act(k, p, tool, seed) {
     if (!may) return { m: notMine(p), hint: 'can' };
     if (p.c) return { m: 'ปลูกอยู่แล้ว', hint: p.w ? null : 'can' };
     if (k === 'me' && pub && COMM().filter(q => q.by === 'me' && q.c).length >= MY_CAP) return { m: `ไร่ชุมชนปลูกได้ทีละ ${MY_CAP} แปลงต่อคน · เก็บผักก่อนแล้วปลูกต่อ` };
-    if (k === 'me') { if (!count(BAG, 's:' + seed)) return { m: `เมล็ด${cropName(seed)}หมด — ซื้อที่ 🛒 ร้านเมล็ด` }; takeFrom(BAG, 's:' + seed, 1, F.sel); }
+    if (k === 'me') { if (!count(BAG, 's:' + seed)) return { m: `เมล็ด${cropName(seed)}หมด — ซื้อที่ 🛒 ร้านเมล็ด` }; if (!dry) takeFrom(BAG, 's:' + seed, 1, F.sel); }
     Object.assign(p, { c: seed, t: Date.now(), w: 0, fw: [], rt: Date.now() }); if (pub) p.by = k; fx('s'); return { ok: 1, m: `🌱 ปลูก${cropName(seed)} · โตใน ${cropTime(seed)}` }; }
   if (tool === 'can') {
     if (!p.c) return { m: p.o ? 'ยังไม่ได้ปลูกอะไร' : 'แปลงว่าง ยังไม่มีใครปลูก', hint: may ? 'seed' : !p.o ? 'hoe' : null };
@@ -778,7 +778,7 @@ function act(k, p, tool, seed) {
     if (mine) { if (p.w) return { m: 'รดน้ำแล้ว รอโตได้เลย' }; p.w = 1; fx('w'); return { ok: 1, m: '💧 รดน้ำแล้ว โตเร็วขึ้น 15%' }; }
     if (p.fw.includes(k)) return { m: 'คุณช่วยรดแปลงนี้แล้ว' };
     if (waterN(p) >= 3) return { m: 'แปลงนี้รดน้ำครบ 3 ครั้งแล้ว' };
-    if (k === 'me') { const d = new Date().toDateString(); if (F.fwDay !== d) { F.fwDay = d; F.fwN = 0; } if (F.fwN >= FW_DAY) return { m: `วันนี้ช่วยรดครบ ${FW_DAY} ครั้งแล้ว` }; F.fwN++; F.coins += 3; F.kind++; }
+    if (k === 'me') { const d = new Date().toDateString(); if (F.fwDay !== d) { F.fwDay = d; F.fwN = 0; } if (F.fwN >= FW_DAY) return { m: `วันนี้ช่วยรดครบ ${FW_DAY} ครั้งแล้ว` }; if (!dry) { F.fwN++; F.coins += 3; F.kind++; } }
     p.fw.push(k); fx('w'); return { ok: 1, m: `💧 ช่วยรดน้ำให้${nameOf(pub ? p.by : p.o)} · +3 🪙 +1 น้ำใจ` }; }
   if (tool === 'hand') {
     if (!p.o) return { m: 'แปลงว่าง — ถือ 🪓 จอบ แล้วแตะเพื่อพรวนดิน', hint: 'hoe' };
@@ -787,7 +787,7 @@ function act(k, p, tool, seed) {
     if (!ripe(p)) return { m: `ยังไม่สุก · อีก ${leftOf(p)}`, hint: p.w ? null : 'can' };
     const yd = YIELD;
     if (k === 'me' && room(BAG, p.c) < yd) return { m: '🎒 กระเป๋าเต็ม — เก็บของเข้า 📦 หีบก่อน' };
-    const c = p.c, by = p.by; Object.assign(p, { c: null, t: 0, w: 0, fw: [], rt: Date.now() }); if (pub) p.by = null; fx('h'); if (k === 'me') addTo(BAG, c, yd);
+    const c = p.c, by = p.by; Object.assign(p, { c: null, t: 0, w: 0, fw: [], rt: Date.now() }); if (pub) p.by = null; fx('h'); if (k === 'me' && !dry) addTo(BAG, c, yd);
     // the planter gets a thank-you when someone else picks their crop, so planting for the village still feels good
     if (pub && by && by !== k) { if (by === 'me') { F.kind++; if (k !== 'me') setTimeout(() => toast(`🧺 ${nameOf(k)}เก็บ${cropName(c)}ที่คุณปลูก · +1 น้ำใจ`), 300); } }
     return { ok: 1, m: `🧺 ได้${cropName(c)} ${yd}${yd > YIELD ? ' (🏆 +1)' : ''}${pub && by && by !== k ? ` (${nameOf(by)}ปลูกไว้)` : ''} · ดินยังพรวนอยู่ ปลูกต่อได้เลย`, crop: c }; }
@@ -803,15 +803,64 @@ function finishOrder() { const o = F.order, [, , title] = orderNow(), mine = o.b
   F.order = { i: o.i + 1, n: 0, by: {} }; F.done++; }
 // ---- save (this browser only; the live game would keep plots in rooms/_vil/farm and bag/chest in the player's progress) ----
 const SAVE = 'vilCozy1';
-function save() { try { localStorage.setItem(SAVE, JSON.stringify({ F, BAG, CHEST, npc: NPCS.map(N => ({ p: N.p, td: N.td, gn: N.gn, known: N.known })), day: H.day(), wk: H.week(), plots: PLOTS.map(({ x, y, o, by, c, t, w, fw, rt }) => ({ x, y, o, by, c, t, w, fw, rt })) })); } catch (e) { /* private window */ } }
+let lastSave = '';
+function save() { const s = JSON.stringify({ F, BAG, CHEST, npc: NPCS.map(N => ({ p: N.p, td: N.td, gn: N.gn, known: N.known })), day: H.day(), wk: H.week() });
+  if (s === lastSave) return; lastSave = s; if (H.setCozy) return H.setCozy(s); try { localStorage.setItem(SAVE, s); } catch (e) { /* private window */ } }
 function fresh() { [['hoe', 1], ['can', 1], ['s:bok', 4]].forEach((x, i) => BAG[i] = { id: x[0], n: x[1] }); }   // a new player: hoe, can, 4 seeds
-function load() { let s = null; try { if (!/[?&]fresh=1\b/.test(location.search)) s = JSON.parse(localStorage.getItem(SAVE)); } catch (e) { s = null; }
-  if (s && s.plots) { const { coins, ...f } = s.F || {}; Object.assign(F, f); s.BAG.forEach((x, i) => BAG[i] = x); s.CHEST.forEach((x, i) => CHEST[i] = x); s.plots.forEach((q, i) => { const p = q.x === undefined ? PLOTS[i] : PLOTS.find(z => z.x === q.x && z.y === q.y); if (p) Object.assign(p, q); });
+function load() { let s = null, old = false;   // old = the per-browser save from before the farm went online (moved into Prog once)
+  try { if (!/[?&]fresh=1\b/.test(location.search)) { const c = H.cozy ? H.cozy() : ''; s = c ? JSON.parse(c) : null; if (!s) { s = JSON.parse(localStorage.getItem(SAVE)); old = !!s; } } } catch (e) { s = null; }
+  if (s && s.BAG) { const { coins, ...f } = s.F || {}; Object.assign(F, f); s.BAG.forEach((x, i) => BAG[i] = x); s.CHEST.forEach((x, i) => CHEST[i] = x); if (old) for (const q of s.plots || []) if (q && q.c && (q.by === 'me' || q.o === 'me') && PLOTS.some(z => !z.home && z.x === q.x && z.y === q.y)) addTo(BAG, 's:' + q.c, 1);   // crops from the per-browser farm: their seeds come back
     if (Array.isArray(s.npc)) s.npc.forEach((q, i) => { const N = NPCS[i]; if (N && q) Object.assign(N, { p: Math.min(2500, q.p | 0), td: q.td && s.day === H.day(), gn: s.wk === H.week() ? q.gn | 0 : 0, known: Array.isArray(q.known) ? q.known : [] }); }); }
   else fresh();
   Object.assign(F.rides, H.rides()); if (!F.rides[F.ride]) F.ride = 'walk';
   for (const p of COMM()) if (p.o && p.o !== 'v') { p.by = p.c ? p.o : null; p.o = 'v'; }   // v3 saves had owners
-  const now = Date.now(); for (const p of COMM()) if (p.o && !p.c && now - p.rt > FREE_AFTER) p.o = null; }   // tilled but left empty for 3 days grows weeds again
+  if (old) save(); }   // plots are kept forever: no weeds come back   // tilled but left empty for 3 days grows weeds again
+// ---- live community farm: every player works the same plots (rooms/_vil/cfarm/{x_y}); plots are kept forever, anyone may pick a ripe crop.
+// Each tap is a transaction that runs act() on the server's copy first (dry), and only after it commits runs again here for the bag / coins.
+let LIVE = false, LIVEO = false, KEY = '', OFF = 0;
+const PID = p => p.x + '_' + p.y, ONLINE_ERR = { m: '📡 ต่อไร่ชุมชนไม่ได้ ลองใหม่อีกที' };
+const liveKey = () => { KEY = H.farmKey ? H.farmKey() : ''; OFF = H.farmOff ? +H.farmOff() || 0 : 0; };
+const colOf = k => `hsl(${[...k].reduce((a, ch) => (a * 31 + ch.charCodeAt(0)) >>> 0, 7) % 360} 70% 62%)`;
+function who(k, n) { if (k && k !== 'me') { if (!FARMER[k]) FARMER[k] = { n: n || 'เพื่อนบ้าน', col: colOf(k) }; else if (n) FARMER[k].n = n; } return k; }
+const mapK = k => k === KEY ? 'me' : k;
+function fromSrv(v) { if (!v) return { o: null, by: null, bn: '', c: null, t: 0, w: 0, fw: [], rt: 0 };
+  const fw = Array.isArray(v.fw) ? v.fw : v.fw ? Object.values(v.fw) : [];
+  return { o: v.o || null, by: v.by ? who(mapK(v.by), v.bn) : null, bn: v.bn || '', c: v.c || null, t: v.t ? v.t - OFF : 0, w: v.w | 0, fw: fw.filter(Boolean).map(mapK), rt: v.rt ? v.rt - OFF : 0 }; }
+function toSrv(p) { if (!p.o) return null;
+  return { o: p.o, by: p.by ? (p.by === 'me' ? KEY : p.by) : null, bn: p.by ? (p.by === 'me' ? FARMER.me.n : nameOf(p.by)) : null, c: p.c || null,
+    t: p.c ? Math.round(p.t + OFF) : 0, w: p.w | 0, fw: p.fw.map(k => k === 'me' ? KEY : k), rt: Math.round((p.rt || Date.now()) + OFF) }; }
+function applyPlots(all) { liveKey(); all = all || {}; const first = !LIVE; LIVE = true;
+  for (const p of COMM()) { const v = all[PID(p)], n = fromSrv(v);
+    if (!first && p.by === 'me' && p.c && !n.c && v && v.hk && v.hk !== KEY) { F.kind++; toast(`🧺 ${v.hn || 'เพื่อนบ้าน'}เก็บ${cropName(p.c)}ที่คุณปลูก · +1 น้ำใจ`); }
+    if (!first && !p._tx && (n.c !== p.c || n.o !== p.o || n.fw.length !== p.fw.length || n.w !== p.w)) { p.fx = gameT; p.fk = n.c && n.c !== p.c ? 's' : n.c && n.c === p.c ? 'w' : 'h'; }
+    Object.assign(p, n); }
+  hud(); }
+function liveAct(p, tool, seed) { if (p._tx) return Promise.resolve({ m: '⏳ รอสักครู่…' });
+  liveKey(); let pre = null, r = null, nv = null; p._tx = 1;
+  return H.farmTx(PID(p), cur => { pre = fromSrv(cur); const q = { ...p, ...pre, fw: [...pre.fw] }; r = act('me', q, tool, seed, true);
+      if (!r.ok) return undefined; nv = toSrv(q); if (tool === 'hand') Object.assign(nv, { hk: KEY, hn: FARMER.me.n }); return nv; })
+    .then(res => { if (!res || !res.committed) { if (r && !r.ok) { if (pre) Object.assign(p, pre); return r; } return ONLINE_ERR; }
+      Object.assign(p, pre, { fw: [...pre.fw] }); const out = act('me', p, tool, seed); Object.assign(p, fromSrv(nv)); return out; })
+    .catch(() => ONLINE_ERR).finally(() => { p._tx = 0; }); }
+const doAct = (p, tool, seed) => LIVE && !p.home && H.farmTx ? liveAct(p, tool, seed) : Promise.resolve(act('me', p, tool, seed));
+// ---- the village order online (rooms/_vil/corder): when the bar fills, the givers are written into h, and each player claims their own reward
+function applyOrder(v) { liveKey(); v = v || {}; LIVEO = true; const by = {}, nm = v.nm || {};
+  for (const [k, c] of Object.entries(v.by || {})) by[who(mapK(k), nm[k])] = c | 0;
+  F.order = { i: v.i | 0, n: v.n | 0, by }; F.done = v.i | 0;
+  const h = v.h || {}; let paid = false;
+  for (const i of Object.keys(h).map(k => +k.slice(1)).filter(i => i >= 0).sort((a, b) => a - b)) { if (i < (F.paid | 0)) continue; F.paid = i + 1;
+    const mine = (h['o' + i] || {})[KEY] | 0; if (mine) { paid = true; F.coins += 50 + mine * 8; F.kind += 3; toast(`🎉 ${ORDERS[i % ORDERS.length][2].split(':')[0]} ครบแล้ว! คุณได้ ${50 + mine * 8} 🪙 +3 น้ำใจ`); } }
+  if (paid) save(); if (card.style.display === 'block' && card.dataset.k === 'order') orderCard(); hud(); }
+function giveOrder(id, n) { if (!LIVEO || !H.orderTx) return contribute('me', n);
+  liveKey(); let add = 0;
+  H.orderTx(cur => { cur = cur || {}; const i = cur.i | 0, [oid, need] = ORDERS[i % ORDERS.length], have = cur.n | 0; add = oid === id ? Math.min(n, need - have) : 0; if (add <= 0) return undefined;
+      const by = { ...(cur.by || {}) }, nm = { ...(cur.nm || {}) }; by[KEY] = (by[KEY] | 0) + add; nm[KEY] = FARMER.me.n;
+      if (have + add < need) return { ...cur, i, n: have + add, by, nm };
+      const h = { ...(cur.h || {}), ['o' + i]: by }; for (const k of Object.keys(h).sort((a, b) => +a.slice(1) - +b.slice(1)).slice(0, -10)) delete h[k];
+      return { i: i + 1, n: 0, h }; })
+    .then(res => res && res.committed ? add : 0, () => 0)
+    .then(got => { if (got < n) { addTo(BAG, id, n - got); toast(got ? `📋 ส่งได้ ${got} · คืน ${n - got} เข้ากระเป๋า` : '📡 ส่งไม่ได้ (ออร์เดอร์เปลี่ยนแล้ว) · คืนผักเข้ากระเป๋า'); }
+      save(); hud(); if (card.style.display === 'block' && card.dataset.k === 'order') orderCard(); }); }
 // ---- HUD + hot bar (top row of the backpack) + plot tip ----
 const hotEl = SR.getElementById('hotwrap'), toolsEl = SR.getElementById('tools'), selEl = SR.getElementById('selname'), hudEl = SR.getElementById('farmhud'), tipEl = SR.getElementById('ptip');
 function hud() { hudEl.innerHTML = `🪙 <b>${F.coins.toLocaleString()}</b> · 💗 น้ำใจ <b>${F.kind}</b> · 🌾 ไร่ชุมชน <b>${growingN()}/${COMM().length}</b>`;
@@ -834,10 +883,9 @@ function useItem(p) { const id = heldId();
   const doIt = () => { if (!nearPlot(me, p)) return toast('เดินไปไม่ถึงแปลงนี้');
     faceTo(me, p);
     const tool = ripe(p) ? 'hand' : id === 'hoe' || id === 'can' ? id : isSeed(id) ? 'seed' : 'hand';
-    const r = act('me', p, tool, isSeed(id) ? seedOf(id) : null);
-    if (r.ok) say(me, EMO[tool], 900, true);
+    doAct(p, tool, isSeed(id) ? seedOf(id) : null).then(r => { if (r.ok) say(me, EMO[tool], 900, true);
     toast(r.m); if (!r.ok && r.hint) holdFor(r.hint);
-    tipP = p; tipUntil = performance.now() + 3000; save(); hud(); };
+    tipP = p; tipUntil = performance.now() + 3000; save(); hud(); }); };
   closeCard(); me.after = null; if (nearPlot(me, p)) doIt(); else { go(me, [p.x, p.y]); me.after = doIt; } }
 function frontPlot() { const [cx, cy] = cellOf(me), [dx, dy] = { right: [1, 0], left: [-1, 0], up: [0, -1], down: [0, 1] }[me.dir]; return PLOTS.find(p => p.x === cx + dx && p.y === cy + dy); }
 // ---- menus open only when you get there; walking away closes them ----
@@ -933,7 +981,7 @@ function orderCard() { openN = null; card.dataset.k = 'order';
     <p class="sub" style="margin-top:6px">รางวัลตอนครบ: 50 🪙 + 8 🪙 ต่อผักที่คุณส่ง · +3 น้ำใจ${count(CHEST, id) ? ` · ในหีบมีอีก ${count(CHEST, id)}` : ''}</p>`;
   cardShow();
   card.onclick = e => { const b = e.target.closest('button'); if (!b || b.disabled) return; if (b.dataset.a === 'x') return closeCard();
-    if (b.dataset.a === 'give' && n) { takeFrom(BAG, id, n); F.kind++; toast(`📋 ส่ง${cropName(id)} ${n} · +1 น้ำใจ`); contribute('me', n); save(); hud(); orderCard(); } }; }
+    if (b.dataset.a === 'give' && n) { takeFrom(BAG, id, n); F.kind++; toast(`📋 ส่ง${cropName(id)} ${n} · +1 น้ำใจ`); giveOrder(id, n); save(); hud(); orderCard(); } }; }
 
 function rideCard(sel) { openN = null; card.dataset.k = 'rides'; card.anchor = null; sel = sel || F.ride;
   const prev = k => { const c = document.createElement('canvas'), S = RIDE_SPR[k]; if (!S) return '<span style="font-size:26px">🚶</span>'; c.width = S.side.width; c.height = S.side.height; c.getContext('2d').drawImage(S.side, 0, 0); return `<img src="${c.toDataURL()}" alt="" style="width:${S.side.width * 3}px;image-rendering:pixelated">`; };
@@ -1001,7 +1049,7 @@ SR.getElementById('gofarm').onclick = () => { closeCard(); travel(me, [28, 36]);
 SR.getElementById('rides').onclick = () => card.dataset.k === 'rides' ? closeCard() : rideCard();
 
 /* ============ start ============ */
-load(); hud(); if (/[?&]farm=1\b/.test(location.search)) { place(me, [28, 38]); cam.x = me.px; cam.y = me.py; }
+load(); hud(); if (H.farmLive) H.farmLive(applyPlots, applyOrder); if (/[?&]farm=1\b/.test(location.search)) { place(me, [28, 38]); cam.x = me.px; cam.y = me.py; }
 setHour(real ? thaiNow() : hour);
 for (const N of NPCS) { const c = near(...spotCell(N.at[1])); place(N.P, c); N.P.after = null; }
 requestAnimationFrame(loop);
@@ -1010,7 +1058,7 @@ if (window.__TEST__) window.__cb = { DAY_MS, gameDay, thaiNow, tick: n => { for 
   PLOTS, F, FARMER, BAG, CHEST, count, act, useItem, botThink, orderNow, orderCard, shopCard, bagCard, chestCard, visit, talkTo, save, hud, get card() { return card; },
   me, NPCS, LOTS, ROOMS, ROOM, BUILDINGS, CARS, rideCard, runPlots, pick, get view() { return view; }, get SC() { return SC; }, setHour, npcCard, friendsCard, give, go, travel, enter, cellOf, sceneOf, get scene() { return scene; } };
 // rebuild the static world when the live lots change (stage, colours, garden size); community plots and the room you stand in are kept
-function relots() { const keep = {}; for (const p of PLOTS) if (!p.home) keep[p.x + ',' + p.y] = { o: p.o, by: p.by, c: p.c, t: p.t, w: p.w, fw: p.fw, rt: p.rt };
+function relots() { const keep = {}; for (const p of PLOTS) if (!p.home) keep[p.x + ',' + p.y] = { o: p.o, by: p.by, bn: p.bn, c: p.c, t: p.t, w: p.w, fw: p.fw, rt: p.rt };
   const was = scene; buildWorld(); PLOT_AT = null;
   for (const p of PLOTS) Object.assign(p, keep[p.x + ',' + p.y] || {});
   if (was) { const s2 = ROOMS.find(r => r.slot === was.slot) || null; scene = s2;
@@ -1021,7 +1069,8 @@ return { me, held, C, R, get G() { return G; }, get block() { return block; }, g
   talk: i => { if (NPCS[i]) talkTo(NPCS[i]); }, enterLot: id => { const L = LOTS.find(l => l.id === id); if (L && L.room) enter(L.room); },
   hasRoom: id => !!(LOTS.find(l => l.id === id) || {}).room,
   lotTop: id => { const L = LOTS.find(l => l.id === id); return !L ? 0 : hasHouse(L) && !(L.stage === 2 && L.building) ? (L.y + 3) * T - (isBig(L) ? 130 : 98) : (L.y + 1) * T - 4; },
-  get SC() { return SC; }, NPCS, F, BAG, PLOTS: () => PLOTS, rideCard, friendsCard, hud };
+  get SC() { return SC; }, NPCS, F, BAG, PLOTS: () => PLOTS, rideCard, friendsCard, hud,
+  get LIVE() { return LIVE && LIVEO; }, doAct, giveOrder };
 })();
   }
 };

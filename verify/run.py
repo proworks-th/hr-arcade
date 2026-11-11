@@ -427,6 +427,56 @@ def village(page, base, shot):
         raise AssertionError('deliveries wrong: ' + json.dumps(d, ensure_ascii=False))
     page.wait_for_timeout(800)
     shot('village-board')
+    # community farm online (11 Nov 2026): two tabs, one shared farm. Plant shows up for the other player, they water it,
+    # anyone may pick a ripe crop, the plot stays tilled (no resets), a taken plot can't be planted twice, the order bar is shared
+    page.wait_for_function('Village._dbg.W && Village._dbg.W.LIVE', timeout=8000)
+    FARM_JS = '''async ([nm, steps]) => { store.set('name', nm); const W = Village._dbg.W, M = await import('/verify/mocks/firebase-database.js'), w = ms => new Promise(r => setTimeout(r, ms));
+      const P = (x, y) => W.PLOTS().find(p => !p.home && p.x === x && p.y === y), db = async k => (await M.get(M.ref(null, 'rooms/_vil/cfarm/' + k))).val(), out = {};
+      const bag = id => W.BAG.reduce((s, x) => s + (x && x.id === id ? x.n : 0), 0);
+      for (const [k, tool, x, y, seed] of steps) {
+        if (tool === 'ripe') { const v = await db(x + '_' + y); await M.set(M.ref(null, 'rooms/_vil/cfarm/' + x + '_' + y), { ...v, t: Date.now() - 3e8 }); await w(100); out[k] = 1; continue; }
+        if (tool === 'give') { const b0 = bag('bok'); W.giveOrder('bok', x); await w(200); out[k] = [bag('bok') - b0, (await M.get(M.ref(null, 'rooms/_vil/corder'))).val(), W.F.paid | 0]; continue; }
+        if (tool === 'seed') W.BAG[5] = { id: 's:' + seed, n: 10 };
+        const b0 = bag('bok'), r = await W.doAct(P(x, y), tool, seed); await w(100);
+        out[k] = [!!r.ok, r.m, await db(x + '_' + y), bag('bok') - b0]; }
+      out.see = (p => p && [p.o, p.c, p.by, p.fw.length])(P(23, 37)); return out; }'''
+    a1 = page.evaluate(FARM_JS, ['ทดสอบ', [['hoe', 'hoe', 23, 37], ['plant', 'seed', 23, 37, 'bok']]])
+    p2 = page.context.new_page()
+    try:
+        p2.goto(base + '/index.html?test=1')
+        p2.wait_for_function('window.__app', timeout=3000)
+        p2.evaluate("store.set('name', 'เพื่อนบี')")
+        p2.click('[data-view=village]')
+        p2.wait_for_function("Village._dbg.W && Village._dbg.W.LIVE", timeout=8000)
+        # the mock copies the tree to a new tab only while that tab is empty, so tab 1 sends the farm again (a real DB needs nothing here)
+        page.evaluate("(async () => { const M = await import('/verify/mocks/firebase-database.js'); const v = (await M.get(M.ref(null, 'rooms/_vil/cfarm'))).val(); await M.set(M.ref(null, 'rooms/_vil/cfarm'), v) })()")
+        p2.wait_for_function("Village._dbg.W && Village._dbg.W.LIVE && Village._dbg.W.PLOTS().some(p => p.x === 23 && p.y === 37 && p.c === 'bok')", timeout=8000)
+        b1 = p2.evaluate(FARM_JS, ['เพื่อนบี', [['water', 'can', 23, 37], ['water2', 'can', 23, 37], ['ripe', 'ripe', 23, 37], ['pick', 'hand', 23, 37]]])
+        a2 = page.evaluate(FARM_JS, ['ทดสอบ', [['replant', 'seed', 23, 37, 'let']]])
+        b2 = p2.evaluate(FARM_JS, ['เพื่อนบี', [['taken', 'seed', 23, 37, 'car']]])
+        a3 = page.evaluate(FARM_JS, ['ทดสอบ', [['give', 'give', 20, 0]]])
+        b3 = p2.evaluate(FARM_JS, ['เพื่อนบี', [['give', 'give', 15, 0]]])
+        page.evaluate("document.querySelector('.vil-card [data-a=close]')?.click(); Village._dbg.W.closeCard(); Village._dbg.W.place([26, 38])")
+        page.wait_for_timeout(1500)
+        shot('village-cfarm')
+    finally:
+        p2.close()
+    bad = []
+    if a1['hoe'][0] is not True or a1['plant'][0] is not True or (a1['plant'][2] or {}).get('c') != 'bok' or (a1['plant'][2] or {}).get('by') != 'ทดสอบ':
+        bad.append(['plant', a1])
+    if b1['water'][0] is not True or (b1['water'][2] or {}).get('fw') != ['เพื่อนบี'] or b1['water2'][0] is not False:
+        bad.append(['water', b1.get('water'), b1.get('water2')])
+    pk = b1['pick']
+    if pk[0] is not True or pk[3] != 2 or (pk[2] or {}).get('o') != 'v' or (pk[2] or {}).get('c') or (pk[2] or {}).get('hk') != 'เพื่อนบี':
+        bad.append(['anyone picks, plot stays tilled', pk])
+    if a2['replant'][0] is not True or b2['taken'][0] is not False or (b2['taken'][2] or {}).get('c') != 'let':
+        bad.append(['one crop per plot', a2, b2])
+    o1, o2 = a3['give'], b3['give']
+    if (o1[1] or {}).get('n') != 20 or o2[0] != 5 or (o2[1] or {}).get('i') != 1 or ((o2[1] or {}).get('h') or {}).get('o0') != {'ทดสอบ': 20, 'เพื่อนบี': 10} or o2[2] != 1:
+        bad.append(['order', o1, o2])
+    if bad:
+        raise AssertionError('community farm online wrong: ' + json.dumps(bad, ensure_ascii=False))
+    page.evaluate("store.set('name', 'ทดสอบ')")
 
 
 SCREENS = {'office': office, 'farm': farm, 'hub': hub, 'tower': tower, 'village': village, 'spot': solo('spot'), 'run': solo('run'), 'whack': solo('whack'), 'stack': solo('stack', 600),

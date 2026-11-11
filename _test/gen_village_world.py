@@ -198,6 +198,74 @@ rep("if (p) Object.assign(p, q); }); } else demo();",
     "if (p) Object.assign(p, q); });\n    if (Array.isArray(s.npc)) s.npc.forEach((q, i) => { const N = NPCS[i]; if (N && q) Object.assign(N, { p: Math.min(2500, q.p | 0), td: q.td && s.day === H.day(), gn: s.wk === H.week() ? q.gn | 0 : 0, known: Array.isArray(q.known) ? q.known : [] }); }); }\n  else fresh();\n  Object.assign(F.rides, H.rides()); if (!F.rides[F.ride]) F.ride = 'walk';")
 
 rep("if (s && s.plots) { Object.assign(F, s.F);", "if (s && s.plots) { const { coins, ...f } = s.F || {}; Object.assign(F, f);")
+# ---------------- community farm goes online: rooms/_vil/cfarm + rooms/_vil/corder; bag / chest / hearts in Prog ----------------
+# act() gets a dry run (rules only, no bag / coin changes) so a transaction can test the rules on the server's copy of a plot
+rep("function act(k, p, tool, seed) {", "function act(k, p, tool, seed, dry) {")
+rep("takeFrom(BAG, 's:' + seed, 1, F.sel); }", "if (!dry) takeFrom(BAG, 's:' + seed, 1, F.sel); }")
+rep("F.fwN++; F.coins += 3; F.kind++; }", "if (!dry) { F.fwN++; F.coins += 3; F.kind++; } }")
+rep("if (k === 'me') addTo(BAG, c, yd);", "if (k === 'me' && !dry) addTo(BAG, c, yd);")
+LIVE_JS = r"""// ---- live community farm: every player works the same plots (rooms/_vil/cfarm/{x_y}); plots are kept forever, anyone may pick a ripe crop.
+// Each tap is a transaction that runs act() on the server's copy first (dry), and only after it commits runs again here for the bag / coins.
+let LIVE = false, LIVEO = false, KEY = '', OFF = 0;
+const PID = p => p.x + '_' + p.y, ONLINE_ERR = { m: '📡 ต่อไร่ชุมชนไม่ได้ ลองใหม่อีกที' };
+const liveKey = () => { KEY = H.farmKey ? H.farmKey() : ''; OFF = H.farmOff ? +H.farmOff() || 0 : 0; };
+const colOf = k => `hsl(${[...k].reduce((a, ch) => (a * 31 + ch.charCodeAt(0)) >>> 0, 7) % 360} 70% 62%)`;
+function who(k, n) { if (k && k !== 'me') { if (!FARMER[k]) FARMER[k] = { n: n || 'เพื่อนบ้าน', col: colOf(k) }; else if (n) FARMER[k].n = n; } return k; }
+const mapK = k => k === KEY ? 'me' : k;
+function fromSrv(v) { if (!v) return { o: null, by: null, bn: '', c: null, t: 0, w: 0, fw: [], rt: 0 };
+  const fw = Array.isArray(v.fw) ? v.fw : v.fw ? Object.values(v.fw) : [];
+  return { o: v.o || null, by: v.by ? who(mapK(v.by), v.bn) : null, bn: v.bn || '', c: v.c || null, t: v.t ? v.t - OFF : 0, w: v.w | 0, fw: fw.filter(Boolean).map(mapK), rt: v.rt ? v.rt - OFF : 0 }; }
+function toSrv(p) { if (!p.o) return null;
+  return { o: p.o, by: p.by ? (p.by === 'me' ? KEY : p.by) : null, bn: p.by ? (p.by === 'me' ? FARMER.me.n : nameOf(p.by)) : null, c: p.c || null,
+    t: p.c ? Math.round(p.t + OFF) : 0, w: p.w | 0, fw: p.fw.map(k => k === 'me' ? KEY : k), rt: Math.round((p.rt || Date.now()) + OFF) }; }
+function applyPlots(all) { liveKey(); all = all || {}; const first = !LIVE; LIVE = true;
+  for (const p of COMM()) { const v = all[PID(p)], n = fromSrv(v);
+    if (!first && p.by === 'me' && p.c && !n.c && v && v.hk && v.hk !== KEY) { F.kind++; toast(`🧺 ${v.hn || 'เพื่อนบ้าน'}เก็บ${cropName(p.c)}ที่คุณปลูก · +1 น้ำใจ`); }
+    if (!first && !p._tx && (n.c !== p.c || n.o !== p.o || n.fw.length !== p.fw.length || n.w !== p.w)) { p.fx = gameT; p.fk = n.c && n.c !== p.c ? 's' : n.c && n.c === p.c ? 'w' : 'h'; }
+    Object.assign(p, n); }
+  hud(); }
+function liveAct(p, tool, seed) { if (p._tx) return Promise.resolve({ m: '⏳ รอสักครู่…' });
+  liveKey(); let pre = null, r = null, nv = null; p._tx = 1;
+  return H.farmTx(PID(p), cur => { pre = fromSrv(cur); const q = { ...p, ...pre, fw: [...pre.fw] }; r = act('me', q, tool, seed, true);
+      if (!r.ok) return undefined; nv = toSrv(q); if (tool === 'hand') Object.assign(nv, { hk: KEY, hn: FARMER.me.n }); return nv; })
+    .then(res => { if (!res || !res.committed) { if (r && !r.ok) { if (pre) Object.assign(p, pre); return r; } return ONLINE_ERR; }
+      Object.assign(p, pre, { fw: [...pre.fw] }); const out = act('me', p, tool, seed); Object.assign(p, fromSrv(nv)); return out; })
+    .catch(() => ONLINE_ERR).finally(() => { p._tx = 0; }); }
+const doAct = (p, tool, seed) => LIVE && !p.home && H.farmTx ? liveAct(p, tool, seed) : Promise.resolve(act('me', p, tool, seed));
+// ---- the village order online (rooms/_vil/corder): when the bar fills, the givers are written into h, and each player claims their own reward
+function applyOrder(v) { liveKey(); v = v || {}; LIVEO = true; const by = {}, nm = v.nm || {};
+  for (const [k, c] of Object.entries(v.by || {})) by[who(mapK(k), nm[k])] = c | 0;
+  F.order = { i: v.i | 0, n: v.n | 0, by }; F.done = v.i | 0;
+  const h = v.h || {}; let paid = false;
+  for (const i of Object.keys(h).map(k => +k.slice(1)).filter(i => i >= 0).sort((a, b) => a - b)) { if (i < (F.paid | 0)) continue; F.paid = i + 1;
+    const mine = (h['o' + i] || {})[KEY] | 0; if (mine) { paid = true; F.coins += 50 + mine * 8; F.kind += 3; toast(`🎉 ${ORDERS[i % ORDERS.length][2].split(':')[0]} ครบแล้ว! คุณได้ ${50 + mine * 8} 🪙 +3 น้ำใจ`); } }
+  if (paid) save(); if (card.style.display === 'block' && card.dataset.k === 'order') orderCard(); hud(); }
+function giveOrder(id, n) { if (!LIVEO || !H.orderTx) return contribute('me', n);
+  liveKey(); let add = 0;
+  H.orderTx(cur => { cur = cur || {}; const i = cur.i | 0, [oid, need] = ORDERS[i % ORDERS.length], have = cur.n | 0; add = oid === id ? Math.min(n, need - have) : 0; if (add <= 0) return undefined;
+      const by = { ...(cur.by || {}) }, nm = { ...(cur.nm || {}) }; by[KEY] = (by[KEY] | 0) + add; nm[KEY] = FARMER.me.n;
+      if (have + add < need) return { ...cur, i, n: have + add, by, nm };
+      const h = { ...(cur.h || {}), ['o' + i]: by }; for (const k of Object.keys(h).sort((a, b) => +a.slice(1) - +b.slice(1)).slice(0, -10)) delete h[k];
+      return { i: i + 1, n: 0, h }; })
+    .then(res => res && res.committed ? add : 0, () => 0)
+    .then(got => { if (got < n) { addTo(BAG, id, n - got); toast(got ? `📋 ส่งได้ ${got} · คืน ${n - got} เข้ากระเป๋า` : '📡 ส่งไม่ได้ (ออร์เดอร์เปลี่ยนแล้ว) · คืนผักเข้ากระเป๋า'); }
+      save(); hud(); if (card.style.display === 'block' && card.dataset.k === 'order') orderCard(); }); }
+"""
+rep("// ---- HUD + hot bar (top row of the backpack) + plot tip ----", LIVE_JS + "// ---- HUD + hot bar (top row of the backpack) + plot tip ----")
+# taps go through doAct (a promise: online plots answer after the transaction)
+rep("    const r = act('me', p, tool, isSeed(id) ? seedOf(id) : null);\n    if (r.ok) say(me, EMO[tool], 900, true);\n    toast(r.m); if (!r.ok && r.hint) holdFor(r.hint);\n    tipP = p; tipUntil = performance.now() + 3000; save(); hud(); };",
+    "    doAct(p, tool, isSeed(id) ? seedOf(id) : null).then(r => { if (r.ok) say(me, EMO[tool], 900, true);\n    toast(r.m); if (!r.ok && r.hint) holdFor(r.hint);\n    tipP = p; tipUntil = performance.now() + 3000; save(); hud(); }); };")
+rep("const r = act('me', p, tool);\n", "doAct(p, tool).then(r => {\n")
+rep("    hud(); runPlots(list, tool, n); };", "    hud(); runPlots(list, tool, n); }); };")
+rep("contribute('me', n); save(); hud(); orderCard(); }", "giveOrder(id, n); save(); hud(); orderCard(); }")
+# saves: bag, chest, hearts, farm counters go to Prog (prog.vil.cozy, a JSON string so empty slots survive); plots are online, never saved here
+rep_line("function save() { try {", "let lastSave = '';\nfunction save() { const s = JSON.stringify({ F, BAG, CHEST, npc: NPCS.map(N => ({ p: N.p, td: N.td, gn: N.gn, known: N.known })), day: H.day(), wk: H.week() });\n  if (s === lastSave) return; lastSave = s; if (H.setCozy) return H.setCozy(s); try { localStorage.setItem(SAVE, s); } catch (e) { /* private window */ } }")
+rep_line("function load() { let s = null;", "function load() { let s = null, old = false;   // old = the per-browser save from before the farm went online (moved into Prog once)\n  try { if (!/[?&]fresh=1\\b/.test(location.search)) { const c = H.cozy ? H.cozy() : ''; s = c ? JSON.parse(c) : null; if (!s) { s = JSON.parse(localStorage.getItem(SAVE)); old = !!s; } } } catch (e) { s = null; }")
+rep("if (s && s.plots) { const { coins, ...f }", "if (s && s.BAG) { const { coins, ...f }")
+rep("s.plots.forEach((q, i) => { const p = q.x === undefined ? PLOTS[i] : PLOTS.find(z => z.x === q.x && z.y === q.y); if (p) Object.assign(p, q); });",
+    "if (old) for (const q of s.plots || []) if (q && q.c && (q.by === 'me' || q.o === 'me') && PLOTS.some(z => !z.home && z.x === q.x && z.y === q.y)) addTo(BAG, 's:' + q.c, 1);   // crops from the per-browser farm: their seeds come back")
+rep("  const now = Date.now(); for (const p of COMM()) if (p.o && !p.c && now - p.rt > FREE_AFTER) p.o = null; }", "  if (old) save(); }   // plots are kept forever: no weeds come back")
+rep("load(); hud(); if (/[?&]farm=1", "load(); hud(); if (H.farmLive) H.farmLive(applyPlots, applyOrder); if (/[?&]farm=1")
 # ---------------- my house: the live lot card does it (prices, transactions) ----------------
 cut("/* ---- my house: starter → big", "function rideCard(sel) {")
 cut("function homeCard() { openN = null; card.dataset.k = 'home';", "/* ============ input")
@@ -248,7 +316,7 @@ rep("friendsCard, lotCard, give,", "friendsCard, give,")
 # ---------------- start + API ----------------
 rep("window.__cb = { DAY_MS,", "if (window.__TEST__) window.__cb = { DAY_MS,")
 API = r"""// rebuild the static world when the live lots change (stage, colours, garden size); community plots and the room you stand in are kept
-function relots() { const keep = {}; for (const p of PLOTS) if (!p.home) keep[p.x + ',' + p.y] = { o: p.o, by: p.by, c: p.c, t: p.t, w: p.w, fw: p.fw, rt: p.rt };
+function relots() { const keep = {}; for (const p of PLOTS) if (!p.home) keep[p.x + ',' + p.y] = { o: p.o, by: p.by, bn: p.bn, c: p.c, t: p.t, w: p.w, fw: p.fw, rt: p.rt };
   const was = scene; buildWorld(); PLOT_AT = null;
   for (const p of PLOTS) Object.assign(p, keep[p.x + ',' + p.y] || {});
   if (was) { const s2 = ROOMS.find(r => r.slot === was.slot) || null; scene = s2;
@@ -259,7 +327,8 @@ return { me, held, C, R, get G() { return G; }, get block() { return block; }, g
   talk: i => { if (NPCS[i]) talkTo(NPCS[i]); }, enterLot: id => { const L = LOTS.find(l => l.id === id); if (L && L.room) enter(L.room); },
   hasRoom: id => !!(LOTS.find(l => l.id === id) || {}).room,
   lotTop: id => { const L = LOTS.find(l => l.id === id); return !L ? 0 : hasHouse(L) && !(L.stage === 2 && L.building) ? (L.y + 3) * T - (isBig(L) ? 130 : 98) : (L.y + 1) * T - 4; },
-  get SC() { return SC; }, NPCS, F, BAG, PLOTS: () => PLOTS, rideCard, friendsCard, hud };"""
+  get SC() { return SC; }, NPCS, F, BAG, PLOTS: () => PLOTS, rideCard, friendsCard, hud,
+  get LIVE() { return LIVE && LIVEO; }, doAct, giveOrder };"""
 s = s.replace("@@API@@", API)
 
 out = "// GENERATED by _test/gen_village_world.py from _test/village-cozy-big.html — the live village engine (map, rooms, NPCs, rides, community farm).\n" \

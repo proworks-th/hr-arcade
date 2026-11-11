@@ -797,7 +797,16 @@ const Village = (() => {
     jobsFor: i => jobsFor({ npc: i }).length, jobs: i => openCard(NPCC[i]),
     home() { const L = myLot(); if (L) act(L); else toast('ยังไม่มีบ้าน · แตะป้าย 🪧 ที่ดินว่างเพื่อจอง'); },
     cardOpened() { if (cardL) closeCard(); },
+    // community farm online (online.js rooms/_vil/cfarm + corder); the engine's bag / chest / hearts live in prog.vil.cozy
+    farmKey: () => myKey(), farmOff: () => offset,
+    farmLive(plots, order) { farmCbs = [plots, order]; hookFarm(); },
+    farmTx: (id, fn) => O && O.txCPlot ? O.txCPlot(id, fn) : Promise.resolve({ committed: false }),
+    orderTx: fn => O && O.txCOrder ? O.txCOrder(fn) : Promise.resolve({ committed: false }),
+    cozy: () => (Prog.get().vil || {}).cozy || '',
+    setCozy(v) { const p = Prog.get(); p.vil = p.vil || {}; p.vil.cozy = v; Prog.put(p); },
   };
+  let farmCbs = null, farmOn = false;
+  function hookFarm() { if (!O || !farmCbs || farmOn || !O.watchCFarm) return; farmOn = true; O.watchCFarm(farmCbs[0]); O.watchCOrder(farmCbs[1]); }
   const MOVED = { 5: [49, 20], 8: [49, 27] }, OLDXY = {};
   async function startWorld() {
     if (typeof VillageWorld === 'undefined') throw new Error('village-world.js missing');
@@ -825,7 +834,7 @@ const Village = (() => {
   function start() {
     if (started) return; started = true; PETS.src = 'assets/pixel/elthen_cat.png';
     startWorld().catch(e => { console.warn('village engine fallback', e); startOld(); });
-    loadOnline().then(M => { O = M; send(true); M.watchOffset(v => offset = v || 0); M.watchOnline(l => { people = l; syncOthers(); }); if (M.watchLots) M.watchLots(applyLots); }).catch(() => {});
+    loadOnline().then(M => { O = M; send(true); M.watchOffset(v => offset = v || 0); M.watchOnline(l => { people = l; syncOthers(); }); if (M.watchLots) M.watchLots(applyLots); hookFarm(); }).catch(() => {});
   }
   return {
     on,
