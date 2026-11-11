@@ -73,7 +73,7 @@ html,body{margin:0;height:100%;overflow:hidden;background:#1b1422;font-family:Ka
 .gifts button.sel{background:#ffe9a8}
 .gifts small{font-size:11px;color:var(--muted);font-weight:500}
 .pv{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:8px;background:#fff;border:2px dashed var(--ink);border-radius:12px;padding:8px}
-.pv .hs{display:flex;flex-direction:column;align-items:center;font-size:12px;color:var(--muted)}.pv .hs img{width:72px;height:95px;image-rendering:pixelated}
+.pv .hs{display:flex;flex-direction:column;align-items:center;font-size:12px;color:var(--muted)}.pv .hs img{image-rendering:pixelated}
 .pv .stg{display:flex;align-items:flex-end;gap:3px}.pv .stg img{image-rendering:pixelated;height:auto}.pv .stg b{color:var(--muted)}
 .qty{display:flex;gap:6px;margin-top:6px}.qty button{min-width:52px}.qty .on{background:#ffd54a!important}
 .ord{display:flex;gap:10px;align-items:center;margin-top:8px}.ord img{width:40px;height:36px;image-rendering:pixelated}
@@ -205,9 +205,25 @@ function paint(src, roof, wall) {
     else if (W0 && r > 190 && gg > 150 && b > 120 && r - b < 90) { const f = l / 196; p[i] = Math.min(255, W0[0] * f); p[i + 1] = Math.min(255, W0[1] * f); p[i + 2] = Math.min(255, W0[2] * f); } }
   g.putImageData(d, 0, 0); return c; }
 const cottageRaw = (() => { const c = mk(72, 95); c.getContext('2d').drawImage(S.house, 148, 3, 72, 95, 0, 0, 72, 95); return c; })();
-const bigRaw = (() => { const c = mk(72, 95), g = c.getContext('2d');
-  g.drawImage(S.house, 90, 64, 13, 30, 46, 0, 13, 30); g.drawImage(S.house, 4, 3, 72, 86, 0, 9, 72, 86);
-  g.drawImage(S.house, 112, 3, 32, 23, 20, 72, 32, 23); g.drawImage(S.house, 81, 8, 14, 13, 4, 65, 14, 13); g.drawImage(S.house, 81, 8, 14, 13, 54, 65, 14, 13); return c; })();
+// the big house: two storeys, two chimneys, a balcony, a porch with lamps, flower boxes and bushes (80×126 vs the 72×95 starter)
+const bigRaw = (() => { const W = 80, H = 126, c = mk(W, H), g = c.getContext('2d'), h = S.house, r = (x, y, w, hh, col) => { g.fillStyle = col; g.fillRect(x, y, w, hh); };
+  const bush = (x, y) => { r(x + 3, y, 8, 1, O); r(x + 1, y + 1, 12, 1, O); r(x, y + 2, 14, 8, O); r(x + 1, y + 10, 12, 1, O);
+    r(x + 3, y + 1, 8, 1, '#4f9f3f'); r(x + 1, y + 2, 12, 8, '#3f8f3a'); r(x + 2, y + 2, 9, 3, '#6cc04a'); r(x + 4, y + 1, 4, 1, '#8fd860'); r(x + 3, y + 5, 2, 2, '#ff8fbf'); r(x + 9, y + 4, 2, 2, '#fff1a8'); r(x + 6, y + 7, 2, 2, '#ff8fbf'); };
+  g.drawImage(h, 90, 64, 13, 30, 16, 4, 13, 30); g.drawImage(h, 90, 64, 13, 30, 52, 0, 13, 30);                 // two chimneys
+  g.drawImage(h, 4, 3, 72, 61, 4, 8, 72, 61);                                                                    // roof + gable
+  g.drawImage(h, 97, 8, 14, 13, 33, 46, 14, 13);                                                                 // round attic window
+  g.drawImage(h, 4, 63, 72, 25, 4, 69, 72, 25);                                                                  // upper floor
+  g.drawImage(h, 81, 8, 14, 13, 16, 73, 14, 13); g.drawImage(h, 81, 8, 14, 13, 50, 73, 14, 13); g.drawImage(h, 97, 33, 14, 13, 33, 73, 14, 13);
+  r(10, 87, 60, 2, O); r(10, 92, 60, 2, O); for (let x = 10; x <= 68; x += 5) r(x, 87, 2, 7, O);              // balcony rail
+  r(11, 88, 58, 1, '#e0a76c'); for (let x = 11; x <= 66; x += 5) r(x, 89, 1, 3, '#c98b54');
+  g.drawImage(h, 4, 63, 72, 26, 4, 95, 72, 26); r(8, 94, 64, 2, O);                                              // ground floor + beam
+  g.drawImage(h, 97, 33, 14, 13, 14, 99, 14, 13); g.drawImage(h, 97, 33, 14, 13, 52, 99, 14, 13);                // flower windows
+  for (const x of [13, 51]) { r(x, 112, 16, 4, O); r(x + 1, 113, 14, 2, '#a8643a'); r(x + 2, 111, 2, 1, '#ff8fbf'); r(x + 7, 111, 2, 1, '#fff1a8'); r(x + 12, 111, 2, 1, '#ff8fbf'); }
+  g.drawImage(h, 129, 3, 14, 23, 33, 98, 14, 23);                                                                // front door
+  r(29, 94, 22, 4, O); r(30, 95, 20, 2, '#8a5a3c'); r(30, 95, 20, 1, '#b97a45');                               // porch roof
+  for (const x of [28, 49]) { r(x, 101, 3, 6, O); r(x + 1, 102, 1, 4, '#ffd23f'); }                              // porch lamps
+  g.drawImage(h, 113, 42, 16, 7, 32, 119, 16, 7);                                                                // step
+  bush(0, 114); bush(66, 114); return c; })();
 const houseCache = {};
 const isBig = L => L.stage >= 3 && !(L.stage === 3 && L.building);
 const hasHouse = L => L.stage >= 2 && !(L.stage === 2 && L.building);
@@ -295,7 +311,7 @@ function lot(L) {
     at(SIGN, (X + 3) * T + 8, (Y + 3) * T + 14); L.tag = 'จองแล้ว · ' + L.owner; return; }
   rect(X, Y + 1, X + 4, Y + 2, (x, y) => block[y][x] = 1);
   if (L.stage === 2 && L.building) { at(FOUND, cx, by - 4); at(SCAFF, cx, by - 6); at(BRICKS, (X + 4) * T + 8, by + 2); L.bar = 1; L.tag = 'กำลังสร้าง · ' + L.owner; return; }
-  add(by, g => g.drawImage(houseFor(L), cx - 36, by - 95), { shadow: [cx, by - 2, 30], lot: L });
+  add(by, g => { const hs = houseFor(L); g.drawImage(hs, cx - (hs.width >> 1), by - hs.height); }, { shadow: [cx, by - 2, isBig(L) ? 38 : 30], lot: L });
   glows.push([cx - 18, by - 24, 16, .5], [cx + 18, by - 24, 16, .5]);
   if (L.stage === 3 && L.building) { at(SCAFF, cx, by + 1); at(BRICKS, (X + 4) * T + 10, by + 6); L.bar = 1; }
   if (L.stage === 4 && L.building) L.bar = 1;
@@ -593,7 +609,7 @@ function frame(now, fixed) {
       g.globalCompositeOperation = 'source-over'; } }
   const scr = (x, y) => [(x - ox) * SC, (y - oy) * SC], show = (el, sx, sy, ok) => { el.style.display = ok && sx > -80 && sx < innerWidth + 80 && sy > 0 && sy < innerHeight ? '' : 'none'; el.style.left = sx + 'px'; el.style.top = sy + 'px'; };
   for (const P of people) { const [sx, sy] = scr(P.px, P.py - 31); show(P.el, sx, sy, sceneOf(cellOf(P)) === scene); }
-  LOTS.forEach((L, i) => { const [sx, sy] = scr((L.x + 2) * T + 8, hasHouse(L) ? (L.y + 3) * T - 96 : (L.y + 1) * T - 2); show(lotTags[i], sx, sy, !scene && SC >= 2); });
+  LOTS.forEach((L, i) => { const [sx, sy] = scr((L.x + 2) * T + 8, hasHouse(L) ? (L.y + 3) * T - (isBig(L) ? 128 : 96) : (L.y + 1) * T - 2); show(lotTags[i], sx, sy, !scene && SC >= 2); });
   places.forEach((p, i) => { const [sx, sy] = scr(p[0], p[1]); show(placeTags[i], sx, sy, !scene); });
   for (let i = bubbles.length - 1; i >= 0; i--) { const b = bubbles[i]; if (now > b.until) { b.el.remove(); bubbles.splice(i, 1); continue; } const [sx, sy] = scr(b.P.px, b.P.py - (b.pop ? 40 : 50)); b.el.style.left = sx + 'px'; b.el.style.top = sy + 'px'; }
   const tp = hoverP || (now < tipUntil ? tipP : null);
