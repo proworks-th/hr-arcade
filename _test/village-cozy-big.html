@@ -73,6 +73,7 @@ html,body{margin:0;height:100%;overflow:hidden;background:#1b1422;font-family:Ka
 .gifts button.sel{background:#ffe9a8}
 .gifts small{font-size:11px;color:var(--muted);font-weight:500}
 .pv{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:8px;background:#fff;border:2px dashed var(--ink);border-radius:12px;padding:8px}
+.pv .hs{display:flex;flex-direction:column;align-items:center;font-size:12px;color:var(--muted)}.pv .hs img{width:72px;height:95px;image-rendering:pixelated}
 .pv .stg{display:flex;align-items:flex-end;gap:3px}.pv .stg img{image-rendering:pixelated;height:auto}.pv .stg b{color:var(--muted)}
 .qty{display:flex;gap:6px;margin-top:6px}.qty button{min-width:52px}.qty .on{background:#ffd54a!important}
 .ord{display:flex;gap:10px;align-items:center;margin-top:8px}.ord img{width:40px;height:36px;image-rendering:pixelated}
@@ -163,6 +164,10 @@ const SHOW = [[5, 'แพร', 'blue', 'wood', 'tmo', 'tom'], [3, 'เอก', '
   [0], [5, 'มิ้นท์', 'teal', 'mint', 'to', 'wat'], [2, 'ปุ๊ก', 'purple', 'yellow', 'm', 'pum'], [0]];
 LOTS.forEach((L, i) => { const [stage, owner, rc, wc, xs, crop, b] = SHOW[i]; Object.assign(L, { stage, owner, rc: rc || 'red', wc: wc || 'wood', xs: xs || '', crop: crop || 'bok', building: !!b, pct: .35 + i * .04 }); });
 const MY = LOTS[4];
+// my house: everyone starts in the small starter house; the big house is an upgrade (saved in this browser only)
+const HOME_KEY = 'cozyHome1', FRESH = /[?&]fresh=1/.test(location.search);
+const HOME = (() => { try { if (FRESH) { localStorage.removeItem(HOME_KEY); return null; } return JSON.parse(localStorage.getItem(HOME_KEY)); } catch (e) { return null; } })() || { big: 0, until: 0, dur: 1 };
+Object.assign(MY, { stage: HOME.big ? 3 : 2, building: !!HOME.big && Date.now() < HOME.until, xs: HOME.big ? 'fmo' : 'f' });
 for (const L of LOTS) setG(L.x + 2, L.y + 3, 3);
 
 /* ============ rooms: each enterable building gets a room in the strip; the door mat takes you back out ============ */
@@ -594,6 +599,8 @@ function frame(now, fixed) {
   const tp = hoverP || (now < tipUntil ? tipP : null);
   if (tp && !scene) { tipEl.textContent = plotTip(tp); const [sx, sy] = scr(tp.x * T + 8, tp.y * T - 6); show(tipEl, sx, sy, true); } else tipEl.style.display = 'none';
   hotEl.style.display = scene ? 'none' : 'flex';
+  if (MY.building) { MY.pct = Math.max(0, Math.min(1, 1 - (HOME.until - Date.now()) / HOME.dur));
+    if (MY.pct >= 1 && !homeToldDone) { homeToldDone = true; toast('🔨 บ้านหลังใหญ่สร้างเสร็จแล้ว! ไปที่บ้านเพื่อย้ายเข้า'); } }
   if (card.anchor && card.style.display === 'block') { const a = Array.isArray(card.anchor) ? card.anchor : cellOf(card.anchor);
     if (cdist(cellOf(me), a) > (Array.isArray(card.anchor) ? 2.5 : 5.5) || (!!sceneOf(cellOf(me)) !== !!sceneOf(a))) closeCard(); }
   if ((frame.saveT = (frame.saveT || 0) + dt) > 5) { frame.saveT = 0; save(); }
@@ -650,7 +657,7 @@ function friendsCard() { openN = null;
     if (b.dataset.n) talkTo(NPCS[+b.dataset.n]); };
 }
 const enter = r => { closeCard(); travel(me, r.entry); };
-function lotCard(L) { openN = null;
+function lotCard(L) { openN = null; if (L === MY) return homeCard();
   const st = L.stage ? STAGE_TH[L.stage] + (L.building ? ' (กำลังสร้าง)' : '') : 'ที่ดินว่าง';
   card.innerHTML = `<h3>${L.stage ? (L === MY ? '🏠 บ้านของฉัน' : '🏠 บ้าน' + L.owner) : '🪧 ที่ดินแปลง ' + L.id}</h3><p class="sub">${st}${L.stage ? ' · สวน ' + gCells(L).length + ' แปลง (' + cropName(L.crop) + ')' : ' · จองแล้วสร้างบ้านได้'}</p>
     <div class="row">${L.room ? `<button class="pri" data-a="in">🚪 ${L === MY ? 'เข้าบ้าน' : 'แวะเยี่ยมบ้าน'}</button>` : ''}<button data-a="x">${!L.stage ? '🪧 จองที่ดิน 10,000' : '💧 ช่วยรดน้ำ'}</button><button data-a="x" style="flex:0 0 64px">ปิด</button></div>
@@ -768,7 +775,7 @@ function demo() { const now = Date.now(), m = 60e3, P = (x, y, o, c, ago, w = 0,
   P(23, 37, 'prae', 'tom', 45, 1); P(24, 37, 'prae', 'let', 4); P(25, 37, 'prae', 'car', 9, 1, ['ton']); P(26, 37, 'prae', null, 0);
   P(23, 39, 'fon', 'bok', 6, 1); P(24, 39, 'fon', 'chi', 20); P(25, 39, 'fon', 'cor', 30, 1);
   P(29, 43, 'ton', 'pum', 60, 1, ['prae']); P(30, 43, 'ton', 'wat', 30); P(31, 43, 'ton', 'bok', 1); P(32, 43, 'ton', null, 0);
-  F.order = { i: 0, n: 14, by: { prae: 8, fon: 6 } };
+  F.order = { i: 0, n: 14, by: { prae: 8, fon: 6 } }; F.coins = 2000;   // prototype: enough to try the big-house upgrade (1,500)
   [['hoe', 1], ['can', 1], ['s:bok', 6], ['s:let', 3], null, null, ['bok', 12], ['let', 6], ['car', 4], ['tom', 3], ['chi', 5], ['cor', 2], ['pum', 1], ['wat', 1]]
     .forEach((x, i) => BAG[i] = x && { id: x[0], n: x[1] });
   [['s:car', 4], ['pum', 2], ['s:tom', 2]].forEach((x, i) => CHEST[i] = { id: x[0], n: x[1] }); }
@@ -896,6 +903,36 @@ function orderCard() { openN = null; card.dataset.k = 'order';
   card.onclick = e => { const b = e.target.closest('button'); if (!b || b.disabled) return; if (b.dataset.a === 'x') return closeCard();
     if (b.dataset.a === 'give' && n) { takeFrom(BAG, id, n); F.kind++; toast(`📋 ส่ง${cropName(id)} ${n} · +1 น้ำใจ`); contribute('me', n); save(); hud(); orderCard(); } }; }
 
+/* ---- my house: starter → big (preview first, pay on a second click, then it builds on the real clock) ---- */
+const BIG_PRICE = 1500, BIG_MIN = 30, ROOM_SZ = big => big ? '11×7' : '8×6';
+const houseImg = big => bigImg('house' + big, houseFor({ stage: big ? 3 : 2, rc: MY.rc, wc: MY.wc }), 1);
+const homeReady = () => HOME.big && Date.now() >= HOME.until;
+const reloadHome = () => { document.getElementById('fade').style.opacity = 1; setTimeout(() => location.replace(location.pathname + location.search.replace(/[?&]fresh=1/, '').replace(/^&/, '?')), 250); };
+function homeCard() { openN = null; card.dataset.k = 'home';
+  const big = HOME.big && !MY.building, st = !HOME.big ? 'บ้านหลังแรก (บ้านเริ่มต้น)' : MY.building ? 'กำลังขยายเป็นบ้านหลังใหญ่' : 'บ้านหลังใหญ่';
+  const prog = MY.building ? (homeReady() ? `<p class="sub" style="margin-top:6px">🔨 ช่างสร้างเสร็จแล้ว!</p>` :
+    `<div class="bar"><i style="width:${Math.min(100, (1 - (HOME.until - Date.now()) / HOME.dur) * 100)}%"></i></div><small>เสร็จในอีก ${mmss(HOME.until - Date.now())} · ระหว่างนี้ยังอยู่บ้านหลังเดิมได้</small>`) : '';
+  card.innerHTML = `<h3>🏠 บ้านของฉัน</h3><p class="sub">${st} · ห้อง ${ROOM_SZ(big)} · สวน ${gCells(MY).length} แปลง</p>${prog}
+    <div class="row"><button class="pri" data-a="in">🚪 เข้าบ้าน</button>
+    ${!HOME.big ? '<button data-a="up">⬆️ ขยายบ้าน</button>' : MY.building && homeReady() ? '<button class="pri" data-a="move">✨ ย้ายเข้าบ้านหลังใหญ่</button>' : ''}<button data-a="x" style="flex:0 0 64px">ปิด</button></div>`;
+  card.style.display = 'block';
+  card.onclick = e => { const b = e.target.closest('button'); if (!b) return; const a = b.dataset.a;
+    if (a === 'x') return closeCard(); if (a === 'in') return enter(MY.room); if (a === 'up') return upCard(); if (a === 'move') { toast('🎉 ขึ้นบ้านใหม่!'); return reloadHome(); } }; }
+function upCard() { card.dataset.k = 'home';
+  const ok = F.coins >= BIG_PRICE;
+  card.innerHTML = `<h3>⬆️ ขยายเป็นบ้านหลังใหญ่</h3><p class="sub">ดูก่อน · กด "สร้าง" อีกครั้งถึงจะจ่าย · มี ${F.coins.toLocaleString()} 🪙</p>
+    <div class="pv" style="justify-content:center"><div class="hs"><img src="${houseImg(0)}" alt=""><small>ตอนนี้</small></div><b style="font-size:22px">›</b><div class="hs"><img src="${houseImg(1)}" alt=""><small>หลังขยาย</small></div></div>
+    <ul class="unl"><li>🛏️ ห้องใหญ่ขึ้น ${ROOM_SZ(0)} → <b>${ROOM_SZ(1)}</b></li><li>🛋️ ได้โซฟา + เคาน์เตอร์ครัว + มุมรูปภาพเพิ่ม</li><li>🌼 ปลูกดอกไม้หน้าบ้าน + รั้วสวน</li><li>⏳ ช่างสร้าง ${BIG_MIN} นาที (เวลาจริง) · ระหว่างสร้างยังอยู่บ้านเดิมได้</li></ul>
+    <div class="row"><button class="pri" data-a="buy" ${ok ? '' : 'disabled'}>${ok ? `สร้าง · ${BIG_PRICE.toLocaleString()} 🪙` : `ขาดอีก ${(BIG_PRICE - F.coins).toLocaleString()} 🪙`}</button><button data-a="back">ยกเลิก</button></div>
+    ${ok ? '' : '<p class="sub" style="margin-top:6px">หาเหรียญได้จากขายผักที่ 🛒 ร้านเมล็ด และส่ง 📋 ออร์เดอร์หมู่บ้าน</p>'}`;
+  card.style.display = 'block';
+  card.onclick = e => { const b = e.target.closest('button'); if (!b || b.disabled) return;
+    if (b.dataset.a === 'back') return homeCard();
+    if (b.dataset.a === 'buy' && F.coins >= BIG_PRICE) { F.coins -= BIG_PRICE; save(); const dur = BIG_MIN * 60e3 / SPEED;
+      try { localStorage.setItem(HOME_KEY, JSON.stringify({ big: 1, until: Date.now() + dur, dur })); } catch (e) { /* private window */ }
+      toast(`🔨 ช่างเริ่มสร้างแล้ว · −${BIG_PRICE.toLocaleString()} 🪙`); setTimeout(reloadHome, 900); } }; }
+let homeToldDone = false;
+
 /* ============ input ============ */
 function pick(wx, wy) {
   for (const N of NPCS) if (sceneOf(cellOf(N.P)) === scene && Math.abs(N.P.px - wx) < 10 && wy > N.P.py - 30 && wy < N.P.py + 4) return { npc: N };
@@ -942,6 +979,7 @@ setHour(real ? thaiNow() : hour);
 for (const N of NPCS) { const c = near(...spotCell(N.at[1])); place(N.P, c); N.P.after = null; }
 requestAnimationFrame(loop);
 window.__cb = { DAY_MS, gameDay, thaiNow, tick: n => { for (let i = 0; i < n; i++) frame(performance.now(), 1 / 30); return cellOf(me).join(',') + ' ' + (scene ? scene.title : 'village'); },
+  HOME, MY, homeCard, upCard,
   PLOTS, F, FARMER, BAG, CHEST, count, act, useItem, botThink, orderNow, orderCard, shopCard, bagCard, chestCard, visit, talkTo, save, hud, get card() { return card; },
   me, NPCS, LOTS, ROOMS, ROOM, BUILDINGS, setHour, npcCard, friendsCard, lotCard, give, go, travel, enter, cellOf, sceneOf, get scene() { return scene; } };
 })().catch(e => { document.body.insertAdjacentHTML('beforeend', `<pre style="position:absolute;top:120px;left:12px;background:#fff;padding:8px;white-space:pre-wrap;z-index:9">${e && e.stack || e}</pre>`); console.error(e); });

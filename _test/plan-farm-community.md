@@ -83,6 +83,19 @@ In `_test/village-cozy-big.html` (south of the village, or open with `?farm=1`; 
   - One chest at the farm, or one at home too?
   - Should the bag size grow with level?
 
+## Prototype update: starter house → big house (11 Nov)
+
+- **Everyone starts in a small starter house** (บ้านหลังแรก): an 8×6 room and a 10-plot garden.
+- **Upgrade flow:** tap your house (or 🏠 บ้านฉัน), then ⬆️ ขยายบ้าน.
+  - A preview shows the house now › the house after, the room growing 8×6 → 11×7, and what you get (sofa, kitchen counter, flowers + garden fence).
+  - Only the second click, "สร้าง · 1,500 🪙", pays.
+- **Building takes 30 real minutes.** Scaffolding and a progress bar sit over your house, and you can still use the old house meanwhile. When it's done, ✨ ย้ายเข้าบ้านหลังใหญ่ moves you in.
+- Prototype only: the demo starts with 2,000 🪙 so you can try it (`?fast=60` makes the build take 30 s).
+- **To decide:**
+  - Price (1,500?) and build time (30 min?).
+  - Should it also need farm crops as materials?
+  - Should the condo room move into the starter house, as decided earlier?
+
 ## The 5 questions — my take
 
 ### 1. Main goal: farming community + helping friends — **yes**
