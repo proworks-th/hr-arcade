@@ -1,0 +1,7 @@
+maeve-atlas.png = grass, house, maple and fence sheets from "Tiny Farm RPG" by Maeve Devs, packed into one image for the village.
+Licence (from the pack): use and modify in commercial and non-commercial projects; credit "Maeve Devs";
+no resale or redistribution of the assets themselves; no crypto/NFT use; no AI training.
+The village shows the credit on screen: "Tiny Farm RPG by Maeve Devs".
+
+kenney-farm / city / battle / dungeon / cursor.png = Kenney "Tiny Farm", "Tiny Town", "Tiny Battle", "Tiny Dungeon",
+"Cursor Pixel Pack" tilemaps (CC0, www.kenney.nl).

@@ -23,11 +23,15 @@
 //   paid by the system so the owner owes nothing. Each player does each job once a day (prog.vil.jd/jp).
 //   The roads also hold 4 small pickups a day next to the 3 bricks (2 × 15 🪙, 1 vegetable, 1 🍀 40 🪙; prog.vil.fp).
 // The tab is open to everyone since 9 Nov 2026 (owner); ?village=0 hides it in that browser, ?village=1 shows it again.
+// Step 8 (11 Nov 2026) = the cozy village: village-world.js (generated from _test/village-cozy-big.html) draws the 72×48 map,
+//   enterable rooms, NPCs with friendship, rides, the community farm and night light; this file keeps every live system
+//   (lots + transactions, presence, bricks, pets, jobs, pickups, gardens) and hands them to it through HOOKS. If the engine
+//   can't start, the old Kenney map below is used. Lots 5 and 8 sit east of the park in the new map (49,20 / 49,27).
 // Art: Kenney Tiny Town + Tiny Farm (CC0, assets/village/). Classic script after solo-games.js / office.js / tower.js
 // (uses drawChar, drawAcc, meWho, myName, Prog, roomW, store, toast at run time).
 'use strict';
 const Village = (() => {
-  const T = 16, C = 48, R = 34;                   // tile px, map columns, rows
+  const T = 16; let C = 48, R = 34;              // tile px, map columns, rows (the cozy engine's grid once it runs)
   const UNLOCK_W = 22, UNLOCK_LV = 12, LOT_PRICE = 10000;
   // read lazily: `store` is declared by index.html's inline script, which runs after this file
   let flagRead = false;
@@ -77,6 +81,7 @@ const Village = (() => {
   const me = { x: TOWER.door[0], y: TOWER.door[1] + 1, path: [], dir: 'down', sp: 3.2, t: 0 };
   let O = null, people = [], lotsSig = '', sentSig = '', tags = [], offset = 0, cardEl, cardL = null, busy = false, cardTick = 0;
   let floor = [], floorDay = '', farms = {}, farmsT = 0;
+  let W = null, ov = null, ovx = null, worldEl = null, tickAt = {};   // the cozy engine (village-world.js) and its overlay canvas
   /* ---------- pet ---------- */
   const myPet = () => (Prog.get().vil || {}).pet || null;
   const petFed = pt => !!pt && Date.now() < (pt.fed || 0);
@@ -262,7 +267,7 @@ const Village = (() => {
   function applyLots(v) {
     const sig = JSON.stringify(v || {}); if (sig === lotsSig) return; lotsSig = sig;
     for (const L of LOTS) { const d = (v || {})[L.id] || {}; Object.assign(L, { stage: Math.max(0, Math.min(5, d.stage | 0)), k: d.k || '', n: d.n || '', who: d.who || '', g: d.g | 0, h: d.h | 0, end: +d.end || 0, hp: d.hp || null, pet: d.pet && d.pet.c ? d.pet : null, rc: d.rc || '', wc: d.wc || '', xs: typeof d.xs === 'string' ? d.xs.slice(0, 8) : '', cz: d.cz | 0 }); }
-    if (base) { rebuild(); if (loaded >= 2) paintWorld(); }
+    if (W) relotW(); else if (base) { rebuild(); if (loaded >= 2) paintWorld(); }
     syncHome(); renderCard(); renderBar();
   }
   // town sheet recoloured for one roof/wall combo (cb = roof index * 8 + wall index), made once per combo in use
@@ -296,12 +301,13 @@ const Village = (() => {
     if (!prev.has(k(...to))) return null; const out = []; for (let c = k(...to); c !== k(...from) && c >= 0; c = prev.get(c)) out.unshift([c % C, Math.floor(c / C)]); return out;
   }
   function nearestWalk(tx, ty) { for (let r = 0; r < 6; r++) for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) if (Math.max(Math.abs(dx), Math.abs(dy)) === r && walk(tx + dx, ty + dy)) return [tx + dx, ty + dy]; return null; }
-  function goTo(cell) { if (!cell) return; const p = bfs([Math.round(me.x), Math.round(me.y)], cell); if (p) { me.path = p; send(); } }
+  function goTo(cell) { if (!cell) return; if (W) { W.travel(cell); send(); return; } const p = bfs([Math.round(me.x), Math.round(me.y)], cell); if (p) { me.path = p; send(); } }
   // keyboard: arrows / WASD walk one cell at a time while held (presence is written when you stop, or every 1.5 s)
   const KEYS = { ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0], w: [0, -1], s: [0, 1], a: [-1, 0], d: [1, 0] }, held = [];
   let keyWalk = false, keySendT = 0;
   const typing = e => { const t = e.target; return t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)); };
   function onKey(e) {
+    if (W) return;                                // the engine walks smoothly with its own keys
     const k = KEYS[e.key] ? e.key : KEYS[e.key && e.key.toLowerCase()] ? e.key.toLowerCase() : null;
     if (!k || e.ctrlKey || e.metaKey || e.altKey || typing(e) || !visible()) return;
     e.preventDefault(); const i = held.indexOf(k);
@@ -350,9 +356,9 @@ const Village = (() => {
 
   /* ---------- bricks on the roads (3 a day, same spots for everyone) ---------- */
   function floorSpots() {
-    const d = bkkDay(); if (floorDay === d || !base) return floor; floorDay = d;
+    const d = bkkDay(); if (floorDay === d || !(base || W)) return floor; floorDay = d;
     const rnd = rng(+d.replace(/-/g, '') % 2147483646 + 1), cells = [];
-    for (let y = 0; y < R; y++) for (let x = 0; x < C; x++) if ([25, 40, 41].includes(base[y][x]) && !block[y][x] && Math.hypot(x - 5, y - 8) > 6) cells.push([x, y]);
+    for (let y = 0; y < R; y++) for (let x = 0; x < C; x++) if ((W ? x < 72 && W.G[y][x] === 0 && !(W.block[y + 1] || [])[x] : [25, 40, 41].includes(base[y][x])) && !block[y][x] && Math.hypot(x - 5, y - 8) > 6) cells.push([x, y]);
     for (let i = 0; i < 5; i++) rnd();
     floor = [];
     while (floor.length < FLOOR_N + EXTRA.length && cells.length) { const [x, y] = cells.splice(Math.floor(rnd() * cells.length), 1)[0]; if (floor.every(f => Math.hypot(f.x - x, f.y - y) > (floor.length < FLOOR_N ? 8 : 4))) floor.push({ x, y, i: floor.length }); }
@@ -524,7 +530,7 @@ const Village = (() => {
 
   /* ---------- lot card ---------- */
   const leftTxt = ms => { const m = Math.max(1, Math.ceil(ms / 60000)), h = Math.floor(m / 60); return h ? `${h} ชม. ${m % 60} นาที` : `${m} นาที`; };
-  function openCard(L) { cardL = L; renderCard(); }
+  function openCard(L) { if (W) W.closeCard(); cardL = L; renderCard(); }
   function closeCard() { cardL = null; if (cardEl) cardEl.hidden = true; }
   function renderCard() {
     if (!cardEl) return; if (!cardL) { cardEl.hidden = true; return; }
@@ -542,7 +548,9 @@ const Village = (() => {
       else h += `<button class="btn primary" type="button" data-a="reserve"${miss.length || busy ? ' disabled' : ''}>🪧 จองที่ดินนี้ · ${costTxt(s)}</button>${miss.length ? `<p class="vil-need">ขาดอีก ${miss.join(' · ')}</p>` : ''}`;
     } else {
       const hp = helpers(L), nh = Object.keys(hp).length;
-      h += `<h4>${mine ? '⭐ บ้านคุณ' : `🏠 บ้าน${escH(L.n)}`} · แปลง ${L.id}</h4><p class="muted">${L.lane}${movedIn(L) ? ' · ย้ายเข้าแล้ว 🎉' : ''}</p>`;
+      const door = W && W.hasRoom(L.id), dl = mine ? 'เข้าบ้าน' : 'แวะเยี่ยมบ้าน';   // the door sits next to ✕ so the card stays as short as before
+      if (door) h += `<button class="x" type="button" data-a="enter" style="right:44px" title="${dl}" aria-label="${dl}">🚪</button>`;
+      h += `<h4${door ? ' style="margin-right:82px"' : ''}>${mine ? '⭐ บ้านคุณ' : `🏠 บ้าน${escH(L.n)}`} · แปลง ${L.id}</h4><p class="muted">${L.lane}${movedIn(L) ? ' · ย้ายเข้าแล้ว 🎉' : ''}${door ? ` · 🚪 ${dl}ได้` : ''}</p>`;
       h += STAGES.map((s, i) => { const k = i + 1, cur = k === L.stage, done = k < L.stage || (cur && !building(L));
         return `<div class="vil-stg${done ? ' done' : cur ? ' cur' : ''}"><span>${s[0]}</span><span>${s[1]}${cur && building(L) ? `<div class="vil-pb"><i style="width:${Math.round(pctOf(L) * 100)}%"></i></div><small>เหลือ ${leftTxt(L.end - srvNow())} · เพื่อนช่วยวันนี้ ${nh}/${HELP_CAP}</small>`
           : mine && !done ? `<br><small>${costTxt(s)}</small>` : ''}</span><span>${done ? '✔' : cur ? '⏳' : '🔒'}</span></div>`; }).join('');
@@ -569,15 +577,18 @@ const Village = (() => {
     if (a === 'adopt') return adopt(); if (a === 'feed') return feedPet(b && b.dataset.k); if (a === 'rename') return renamePet(); if (a === 'coat') return dyePet(b && b.dataset.k);
     if (a === 'deliver') return deliver(+(b && b.dataset.k));
     if (a === 'roof' || a === 'wall' || a === 'xtra') return decorate(cardL, { [a[0]]: b && b.dataset.k });
-    if (a === 'goto') { const J = jobs().find(x => x.j === +(b && b.dataset.k)); if (J) act(J.to.L || NPCC[J.to.npc]); return; }
+    if (a === 'goto') { const J = jobs().find(x => x.j === +(b && b.dataset.k)); if (!J) return;
+      if (W && J.to.npc != null && W.NPCS[J.to.npc]) { const P = W.NPCS[J.to.npc].P; goTo(nearestWalk(Math.floor(P.px / T) + 1, Math.floor(P.py / T))); openCard(NPCC[J.to.npc]); return; }   // straight to the deliver button
+      act(J.to.L || NPCC[J.to.npc]); return; }
     const L = cardL; if (!L) return;
+    if (a === 'enter') { closeCard(); if (W) W.enterLot(L.id); return; }
     if (a === 'reserve') reserve(L); else if (a === 'next') next(L); else if (a === 'help') help(L); else if (a === 'garden') openGarden(L);
   }
 
   /* ---------- drawing ---------- */
   const S = () => Z * dpr, sx = wx => (wx - cam.x) * S(), sy = wy => (wy - cam.y) * S();
   function resize() {
-    if (!cv) return; dpr = Math.min(2, window.devicePixelRatio || 1);
+    if (!cv || !el) return; dpr = Math.min(2, window.devicePixelRatio || 1);
     // full-screen map: the page is locked in village view, so fill everything below the tabs and above the bar
     if (!el.hidden) wrapEl.style.height = Math.max(280, innerHeight - (wrapEl.getBoundingClientRect().top + scrollY) - barEl.offsetHeight - 22) + 'px';
     const r = wrapEl.getBoundingClientRect(); if (!r.width) return;
@@ -605,12 +616,12 @@ const Village = (() => {
     tags.push([px, py - 25 * S(), `⭐ ${nm}`, { fs: 11, bg: '#ffe0ea', line: '#d14d72' }]);
   }
   function drawOther(a) {
-    const p = a.p, who = typeof MI_PEOPLE !== 'undefined' && MI_PEOPLE.includes(p.a) ? p.a : 'adam', an = a.path.length ? 'run' : 'idle_anim', k = S() * .75;
+    const p = a.p, who = typeof MI_PEOPLE !== 'undefined' && MI_PEOPLE.includes(p.a) ? p.a : 'adam', an = a.path.length ? 'run' : 'idle_anim', k = W ? 1 : S() * .75;
     const px = sx((a.x + .5) * T), py = sy((a.y + 1) * T - 1);
     ctx.fillStyle = 'rgba(0,0,0,.22)'; ctx.beginPath(); ctx.ellipse(px, sy((a.y + 1) * T - 2), 6 * S(), 2.2 * S(), 0, 0, 7); ctx.fill();
     drawChar(ctx, who, an, a.dir, a.t + t, px, py, k);
     if (typeof drawAcc === 'function') for (const sl of ['f', 'h']) if (p[sl]) drawAcc(ctx, p[sl], who, an, a.dir, a.t + t, px, py, k);
-    tags.push([px, py - 25 * S(), `🟢 ${p.n || '?'}${p.lv ? ` Lv${p.lv}` : ''}`, { fs: 10, bg: '#e8ffe0', line: '#3a9b3a', hit: { person: p } }]);
+    tags.push([px, py - (W ? 33 : 25 * S()), `🟢 ${p.n || '?'}${p.lv ? ` Lv${p.lv}` : ''}`, { fs: 10, bg: '#e8ffe0', line: '#3a9b3a', hit: { person: p } }]);
   }
   function drawTags() {                           // lowest on screen last; nudge a tag up if it would cover one already drawn
     const done = []; tags.sort((a, b) => a[1] - b[1]);
@@ -687,6 +698,7 @@ const Village = (() => {
     if (g === 'tower') { goTo([TOWER.door[0], TOWER.door[1] + 1]); typeof Tower !== 'undefined' && Tower.setView('tower'); return; }
     if (g === 'pet') { openCard(PETC); return; }
     if (g === 'board') { goTo(nearestWalk(BOARD[0], BOARD[1] + 1)); openCard(BOARDC); return; }
+    if (g && g.npc != null && W) { W.talk(g.npc); return; }
     if (g && g.npc != null) { const [nx, ny] = NPCS[g.npc].at; goTo(nearestWalk(nx + 1, ny)); openCard(NPCC[g.npc]); return; }
     if (g && g.person) { const p = g.person, a = others[p.id]; if (a) goTo(nearestWalk(Math.round(a.x) + 1, Math.round(a.y))); toast(`👋 ${p.n || '?'}${p.lv ? ` · Lv ${p.lv}` : ''} อยู่ในหมู่บ้าน`); return; }
     if (g && g.id) { goTo([g.front[0], g.front[1] + 1]); openCard(g); }
@@ -706,18 +718,120 @@ const Village = (() => {
     document.addEventListener('visibilitychange', () => { held.length = 0; send(true); });
     window.addEventListener('keydown', onKey); window.addEventListener('keyup', onKey); window.addEventListener('blur', () => { held.length = 0; });
   }
-  function start() {
-    if (started) return; started = true; rebuild();
-    const go = () => { if (++loaded < 2) return; paintWorld(); resize(); cam = camTarget(); };
-    town.onload = farm.onload = go; town.src = 'assets/village/tinytown.png'; farm.src = 'assets/village/tinyfarm.png'; PETS.src = 'assets/pixel/elthen_cat.png';
-    loadOnline().then(M => { O = M; send(true); M.watchOffset(v => offset = v || 0); M.watchOnline(l => { people = l; syncOthers(); }); if (M.watchLots) M.watchLots(applyLots); }).catch(() => {});
+
+  /* ---------- the cozy engine (village-world.js) ---------- */
+  function relotW() { for (const L of LOTS) L.front = [L.x + 2, L.y + 3]; W.relots(); block = W.block; }
+  const inScene = (x, y, sc) => W.sceneOf([Math.round(x), Math.round(y)]) === sc;
+  function liveTick(dt) {
+    if (!W) return; t += dt; const rt = performance.now(), every = (k, ms) => rt - (tickAt[k] || 0) >= ms && (tickAt[k] = rt);   // real-time timers: slow frames don't delay them
+    if (every('bs', 1000)) { const bs = LOTS.map(L => building(L) ? 1 : 0).join(''); if (bs !== bsSig) { const first = !bsSig; bsSig = bs; if (!first) { relotW(); syncHome(); renderCard(); renderBar(); } } }
+    for (const a of Object.values(others)) step(a, dt);
+    if (every('send', 500)) send();
+    if (every('hud', 1000)) W.hud();                 // the engine's coin line follows the arcade coins       // presence: the cell you walk to (keys: where you are), deduped
+    loadFarms();
+    if (!W.scene()) { const got = floorGot(); for (const f of floorSpots()) if (!got.includes(f.i) && Math.abs(f.x - me.x) < .6 && Math.abs(f.y - me.y) < .6) pickFloor(f); }
+    if (cardL && every('card', 1000)) { const b = building(cardL); if (b || cardL._b) renderCard(); cardL._b = b; }   // once more when a build finishes
+    const pt = myPet(); if (pt) { const fed = petFed(pt); follow(pm, me, fed, homeOf(myLot()), dt);
+      if (fed !== pm.wasFed) { pm.wasFed = fed; renderBar(); send(true); if (cardL === PETC) renderCard(); } }
+    for (const a of Object.values(others)) { const pe = a.p.pe; if (!Array.isArray(pe) || !pe[2]) continue; const c = a.cat || (a.cat = { x: 0, y: 0, face: 1, moving: false, init: false }); follow(c, a, true, null, dt); }
+  }
+  // drawn by the engine in world px, sorted with its own people and objects (S() = 1, no camera: the engine moved the canvas)
+  function liveDraw(sc) {
+    if (!W) return []; ctx = W.ctx; Z = 1; dpr = 1; cam = { x: 0, y: 0 }; tags = []; hits = [];
+    const out = [], pt = myPet(), mk = myKey(), away = new Set();
+    for (const a of Object.values(others)) if (inScene(a.x, a.y, sc)) out.push({ y: a.y * T + 12, d: () => drawOther(a) });
+    if (pt && inScene(pm.x, pm.y, sc)) { const fed = petFed(pt);
+      out.push({ y: pm.y * T + 11, d: () => drawCat(pm, pt.coat, fed && pt.prem, !fed && !pm.moving, [fed ? `${catIcon(pt.coat)} ${pt.n}` : `💤 ${pt.n} หิวแล้ว`, fed ? '#fff3c4' : '#eee', 'pet']) }); }
+    for (const a of Object.values(others)) { const pe = a.p.pe; if (!Array.isArray(pe) || !pe[2] || !a.cat) continue; away.add(a.p.k || key(a.p.n));
+      if (inScene(a.cat.x, a.cat.y, sc)) out.push({ y: a.cat.y * T + 11, d: () => drawCat(a.cat, pe[0], !!pe[3], false, null) }); }
+    if (!sc) for (const L of LOTS) { if (L.stage !== 5 || !L.pet || L.k === mk || away.has(L.k)) continue; const h = homeOf(L), c = L.cat || (L.cat = { x: h[0], y: h[1], face: -1, moving: false, init: true });
+      out.push({ y: c.y * T + 11, d: () => drawCat(c, L.pet.c, false, true, null) }); }
+    return out;
+  }
+  // after the engine drew the world: name tags, lot / tower / board pills and the road pickups on the overlay canvas (screen px × dpr)
+  function liveOverlay(ox, oy, sc, scn) {
+    if (!W) return; const wt = tags, wh = hits; dpr = Math.min(2, window.devicePixelRatio || 1);
+    const w = Math.round(wrapEl.clientWidth * dpr), h = Math.round(wrapEl.clientHeight * dpr); if (ov.width !== w || ov.height !== h) { ov.width = w; ov.height = h; }
+    ctx = ovx; ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, w, h); ctx.imageSmoothingEnabled = false;
+    Z = sc; cam = { x: ox, y: oy };                 // now sx / sy / S() map world px to overlay px
+    hits = wh.map(r => ({ l: sx(r.l), t: sy(r.t), w: r.w * S(), h: r.h * S(), hit: r.hit })); tags = wt.map(([x, y, s, o]) => [sx(x), sy(y), s, o]);
+    if (!scn) {
+      pill(sx((TOWER.x + 4) * T), sy(TOWER.y * T) - 4 * dpr, '🏢 ตึกออฟฟิศ', { bg: '#e8f0ff', hit: 'tower' });
+      const open = jobs().filter(J => !jobsDone().includes(J.j)), jobK = new Set(open.map(J => J.to.L ? 'L' + J.to.L.id : 'N' + J.to.npc));
+      pill(sx((BOARD[0] + .5) * T), sy(BOARD[1] * T) - 14 * dpr, open.length ? `📌 งานส่งของ ${open.length}` : '📌 บอร์ด', { fs: 11, bg: open.length ? '#fff3c4' : '#fff', hit: 'board' });
+      const onK = onlineKeys(), mk = myKey();
+      for (const L of LOTS) { const x = sx((L.x + 2.5) * T), y = sy(W.lotTop(L.id)) - 2 * dpr;
+        if (x < -200 || x > w + 200 || y < -40 || y > h + 60) continue;
+        if (!L.stage) pill(x, y, `🪧 แปลง ${L.id} · 🪙 ${LOT_PRICE.toLocaleString('en-US')}`, { bg: '#fff8d6', hit: L });
+        else { const b = building(L), pc = b ? ` ${Math.round(pctOf(L) * 100)}%` : '';
+          if (L.k && L.k === mk) pill(x, y, `⭐ บ้านคุณ · ${STAGE_TH[L.stage]}${pc}`, { bg: '#ffe0ea', line: '#d14d72', hit: L });
+          else pill(x, y, `${onK.has(L.k) ? '🟢 ' : ''}${L.n || '?'} · ${movedIn(L) && !b ? 'บ้าน' : STAGE_TH[L.stage] + pc}${b && !helpers(L)[mk] && Object.keys(helpers(L)).length < HELP_CAP ? ' · 🔨' : ''}${jobK.has('L' + L.id) ? ' · 📦' : ''}`, { bg: movedIn(L) && !b ? '#fff' : b ? '#ffd84d' : '#f3f3f3', hit: L }); } }
+      const got = floorGot(), bob = Math.sin(t * 3);
+      ctx.font = `${11 * S()}px sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      for (const f of floorSpots()) if (!got.includes(f.i)) ctx.fillText(floorIcon(f), sx((f.x + .5) * T), sy((f.y + .5) * T) - bob * S());
+    }
+    drawTags();
+  }
+  const HOOKS = {
+    lots: () => LOTS.map(L => { const o = { id: L.id, x: L.x, y: L.y, stage: L.stage, owner: L.n || '', rc: roofOf(L), wc: wallOf(L), xs: String(L.xs || ''), building: L.stage ? building(L) : false,
+      gN: L.stage && L.k ? gSize(L) : 0, mine: !!(L.stage && L.k && L.k === myKey()), live: L, crop: 'bok' };
+      Object.defineProperty(o, 'pct', { get: () => L.stage ? pctOf(L) : 1 }); return o; }),
+    gCell: (L, i) => gCell(L, i),
+    drawCrop(g, L, i, x, y) { if (!L.k || typeof Farm === 'undefined' || !Farm.plotImg) return; const im = Farm.plotImg(gardenPlots(L)[i], Date.now()); if (!im) return;
+      const k = Math.min(1, T * .9 / Math.max(im.width, im.height)); g.drawImage(im, Math.round(x + T / 2 - im.width * k / 2), Math.round(y + T * .95 - im.height * k), Math.round(im.width * k), Math.round(im.height * k)); },
+    name: () => (typeof myName === 'function' && myName()) || 'คุณ',
+    coins: () => Prog.get().coins | 0,
+    setCoins(v) { const p = Prog.get(); p.coins = Math.max(0, Math.round(v)); Prog.put(p); renderBar(); },
+    rides: () => ({ ...((Prog.get().vil || {}).rides || {}) }),
+    rideBought(k) { const p = Prog.get(); p.vil = p.vil || {}; p.vil.rides = { ...(p.vil.rides || {}), [k]: 1 }; Prog.put(p); if (typeof Stats !== 'undefined') Stats.econ('out_ride', 1); },
+    day: () => bkkDay(), week: () => Math.floor((Date.now() + 7 * 3600e3) / (7 * 864e5)),
+    drawMe(g, P, rd, lift) { const who = typeof meWho === 'function' ? meWho() : 'adam', an = P.moving && !rd ? 'run' : 'idle_anim', cx = Math.round(P.px), by = Math.round(P.py) + 3 - lift;
+      g.save(); if (rd) { g.beginPath(); g.rect(cx - 10, by - 34, 20, 28); g.clip(); }
+      drawChar(g, who, an, P.dir, P.t, cx, by, 1);
+      if (typeof drawAcc === 'function' && typeof Wardrobe !== 'undefined') for (const sl of ['f', 'h']) drawAcc(g, Wardrobe.eq(sl), who, an, P.dir, P.t, cx, by, 1);
+      g.restore(); },
+    tick: liveTick, draw: liveDraw, overlay: liveOverlay,
+    tap(x, y) { const px = x * dpr, py = y * dpr, h = hits.slice().reverse().find(r => px >= r.l && px <= r.l + r.w && py >= r.t && py <= r.t + r.h); if (!h) return false; act(h.hit); return true; },
+    visible: () => visible(), typing: e => typing(e),
+    lot: L => act(L), tower: () => act('tower'), board: () => act('board'),
+    jobsFor: i => jobsFor({ npc: i }).length, jobs: i => openCard(NPCC[i]),
+    home() { const L = myLot(); if (L) act(L); else toast('ยังไม่มีบ้าน · แตะป้าย 🪧 ที่ดินว่างเพื่อจอง'); },
+    cardOpened() { if (cardL) closeCard(); },
+  };
+  const MOVED = { 5: [49, 20], 8: [49, 27] }, OLDXY = {};
+  async function startWorld() {
+    if (typeof VillageWorld === 'undefined') throw new Error('village-world.js missing');
+    for (const L of LOTS) if (MOVED[L.id]) { OLDXY[L.id] = [L.x, L.y]; [L.x, L.y] = MOVED[L.id]; }
+    worldEl = document.createElement('div'); worldEl.className = 'vil-world'; wrapEl.insertBefore(worldEl, cardEl);
+    const w = await VillageWorld.start(worldEl, HOOKS), P = w.me;
+    Object.defineProperties(me, {                    // the live code keeps reading me.x / me.y in cells; the engine owns the walker
+      x: { get: () => (P.px - 8) / T, set: v => { P.px = v * T + 8; P.path = []; }, configurable: true },
+      y: { get: () => (P.py - 12) / T, set: v => { P.py = v * T + 12; P.path = []; }, configurable: true },
+      path: { get: () => P.path, set: v => { P.path = v; }, configurable: true },
+      dir: { get: () => P.dir, set: v => { P.dir = v; }, configurable: true },
+      sp: { get: () => P.speed / T, set() {}, configurable: true },
+      t: { get: () => P.t, set() {}, configurable: true } });
+    W = w; C = W.C; R = W.R; ov = W.ov; ovx = ov.getContext('2d'); cv.style.display = 'none';
+    relotW(); pm.init = false; floorDay = '';
+    for (const id of Object.keys(others)) delete others[id]; syncOthers(); send(true);
+  }
+  function startOld() {
+    W = null; if (worldEl) { worldEl.remove(); worldEl = null; } cv.style.display = ''; C = 48; R = 34;
+    for (const L of LOTS) if (OLDXY[L.id]) [L.x, L.y] = OLDXY[L.id];
+    rebuild(); const go = () => { if (++loaded < 2) return; paintWorld(); resize(); cam = camTarget(); };
+    town.onload = farm.onload = go; town.src = 'assets/village/tinytown.png'; farm.src = 'assets/village/tinyfarm.png';
     requestAnimationFrame(frame);
+  }
+  function start() {
+    if (started) return; started = true; PETS.src = 'assets/pixel/elthen_cat.png';
+    startWorld().catch(e => { console.warn('village engine fallback', e); startOld(); });
+    loadOnline().then(M => { O = M; send(true); M.watchOffset(v => offset = v || 0); M.watchOnline(l => { people = l; syncOthers(); }); if (M.watchLots) M.watchLots(applyLots); }).catch(() => {});
   }
   return {
     on,
     mount(slot) { if (!slot) return; if (!on()) { slot.remove(); return; } if (!el) build(); slot.replaceWith(el); renderBar(); },
     show() { if (!el) return; start(); renderBar(); requestAnimationFrame(() => { resize(); if (world) cam = camTarget(); send(true); }); },
     setGarden, needs,
-    _dbg: { me, LOTS, others, pm, adopt, feedPet, dyePet, renamePet, myPet, get farms() { return farms; }, syncHome, gCell, get hits() { return hits; }, get ready() { return !!world; }, act, lock, goTo, fast: false, floorSpots, reserve, jobs, jobsDone, deliver, haveCrop, NPCS, BOARDC, next, help, myLot, get busy() { return busy; }, decorate, movedIn, held, gSize, tinted, roofOf, wallOf },
+    _dbg: { me, LOTS, others, pm, adopt, feedPet, dyePet, renamePet, myPet, get farms() { return farms; }, syncHome, gCell, get hits() { return hits; }, get ready() { return !!(world || W); }, get W() { return W; }, act, lock, goTo, fast: false, floorSpots, reserve, jobs, jobsDone, deliver, haveCrop, NPCS, BOARDC, next, help, myLot, get busy() { return busy; }, decorate, movedIn, get held() { return W ? W.held : held; }, gSize, tinted, roofOf, wallOf },
   };
 })();

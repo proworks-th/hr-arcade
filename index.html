@@ -253,7 +253,7 @@ button.pk:hover{transform:translateY(-2px)}div.pk{cursor:default}.pk b{font-size
 #hub.vil-on>:not(.room-h):not(.village),#hub.vil-on .room-h>:not(.seg){display:none!important}#hub.vil-on .room-h{margin:0 0 8px}html:has(#hub.vil-on:not([hidden])),html:has(#hub.vil-on:not([hidden])) body{overflow:hidden;overscroll-behavior:none}#hub.vil-on .village{margin:0}.village{margin-bottom:16px}.vil-wrap{position:relative;height:min(62vh,560px);border:3px solid var(--line);border-radius:14px;box-shadow:0 6px 0 var(--line);background:#5a9b3a;overflow:hidden}
 .vil-wrap canvas{display:block;width:100%;height:100%;image-rendering:pixelated;cursor:pointer;touch-action:manipulation}
 .vil-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px;font-size:13px}.vil-card{position:absolute;left:8px;top:8px;width:min(330px,calc(100% - 16px));max-height:calc(100% - 16px);overflow:auto;background:#fff;border:3px solid var(--line);border-radius:12px;box-shadow:0 4px 0 var(--line);padding:10px 12px;font-size:13.5px;z-index:2}
-.vil-card[hidden]{display:none}.vil-card h4{margin:0 34px 2px 0;font-size:16px}.vil-card p{margin:6px 0}
+.vil-wrap .vil-card{z-index:3}.vil-card[hidden]{display:none}.vil-card h4{margin:0 34px 2px 0;font-size:16px}.vil-card p{margin:6px 0}
 .vil-card .x{position:absolute;right:2px;top:0;min-width:44px;min-height:44px;border:0;background:none;font-size:18px;cursor:pointer;color:var(--ink)}
 .vil-stg{display:grid;grid-template-columns:24px 1fr auto;gap:6px;align-items:center;padding:5px 0;border-top:1px dashed #ddd}.vil-stg small{color:var(--muted)}
 .vil-stg.done{opacity:.55}.vil-stg.cur{font-weight:600}
@@ -589,7 +589,8 @@ button.pk:hover{transform:translateY(-2px)}div.pk{cursor:default}.pk b{font-size
 <script src="gacha.js?v=4"></script>
 <script src="hubroom.js?v=9"></script>
 <script src="tower.js?v=10"></script>
-<script src="village.js?v=15"></script>
+<script src="village-world.js?v=1"></script>
+<script src="village.js?v=16"></script>
 <script src="farm.js?v=13"></script>
 <script src="cloud.js?v=10"></script>
 <script src="news.js?v=7"></script>

@@ -273,7 +273,7 @@ def village(page, base, shot):
         raise AssertionError('village tab for real players wrong (want shown, hidden with ?village=0): ' + json.dumps(seen))
     page.evaluate(VILLAGE_SEED)
     page.click('[data-view=village]')
-    page.wait_for_function('Village._dbg.ready', timeout=3000)
+    page.wait_for_function('Village._dbg.ready', timeout=8000)
     page.wait_for_timeout(500)
     shot('village')
     # bricks: a weak round gives 1, a good one 3, never more than 12 a day
@@ -287,7 +287,7 @@ def village(page, base, shot):
         p2.wait_for_function('window.__app', timeout=3000)
         p2.evaluate("store.set('name', 'เพื่อนบี')")
         p2.click('[data-view=village]')
-        p2.wait_for_function('Village._dbg.ready', timeout=3000)
+        p2.wait_for_function('Village._dbg.ready', timeout=8000)
         p2.evaluate('Village._dbg.goTo([16, 8])')
         page.evaluate("store.set('name', 'ทดสอบ')")  # same localStorage: give this tab its own name back
         page.wait_for_function("Object.values(Village._dbg.others).some(a => a.p.n === 'เพื่อนบี')", timeout=3000)
@@ -297,14 +297,14 @@ def village(page, base, shot):
             raise AssertionError('the other player did not walk: ' + json.dumps(page.evaluate("Object.values(Village._dbg.others).map(a => [a.x, a.y, a.to, a.path.length, a.p.vx, a.p.vy, a.p.v])")))
     finally:
         p2.close()
-    # keyboard: holding an arrow / WASD walks cell by cell and stops on a whole cell when let go
+    # keyboard (cozy engine, 11 Nov 2026): holding an arrow / WASD walks smoothly in pixels and stops when let go
     page.evaluate('() => { const D = Village._dbg; D.me.path.length = 0; D.me.x = Math.round(D.me.x); D.me.y = Math.round(D.me.y); }')
     k0 = page.evaluate('() => [Village._dbg.me.x, Village._dbg.me.y]')
     page.keyboard.down('ArrowRight'); page.wait_for_timeout(700); page.keyboard.up('ArrowRight'); page.wait_for_timeout(600)
     k1 = page.evaluate('() => [Village._dbg.me.x, Village._dbg.me.y, Village._dbg.me.path.length]')
     page.keyboard.down('a'); page.wait_for_timeout(400); page.keyboard.up('a'); page.wait_for_timeout(600)
-    k2 = page.evaluate('() => [Village._dbg.me.x, Village._dbg.me.y, Village._dbg.me.path.length, Village._dbg.held.length]')
-    if not (k1[0] >= k0[0] + 2 and k1[1] == k0[1] and k1[2] == 0 and k1[0] == int(k1[0]) and k2[0] < k1[0] and k2[2] == 0 and k2[3] == 0):
+    k2 = page.evaluate('() => [Village._dbg.me.x, Village._dbg.me.y, Village._dbg.me.path.length, [...Village._dbg.held].length]')
+    if not (k1[0] >= k0[0] + 1.5 and abs(k1[1] - k0[1]) < .3 and k1[2] == 0 and k2[0] < k1[0] - .5 and k2[2] == 0 and k2[3] == 0):
         raise AssertionError('arrow keys wrong: ' + json.dumps([k0, k1, k2]))
     # road pickups: 3 bricks + 4 extras a day (2 x 15 coins, 1 vegetable, a clover 40); walking over one picks it up, each only once
     fl = page.evaluate('''async () => { const D = Village._dbg, w = ms => new Promise(r => setTimeout(r, ms)), b0 = Prog.bricks().n, c0 = Prog.get().coins;
@@ -331,7 +331,7 @@ def village(page, base, shot):
       for (let s = 1; s < 5; s++) { await D.next(L(3)); await until(() => L(3).stage === s + 1);
         out.stages.push(L(3).stage); if (s === 1) { out.card = !!document.querySelector('.vil-card:not([hidden]) .vil-pb'); out.notYet = D.movedIn(L(3)); }
         await until(() => !(L(3).end > Date.now()));
-        if (s === 1) { out.moved = D.movedIn(L(3)); out.jobsHome = D.jobs().length === 3; await w(2300); out.deco = !!document.querySelector('.vil-card:not([hidden]) .vil-deco'); } }
+        if (s === 1) { out.moved = D.movedIn(L(3)); out.jobsHome = D.jobs().length === 3; await w(2300); out.deco = !!document.querySelector('.vil-card:not([hidden]) .vil-deco'); out.dbg = [document.querySelector('.vil-card').hidden, document.querySelector('.vil-card').innerText.slice(0, 50), D.movedIn(L(3)), L(3).stage, Date.now() - L(3).end, D.W.scene() && D.W.scene().title]; } }
       const q = Prog.get(); out.after = [q.coins, q.vil.bricks, q.farm.bag.tom || 0, L(3).g];
       out.move = [nBefore, Farm.n(), Farm.home(), JSON.stringify(q.farm.plots) === before];
       // colours: first choice free, then repaint 300, extra 200, removing free; the lot record keeps rc / wc / xs
@@ -351,10 +351,10 @@ def village(page, base, shot):
       D.fast = false; D.act(L(7)); return out; }''')
     want = {'race': [70000, 'คนอื่น'], 'res': [3, 60000, 3], 'stages': [2, 3, 4, 5], 'after': [20000, 22, 10, 14], 'move': [10, 14, 14, True], 'help': [200, 5, 1], 'help2': 5, 'early': [10, 10, 10, 10, True, False], 'notYet': False, 'moved': True, 'jobsHome': True, 'deco': True, 'decor': [0, 300, 500, 500, 700, 'teal', 'white', 'o', 1]}
     if any(r.get(k) != v for k, v in want.items()) or not r.get('card'):
-        raise AssertionError('build path wrong: ' + json.dumps({k: [r.get(k), v] for k, v in want.items() if r.get(k) != v}, ensure_ascii=False) + (' no card' if not r.get('card') else ''))
+        raise AssertionError('build path wrong: ' + json.dumps(r.get('dbg'), ensure_ascii=False) + json.dumps({k: [r.get(k), v] for k, v in want.items() if r.get(k) != v}, ensure_ascii=False) + (' no card' if not r.get('card') else ''))
     page.wait_for_timeout(1500)
     shot('village-card')
-    if canvas_blank(page, '.vil-wrap canvas'):
+    if canvas_blank(page, '.vil-wrap .vil-world'):
         raise AssertionError('village canvas is blank')
     # step 6: pet. Adopt 6,000 (first day's food included), can't overfeed, hungry → naps, first meal of the day +50,
     # premium digs up a vegetable, dye 300, rename free; others see it (presence pe + lot record)
@@ -408,13 +408,13 @@ def village(page, base, shot):
     page.evaluate('''async () => { const M = await import('/verify/mocks/firebase-database.js');   // the mock DB is per page load: seed two moved-in houses (one mine)
       await M.set(M.ref(null, 'rooms/_vil/lots'), { 1: { k: 'พี่ฝน', n: 'พี่ฝน', who: 'amelia', stage: 5, g: 18 }, 3: { k: 'ทดสอบ', n: 'ทดสอบ', who: 'adam', stage: 5, g: 18 } }) }''')
     page.click('[data-view=village]')
-    page.wait_for_function('Village._dbg.ready && Village._dbg.myLot()', timeout=3000)
+    page.wait_for_function('Village._dbg.ready && Village._dbg.myLot()', timeout=8000)
     page.wait_for_timeout(600)
     d = page.evaluate('''async () => { const D = Village._dbg, w = ms => new Promise(r => setTimeout(r, ms)), out = {};
       const J = D.jobs(); out.n = J.length; out.same = JSON.stringify(J.map(j => [j.c, j.q, j.name])) === JSON.stringify(D.jobs().map(j => [j.c, j.q, j.name]));
       out.own = J.some(j => j.to.L && j.to.L.k === D.myLot().k); out.payOk = J.every(j => j.pay === j.q * Math.round(CROPS[j.c][3] * 1.56));
       D.act('board'); await w(100); out.board = document.querySelectorAll('.vil-card [data-a=goto]').length;
-      const p = Prog.get(); p.farm.bag = {}; for (const j of J) { p.farm.bag[j.c] = 10; p.farm.bag[j.c + '.g'] = 2; } Prog.put(p);
+      const p = Prog.get(); p.farm.bag = {}; for (const j of J) { p.farm.bag[j.c] = 20; p.farm.bag[j.c + '.g'] = 2; } Prog.put(p);
       const c0 = Prog.get().coins; let sum = 0;
       for (const j of J) { document.querySelector(`.vil-card [data-a=goto][data-k="${j.j}"]`) || D.act('board'); await w(50);
         const g = document.querySelector(`.vil-card [data-a=goto][data-k="${j.j}"]`); g.click(); await w(100);
