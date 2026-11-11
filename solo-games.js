@@ -13,6 +13,8 @@ function g2canvas(root, W, H) {
   const box = document.createElement('div'); box.className = 'g2box'; root.appendChild(box);
   const cv = document.createElement('canvas'), dpr = Math.min(2, devicePixelRatio || 1);
   cv.width = W * dpr; cv.height = H * dpr; cv.style.setProperty('--ar', W / H); box.appendChild(cv);
+  // a long press must never open the phone's copy / save-image menu or the text magnifier
+  cv.addEventListener('contextmenu', e => e.preventDefault());
   const ctx = cv.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   // pointer position in logical canvas units
   const at = e => { const r = cv.getBoundingClientRect(); return { x: (e.clientX - r.left) * W / r.width, y: (e.clientY - r.top) * H / r.height }; };
@@ -632,6 +634,12 @@ function slackGame(root, api) {
   }
   const down = () => { if (running && !api.paused) holding = true; }, up = () => { holding = false; };
   cv.addEventListener('pointerdown', e => { e.preventDefault(); down(); }); addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
+  // holding for seconds is the whole game: stop iOS/Android from turning the hold into select / copy / zoom,
+  // and keep the finger counting as "holding" even if it slides off the canvas onto the text above
+  root.classList.add('nohold');
+  cv.addEventListener('touchstart', e => { e.preventDefault(); down(); }, { passive: false });
+  cv.addEventListener('touchend', e => { e.preventDefault(); up(); }, { passive: false });
+  cv.addEventListener('touchcancel', up);
   api.onKey(e => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); down(); } });
   const keyUp = e => { if (e.key === ' ' || e.key === 'Enter') up(); }; addEventListener('keyup', keyUp);
   function stepBoss(d) {

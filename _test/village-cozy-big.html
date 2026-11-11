@@ -408,11 +408,11 @@ putS(tiles('farm', [[110, 111]]), 15, 38);
 const ANIM = [];
 [[121, 3], [120, 3], [122, 6]].forEach(([id, n]) => { for (let i = 0; i < n; i++) ANIM.push({ id, x: (10 + ri(8)) * T, y: (39 + ri(4)) * T, tx: 0, ty: 0, f: 1, t: rnd() * 9, sp: id === 122 ? 22 : 9 }); });
 ANIM.forEach(a => { a.tx = a.x; a.ty = a.y; });
-// ---- community farm (playable): 4 rows × 11 plots on a dirt yard. Loosen a plot to claim it; only its owner plants
-// and harvests; anyone can help water. Crops grow on the real clock (farm.js times). Logic: "community farm" section below.
+// ---- community farm (playable): 4 rows × 11 plots on a dirt yard. No owners: anyone loosens, plants, waters and
+// harvests any plot (house gardens stay private). Crops grow on the real clock (farm.js times). Logic: "community farm" section below.
 rect(22, 36, 34, 44, (x, y) => setG(x, y, 2));
 const PLOTS = [];
-[37, 39, 41, 43].forEach(y => { for (let x = 23; x <= 33; x++) { block[y][x] = 1; const p = { x, y, o: null, c: null, t: 0, w: 0, fw: [], rt: 0, fx: -9, fk: '' }; PLOTS.push(p);
+[37, 39, 41, 43].forEach(y => { for (let x = 23; x <= 33; x++) { block[y][x] = 1; const p = { x, y, o: null, by: null, c: null, t: 0, w: 0, fw: [], rt: 0, fx: -9, fk: '' }; PLOTS.push(p);
   add(y * T + 14, (g, t) => drawPlot(g, p, t)); } });
 // every house garden uses the same rules: already loosened and owned by the house; only the owner plants and harvests, anyone can help water
 const OWNER_KEY = { 'พล': 'me', 'แพร': 'prae', 'ฝน': 'fon', 'ต้น': 'ton' };
@@ -717,9 +717,9 @@ function lotCard(L) { openN = null; if (L === MY) return homeCard();
   card.style.display = 'block'; card.onclick = e => { const b = e.target.closest('button'); if (!b) return; if (b.dataset.a === 'in') enter(L.room); else closeCard(); };
 }
 
-/* ============ community farm: loosen → plant → water → harvest · real-time crops · only the owner harvests ============ */
+/* ============ community farm: loosen → plant → water → harvest · real-time crops · shared: anyone plants and harvests ============ */
 const SPEED = (m => m ? +m[1] : 1)(/[?&]fast=(\d+)/.exec(location.search));      // test only: ?fast=60 = 1 minute per second
-const SEED_IDS = ['bok', 'let', 'car', 'tom', 'chi', 'cor', 'pum', 'wat'], CLAIM_MAX = 6, YIELD = 2, FW_DAY = 20, FREE_AFTER = 3 * 864e5;
+const SEED_IDS = ['bok', 'let', 'car', 'tom', 'chi', 'cor', 'pum', 'wat'], YIELD = 2, FW_DAY = 20, FREE_AFTER = 3 * 864e5;
 const FARMER = { me: { n: 'พล', col: '#ffd23f', P: me }, prae: { n: 'แพร', col: '#ff6fa8', P: mates[0] }, fon: { n: 'ฝน', col: '#4cc3ff', P: mates[1] }, ton: { n: 'ต้น', col: '#9b6bff', P: mates[2] } };
 for (const L of LOTS) if (L.owner && !OWNER_KEY[L.owner]) FARMER['L' + L.id] = { n: L.owner, col: ROOF_IN[L.rc] };   // neighbours who tend only their own garden
 const BOTS = ['prae', 'fon', 'ton'], EMO = { hoe: '🪓', seed: '🌱', can: '💧', hand: '🧺' };
@@ -730,7 +730,7 @@ const F = { coins: 300, kind: 0, sel: 0, fwDay: '', fwN: 0, order: { i: 0, n: 0,
 /* ---- items: the backpack (24 slots, top row = the 6-slot hot bar) and the farm chest (24 slots) ----
    item ids: 'hoe' / 'can' (tools), 's:<crop>' (a seed packet), '<crop>' (a harvested crop). Stacks up to 99. */
 const HOT = 6, BAG_N = 24, CHEST_N = 24, STACK = 99;
-const TOOL_IT = { hoe: ['🪓', 'จอบ', 'แตะแปลงว่าง = พรวนดินและจองแปลง (สูงสุด 6)'], can: ['💧', 'บัวรดน้ำ', 'แตะแปลงที่ปลูกแล้ว = โตไวขึ้น 15% · รดให้เพื่อนได้ +3 🪙 +1 น้ำใจ'] };
+const TOOL_IT = { hoe: ['🪓', 'จอบ', 'แตะแปลงรก = พรวนดิน · ไร่ชุมชนไม่มีเจ้าของ ใครก็ปลูกและเก็บได้'], can: ['💧', 'บัวรดน้ำ', 'แตะแปลงที่ปลูกแล้ว = โตไวขึ้น 15% · รดให้เพื่อนได้ +3 🪙 +1 น้ำใจ'] };
 const BAG = Array(BAG_N).fill(null), CHEST = Array(CHEST_N).fill(null);
 const isSeed = id => !!id && id.startsWith('s:'), seedOf = id => id.slice(2), isCrop = id => !!CROPS[id];
 const count = (A, id) => A.reduce((s, x) => s + (x && x.id === id ? x.n : 0), 0);
@@ -767,11 +767,11 @@ const waterN = p => (p.w ? 1 : 0) + p.fw.length;
 function drawPlot(g, p, t) { const X = p.x * T, Y = p.y * T;
   if (!p.o) { g.drawImage(WEEDY, X, Y); return; }
   g.drawImage(p.c && waterN(p) ? SOIL_W : SOIL, X, Y);
-  if (!p.home) { g.fillStyle = O; g.fillRect(X + 1, Y - 3, 1, 8); g.fillRect(X + 2, Y - 4, 5, 5); g.fillStyle = FARMER[p.o].col; g.fillRect(X + 2, Y - 3, 4, 3); }
+  if (!p.home && p.c && FARMER[p.by]) { g.fillStyle = O; g.fillRect(X + 1, Y - 3, 1, 8); g.fillRect(X + 2, Y - 4, 5, 5); g.fillStyle = FARMER[p.by].col; g.fillRect(X + 2, Y - 3, 4, 3); }
   if (p.c) { const k = cropPct(p), art = k >= 1 ? cropArt(p.c) : pxa(STAGE_ART[stageOf(k)]), bob = k >= 1 ? Math.round(Math.sin(t * 3 + p.x)) : 0;
     g.drawImage(art, X + 8 - (art.width >> 1), Y + 14 - art.height + bob);
     if (k >= 1) { if ((t * 1.5 + p.x * .37 + p.y * .21) % 2 < .35) { g.fillStyle = '#fff'; g.fillRect(X + 12, Y + 1, 2, 2); } }
-    else if (p.o === 'me' && !p.w) g.drawImage(DROP, X + 10, Y - 7 + Math.round(Math.sin(t * 4))); }
+    else if ((p.o === 'me' || !p.home) && !p.w) g.drawImage(DROP, X + 10, Y - 7 + Math.round(Math.sin(t * 4))); }
   const a = (t - p.fx) / .6;
   if (a >= 0 && a < 1) { if (p.fk === 'w') { g.fillStyle = '#7fd3ff'; for (let i = 0; i < 5; i++) g.fillRect(X + 2 + i * 3, Y + 1 + (a * 14 + i * 5) % 13, 1, 2); }
     else { g.fillStyle = p.fk === 's' ? '#fff4c2' : '#c08a57'; for (let i = 0; i < 4; i++) g.fillRect(X + 3 + i * 3, Y + 9 - a * 9 - (i % 2) * 3, 2, 2); } }
@@ -779,38 +779,40 @@ function drawPlot(g, p, t) { const X = p.x * T, Y = p.y * T;
 const cdist = (a, b) => Math.max(Math.abs(a[0] - b[0]), Math.abs(a[1] - b[1]));
 const nearPlot = (P, p) => { const c = cellOf(P); return !sceneOf(c) && cdist(c, [p.x, p.y]) <= 1; };
 const faceTo = (P, p) => { const [cx, cy] = cellOf(P), dx = p.x - cx, dy = p.y - cy; P.dir = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 'left' : 'right') : (dy < 0 ? 'up' : 'down'); };
-const myCount = () => PLOTS.filter(p => p.o === 'me' && !p.home).length;   // community claims only; your house garden is always yours
-const nameOf = k => FARMER[k].n;
+const COMM = () => PLOTS.filter(p => !p.home), growingN = () => COMM().filter(p => p.c).length;
+const nameOf = k => FARMER[k] ? FARMER[k].n : 'เพื่อนบ้าน';
 const notMine = p => `แปลงของ${nameOf(p.o)} — ช่วยได้แค่รดน้ำ 💧`;
 // one rule book for everyone (player and neighbours): returns { ok, m, hint, crop }
 function act(k, p, tool, seed) {
-  const mine = p.o === k, fx = kind => { p.fx = gameT; p.fk = kind; };
+  // community plot: anyone may plant / harvest; "mine" = I planted this crop (so my own watering is the 15% one, others are help)
+  const pub = !p.home, mine = pub ? p.by === k : p.o === k, may = pub ? !!p.o : mine, fx = kind => { p.fx = gameT; p.fk = kind; };
   if (tool === 'hoe') {
-    if (p.o) return { m: mine ? (p.c ? 'ปลูกอยู่แล้ว' : 'พรวนแล้ว ถือเมล็ดแล้วแตะเพื่อปลูก') : notMine(p), hint: mine && !p.c ? 'seed' : 'can' };
-    if (k === 'me' && myCount() >= CLAIM_MAX) return { m: `จองได้สูงสุด ${CLAIM_MAX} แปลงต่อคน` };
-    Object.assign(p, { o: k, c: null, rt: Date.now() }); fx('h'); return { ok: 1, m: '🪓 พรวนดินแล้ว แปลงนี้เป็นของคุณ' }; }
+    if (p.o) return !may ? { m: notMine(p), hint: 'can' } : { m: p.c ? 'ปลูกอยู่แล้ว' : 'พรวนแล้ว ถือเมล็ดแล้วแตะเพื่อปลูก', hint: p.c ? 'can' : 'seed' };
+    Object.assign(p, { o: 'v', by: null, c: null, rt: Date.now() }); fx('h'); return { ok: 1, m: '🪓 พรวนดินแล้ว · ใครก็ปลูกแปลงนี้ได้' }; }
   if (tool === 'seed') {
     if (!p.o) return { m: 'ต้องพรวนดินก่อน', hint: 'hoe' };
-    if (!mine) return { m: notMine(p), hint: 'can' };
+    if (!may) return { m: notMine(p), hint: 'can' };
     if (p.c) return { m: 'ปลูกอยู่แล้ว', hint: p.w ? null : 'can' };
     if (k === 'me') { if (!count(BAG, 's:' + seed)) return { m: `เมล็ด${cropName(seed)}หมด — ซื้อที่ 🛒 ร้านเมล็ด` }; takeFrom(BAG, 's:' + seed, 1, F.sel); }
-    Object.assign(p, { c: seed, t: Date.now(), w: 0, fw: [], rt: Date.now() }); fx('s'); return { ok: 1, m: `🌱 ปลูก${cropName(seed)} · โตใน ${cropTime(seed)}` }; }
+    Object.assign(p, { c: seed, t: Date.now(), w: 0, fw: [], rt: Date.now() }); if (pub) p.by = k; fx('s'); return { ok: 1, m: `🌱 ปลูก${cropName(seed)} · โตใน ${cropTime(seed)}` }; }
   if (tool === 'can') {
-    if (!p.c) return { m: p.o ? 'ยังไม่ได้ปลูกอะไร' : 'แปลงว่าง ยังไม่มีใครปลูก', hint: mine ? 'seed' : !p.o ? 'hoe' : null };
-    if (ripe(p)) return { m: mine ? 'สุกแล้ว แตะเพื่อเก็บ' : `สุกแล้ว รอ${nameOf(p.o)}มาเก็บเอง` };
+    if (!p.c) return { m: p.o ? 'ยังไม่ได้ปลูกอะไร' : 'แปลงว่าง ยังไม่มีใครปลูก', hint: may ? 'seed' : !p.o ? 'hoe' : null };
+    if (ripe(p)) return { m: may ? 'สุกแล้ว แตะเพื่อเก็บ' : `สุกแล้ว รอ${nameOf(p.o)}มาเก็บเอง` };
     if (mine) { if (p.w) return { m: 'รดน้ำแล้ว รอโตได้เลย' }; p.w = 1; fx('w'); return { ok: 1, m: '💧 รดน้ำแล้ว โตเร็วขึ้น 15%' }; }
     if (p.fw.includes(k)) return { m: 'คุณช่วยรดแปลงนี้แล้ว' };
     if (waterN(p) >= 3) return { m: 'แปลงนี้รดน้ำครบ 3 ครั้งแล้ว' };
     if (k === 'me') { const d = new Date().toDateString(); if (F.fwDay !== d) { F.fwDay = d; F.fwN = 0; } if (F.fwN >= FW_DAY) return { m: `วันนี้ช่วยรดครบ ${FW_DAY} ครั้งแล้ว` }; F.fwN++; F.coins += 3; F.kind++; }
-    p.fw.push(k); fx('w'); return { ok: 1, m: `💧 ช่วยรดน้ำให้${nameOf(p.o)} · +3 🪙 +1 น้ำใจ` }; }
+    p.fw.push(k); fx('w'); return { ok: 1, m: `💧 ช่วยรดน้ำให้${nameOf(pub ? p.by : p.o)} · +3 🪙 +1 น้ำใจ` }; }
   if (tool === 'hand') {
     if (!p.o) return { m: 'แปลงว่าง — ถือ 🪓 จอบ แล้วแตะเพื่อพรวนดิน', hint: 'hoe' };
-    if (!p.c) return mine ? { m: 'ถือเมล็ดแล้วแตะเพื่อปลูก', hint: 'seed' } : { m: notMine(p) };
-    if (!mine) return { m: ripe(p) ? `🚫 ของ${nameOf(p.o)} เก็บได้เฉพาะเจ้าของ · ช่วยรดน้ำได้` : notMine(p), hint: ripe(p) ? null : 'can' };
+    if (!p.c) return may ? { m: 'ถือเมล็ดแล้วแตะเพื่อปลูก', hint: 'seed' } : { m: notMine(p) };
+    if (!may) return { m: ripe(p) ? `🚫 ของ${nameOf(p.o)} เก็บได้เฉพาะเจ้าของ · ช่วยรดน้ำได้` : notMine(p), hint: ripe(p) ? null : 'can' };
     if (!ripe(p)) return { m: `ยังไม่สุก · อีก ${leftOf(p)}`, hint: p.w ? null : 'can' };
     if (k === 'me' && room(BAG, p.c) < YIELD) return { m: '🎒 กระเป๋าเต็ม — เก็บของเข้า 📦 หีบก่อน' };
-    const c = p.c; Object.assign(p, { c: null, t: 0, w: 0, fw: [], rt: Date.now() }); fx('h'); if (k === 'me') addTo(BAG, c, YIELD);
-    return { ok: 1, m: `🧺 ได้${cropName(c)} ${YIELD} · ดินยังพรวนอยู่ ปลูกต่อได้เลย`, crop: c }; }
+    const c = p.c, by = p.by; Object.assign(p, { c: null, t: 0, w: 0, fw: [], rt: Date.now() }); if (pub) p.by = null; fx('h'); if (k === 'me') addTo(BAG, c, YIELD);
+    // the planter gets a thank-you when someone else picks their crop, so planting for the village still feels good
+    if (pub && by && by !== k) { if (by === 'me') { F.kind++; if (k !== 'me') setTimeout(() => toast(`🧺 ${nameOf(k)}เก็บ${cropName(c)}ที่คุณปลูก · +1 น้ำใจ`), 300); } }
+    return { ok: 1, m: `🧺 ได้${cropName(c)} ${YIELD}${pub && by && by !== k ? ` (${nameOf(by)}ปลูกไว้)` : ''} · ดินยังพรวนอยู่ ปลูกต่อได้เลย`, crop: c }; }
   return { m: '' };
 }
 // ---- the village order: everyone's deliveries fill one bar; when full, everyone who gave is paid ----
@@ -823,8 +825,8 @@ function finishOrder() { const o = F.order, [, , title] = orderNow(), mine = o.b
   F.order = { i: o.i + 1, n: 0, by: {} }; F.done++; }
 // ---- save (this browser only; the live game would keep plots in rooms/_vil/farm and bag/chest in the player's progress) ----
 const SAVE = 'cozyFarm3';   // v3: house gardens + new lot layout
-function save() { try { localStorage.setItem(SAVE, JSON.stringify({ F, BAG, CHEST, plots: PLOTS.map(({ x, y, o, c, t, w, fw, rt }) => ({ x, y, o, c, t, w, fw, rt })) })); } catch (e) { /* private window */ } }
-function demo() { const now = Date.now(), m = 60e3, P = (x, y, o, c, ago, w = 0, fw = []) => Object.assign(PLOTS.find(p => p.x === x && p.y === y), { o, c, t: now - ago * m, w, fw, rt: now - ago * m });
+function save() { try { localStorage.setItem(SAVE, JSON.stringify({ F, BAG, CHEST, plots: PLOTS.map(({ x, y, o, by, c, t, w, fw, rt }) => ({ x, y, o, by, c, t, w, fw, rt })) })); } catch (e) { /* private window */ } }
+function demo() { const now = Date.now(), m = 60e3, P = (x, y, by, c, ago, w = 0, fw = []) => Object.assign(PLOTS.find(p => p.x === x && p.y === y), { o: 'v', by: c ? by : null, c, t: now - ago * m, w, fw, rt: now - ago * m });
   P(23, 37, 'prae', 'tom', 45, 1); P(24, 37, 'prae', 'let', 4); P(25, 37, 'prae', 'car', 9, 1, ['ton']); P(26, 37, 'prae', null, 0);
   P(23, 39, 'fon', 'bok', 6, 1); P(24, 39, 'fon', 'chi', 20); P(25, 39, 'fon', 'cor', 30, 1);
   P(29, 43, 'ton', 'pum', 60, 1, ['prae']); P(30, 43, 'ton', 'wat', 30); P(31, 43, 'ton', 'bok', 1); P(32, 43, 'ton', null, 0);
@@ -837,19 +839,20 @@ function demo() { const now = Date.now(), m = 60e3, P = (x, y, o, c, ago, w = 0,
   [['s:car', 4], ['pum', 2], ['s:tom', 2]].forEach((x, i) => CHEST[i] = { id: x[0], n: x[1] }); }
 function load() { let s = null; try { if (!/[?&]fresh=1\b/.test(location.search)) s = JSON.parse(localStorage.getItem(SAVE)); } catch (e) { s = null; }
   if (s && s.plots) { Object.assign(F, s.F); s.BAG.forEach((x, i) => BAG[i] = x); s.CHEST.forEach((x, i) => CHEST[i] = x); s.plots.forEach((q, i) => { const p = q.x === undefined ? PLOTS[i] : PLOTS.find(z => z.x === q.x && z.y === q.y); if (p) Object.assign(p, q); }); } else demo();
-  const now = Date.now(); for (const p of PLOTS) if (p.o && !p.home && !p.c && now - p.rt > FREE_AFTER) p.o = null; }   // a claim left empty for 3 days frees up
+  for (const p of COMM()) if (p.o && p.o !== 'v') { p.by = p.c ? p.o : null; p.o = 'v'; }   // v3 saves had owners
+  const now = Date.now(); for (const p of COMM()) if (p.o && !p.c && now - p.rt > FREE_AFTER) p.o = null; }   // tilled but left empty for 3 days grows weeds again
 // ---- HUD + hot bar (top row of the backpack) + plot tip ----
 const hotEl = document.getElementById('hotwrap'), toolsEl = document.getElementById('tools'), selEl = document.getElementById('selname'), hudEl = document.getElementById('farmhud'), tipEl = document.getElementById('ptip');
-function hud() { hudEl.innerHTML = `🪙 <b>${F.coins.toLocaleString()}</b> · 💗 น้ำใจ <b>${F.kind}</b> · 🌾 <b>${myCount()}/${CLAIM_MAX}</b>`;
+function hud() { hudEl.innerHTML = `🪙 <b>${F.coins.toLocaleString()}</b> · 💗 น้ำใจ <b>${F.kind}</b> · 🌾 ไร่ชุมชน <b>${growingN()}/${COMM().length}</b>`;
   toolsEl.innerHTML = BAG.slice(0, HOT).map((x, i) => slotHTML(BAG, i, 'h').replace('class="slot', `class="slot${F.sel === i ? ' on' : ''}`).replace('</button>', `<span class="k">${i + 1}</span></button>`)).join('')
     + '<button class="slot bagb" data-a="bag" aria-label="กระเป๋า">🎒</button>';
   const s = BAG[F.sel]; selEl.textContent = s ? itemName(s.id) + (s.n > 1 ? ' ×' + s.n : '') : '✋ มือเปล่า'; }
 toolsEl.onclick = e => { const b = e.target.closest('button'); if (!b) return; if (b.dataset.a === 'bag') return card.dataset.k === 'bag' && card.style.display === 'block' ? closeCard() : bagCard(); F.sel = +b.dataset.i; hud(); };
 let hoverP = null, tipP = null, tipUntil = 0;
-function plotTip(p) { const who = p.o ? (p.o === 'me' ? 'ของฉัน' : nameOf(p.o)) : '';
-  if (!p.o) return 'แปลงว่าง · 🪓 พรวนเพื่อจอง';
+function plotTip(p) { const k = p.home ? p.o : p.by, who = p.home ? (k === 'me' ? 'ของฉัน' : nameOf(k)) : p.c ? `🌻 ${k === 'me' ? 'ฉัน' : nameOf(k)}ปลูก` : '🌻 ไร่ชุมชน';
+  if (!p.o) return 'แปลงรก · 🪓 พรวนแล้วใครก็ปลูกได้';
   if (!p.c) return `${who} · พรวนแล้ว รอปลูก`;
-  if (ripe(p)) return `${who} · ${cropName(p.c)} สุกแล้ว ✨${p.o === 'me' ? ' แตะเพื่อเก็บ' : ' · 🔒 เจ้าของเก็บ'}`;
+  if (ripe(p)) return `${who} · ${cropName(p.c)} สุกแล้ว ✨${!p.home || p.o === 'me' ? ' แตะเพื่อเก็บ' : ' · 🔒 เจ้าของเก็บ'}`;
   return `${who} · ${cropName(p.c)} · อีก ${leftOf(p)} · 💧${waterN(p)}/3`; }
 // a hint names the item you need; if it's in the hot bar, hold it; if it's only in the backpack, say so
 function holdFor(h) { const want = h === 'seed' ? isSeed : id => id === h;
@@ -882,20 +885,20 @@ function homeSim() { const now = Date.now();
     else if (ripe(p) && now - p.t - growMs(p) > 5 * 60e3 / SPEED) { Object.assign(p, { c: null, t: 0, w: 0, fw: [], rt: now }); p.fx = gameT; p.fk = 'h'; } } }
 function botThink(k) { const B = FARMER[k], P = B.P;
   if (P.path.length || P.after || gameT < B.next) return; B.next = gameT + 3 + Math.random() * 4;
-  const here = cellOf(P), own = PLOTS.filter(p => p.o === k && !p.home), pickOne = a => a[Math.floor(Math.random() * a.length)]; let task = null;
-  const r1 = own.find(ripe); if (r1) task = ['hand', r1];
-  if (!task && Math.random() < .55) { const need = PLOTS.filter(p => p.o && p.o !== k && cdist(here, [p.x, p.y]) <= 14 && p.c && !ripe(p) && !p.fw.includes(k) && waterN(p) < 3), mineF = need.filter(p => p.o === 'me');
+  const here = cellOf(P), comm = COMM(), pickOne = a => a[Math.floor(Math.random() * a.length)], GRACE = 3 * 60e3 / SPEED; let task = null;
+  const r1 = comm.find(p => ripe(p) && (p.by === k || Date.now() - p.t - growMs(p) > GRACE)); if (r1) task = ['hand', r1];
+  if (!task && Math.random() < .55) { const need = PLOTS.filter(p => p.o && (p.home ? p.o : p.by) !== k && cdist(here, [p.x, p.y]) <= 14 && p.c && !ripe(p) && !p.fw.includes(k) && waterN(p) < 3), mineF = need.filter(p => (p.home ? p.o : p.by) === 'me');
     const pool = mineF.length && Math.random() < .7 ? mineF : need; if (pool.length) task = ['can', pickOne(pool)]; }
-  if (!task) { const w = own.find(p => p.c && !p.w && !ripe(p)); if (w) task = ['can', w]; }
-  if (!task) { const e = own.find(p => !p.c); if (e) task = ['seed', e, pickOne(['bok', 'let', 'car', 'tom'])]; }
-  if (!task && own.length < 4) { const f = PLOTS.filter(p => !p.o); if (f.length) task = ['hoe', pickOne(f)]; }
-  if (!task) { const mr = PLOTS.find(p => p.o === 'me' && ripe(p) && cdist(here, [p.x, p.y]) <= 14); if (mr && Math.random() < .35) task = ['look', mr]; }
+  if (!task) { const w = comm.find(p => p.by === k && p.c && !p.w && !ripe(p)); if (w) task = ['can', w]; }
+  if (!task && comm.filter(p => p.by === k && p.c).length < 4) { const e = comm.filter(p => p.o && !p.c); if (e.length) task = ['seed', pickOne(e), pickOne(['bok', 'let', 'car', 'tom'])]; }
+  if (!task && comm.filter(p => p.o && !p.c).length < 3) { const f = comm.filter(p => !p.o); if (f.length) task = ['hoe', pickOne(f)]; }
+  if (!task) { const mr = comm.find(p => p.by === 'me' && ripe(p) && cdist(here, [p.x, p.y]) <= 14); if (mr && Math.random() < .35) task = ['look', mr]; }
   if (!task) { go(P, [22 + Math.floor(Math.random() * 13), 36 + Math.floor(Math.random() * 9)]); return; }
   const [tool, p, seed] = task; go(P, [p.x, p.y]);
   P.after = () => { if (!nearPlot(P, p)) return; faceTo(P, p);
-    if (tool === 'look') return say(P, `ผักของ${FARMER.me.n}สุกแล้ว รอเจ้าของมาเก็บนะ 😊`, 2600);
+    if (tool === 'look') return say(P, `ผักที่${FARMER.me.n}ปลูกสุกแล้ว รีบมาเก็บนะ 😊`, 2600);
     const r = act(k, p, tool, seed); if (!r.ok) return;
-    if (tool === 'can' && p.o === 'me') { say(P, `รดน้ำให้${FARMER.me.n}นะ 💧`, 2200); if (atFarm()) toast(`💧 ${B.n}ช่วยรดน้ำผักของคุณ โตเร็วขึ้น 15%`); }
+    if (tool === 'can' && (p.home ? p.o : p.by) === 'me') { say(P, `รดน้ำให้${FARMER.me.n}นะ 💧`, 2200); if (atFarm()) toast(`💧 ${B.n}ช่วยรดน้ำผักของคุณ โตเร็วขึ้น 15%`); }
     else if (tool === 'hand' && r.crop === orderNow()[0]) { contribute(k, YIELD); say(P, '📋 ส่งเข้าออร์เดอร์หมู่บ้าน', 2200); if (card.style.display === 'block' && card.dataset.k === 'order') orderCard(); }
     else say(P, EMO[tool], 900, true);
     save(); }; }
@@ -999,7 +1002,7 @@ function gardenCard() { card.dataset.k = 'home';
   const ok = F.coins >= GARDEN_PRICE;
   card.innerHTML = `<h3>🌱 ขยายสวนหน้าบ้าน</h3><p class="sub">ดูก่อน · กด "ขยาย" อีกครั้งถึงจะจ่าย · มี ${F.coins.toLocaleString()} 🪙</p>
     <div class="pv" style="justify-content:center"><div class="hs">${gardenGrid(10)}<small>ตอนนี้ 10 แปลง</small></div><b style="font-size:22px">›</b><div class="hs">${gardenGrid(14)}<small>หลังขยาย 14 แปลง</small></div></div>
-    <ul class="unl"><li>🌾 ได้แปลงเพิ่ม 4 แปลง (แถวที่ 3) · พรวนดินไว้ให้แล้ว ปลูกได้ทันที</li><li>🚶 เดินแทรกระหว่างแปลงได้ ทุกแปลงเอื้อมถึง</li><li>🔒 สวนหน้าบ้านเป็นของคุณ ไม่นับรวมโควตาไร่ชุมชน 6 แปลง</li></ul>
+    <ul class="unl"><li>🌾 ได้แปลงเพิ่ม 4 แปลง (แถวที่ 3) · พรวนดินไว้ให้แล้ว ปลูกได้ทันที</li><li>🚶 เดินแทรกระหว่างแปลงได้ ทุกแปลงเอื้อมถึง</li><li>🔒 สวนหน้าบ้านเป็นของคุณคนเดียว (ไร่ชุมชนเป็นของทุกคน)</li></ul>
     <div class="row"><button class="pri" data-a="buy" ${ok ? '' : 'disabled'}>${ok ? `ขยาย · ${GARDEN_PRICE.toLocaleString()} 🪙` : `ขาดอีก ${(GARDEN_PRICE - F.coins).toLocaleString()} 🪙`}</button><button data-a="back">ยกเลิก</button></div>`;
   card.style.display = 'block';
   card.onclick = e => { const b = e.target.closest('button'); if (!b || b.disabled) return;

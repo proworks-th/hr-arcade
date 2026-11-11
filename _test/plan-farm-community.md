@@ -191,3 +191,9 @@ D. Yard planner → E. Community farm (claimed plots) + board orders + village l
 - Adds a 3rd row of 4 plots, already tilled. Beds are walkable so every plot is reachable.
 - Saves match plots by x,y, so a growing garden never shifts other plots' crops.
 - `village-prototype.html` = the same game with every image/script embedded (one file, opens offline).
+
+## Community farm has no owners (11 Nov 2026)
+- Anyone tills, plants, waters and harvests any of the 44 community plots; no claim limit. House gardens stay private.
+- A small flag shows who planted the current crop. Harvesting someone else's crop gives them +1 น้ำใจ (thank-you).
+- Neighbours wait ~3 minutes after a crop ripens before picking it, so the planter gets first chance.
+- Old saves: community plots owned by a name become village plots planted by that name.
