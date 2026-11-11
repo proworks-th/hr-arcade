@@ -184,3 +184,10 @@ It fits HR Arcade (coworkers, not strangers) and the code already rewards helpin
 ## Order once decided
 A. Map v2 (park centre, lot ring, game clock) in `_test` → B. Relocation + preview → C. House interior from the condo →
 D. Yard planner → E. Community farm (claimed plots) + board orders + village level. Later: dungeon + combat + bus. Each behind a flag, test mode only, commit locally.
+
+## Big-house garden 10 → 14 plots (prototype, 11 Nov 2026)
+- After moving into the big house, the home card shows 🌱 ขยายสวน → preview (10 vs 14 grid), second click pays **750 🪙**
+  (prototype scale; half the house price, same ratio as the plan's 10,000 garden vs 20,000 house).
+- Adds a 3rd row of 4 plots, already tilled. Beds are walkable so every plot is reachable.
+- Saves match plots by x,y, so a growing garden never shifts other plots' crops.
+- `village-prototype.html` = the same game with every image/script embedded (one file, opens offline).
