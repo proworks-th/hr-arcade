@@ -141,6 +141,12 @@ const rect = (x0, y0, x1, y1, f) => { for (let y = y0; y <= y1; y++) for (let x 
 for (let x = 0; x <= 48; x++) { setG(x, 9, 0); setG(x, 10, 0); }
 for (let y = 7; y <= 35; y++) { setG(22, y, 0); setG(34, y, 0); }
 for (const y of [16, 23, 30]) for (let x = 1; x <= 48; x++) setG(x, y, 0);
+// central park: grass, a stone cross path and a round plaza in the middle, the Loy Krathong pond in one corner
+const PARK = { x0: 23, y0: 11, x1: 33, y1: 22, cx: 28, cy: 16 }, POND = { x0: 29, y0: 19, x1: 32, y1: 21 };
+rect(PARK.x0, PARK.y0, PARK.x1, PARK.y1, (x, y) => setG(x, y, 1));
+rect(PARK.x0, 16, PARK.x1, 16, (x, y) => setG(x, y, 3)); rect(28, PARK.y0, 28, PARK.y1, (x, y) => setG(x, y, 3));
+rect(26, 14, 30, 18, (x, y) => { if (!((x === 26 || x === 30) && (y === 14 || y === 18))) setG(x, y, 3); });
+rect(POND.x0, POND.y0, POND.x1, POND.y1, (x, y) => { setG(x, y, 6); block[y][x] = 1; });
 rect(1, 11, 9, 17, (x, y) => setG(x, y, 3)); setG(5, 7, 3); setG(5, 8, 3);
 // new: east lane, farm road, town street (asphalt + sidewalks)
 for (let y = 11; y <= 35; y++) setG(48, y, 0);
@@ -158,10 +164,11 @@ const ROOF_IN = { blue: '#8796ad', red: '#d9534f', green: '#5f9e4f', purple: '#8
 const WALLS = { wood: null, stone: '#aab3c0', white: '#efe7da', yellow: '#f2cf63', mint: '#a9dcc4', peach: '#f4b38c' };
 const WALL_IN = { wood: '#e8c79c', stone: '#c9d0da', white: '#f3ece0', yellow: '#f7dd85', mint: '#bfe6d3', peach: '#f8c7a6' };
 const LOTS = [];
-[4, 12, 19, 26].forEach(y => [11, 23, 35].forEach(x => LOTS.push({ id: LOTS.length + 1, x, y, stage: 0 })));
-const SHOW = [[5, 'แพร', 'blue', 'wood', 'tmo', 'tom'], [3, 'เอก', 'red', 'wood', '', 'car', 1], [0], [2, 'ฝน', 'green', 'white', 'o', 'let'],
-  [5, 'พล', 'pink', 'peach', 'fmpo', 'chi'], [1, 'จอย', '', '', '', 'bok'], [4, 'ต้น', 'navy', 'stone', 'p', 'cor', 1], [2, 'เบียร์', 'red', 'wood', '', 'bok', 1],
-  [0], [5, 'มิ้นท์', 'teal', 'mint', 'to', 'wat'], [2, 'ปุ๊ก', 'purple', 'yellow', 'm', 'pum'], [0]];
+// 10 lots in a ring around the central park (x 23–33, y 11–22)
+[[11, 4], [23, 4], [35, 4], [11, 12], [35, 12], [11, 19], [35, 19], [11, 26], [23, 26], [35, 26]].forEach(([x, y]) => LOTS.push({ id: LOTS.length + 1, x, y, stage: 0 }));
+const SHOW = [[5, 'แพร', 'blue', 'wood', 'tmo', 'tom'], [3, 'เอก', 'red', 'wood', '', 'car', 1], [1, 'จอย', '', '', '', 'bok'], [2, 'ฝน', 'green', 'white', 'o', 'let'],
+  [5, 'พล', 'pink', 'peach', 'fmpo', 'chi'], [4, 'ต้น', 'navy', 'stone', 'p', 'cor', 1], [2, 'เบียร์', 'red', 'wood', '', 'bok', 1],
+  [5, 'มิ้นท์', 'teal', 'mint', 'to', 'wat'], [2, 'ปุ๊ก', 'purple', 'yellow', 'm', 'pum'], [0]];
 LOTS.forEach((L, i) => { const [stage, owner, rc, wc, xs, crop, b] = SHOW[i]; Object.assign(L, { stage, owner, rc: rc || 'red', wc: wc || 'wood', xs: xs || '', crop: crop || 'bok', building: !!b, pct: .35 + i * .04 }); });
 const MY = LOTS[4];
 // my house: everyone starts in the small starter house; the big house is an upgrade (saved in this browser only)
@@ -352,7 +359,30 @@ for (const x of [52, 58, 64, 70]) { put('city', [86, 98], x, 8, { block: true })
 for (const x of [55, 63, 69]) put('city', [85, 97], x, 11, { dx: 0 });
 put('city', 81, 57, 7); put('city', 82, 58, 7, { block: false }); put('city', 109, 66, 7); put('city', 102, 49, 7);
 put('city', 84, 49, 11); put('city', [91, 103], 61, 12); put('city', [92, 104], 62, 12);
-// park + lake (Tiny Battle water) — the Loy Krathong pond later
+// ---- central park: fountain plaza, a Thai sala, the Loy Krathong pond, benches, trees, lamps, flower beds ----
+const SALA = sprite(50, 46, (g, r) => { r(3, 40, 44, 6, O); r(4, 41, 42, 4, '#b97a45'); r(4, 41, 42, 1, '#d99a62');
+  for (const x of [6, 22, 38]) r(x, 18, 5, 23, O), r(x + 1, 18, 3, 23, '#c47f4a');
+  r(0, 12, 50, 8, O); r(1, 13, 48, 6, '#c4553c'); r(1, 13, 48, 2, '#e07a5a');
+  r(7, 4, 36, 10, O); r(8, 5, 34, 8, '#a8442f'); r(8, 5, 34, 2, '#d0634a'); r(22, 0, 6, 6, O); r(23, 1, 4, 4, '#ffd23f');
+  r(0, 8, 3, 5, O); r(47, 8, 3, 5, O); r(1, 9, 1, 3, '#ffd23f'); r(48, 9, 1, 3, '#ffd23f');
+  r(4, 20, 42, 2, '#0003'); for (let x = 3; x < 47; x += 4) r(x, 19, 2, 2, '#ffd23f'); });
+const BED_F = sprite(30, 12, (g, r) => { r(0, 2, 30, 10, O); r(1, 3, 28, 8, '#7a4a2c'); for (let i = 0; i < 6; i++) { const x = 2 + i * 4.6; r(x + 1, 6, 1, 4, '#4f8f3a'); r(x, 3, 3, 3, ['#ff8fbf', '#fff1a8', '#ff5c8a', '#c9e7ff', '#ff9f43', '#b98cff'][i]); } });
+putS(SALA, 23, 12); places.push([24.6 * T, 9.9 * T, '🛕 ศาลา']);
+add(16 * T + 15, (g, t) => { const x = PARK.cx * T + 8, y = 16 * T + 10;
+  g.fillStyle = O; g.beginPath(); g.ellipse(x, y, 28, 12, 0, 0, 7); g.fill(); g.fillStyle = '#aab3c0'; g.beginPath(); g.ellipse(x, y, 27, 11, 0, 0, 7); g.fill();
+  g.fillStyle = '#3f86c4'; g.beginPath(); g.ellipse(x, y - 1, 23, 8, 0, 0, 7); g.fill(); g.fillStyle = '#7fd3ff'; g.fillRect(x - 13 + Math.round(Math.sin(t * 2) * 3), y - 3, 5, 1);
+  g.fillStyle = O; g.fillRect(x - 3, y - 18, 6, 17); g.fillStyle = '#d3d7df'; g.fillRect(x - 2, y - 17, 4, 15); g.fillStyle = O; g.fillRect(x - 7, y - 20, 14, 4); g.fillStyle = '#d3d7df'; g.fillRect(x - 6, y - 19, 12, 2);
+  g.fillStyle = '#bfe9ff'; for (let i = 0; i < 6; i++) { const a = (t * 1.8 + i / 6) % 1, dx = (i % 2 ? 1 : -1) * (2 + a * 11); g.fillRect(x + dx, y - 22 - Math.sin(a * Math.PI) * 9 + a * 12, 2, 2); } },
+  { shadow: [PARK.cx * T + 8, 16 * T + 12, 28] });
+block[16][27] = block[16][28] = block[16][29] = 1; places.push([PARK.cx * T + 8, 14.2 * T, '⛲ สวนกลางหมู่บ้าน']);
+places.push([31 * T, 18.6 * T, '🪷 สระลอยกระทง']);
+for (const [x, y] of [[26, 13], [29, 13], [26, 19]]) at(BED_F, (x + 1) * T, y * T + 14);
+for (const [x, y] of [[26, 13], [27, 13], [29, 13], [30, 13], [26, 19], [27, 19]]) block[y][x] = 1;
+for (const [x, y, k] of [[32, 12, 'big'], [33, 14, 'mid'], [31, 14, 'sap'], [24, 21, 'big'], [23, 18, 'mid'], [26, 22, 'sap'], [33, 22, 'mid']]) tree(x, y, k);
+putS(tiles('city', [[93, 94, 95]]), 24, 17); putS(tiles('city', [[93, 94, 95]]), 30, 11);
+for (const [x, y] of [[25, 15], [31, 15], [27, 20], [29, 11]]) { at(LAMP, x * T + 8, y * T + 14); block[y][x] = 1; glows.push([x * T + 8, y * T - 10, 26, .55]); }
+bunting(25 * T + 8, 14 * T - 10, 31 * T + 8, 14 * T - 10, 7);
+// park + lake (Tiny Battle water) on the town side
 (() => { const x0 = 61, y0 = 15, w = 8, h = 9; rect(x0, y0, x0 + w - 1, y0 + h - 1, (x, y) => { G[y][x] = 6; block[y][x] = 1; }); })();
 for (const [x, y, id] of [[60, 13, 68], [69, 14, 67], [70, 21, 68], [60, 29, 68], [66, 30, 67], [70, 30, 68], [63, 31, 68], [57, 22, 67], [55, 27, 68], [51, 24, 67]]) put('city', [id, id + 12], x, y);
 putS(tiles('city', [[93, 94, 95]]), 61, 26); putS(tiles('city', [[93, 94, 95]]), 66, 26);
@@ -463,9 +493,11 @@ const ground = mk(C * T, R * T);
       g.drawImage(S.grass, tx * 16 + ox, ty * 16 + oy, 8, 8, X + ox, Y + oy, 8, 8); }
     if (v === 1 && !block[y][x]) { if (rnd() < (y > 11 && y < 33 && x > 48 ? .3 : .12)) flower(g, X + 3 + ri(9), Y + 3 + ri(8));
       else if (rnd() < .18) { g.fillStyle = '#4f8f3a'; const fx = X + 2 + ri(12), fy = Y + 4 + ri(10); g.fillRect(fx, fy, 1, 2); g.fillRect(fx + 2, fy - 1, 1, 3); } } }
-  // lake: Tiny Battle 3×3 water tiles
-  for (let y = 15; y <= 23; y++) for (let x = 61; x <= 68; x++) { const c = x === 61 ? 0 : x === 68 ? 2 : 1, rw = y === 15 ? 0 : y === 23 ? 2 : 1;
+  // lake + park pond: Tiny Battle 3×3 water tiles
+  for (const [x0, y0, x1, y1] of [[61, 15, 68, 23], [POND.x0, POND.y0, POND.x1, POND.y1]]) for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) { const c = x === x0 ? 0 : x === x1 ? 2 : 1, rw = y === y0 ? 0 : y === y1 ? 2 : 1;
     g.drawImage(kt('battle', [[18, 19, 20], [36, 37, 38], [54, 55, 56]][rw][c]), x * T, y * T); }
+  for (const [x, y] of [[29.7, 19.8], [31.6, 20.3], [30.4, 21.3], [32.3, 19.6]]) { g.fillStyle = '#2f7d3a'; g.beginPath(); g.ellipse(x * T, y * T, 5, 3, 0, .5, 6.1); g.lineTo(x * T, y * T); g.fill();
+    g.fillStyle = '#5fbf5a'; g.beginPath(); g.ellipse(x * T, y * T - 1, 4, 2, 0, .5, 6.1); g.lineTo(x * T, y * T - 1); g.fill(); g.fillStyle = '#ffb3d1'; g.fillRect(x * T - 1, y * T - 3, 3, 2); }
   for (const [x, y] of [[62.4, 17.2], [66.6, 18.1], [63.5, 21.3], [67.2, 21.6], [64.8, 16.4]]) { g.fillStyle = '#2f7d3a'; g.beginPath(); g.ellipse(x * T, y * T, 6, 4, 0, .5, 6.1); g.lineTo(x * T, y * T); g.fill();
     g.fillStyle = '#5fbf5a'; g.beginPath(); g.ellipse(x * T, y * T - 1, 5, 3, 0, .5, 6.1); g.lineTo(x * T, y * T - 1); g.fill(); g.fillStyle = '#ff8fbf'; g.fillRect(x * T - 1, y * T - 3, 3, 2); }
   for (const L of LOTS) if (L.stage === 1 || (L.stage === 2 && L.building)) { g.fillStyle = '#a8703f'; g.fillRect(L.x * T + 4, L.y * T + 6, 4 * T - 8, 3 * T - 6); }
@@ -509,7 +541,7 @@ const mates = [['แพร', 'amelia', 24, 38], ['ฝน', 'alex', 28, 40], ['�
 /* ============ villagers ============ */
 const NPCS = [
   { n: 'ป้าแม่ครัว', who: 'amelia', role: 'แม่ครัวโรงอาหาร', loves: 'chi', likes: ['tom', 'car'], p: 640,
-    sched: [[6, ['canteen', 2, 2], 'เตรียมกับข้าวที่โรงอาหาร'], [14, [26, 36], 'เก็บผักที่ไร่ชุมชน'], [16, ['canteen', 2, 2], 'ทำมื้อเย็นที่โรงอาหาร'], [18, [WELL[0] + 1, WELL[1]], 'ตักน้ำที่บ่อ'], [19, [2, 15], 'นั่งเล่นที่ลาน']],
+    sched: [[6, ['canteen', 2, 2], 'เตรียมกับข้าวที่โรงอาหาร'], [14, [26, 36], 'เก็บผักที่ไร่ชุมชน'], [16, ['canteen', 2, 2], 'ทำมื้อเย็นที่โรงอาหาร'], [18, [WELL[0] + 1, WELL[1]], 'ตักน้ำที่บ่อ'], [19, [24, 15], 'ไปนั่งที่ศาลาในสวนกลาง']],
     say: [['วันนี้กินข้าวหรือยังลูก', 'ผักสวนใครก็สู้ผักสวนตัวเองไม่ได้นะ'], ['พริกเธอเผ็ดดีจัง ป้าเอาไปตำส้มตำทุกวันเลย', 'วันไหนเหนื่อย ๆ แวะมาโรงอาหารนะ ป้าเก็บกับข้าวไว้ให้'], ['เธอเหมือนลูกหลานป้าคนหนึ่งเลย', 'ป้าทำโต๊ะไว้ให้หน้าบ้านเธอ จะได้ชวนเพื่อนมากินข้าว']],
     unl: [[3, '📜 สูตร “ส้มตำไทย” ทำที่โรงอาหารได้'], [5, '🥬 โรงอาหารรับซื้อผักของเธอแพงขึ้น 10%'], [8, '🪑 ของแต่งบ้าน: โต๊ะกินข้าวหน้าบ้าน']] },
   { n: 'ลุงยาม', who: 'bob', role: 'ยามหมู่บ้าน', loves: 'cor', likes: ['pum', 'bok'], p: 1310,
@@ -517,7 +549,7 @@ const NPCS = [
     say: [['เดินระวังนะ', 'ลุงเฝ้าหมู่บ้านนี้มายี่สิบปีแล้ว'], ['ข้าวโพดต้มกับกาแฟร้อน ๆ ตอนกะดึก สุดยอด', 'บ้านเธอไฟสวยดีนะ ลุงเดินผ่านทุกคืน'], ['ไว้ใจได้ บ้านเธอลุงดูให้เอง', 'ลุงทำตะเกียงไว้ให้ แขวนหน้าบ้านนะ']],
     unl: [[3, '📜 สูตร “ข้าวโพดต้มเนย”'], [5, '🎨 ลด 10% ค่าทาสี/ของแต่งหน้าบ้าน'], [8, '🏮 ของแต่งบ้าน: ตะเกียงหน้าบ้าน']] },
   { n: 'น้องฝึกงาน', who: 'alex', role: 'นักศึกษาฝึกงาน HR', loves: 'wat', likes: ['let', 'tom'], p: 120,
-    sched: [[8, [6, 8], 'เข้าออฟฟิศ'], [12, ['cafe', 7, 4], 'กินข้าวที่คาเฟ่'], [13, [4, 8], 'กลับเข้าออฟฟิศ'], [17, ['shop', 5, 3], 'ช้อปที่ร้านเสื้อผ้า'], [18, [64, 25], 'เดินเล่นริมบึง'], [20, [3, 14], 'นั่งเล่นที่ลาน']],
+    sched: [[8, [6, 8], 'เข้าออฟฟิศ'], [12, ['cafe', 7, 4], 'กินข้าวที่คาเฟ่'], [13, [4, 8], 'กลับเข้าออฟฟิศ'], [17, ['shop', 5, 3], 'ช้อปที่ร้านเสื้อผ้า'], [18, [64, 25], 'เดินเล่นริมบึง'], [20, [27, 18], 'นั่งเล่นที่สวนกลาง']],
     say: [['สวัสดีค่ะพี่! หนูเพิ่งมาได้สองอาทิตย์เองค่ะ', 'พี่ ๆ ที่นี่ใจดีทุกคนเลย'], ['แตงโมพี่หวานมากกก หนูแบ่งให้เพื่อนด้วย', 'พี่สอนหนูปลูกผักบ้างได้ไหมคะ'], ['พี่คือพี่เลี้ยงที่ดีที่สุดเลยค่ะ', 'หนูจัดกระถางดอกไม้ไว้ให้พี่นะคะ']],
     unl: [[3, '📜 สูตร “สมูทตี้แตงโม”'], [5, '👕 ลด 10% ร้านเสื้อผ้า'], [8, '🪴 ของแต่งบ้าน: กระถางดอกไม้']] },
 ];
@@ -789,7 +821,7 @@ function finishOrder() { const o = F.order, [, , title] = orderNow(), mine = o.b
   toast(`🎉 ${title.split(':')[0]} ครบแล้ว! ${mine ? `คุณได้ ${50 + mine * 8} 🪙 +3 น้ำใจ` : 'ทุกคนที่ช่วยได้รางวัล'}`);
   F.order = { i: o.i + 1, n: 0, by: {} }; F.done++; }
 // ---- save (this browser only; the live game would keep plots in rooms/_vil/farm and bag/chest in the player's progress) ----
-const SAVE = 'cozyFarm2';
+const SAVE = 'cozyFarm3';   // v3: house gardens + new lot layout
 function save() { try { localStorage.setItem(SAVE, JSON.stringify({ F, BAG, CHEST, plots: PLOTS.map(({ o, c, t, w, fw, rt }) => ({ o, c, t, w, fw, rt })) })); } catch (e) { /* private window */ } }
 function demo() { const now = Date.now(), m = 60e3, P = (x, y, o, c, ago, w = 0, fw = []) => Object.assign(PLOTS.find(p => p.x === x && p.y === y), { o, c, t: now - ago * m, w, fw, rt: now - ago * m });
   P(23, 37, 'prae', 'tom', 45, 1); P(24, 37, 'prae', 'let', 4); P(25, 37, 'prae', 'car', 9, 1, ['ton']); P(26, 37, 'prae', null, 0);

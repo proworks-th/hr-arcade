@@ -106,6 +106,17 @@ In `_test/village-cozy-big.html` (south of the village, or open with `?farm=1`; 
 - **Your garden starts with:** ripe chilli, young bok choy and tomato, a lettuce and a carrot that still need water, and 5 empty beds.
 - **To decide:** should the big house's garden grow to 14 plots (it stays at 10 for now)?
 
+## Prototype update: central park (11 Nov)
+
+- **The two middle lots are now the village's central park.** The 10 house lots form a ring around it.
+- **What's in the park:**
+  - A stone cross path with a round plaza and a ⛲ fountain in the middle (bunting over it).
+  - A 🛕 Thai sala, the 🪷 สระลอยกระทง pond with lotus pads (ready for the Loy Krathong festival).
+  - Benches, trees, flower beds and 4 street lamps that glow at night.
+- **Your house moved to the lot facing the park, on its east side.** เบียร์'s house moved to the free lot below yours; จอย's reserved lot moved to the top row. One lot is left free.
+- In the evening, neighbours go to the park (ป้าแม่ครัว sits at the sala, น้องฝึกงาน on a bench). The office plaza and the big lake on the town side stay.
+- The save key changed to `cozyFarm3`, so old test saves start fresh.
+
 ## The 5 questions — my take
 
 ### 1. Main goal: farming community + helping friends — **yes**
