@@ -67,6 +67,22 @@ In `_test/village-cozy-big.html` (south of the village, or open with `?farm=1`; 
 - HUD: 🪙 coins · 💗 น้ำใจ (kindness: +1 per friend watering, +1 per delivery, +3 per finished order) · 🌾 plots n/6.
 - Saved in this browser only (localStorage `cozyFarm1`); the live version would keep plots in Firebase with a transaction per action.
 
+## Prototype update: arrive-to-open, backpack, hot bar, chest (11 Nov)
+
+- **Menus open only when you get there.** Tap 🛒 ร้านเมล็ด, 📋 ออร์เดอร์, 📦 หีบ, a house lot or a neighbour: you walk over, and the menu opens on arrival. Walk away (more than about 2 cells) and it closes by itself.
+- **🎒 Backpack: 24 slots.** The top row is the **hot bar** (6 slots, keys 1–6, or tap). Whatever you hold is what you use on a plot:
+  - 🪓 จอบ loosens and claims a plot.
+  - 💧 บัวรดน้ำ waters.
+  - A seed packet plants.
+  - Ripe crops of yours are picked whatever you hold.
+- **Organising the bag:** tap an item, then tap another slot to move, swap or merge (key I/B opens the bag). If a hint needs a tool that is only in the bag, it tells you to move it to the hot bar.
+- **📦 Farm chest: 24 slots.** Tap an item to move the whole stack between chest and bag. "เก็บผักทั้งหมดเข้าหีบ" stores every crop in one go. A full bag blocks harvesting ("กระเป๋าเต็ม — เก็บของเข้าหีบ").
+- Seeds you buy, crops you pick, crops you sell, order deliveries and gifts to neighbours all come from the backpack. The order card also shows how many more are in the chest.
+- **Open questions for later:**
+  - Should the chest be shared with friends? (Now: personal.)
+  - One chest at the farm, or one at home too?
+  - Should the bag size grow with level?
+
 ## The 5 questions — my take
 
 ### 1. Main goal: farming community + helping friends — **yes**
