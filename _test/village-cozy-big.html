@@ -301,9 +301,7 @@ function flower(g, x, y) { const c = ['#ffffff', '#ff8fbf', '#fff1a8', '#c9e7ff'
 function lot(L) {
   const X = L.x, Y = L.y, cx = (X + 2) * T + 8, by = (Y + 3) * T + 2, has = c => L.xs.includes(c);
   if (!L.stage) { at(SIGN, cx, (Y + 1) * T + 14); block[Y + 1][X + 2] = 1; L.tag = 'ว่าง · จองได้'; return; }
-  gCells(L).forEach(([x, y], i) => { block[y][x] = 1; const ph = (i * 7 + L.id * 3) % 10, art = ph < 2 ? pxa(STAGE_ART.seed) : ph < 4 ? pxa(STAGE_ART.sprout) : ph < 6 ? pxa(STAGE_ART.grow) : cropArt(L.crop);
-    add(y * T + 15, g => { g.fillStyle = O; g.fillRect(x * T, y * T + 2, 16, 14); g.fillStyle = '#7a4a2c'; g.fillRect(x * T + 1, y * T + 3, 14, 12); g.fillStyle = '#8f5a36'; g.fillRect(x * T + 2, y * T + 4, 12, 3);
-      g.drawImage(art, x * T + 8 - (art.width >> 1), y * T + 13 - art.height); }); });
+  L.garden = gCells(L); L.garden.forEach(([x, y]) => block[y][x] = 1);   // real plots: added with the farm plots below
   const fN = L.stage === 4 && L.building ? 3 : 5;
   for (let i = 0; i < fN; i++) fence(X + 5 + i, Y + 3, i === 0 ? 0 : i === 4 ? 2 : 1);
   if (L.stage === 1) { for (const [x, y] of [[X, Y], [X + 3, Y], [X, Y + 2], [X + 3, Y + 2]]) at(STAKE, x * T + 8, y * T + 14);
@@ -385,6 +383,10 @@ rect(22, 36, 34, 44, (x, y) => setG(x, y, 2));
 const PLOTS = [];
 [37, 39, 41, 43].forEach(y => { for (let x = 23; x <= 33; x++) { block[y][x] = 1; const p = { x, y, o: null, c: null, t: 0, w: 0, fw: [], rt: 0, fx: -9, fk: '' }; PLOTS.push(p);
   add(y * T + 14, (g, t) => drawPlot(g, p, t)); } });
+// every house garden uses the same rules: already loosened and owned by the house; only the owner plants and harvests, anyone can help water
+const OWNER_KEY = { 'พล': 'me', 'แพร': 'prae', 'ฝน': 'fon', 'ต้น': 'ton' };
+for (const L of LOTS) if (L.garden) L.garden.forEach(([x, y]) => { const p = { x, y, o: OWNER_KEY[L.owner] || 'L' + L.id, c: null, t: 0, w: 0, fw: [], rt: 0, fx: -9, fk: '', home: L, nx: 0 };
+  PLOTS.push(p); add(y * T + 14, (g, t) => drawPlot(g, p, t)); });
 places.push([28 * T, 36 * T + 2, '🌻 ไร่ชุมชน']);
 putS(STALL, 36, 38); places.push([37.6 * T, 35.6 * T, '🛒 ร้านเมล็ด']);
 const CHEST_S = sprite(16, 15, (g, r) => { r(0, 2, 16, 13, O); r(1, 3, 14, 11, '#a8643a'); r(1, 3, 14, 4, '#c47f4a'); r(1, 7, 14, 1, O); r(1, 3, 14, 1, '#d99a62');
@@ -620,6 +622,7 @@ function frame(now, fixed) {
   if (card.anchor && card.style.display === 'block') { const a = Array.isArray(card.anchor) ? card.anchor : cellOf(card.anchor);
     if (cdist(cellOf(me), a) > (Array.isArray(card.anchor) ? 2.5 : 5.5) || (!!sceneOf(cellOf(me)) !== !!sceneOf(a))) closeCard(); }
   if ((frame.saveT = (frame.saveT || 0) + dt) > 5) { frame.saveT = 0; save(); }
+  if ((frame.homeT = (frame.homeT || 0) + dt) > 1) { frame.homeT = 0; homeSim(); }
   view = { ox, oy };
 }
 const loop = now => { frame(now); requestAnimationFrame(loop); };
@@ -685,6 +688,7 @@ function lotCard(L) { openN = null; if (L === MY) return homeCard();
 const SPEED = (m => m ? +m[1] : 1)(/[?&]fast=(\d+)/.exec(location.search));      // test only: ?fast=60 = 1 minute per second
 const SEED_IDS = ['bok', 'let', 'car', 'tom', 'chi', 'cor', 'pum', 'wat'], CLAIM_MAX = 6, YIELD = 2, FW_DAY = 20, FREE_AFTER = 3 * 864e5;
 const FARMER = { me: { n: 'พล', col: '#ffd23f', P: me }, prae: { n: 'แพร', col: '#ff6fa8', P: mates[0] }, fon: { n: 'ฝน', col: '#4cc3ff', P: mates[1] }, ton: { n: 'ต้น', col: '#9b6bff', P: mates[2] } };
+for (const L of LOTS) if (L.owner && !OWNER_KEY[L.owner]) FARMER['L' + L.id] = { n: L.owner, col: ROOF_IN[L.rc] };   // neighbours who tend only their own garden
 const BOTS = ['prae', 'fon', 'ton'], EMO = { hoe: '🪓', seed: '🌱', can: '💧', hand: '🧺' };
 const ORDERS = [['bok', 30, '🍲 โรงอาหาร: ต้มผักบุ้งเลี้ยงทั้งหมู่บ้าน'], ['let', 20, '🥗 คาเฟ่: สลัดจานใหญ่'], ['car', 16, '🥕 แผงผลไม้: น้ำแครอทสด'],
   ['tom', 12, '🍅 โรงอาหาร: ส้มตำถาดใหญ่'], ['chi', 10, '🌶️ ป้าแม่ครัว: น้ำพริกหนุ่ม']];
@@ -730,7 +734,7 @@ const waterN = p => (p.w ? 1 : 0) + p.fw.length;
 function drawPlot(g, p, t) { const X = p.x * T, Y = p.y * T;
   if (!p.o) { g.drawImage(WEEDY, X, Y); return; }
   g.drawImage(p.c && waterN(p) ? SOIL_W : SOIL, X, Y);
-  g.fillStyle = O; g.fillRect(X + 1, Y - 3, 1, 8); g.fillRect(X + 2, Y - 4, 5, 5); g.fillStyle = FARMER[p.o].col; g.fillRect(X + 2, Y - 3, 4, 3);
+  if (!p.home) { g.fillStyle = O; g.fillRect(X + 1, Y - 3, 1, 8); g.fillRect(X + 2, Y - 4, 5, 5); g.fillStyle = FARMER[p.o].col; g.fillRect(X + 2, Y - 3, 4, 3); }
   if (p.c) { const k = cropPct(p), art = k >= 1 ? cropArt(p.c) : pxa(STAGE_ART[stageOf(k)]), bob = k >= 1 ? Math.round(Math.sin(t * 3 + p.x)) : 0;
     g.drawImage(art, X + 8 - (art.width >> 1), Y + 14 - art.height + bob);
     if (k >= 1) { if ((t * 1.5 + p.x * .37 + p.y * .21) % 2 < .35) { g.fillStyle = '#fff'; g.fillRect(X + 12, Y + 1, 2, 2); } }
@@ -742,7 +746,7 @@ function drawPlot(g, p, t) { const X = p.x * T, Y = p.y * T;
 const cdist = (a, b) => Math.max(Math.abs(a[0] - b[0]), Math.abs(a[1] - b[1]));
 const nearPlot = (P, p) => { const c = cellOf(P); return !sceneOf(c) && cdist(c, [p.x, p.y]) <= 1; };
 const faceTo = (P, p) => { const [cx, cy] = cellOf(P), dx = p.x - cx, dy = p.y - cy; P.dir = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 'left' : 'right') : (dy < 0 ? 'up' : 'down'); };
-const myCount = () => PLOTS.filter(p => p.o === 'me').length;
+const myCount = () => PLOTS.filter(p => p.o === 'me' && !p.home).length;   // community claims only; your house garden is always yours
 const nameOf = k => FARMER[k].n;
 const notMine = p => `แปลงของ${nameOf(p.o)} — ช่วยได้แค่รดน้ำ 💧`;
 // one rule book for everyone (player and neighbours): returns { ok, m, hint, crop }
@@ -791,13 +795,16 @@ function demo() { const now = Date.now(), m = 60e3, P = (x, y, o, c, ago, w = 0,
   P(23, 37, 'prae', 'tom', 45, 1); P(24, 37, 'prae', 'let', 4); P(25, 37, 'prae', 'car', 9, 1, ['ton']); P(26, 37, 'prae', null, 0);
   P(23, 39, 'fon', 'bok', 6, 1); P(24, 39, 'fon', 'chi', 20); P(25, 39, 'fon', 'cor', 30, 1);
   P(29, 43, 'ton', 'pum', 60, 1, ['prae']); P(30, 43, 'ton', 'wat', 30); P(31, 43, 'ton', 'bok', 1); P(32, 43, 'ton', null, 0);
+  const mine = PLOTS.filter(p => p.home === MY), plan = [['chi', 80, 1], ['bok', 3, 1], ['let', 1, 0], ['tom', 60, 1], ['car', 2, 0]];
+  mine.forEach((p, i) => { const q = plan[i]; if (q) Object.assign(p, { c: q[0], t: now - q[1] * m, w: q[2], fw: [], rt: now }); });
+  for (const p of PLOTS) if (p.home && p.home !== MY && (p.x * 7 + p.y * 3) % 5) Object.assign(p, { c: p.home.crop, t: now - CROPS[p.home.crop][1] * m * ((p.x * 13 + p.y * 7) % 12) / 9, w: 1, fw: [], rt: now });
   F.order = { i: 0, n: 14, by: { prae: 8, fon: 6 } }; F.coins = 2000;   // prototype: enough to try the big-house upgrade (1,500)
   [['hoe', 1], ['can', 1], ['s:bok', 6], ['s:let', 3], null, null, ['bok', 12], ['let', 6], ['car', 4], ['tom', 3], ['chi', 5], ['cor', 2], ['pum', 1], ['wat', 1]]
     .forEach((x, i) => BAG[i] = x && { id: x[0], n: x[1] });
   [['s:car', 4], ['pum', 2], ['s:tom', 2]].forEach((x, i) => CHEST[i] = { id: x[0], n: x[1] }); }
 function load() { let s = null; try { if (!/[?&]fresh=1\b/.test(location.search)) s = JSON.parse(localStorage.getItem(SAVE)); } catch (e) { s = null; }
   if (s && s.plots) { Object.assign(F, s.F); s.BAG.forEach((x, i) => BAG[i] = x); s.CHEST.forEach((x, i) => CHEST[i] = x); s.plots.forEach((q, i) => PLOTS[i] && Object.assign(PLOTS[i], q)); } else demo();
-  const now = Date.now(); for (const p of PLOTS) if (p.o && !p.c && now - p.rt > FREE_AFTER) p.o = null; }   // a claim left empty for 3 days frees up
+  const now = Date.now(); for (const p of PLOTS) if (p.o && !p.home && !p.c && now - p.rt > FREE_AFTER) p.o = null; }   // a claim left empty for 3 days frees up
 // ---- HUD + hot bar (top row of the backpack) + plot tip ----
 const hotEl = document.getElementById('hotwrap'), toolsEl = document.getElementById('tools'), selEl = document.getElementById('selname'), hudEl = document.getElementById('farmhud'), tipEl = document.getElementById('ptip');
 function hud() { hudEl.innerHTML = `🪙 <b>${F.coins.toLocaleString()}</b> · 💗 น้ำใจ <b>${F.kind}</b> · 🌾 <b>${myCount()}/${CLAIM_MAX}</b>`;
@@ -819,7 +826,7 @@ function holdFor(h) { const want = h === 'seed' ? isSeed : id => id === h;
 function useItem(p) { const id = heldId();
   const doIt = () => { if (!nearPlot(me, p)) return toast('เดินไปไม่ถึงแปลงนี้');
     faceTo(me, p);
-    const tool = p.o === 'me' && ripe(p) ? 'hand' : id === 'hoe' || id === 'can' ? id : isSeed(id) ? 'seed' : 'hand';
+    const tool = ripe(p) ? 'hand' : id === 'hoe' || id === 'can' ? id : isSeed(id) ? 'seed' : 'hand';
     const r = act('me', p, tool, isSeed(id) ? seedOf(id) : null);
     if (r.ok) say(me, EMO[tool], 900, true);
     toast(r.m); if (!r.ok && r.hint) holdFor(r.hint);
@@ -836,16 +843,20 @@ function visit(cell, open, range = 2) { closeCard(); me.after = null;
 // ---- neighbours: they farm their own plots, help water anyone's (yours first), and never harvest what isn't theirs ----
 const atFarm = () => !scene && cellOf(me)[1] >= 33;
 for (const k of BOTS) FARMER[k].next = 1 + BOTS.indexOf(k) * 1.5;
+function homeSim() { const now = Date.now();
+  for (const p of PLOTS) { if (!p.home || p.o === 'me') continue;
+    if (!p.c) { if (!p.nx) p.nx = now + (1 + Math.random() * 3) * 60e3 / SPEED; else if (now > p.nx) { Object.assign(p, { c: p.home.crop, t: now, w: 1, fw: [], rt: now, nx: 0 }); p.fx = gameT; p.fk = 's'; } }
+    else if (ripe(p) && now - p.t - growMs(p) > 5 * 60e3 / SPEED) { Object.assign(p, { c: null, t: 0, w: 0, fw: [], rt: now }); p.fx = gameT; p.fk = 'h'; } } }
 function botThink(k) { const B = FARMER[k], P = B.P;
   if (P.path.length || P.after || gameT < B.next) return; B.next = gameT + 3 + Math.random() * 4;
-  const own = PLOTS.filter(p => p.o === k), pickOne = a => a[Math.floor(Math.random() * a.length)]; let task = null;
+  const here = cellOf(P), own = PLOTS.filter(p => p.o === k && !p.home), pickOne = a => a[Math.floor(Math.random() * a.length)]; let task = null;
   const r1 = own.find(ripe); if (r1) task = ['hand', r1];
-  if (!task && Math.random() < .55) { const need = PLOTS.filter(p => p.o && p.o !== k && p.c && !ripe(p) && !p.fw.includes(k) && waterN(p) < 3), mineF = need.filter(p => p.o === 'me');
+  if (!task && Math.random() < .55) { const need = PLOTS.filter(p => p.o && p.o !== k && cdist(here, [p.x, p.y]) <= 14 && p.c && !ripe(p) && !p.fw.includes(k) && waterN(p) < 3), mineF = need.filter(p => p.o === 'me');
     const pool = mineF.length && Math.random() < .7 ? mineF : need; if (pool.length) task = ['can', pickOne(pool)]; }
   if (!task) { const w = own.find(p => p.c && !p.w && !ripe(p)); if (w) task = ['can', w]; }
   if (!task) { const e = own.find(p => !p.c); if (e) task = ['seed', e, pickOne(['bok', 'let', 'car', 'tom'])]; }
   if (!task && own.length < 4) { const f = PLOTS.filter(p => !p.o); if (f.length) task = ['hoe', pickOne(f)]; }
-  if (!task) { const mr = PLOTS.find(p => p.o === 'me' && ripe(p)); if (mr && Math.random() < .35) task = ['look', mr]; }
+  if (!task) { const mr = PLOTS.find(p => p.o === 'me' && ripe(p) && cdist(here, [p.x, p.y]) <= 14); if (mr && Math.random() < .35) task = ['look', mr]; }
   if (!task) { go(P, [22 + Math.floor(Math.random() * 13), 36 + Math.floor(Math.random() * 9)]); return; }
   const [tool, p, seed] = task; go(P, [p.x, p.y]);
   P.after = () => { if (!nearPlot(P, p)) return; faceTo(P, p);
@@ -983,7 +994,7 @@ addEventListener('keydown', e => { const k = KEYS[e.key.toLowerCase()]; if (k) {
   if (scene) return; const n = '123456'.indexOf(e.key); if (n >= 0 && e.key) { F.sel = n; hud(); return; }
   const q = e.key.toLowerCase(); if (q === 'i' || q === 'b') return card.dataset.k === 'bag' && card.style.display === 'block' ? closeCard() : bagCard();
   if (q === 'escape') return closeCard();
-  if ((e.key === ' ' || q === 'e') && atFarm()) { const p = frontPlot(); if (p) { e.preventDefault(); useItem(p); } } });
+  if ((e.key === ' ' || q === 'e') && !scene) { const p = frontPlot(); if (p) { e.preventDefault(); useItem(p); } } });
 addEventListener('keyup', e => { const k = KEYS[e.key.toLowerCase()]; if (k) held.delete(k); });
 document.getElementById('friends').onclick = friendsCard;
 document.getElementById('gohome').onclick = () => { if (scene === MY.room) return toast('🏠 อยู่บ้านแล้ว'); visit([MY.x + 2, MY.y + 3], () => lotCard(MY), 3); };
@@ -995,7 +1006,7 @@ setHour(real ? thaiNow() : hour);
 for (const N of NPCS) { const c = near(...spotCell(N.at[1])); place(N.P, c); N.P.after = null; }
 requestAnimationFrame(loop);
 window.__cb = { DAY_MS, gameDay, thaiNow, tick: n => { for (let i = 0; i < n; i++) frame(performance.now(), 1 / 30); return cellOf(me).join(',') + ' ' + (scene ? scene.title : 'village'); },
-  HOME, MY, homeCard, upCard,
+  HOME, MY, homeCard, upCard, homeSim,
   PLOTS, F, FARMER, BAG, CHEST, count, act, useItem, botThink, orderNow, orderCard, shopCard, bagCard, chestCard, visit, talkTo, save, hud, get card() { return card; },
   me, NPCS, LOTS, ROOMS, ROOM, BUILDINGS, setHour, npcCard, friendsCard, lotCard, give, go, travel, enter, cellOf, sceneOf, get scene() { return scene; } };
 })().catch(e => { document.body.insertAdjacentHTML('beforeend', `<pre style="position:absolute;top:120px;left:12px;background:#fff;padding:8px;white-space:pre-wrap;z-index:9">${e && e.stack || e}</pre>`); console.error(e); });

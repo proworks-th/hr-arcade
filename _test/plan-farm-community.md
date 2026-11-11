@@ -96,6 +96,16 @@ In `_test/village-cozy-big.html` (south of the village, or open with `?farm=1`; 
   - Should it also need farm crops as materials?
   - Should the condo room move into the starter house, as decided earlier?
 
+## Prototype update: every house garden farms the same way (11 Nov)
+
+- **Every garden plot by a house is now a real plot with the community-farm rules.** That's 98 plots across the village, 10 of them by your house.
+  - It's already loosened and belongs to the house owner, so it needs no claiming and doesn't count towards the 6 community-farm claims.
+  - Only the owner plants and harvests. Anyone can help water (+3 🪙 +1 น้ำใจ, max 3 waters per crop, 20 helps a day).
+  - Tapping a neighbour's ripe crop says only the owner can pick it.
+- **Neighbours tend their own gardens:** they harvest ripe crops a few minutes after they ripen and replant 1–4 minutes later. Walking neighbours only help water plots within about 14 tiles, so they stay near the farm.
+- **Your garden starts with:** ripe chilli, young bok choy and tomato, a lettuce and a carrot that still need water, and 5 empty beds.
+- **To decide:** should the big house's garden grow to 14 plots (it stays at 10 for now)?
+
 ## The 5 questions — my take
 
 ### 1. Main goal: farming community + helping friends — **yes**
