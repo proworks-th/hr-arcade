@@ -90,6 +90,7 @@ html,body{margin:0;height:100%;overflow:hidden;background:#1b1422;font-family:Ka
 <button class="btn" id="exit" type="button">🚪 ออกไปข้างนอก</button>
 <div class="side">
   <button class="btn" id="friends" type="button" aria-label="เพื่อนบ้าน">💗<span class="lbl"> เพื่อนบ้าน</span></button>
+  <button class="btn" id="gohome" type="button" aria-label="กลับบ้าน">🏠<span class="lbl"> บ้านฉัน</span></button>
   <button class="btn" id="gofarm" type="button" aria-label="ไร่ชุมชน">🌾<span class="lbl"> ไร่ชุมชน</span></button>
   <button class="btn" id="zin" type="button" aria-label="ซูมเข้า">＋</button>
   <button class="btn" id="zout" type="button" aria-label="ซูมออก">－</button>
@@ -932,6 +933,7 @@ addEventListener('keydown', e => { const k = KEYS[e.key.toLowerCase()]; if (k) {
   if ((e.key === ' ' || q === 'e') && atFarm()) { const p = frontPlot(); if (p) { e.preventDefault(); useItem(p); } } });
 addEventListener('keyup', e => { const k = KEYS[e.key.toLowerCase()]; if (k) held.delete(k); });
 document.getElementById('friends').onclick = friendsCard;
+document.getElementById('gohome').onclick = () => { if (scene === MY.room) return toast('🏠 อยู่บ้านแล้ว'); visit([MY.x + 2, MY.y + 3], () => lotCard(MY), 3); };
 document.getElementById('gofarm').onclick = () => { closeCard(); travel(me, [28, 36]); };
 
 /* ============ start ============ */
