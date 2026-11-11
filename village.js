@@ -192,7 +192,8 @@ const Village = (() => {
     if ((L.g | 0) < g) setGarden(g); }
   function openGarden(L) { if (L.k !== myKey()) window.farmVisit = L.k; if (typeof startGame === 'function') startGame('farm'); }
   const srvNow = () => Date.now() + offset;
-  const myLot = () => LOTS.find(L => L.stage && L.k && L.k === myKey());
+  const myLots = () => LOTS.filter(L => L.stage && L.k && L.k === myKey());
+  const myLot = () => myLots().sort((a, b) => b.mv - a.mv)[0];   // after a move the newest (mv) is home, even before the old lot is freed
   const building = L => L.stage >= 2 && L.end > srvNow();
   const movedIn = L => L.stage > 2 || (L.stage === 2 && !building(L));   // the starter house is built
   const pctOf = L => { const h = STAGES[L.stage - 1][5]; return !h || !building(L) ? 1 : Math.max(0, Math.min(1, 1 - (L.end - srvNow()) / (h * HOUR()))); };
@@ -265,8 +266,9 @@ const Village = (() => {
   }
   // rooms/_vil/lots -> houses on the map (repaint only when something changed)
   function applyLots(v) {
-    const sig = JSON.stringify(v || {}); if (sig === lotsSig) return; lotsSig = sig;
-    for (const L of LOTS) { const d = (v || {})[L.id] || {}; Object.assign(L, { stage: Math.max(0, Math.min(5, d.stage | 0)), k: d.k || '', n: d.n || '', who: d.who || '', g: d.g | 0, h: d.h | 0, end: +d.end || 0, hp: d.hp || null, pet: d.pet && d.pet.c ? d.pet : null, rc: d.rc || '', wc: d.wc || '', xs: typeof d.xs === 'string' ? d.xs.slice(0, 8) : '', cz: d.cz | 0 }); }
+    const sig = JSON.stringify(v || {}); if (sig === lotsSig) return; lotsSig = sig; lotRaw = v || {};
+    for (const L of LOTS) { const d = (v || {})[L.id] || {}; Object.assign(L, { stage: Math.max(0, Math.min(5, d.stage | 0)), k: d.k || '', n: d.n || '', who: d.who || '', g: d.g | 0, h: d.h | 0, end: +d.end || 0, hp: d.hp || null, pet: d.pet && d.pet.c ? d.pet : null, rc: d.rc || '', wc: d.wc || '', xs: typeof d.xs === 'string' ? d.xs.slice(0, 8) : '', cz: d.cz | 0, mv: +d.mv || 0 }); }
+    healMove();
     if (W) relotW(); else if (base) { rebuild(); if (loaded >= 2) paintWorld(); }
     syncHome(); renderCard(); renderBar();
   }
@@ -528,9 +530,46 @@ const Village = (() => {
     toast(`🔨 ช่วย${L.n}สร้างบ้าน −${HELP_H} ชม. · +${HELP_PAY} 🪙`); renderCard();
   }
 
+  /* ---------- moving house (11 Nov 2026): tap an empty 🪧 lot → "ย้ายบ้านมาที่นี่" shows what moves (preview), a second tap moves it.
+     The whole lot record moves (stage, colours, extras, garden size, pet); the old lot becomes free. First move free, then MOVE_FEE,
+     at most once every 7 days (prog.vil.mvN / mvT). Two writes: claim the new lot (only if still empty), then free the old one;
+     if the second write fails, healMove() frees the older lot on the next lots update (the newer one has the bigger mv). ---------- */
+  const MOVE_FEE = 5000, MOVE_GAP = 7 * 864e5;
+  let moveArm = 0, moving = false, lotRaw = {}, healing = '';
+  function moveInfo() { const v = Prog.get().vil || {}, n = v.mvN | 0; return { n, fee: n ? MOVE_FEE : 0, wait: n ? Math.max(0, (+v.mvT || 0) + MOVE_GAP - Date.now()) : 0 }; }
+  function moveBox(mL, L) {
+    const m = moveInfo(), coins = Prog.get().coins | 0, arm = moveArm === L.id, poor = coins < m.fee;
+    if (building(mL)) return `<p class="muted">🚚 ย้ายบ้านมาที่นี่ได้เมื่อสร้างขั้นนี้เสร็จ</p>`;
+    if (m.wait) return `<p class="muted">🚚 ย้ายบ้านได้สัปดาห์ละครั้ง · อีก ${Math.ceil(m.wait / 864e5)} วัน</p>`;
+    return (arm ? `<p>🚚 ย้ายบ้านจากแปลง ${mL.id} มาแปลง ${L.id}<br><small class="muted">ย้ายไปด้วย: ${STAGE_TH[mL.stage]} · สีและของแต่ง · สวน ${gSize(mL)} แปลงกับผักที่ปลูกอยู่${mL.pet ? ' · น้องแมว' : ''}<br>แปลง ${mL.id} จะว่างให้คนอื่นจองได้</small></p>` : '')
+      + `<button class="btn${arm ? ' primary' : ''}" type="button" data-a="move"${poor || busy ? ' disabled' : ''}>🚚 ${arm ? 'ยืนยันย้ายบ้าน' : 'ย้ายบ้านมาที่นี่'} · ${m.fee ? `🪙 ${fmtN(m.fee)}` : 'ครั้งแรกฟรี'}</button>`
+      + (poor ? `<p class="vil-need">ขาดอีก 🪙 ${fmtN(m.fee - coins)}</p>` : `<p class="muted">ย้ายได้สัปดาห์ละครั้ง${m.n ? '' : ' · ครั้งต่อไป 🪙 ' + fmtN(MOVE_FEE)}</p>`);
+  }
+  async function moveHouse(L) {
+    const mk = myKey(), old = myLot(), m = moveInfo(), rec = old && lotRaw[old.id];
+    if (!old || !rec || rec.k !== mk || L.stage || building(old) || m.wait || (Prog.get().coins | 0) < m.fee || !O || busy) { moveArm = 0; return renderCard(); }
+    if (moveArm !== L.id) { moveArm = L.id; return renderCard(); }             // first tap: the preview
+    moveArm = 0; moving = true;
+    try {
+      const ok = await tx(L, cur => cur && cur.k ? undefined : { ...rec, end: 0, hp: null, mv: srvNow() });
+      if (!ok) { toast('😅 แปลงนี้มีคนจองไปแล้ว ลองแปลงอื่นนะ'); return renderCard(); }
+      const p = Prog.get(); p.coins -= m.fee; p.vil = p.vil || {}; p.vil.lot = L.id; p.vil.mvN = m.n + 1; p.vil.mvT = Date.now(); Prog.put(p);
+      if (m.fee && typeof Stats !== 'undefined') Stats.econ('out_hmove', m.fee);
+      try { await O.txLot(old.id, cur => cur && cur.k === mk ? null : undefined); } catch (e) { /* healMove frees it later */ }
+      toast(`🚚 ย้ายบ้านมาแปลง ${L.id} แล้ว!${m.fee ? ` −${fmtN(m.fee)} 🪙` : ' (ครั้งแรกฟรี)'}`); feed(`🚚 ${myName()} ย้ายบ้านไปแปลง ${L.id} ใน${L.lane}`);
+    } finally { moving = false; }
+    renderBar(); openCard(L);
+  }
+  // two lots with my name (a move whose second write failed): free the older one, never one with the same mv
+  function healMove() {
+    const mine = myLots(); if (mine.length < 2 || !O || moving) return; const keep = myLot(), mk = myKey(), sig = mine.map(L => L.id).join();
+    if (healing === sig) return; healing = sig;
+    for (const L of mine) if (L !== keep && L.mv < keep.mv) O.txLot(L.id, cur => cur && cur.k === mk && (+cur.mv || 0) < keep.mv ? null : undefined).catch(() => {});
+  }
+
   /* ---------- lot card ---------- */
   const leftTxt = ms => { const m = Math.max(1, Math.ceil(ms / 60000)), h = Math.floor(m / 60); return h ? `${h} ชม. ${m % 60} นาที` : `${m} นาที`; };
-  function openCard(L) { if (W) W.closeCard(); cardL = L; renderCard(); }
+  function openCard(L) { if (W) W.closeCard(); if (cardL !== L) moveArm = 0; cardL = L; renderCard(); }
   function closeCard() { cardL = null; if (cardEl) cardEl.hidden = true; }
   function renderCard() {
     if (!cardEl) return; if (!cardL) { cardEl.hidden = true; return; }
@@ -543,7 +582,7 @@ const Village = (() => {
     if (!L.stage) {
       const lk = lock(), s = STAGES[0], miss = missing(s);
       h += `<h4>🪧 แปลง ${L.id} · ${L.lane}</h4><p class="muted">ที่ดินว่าง · จองแล้วฟาร์มย้ายมาข้างที่ดินทันที · บ้านหลังแรกย้ายเข้าได้เลย · ครบ 5 ขั้น 🪙 50,000 + 🧱 60 + 🥬 30</p>`;
-      if (mL) h += `<p>คุณมีบ้านที่แปลง ${mL.id} แล้ว (1 คน 1 หลัง)</p>`;
+      if (mL) h += `<p>คุณมีบ้านที่แปลง ${mL.id} แล้ว (1 คน 1 หลัง)</p>` + moveBox(mL, L);
       else if (!lk.ok) h += `<p>🔒 จองได้เมื่อมีห้อง ${UNLOCK_W} + Lv ${UNLOCK_LV}<br>ตอนนี้ ห้อง ${lk.w}/${UNLOCK_W} ${lk.w >= UNLOCK_W ? '✓' : ''} · Lv ${lk.lv}/${UNLOCK_LV} ${lk.lv >= UNLOCK_LV ? '✓' : ''}</p>`;
       else h += `<button class="btn primary" type="button" data-a="reserve"${miss.length || busy ? ' disabled' : ''}>🪧 จองที่ดินนี้ · ${costTxt(s)}</button>${miss.length ? `<p class="vil-need">ขาดอีก ${miss.join(' · ')}</p>` : ''}`;
     } else {
@@ -560,6 +599,7 @@ const Village = (() => {
         else if (s) { const miss = missing(s); h += `<button class="btn primary" type="button" data-a="next"${miss.length || busy ? ' disabled' : ''}>${s[0]} เริ่ม${s[1]} · ${costTxt(s)}</button>${miss.length ? `<p class="vil-need">ขาดอีก ${miss.join(' · ')}${s[3] && have().bricks < s[3] ? '<br>🧱 เล่นมินิเกมไหนก็ได้ ได้อิฐเกมละ 1–3 ก้อน (วันละ 12) + เก็บบนถนนวันละ 3' : ''}${s[4] ? ' · ผักได้จากฟาร์ม' : ''}</p>` : ''}`; }
         h += `<p>🌱 ฟาร์มของคุณ ${Math.max(gSize(L), Farm.home ? Farm.home() : 0)} แปลง อยู่ข้างบ้านแล้ว</p><button class="btn${s && !building(L) ? '' : ' primary'}" type="button" data-a="garden">🌱 ไปที่สวน</button>`;
         if (movedIn(L)) h += decorBox(L);
+        if (!building(L)) h += `<button class="btn" type="button" data-a="movehint"${busy ? ' disabled' : ''}>🚚 ย้ายบ้าน${moveInfo().n ? '' : ' · ครั้งแรกฟรี'}</button>`;
       } else if (movedIn(L) && !building(L)) {
         const fr = farms[L.k], gp = (fr && fr.plots || []).filter(x => x && x.c).length;
         const jl = jobsFor(L); if (jl.length) h += `<p class="muted">📦 รอของจากคุณ</p>${jl.map(J => jobRow(J, true)).join('')}`;
@@ -582,6 +622,8 @@ const Village = (() => {
       act(J.to.L || NPCC[J.to.npc]); return; }
     const L = cardL; if (!L) return;
     if (a === 'enter') { closeCard(); if (W) W.enterLot(L.id); return; }
+    if (a === 'movehint') { closeCard(); return toast('🚚 แตะป้าย 🪧 ที่ดินว่างที่อยากย้ายไป แล้วกด "ย้ายบ้านมาที่นี่"'); }
+    if (a === 'move') return moveHouse(L);
     if (a === 'reserve') reserve(L); else if (a === 'next') next(L); else if (a === 'help') help(L); else if (a === 'garden') openGarden(L);
   }
 
@@ -841,6 +883,6 @@ const Village = (() => {
     mount(slot) { if (!slot) return; if (!on()) { slot.remove(); return; } if (!el) build(); slot.replaceWith(el); renderBar(); },
     show() { if (!el) return; start(); renderBar(); requestAnimationFrame(() => { resize(); if (world) cam = camTarget(); send(true); }); },
     setGarden, needs,
-    _dbg: { me, LOTS, others, pm, adopt, feedPet, dyePet, renamePet, myPet, get farms() { return farms; }, syncHome, gCell, get hits() { return hits; }, get ready() { return !!(world || W); }, get W() { return W; }, act, lock, goTo, fast: false, floorSpots, reserve, jobs, jobsDone, deliver, haveCrop, NPCS, BOARDC, next, help, myLot, get busy() { return busy; }, decorate, movedIn, get held() { return W ? W.held : held; }, gSize, tinted, roofOf, wallOf },
+    _dbg: { me, LOTS, others, pm, adopt, feedPet, dyePet, renamePet, myPet, moveHouse, moveInfo, get farms() { return farms; }, syncHome, gCell, get hits() { return hits; }, get ready() { return !!(world || W); }, get W() { return W; }, act, lock, goTo, fast: false, floorSpots, reserve, jobs, jobsDone, deliver, haveCrop, NPCS, BOARDC, next, help, myLot, get busy() { return busy; }, decorate, movedIn, get held() { return W ? W.held : held; }, gSize, tinted, roofOf, wallOf },
   };
 })();

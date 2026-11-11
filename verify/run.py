@@ -431,6 +431,40 @@ def village(page, base, shot):
         raise AssertionError('deliveries wrong: ' + json.dumps(d, ensure_ascii=False))
     page.wait_for_timeout(800)
     shot('village-board')
+    # moving house (11 Nov 2026): tap an empty lot → preview, second tap moves the whole lot record; first move free,
+    # then 5,000 and once a week; a leftover old lot (failed second write) is freed by the newer one
+    page.evaluate("document.querySelector('.vil-card [data-a=close]')?.click()")
+    mv = page.evaluate('''async () => { const D = Village._dbg, M = await import('/verify/mocks/firebase-database.js'), w = ms => new Promise(r => setTimeout(r, ms)), out = {};
+      const L = id => D.LOTS.find(l => l.id === id), db = async id => (await M.get(M.ref(null, 'rooms/_vil/lots/' + id))).val(), q = s => document.querySelector('.vil-card ' + s);
+      const until = async f => { for (let i = 0; i < 60 && !(await f()); i++) await w(50); };
+      const p0 = Prog.get(); p0.coins = 20000; p0.vil.mvN = 0; delete p0.vil.mvT; Prog.put(p0);
+      await M.set(M.ref(null, 'rooms/_vil/lots/3'), { ...(await db(3)), rc: 'teal', wc: 'white', xs: 'o', cz: 1 }); await until(() => L(3).rc === 'teal');
+      D.act(L(3)); await w(100); out.hint = !!q('[data-a=movehint]') && q('[data-a=movehint]').textContent.includes('ฟรี');
+      D.act(L(2)); await w(100); out.first = q('[data-a=move]').textContent;
+      q('[data-a=move]').click(); await w(100); out.preview = [q('[data-a=move]').textContent.includes('ยืนยัน'), (q('p small') || {}).textContent || '', await db(2), Prog.get().coins];
+      q('[data-a=move]').click(); await until(async () => !(await db(3)));
+      const n2 = await db(2); out.moved = [n2 && n2.k, n2 && n2.stage, n2 && n2.g, n2 && n2.rc, n2 && n2.xs, await db(3), Prog.get().coins, Prog.get().vil.lot, Prog.get().vil.mvN, D.myLot().id];
+      D.act(L(4)); await w(100); out.week = [!!q('[data-a=move]'), document.querySelector('.vil-card').textContent];
+      const p1 = Prog.get(); p1.vil.mvT = Date.now() - 8 * 864e5; Prog.put(p1);
+      D.act(L(6)); D.act(L(4)); await w(100); out.fee = q('[data-a=move]').textContent; q('[data-a=move]').click(); await w(50); q('[data-a=move]').click();
+      await until(async () => !(await db(2)));
+      out.second = [(await db(4) || {}).k, await db(2), 20000 - Prog.get().coins, D.myLot().id];
+      await M.set(M.ref(null, 'rooms/_vil/lots/2'), { ...(await db(4)), mv: 1 }); await until(async () => !(await db(2)));
+      out.heal = [await db(2), (await db(4) || {}).k];
+      out.taken = (await M.set(M.ref(null, 'rooms/_vil/lots/6'), { k: 'คนอื่น', n: 'คนอื่น', stage: 1 }), await w(50), await D.moveHouse(L(6)), [(await db(6)).k, Prog.get().vil.lot]);
+      D.act(L(7)); await w(50); return out; }''')
+    want = {'hint': True, 'moved': ['ทดสอบ', 5, 18, 'teal', 'o', None, 20000, 2, 1, 2], 'second': ['ทดสอบ', None, 5000, 4],
+            'heal': [None, 'ทดสอบ'], 'taken': ['คนอื่น', 4]}
+    bad = {k: [mv.get(k), v] for k, v in want.items() if mv.get(k) != v}
+    if 'ครั้งแรกฟรี' not in mv['first'] or not mv['preview'][0] or 'สวน 18' not in mv['preview'][1] or mv['preview'][2] or mv['preview'][3] != 20000             or mv['week'][0] or 'สัปดาห์ละครั้ง' not in mv['week'][1] or '5,000' not in mv['fee']:
+        bad['card'] = [mv.get('first'), mv.get('preview'), mv.get('week'), mv.get('fee')]
+    if bad:
+        raise AssertionError('moving house wrong: ' + json.dumps(bad, ensure_ascii=False))
+    page.evaluate("(() => { const p = Prog.get(); p.vil.mvT = Date.now() - 8 * 864e5; Prog.put(p); const D = Village._dbg; D.act(D.LOTS.find(l => l.id === 5)); })()")  # the preview, for the screenshot
+    page.wait_for_timeout(300)
+    page.evaluate("document.querySelector('.vil-card [data-a=move]')?.click()")
+    page.wait_for_timeout(800)
+    shot('village-move')
     # community farm online (11 Nov 2026): two tabs, one shared farm. Plant shows up for the other player, they water it,
     # anyone may pick a ripe crop, the plot stays tilled (no resets), a taken plot can't be planted twice, the order bar is shared
     page.wait_for_function('Village._dbg.W && Village._dbg.W.LIVE', timeout=8000)
