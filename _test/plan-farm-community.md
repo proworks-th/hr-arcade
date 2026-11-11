@@ -197,3 +197,7 @@ D. Yard planner → E. Community farm (claimed plots) + board orders + village l
 - A small flag shows who planted the current crop. Harvesting someone else's crop gives them +1 น้ำใจ (thank-you).
 - Neighbours wait ~3 minutes after a crop ripens before picking it, so the planter gets first chance.
 - Old saves: community plots owned by a name become village plots planted by that name.
+
+## Plot look: joined field (11 Nov 2026)
+- Tilled plots open their edge toward tilled neighbours, so a row reads as one raised field strip (lip on top, shadow below);
+  a dotted seam marks each plot for tapping. Watered = darker soil. Same look for house gardens.

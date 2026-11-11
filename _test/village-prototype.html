@@ -765,9 +765,24 @@ const leftOf = p => mmss(growMs(p) - (Date.now() - p.t));
 const cropTime = id => { const m = CROPS[id][1]; return m >= 60 ? `${m / 60} ชม.` : `${m} นาที`; };
 const stageOf = k => k < .25 ? 'seed' : k < .6 ? 'sprout' : 'grow';
 const waterN = p => (p.w ? 1 : 0) + p.fw.length;
+// joined field: a tilled plot opens its edge toward a tilled neighbour, so a row of plots reads as one field;
+// a dotted seam still marks each plot so you can see where to tap. Watered plots are darker.
+let PLOT_AT = null;
+const plotAt = (x, y) => (PLOT_AT ??= new Map(PLOTS.map(q => [q.x + ',' + q.y, q]))).get(x + ',' + y);
+function drawSoil(g, p, X, Y) { const til = q => !!(q && q.o), wet = p.c && waterN(p);
+  const L = til(plotAt(p.x - 1, p.y)), R = til(plotAt(p.x + 1, p.y)), U = til(plotAt(p.x, p.y - 1)), D = til(plotAt(p.x, p.y + 1));
+  const a = (j, o) => j ? 0 : o, x0 = a(L, 1), x1 = 16 - a(R, 1), y0 = a(U, 1), y1 = 16 - a(D, 1), ix0 = a(L, 2), ix1 = 16 - a(R, 2), iy0 = a(U, 2), iy1 = 16 - a(D, 2);
+  g.fillStyle = O; g.fillRect(X + x0, Y + y0, x1 - x0, y1 - y0);
+  g.fillStyle = wet ? '#4e2f1b' : '#7a4a2c'; g.fillRect(X + ix0, Y + iy0, ix1 - ix0, iy1 - iy0);
+  for (const fy of [5, 9, 13]) if (fy - 1 >= iy0 && fy < iy1) { g.fillStyle = wet ? '#61402a' : '#94603a'; g.fillRect(X + ix0, Y + fy - 1, ix1 - ix0, 1); g.fillStyle = wet ? '#3a2213' : '#5e3720'; g.fillRect(X + ix0, Y + fy, ix1 - ix0, 1); }
+  if (!U) { g.fillStyle = wet ? '#6b4630' : '#a8744a'; g.fillRect(X + ix0, Y + iy0, ix1 - ix0, 1); }   // raised lip
+  if (!D) { g.fillStyle = '#00000040'; g.fillRect(X + x0, Y + y1, x1 - x0, 1); }                       // shadow under the bed
+  if (wet) { g.fillStyle = '#8fd0ff88'; g.fillRect(X + 4, Y + iy0 + 2, 2, 1); }
+  g.fillStyle = '#3e2414'; if (L) for (let y = iy0 + 1; y < iy1; y += 2) g.fillRect(X, Y + y, 1, 1);
+  if (U) for (let x = ix0 + 1; x < ix1; x += 3) g.fillRect(X + x, Y, 1, 1); }
 function drawPlot(g, p, t) { const X = p.x * T, Y = p.y * T;
   if (!p.o) { g.drawImage(WEEDY, X, Y); return; }
-  g.drawImage(p.c && waterN(p) ? SOIL_W : SOIL, X, Y);
+  drawSoil(g, p, X, Y);
   if (!p.home && p.c && FARMER[p.by]) { g.fillStyle = O; g.fillRect(X + 1, Y - 3, 1, 8); g.fillRect(X + 2, Y - 4, 5, 5); g.fillStyle = FARMER[p.by].col; g.fillRect(X + 2, Y - 3, 4, 3); }
   if (p.c) { const k = cropPct(p), art = k >= 1 ? cropArt(p.c) : pxa(STAGE_ART[stageOf(k)]), bob = k >= 1 ? Math.round(Math.sin(t * 3 + p.x)) : 0;
     g.drawImage(art, X + 8 - (art.width >> 1), Y + 14 - art.height + bob);
