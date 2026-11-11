@@ -10,6 +10,9 @@
 - **Safe switch.** Everything ships behind `?cozy=1` first. The live look changes only when you say so.
 - **Order tonight:** A new look → B villager friendship → C Loy Krathong festival. A must finish; B and C if time allows.
 - **Commit locally only, no push** (HR Arcade rule).
+- **Preview before buy (rule, 11 Nov 2026):** everything purchasable — lots, paint, decor, furniture, clothes, festival
+  shop, seeds — shows a preview first (on the house / in the room / on the avatar, with price). Only a second, separate
+  "ซื้อ" click spends coins; ยกเลิก always available. One stray tap never spends coins.
 
 ## A. New look (must finish)
 | What | How |
