@@ -169,6 +169,10 @@ def farm(page, base, shot):
 # what was held, NPC vendors fill on placing and fill resting orders later (even ones placed before you came back)
 MARKET_TEST = """async () => {
   const w = ms => new Promise(r => setTimeout(r, ms)), M = await import('/verify/mocks/firebase-database.js'), F = __farm, now = Date.now(), P = mktPer(now);
+  // coins earned also count for the shared office; if that crosses an office level, everyone gets a +20 gift (hubroom.js),
+  // which would land inside the coin checks below. Pause office points while the market is tested.
+  const office = Prog.office; Prog.office = () => {};
+  try {
   const set = (k, v) => M.set(M.ref(null, k), v), val = async k => (await M.get(M.ref(null, k))).val();
   // no vendors for wat / tom so the player orders below are the only ones
   const bt = {}; for (const id of ['wat', 'tom', 'car']) for (let q = P - 13; q <= P; q++) for (const o of npcSlots(id, q)) bt[o.id] = o.q;
@@ -205,7 +209,7 @@ MARKET_TEST = """async () => {
     await F.mktHouse(); await w(50); out.late = [await val('rooms/_mkt/o/x4'), Prog.get().coins - c0 === v.p]; }
   // leave one resting order and a bot order for the screenshots
   await set('rooms/_mkt/o/x5', { s: 'b', c: 'wat', q: 3, l: 3, p: mw - 2, k: 'ทดสอบ', n: 'ทดสอบ', d: 12, t: now - 3e5 });
-  return out; }"""
+  return out; } finally { Prog.office = office; } }"""
 
 
 def market(page, shot):
