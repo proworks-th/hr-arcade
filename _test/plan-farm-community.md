@@ -201,3 +201,23 @@ D. Yard planner → E. Community farm (claimed plots) + board orders + village l
 ## Plot look: joined field (11 Nov 2026)
 - Tilled plots open their edge toward tilled neighbours, so a row reads as one raised field strip (lip on top, shadow below);
   a dotted seam marks each plot for tapping. Watered = darker soil. Same look for house gardens.
+
+## Round 5 — rides, keys, house menu, stepped garden (11 Nov 2026)
+
+- **Rides (🚲 button or R key):** bike 400 🪙 (×1.6 speed), scooter 1,200 🪙 (×2.3).
+  - Clicking a ride shows a preview; buying needs a second click. Once owned, you can switch with "ใช้" or R.
+  - Rides work outdoors only; inside rooms you walk.
+  - Saved in `F.ride` / `F.rides`. The vehicle is pixel art drawn in code: a side view, flipped when facing left, plus a front view.
+- **Arrow keys / WASD:** keys always win over a click-walk.
+  - Movement is free pixel movement (72 px/s × ride speed) with a short ease-in, diagonals and wall sliding. A nudge lines you up with doorways.
+- **House click → choice menu** (no longer walks straight in).
+  - Your own house: enter / water garden / pick ripe crops / expand garden.
+  - A neighbour's house: visit / help water their garden (+3 🪙, +1 kindness per plot, daily cap) / walk through their garden.
+- **Stepped garden:** 10 → 12 → 14 → 16 plots for 750 / 1,200 / 1,800 🪙. The card previews the step track; buying needs a second click.
+  - `HOME.glv` holds the level; old saves with `garden:1` count as level 2.
+  - The 16th plot is the 6th column at (X+10, Y).
+- **Garden rank:** points = 2 per planted plot + 5 per crop type + 1 per watered plot + 6 per garden level.
+  - 🌱 below 28, 🌻 at 28, 🏆 at 55. 🏆 gives +1 on every home harvest.
+  - The rank shows on your lot tag and on the home card.
+- **Neighbours visit:** each bot think has a 10% chance to walk to your home garden and water a plot. You get a toast, and the plot grows 15% faster.
+- **Cars:** each car keeps to its own lane (W top, E bottom). There are now 4 cars. They are clipped to the road, so they never pop in on the grass, and they brake for people and for the car ahead.
