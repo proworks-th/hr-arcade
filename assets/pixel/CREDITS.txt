@@ -3,3 +3,4 @@
 elthen_cat.png - "2D Pixel Art Cat Sprites" by Elthen (Elthen's Pixel Art Shop)
   https://elthen.itch.io/2d-pixel-art-cat-sprites - free for commercial/non-commercial projects (per the itch.io page).
   Collar and party hat are drawn in code, not part of the pack.
+hra_dog.png - HR Arcade's own pet dog, drawn by _test/gen_dog_sheet.py (original art, same greys as the cat sheet so coats recolour it).

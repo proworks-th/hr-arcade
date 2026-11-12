@@ -64,7 +64,9 @@ const Village = (() => {
   const CATROW = { idle: [0, 4, 4], clean: [2, 4, 6], run: [4, 8, 14], sleep: [6, 4, 2.5], paw: [7, 6, 9], jump: [8, 7, 10], walk: [9, 8, 10] };   // row, frames, fps
   // 🐾 pet types: add a new animal here (sprite sheet + its 3 grey source tones) and every coat colour works for it automatically
   //   key = the sheet's [base, shade, outline] grey values the coats replace; rows = CATROW-style animation rows; collar = draw the cat collar/hat
-  const PET_TYPES = { cat: { n: 'แมว', nm: 'เหมียว', icon: c => c === 'black' ? '🐈‍⬛' : '🐱', src: 'assets/pixel/elthen_cat.png', cell: 32, rows: CATROW, key: [224, 181, 47], collar: true } };
+  const PET_TYPES = { cat: { n: 'แมว', nm: 'เหมียว', icon: c => c === 'black' ? '🐈‍⬛' : '🐱', src: 'assets/pixel/elthen_cat.png', cell: 32, rows: CATROW, key: [224, 181, 47], collar: { r: 19, l: 13, y: 20, ry: 21 } },
+    // our own dog (_test/gen_dog_sheet.py draws it in the cat's greys): rows idle · run · sleep · jump · sniff (plays as 'clean')
+    dog: { n: 'หมา', nm: 'ตูบ', icon: () => '🐶', src: 'assets/pixel/hra_dog.png', cell: 32, rows: { idle: [0, 4, 4], run: [1, 6, 12], sleep: [2, 4, 2.5], jump: [3, 4, 8], clean: [4, 4, 5] }, key: [224, 181, 47], collar: { r: 20, l: 12, y: 19, ry: 18 } } };
   const petTy = y => PET_TYPES[y] ? y : 'cat';
   const PETIMG = {}, coatCache = {}, PETC = { pet: 1 };      // PETC = the pet card
   const petImg = y => { y = petTy(y); let im = PETIMG[y]; if (!im) { im = PETIMG[y] = new Image(); if (started) im.src = PET_TYPES[y].src; } return im; };
@@ -128,7 +130,7 @@ const Village = (() => {
     ctx.save(); ctx.imageSmoothingEnabled = false;
     if (pt.face < 0) { ctx.translate(x + cw, 0); ctx.scale(-1, 1); ctx.drawImage(coatSheet(coat, ty), fr * Cn, row * Cn, Cn, Cn, 0, y, cw, cw); } else ctx.drawImage(coatSheet(coat, ty), fr * Cn, row * Cn, Cn, Cn, x, y, cw, cw);
     ctx.restore();
-    if (PT.collar && !asleep && a !== 'jump') { const hx = x + (pt.face > 0 ? 19 : 13) * s, hy = y + (a === 'run' || a === 'walk' ? 21 : 20) * s;   // collar; party hat with premium food
+    if (PT.collar && !asleep && a !== 'jump') { const K = PT.collar, hx = x + (pt.face > 0 ? K.r : K.l) * s, hy = y + (a === 'run' || a === 'walk' ? K.ry : K.y) * s;   // collar; party hat with premium food
       ctx.fillStyle = '#e63946'; ctx.fillRect(hx - (pt.face > 0 ? 3 : 0) * s, hy + 4 * s, 3 * s, 1 * s); ctx.fillStyle = '#ffd84d'; ctx.fillRect(hx - (pt.face > 0 ? 2 : -1) * s, hy + 5 * s, 1 * s, 1 * s);
       if (prem) { ctx.fillStyle = '#ff5c8a'; ctx.beginPath(); ctx.moveTo(hx - 2.5 * s, hy); ctx.lineTo(hx + 2.5 * s, hy); ctx.lineTo(hx, hy - 6 * s); ctx.fill(); ctx.fillStyle = '#fff'; ctx.fillRect(hx - 1.5 * s, hy - 3 * s, 3 * s, 1 * s); ctx.fillStyle = '#ffd84d'; ctx.fillRect(hx - s, hy - 7 * s, 2 * s, 2 * s); } }
     if (tag) { const top = y + 19 * s - (prem && !asleep ? 8 : 2) * s; tags.push([x + cw / 2, top, tag[0], { fs: 10, bg: tag[1], hit: tag[2] }]);
