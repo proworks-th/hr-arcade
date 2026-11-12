@@ -255,6 +255,8 @@ button.pk:hover{transform:translateY(-2px)}div.pk{cursor:default}.pk b{font-size
 @media (pointer:coarse),(hover:none){.seg button{min-height:44px}}
 .tower{margin-bottom:16px}.tower[hidden],#room[hidden],.village[hidden]{display:none}
 #hub.vil-on>:not(.me):not(.room-h):not(.village),#hub.vil-on .room-h>:not(.seg){display:none!important}#hub.vil-on .room-h{margin:0 0 8px}#hub.vil-on.vil-full>.me,#hub.vil-on.vil-full>.room-h{display:none!important}#hub.vil-on .me-coins{display:none}.vil-bar .vil-n{display:inline-block;min-width:22px;padding:0 5px;border-radius:9px;background:#ff6fa8;color:#fff;font-size:12px}.vil-bar [aria-pressed=true]{background:#ffd54a}@media (max-width:719px){#hub.vil-on .vil-card{position:fixed;left:0;right:0;bottom:0;top:auto;width:auto;max-height:72vh;border-radius:18px 18px 0 0;border-bottom:0;z-index:30;padding-top:20px;box-shadow:0 -6px 24px #0003}#hub.vil-on .vil-card::before{content:'';position:absolute;left:50%;top:7px;width:44px;height:5px;margin-left:-22px;border-radius:3px;background:#d8c8b0}}#hub.vil-on .me{flex-wrap:nowrap;padding:6px 10px;margin-bottom:8px}@media (max-width:520px){#hub.vil-on .me{gap:6px;padding:4px 8px}#hub.vil-on .me-ava{width:44px;height:44px}#hub.vil-on .me-main{flex:1 1 0}#hub.vil-on .me .xpbar{display:none}#hub.vil-on .me-lv{font-size:12px}#hub.vil-on .me-nav button{padding:4px 2px;font-size:18px}#hub.vil-on .vil-bar{flex-wrap:nowrap;overflow-x:auto;white-space:nowrap;scrollbar-width:none;margin-top:6px}#hub.vil-on .vil-bar>*{flex:none}#hub.vil-on .vil-bar small{display:none}#hub.vil-on .vil-bar .bl{display:none}#hub.vil-on .vil-bar .btn.sm{min-width:48px}}html:has(#hub.vil-on:not([hidden])),html:has(#hub.vil-on:not([hidden])) body{overflow:hidden;overscroll-behavior:none}#hub.vil-on .village{margin:0}.village{margin-bottom:16px}.vil-wrap{position:relative;height:min(62vh,560px);border:3px solid var(--line);border-radius:14px;box-shadow:0 6px 0 var(--line);background:#5a9b3a;overflow:hidden}
+/* phones: tighter profile bar + tabs, the map fills the rest of the screen (12 Nov 2026) */
+@media (max-width:719px){#hub.vil-on .me{padding:3px 8px;margin-bottom:6px;min-height:0}#hub.vil-on .room-h{margin:0 0 6px}#hub.vil-on .room-h .seg button{padding:4px 8px;font-size:13px}#hub.vil-on .vil-wrap{height:calc(100dvh - 258px);min-height:360px;max-height:none}#hub.vil-on.vil-full .vil-wrap{height:calc(100dvh - 120px)}}
 .vil-wrap canvas{display:block;width:100%;height:100%;image-rendering:pixelated;cursor:pointer;touch-action:manipulation}
 .vil-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px;font-size:13px}.vil-card{position:absolute;left:8px;top:8px;width:min(330px,calc(100% - 16px));max-height:calc(100% - 16px);overflow:auto;background:#fff;border:3px solid var(--line);border-radius:12px;box-shadow:0 4px 0 var(--line);padding:10px 12px;font-size:13.5px;z-index:2}
 .vil-wrap .vil-card{z-index:3}.vil-card[hidden]{display:none}.vil-card h4{margin:0 34px 2px 0;font-size:16px}.vil-card p{margin:6px 0}
@@ -594,11 +596,11 @@ button.pk:hover{transform:translateY(-2px)}div.pk{cursor:default}.pk b{font-size
 <script src="gacha.js?v=4"></script>
 <script src="hubroom.js?v=10"></script>
 <script src="tower.js?v=12"></script>
-<script src="village-world.js?v=7"></script>
-<script src="village.js?v=22"></script>
+<script src="village-world.js?v=9"></script>
+<script src="village.js?v=23"></script>
 <script src="farm.js?v=13"></script>
-<script src="cloud.js?v=10"></script>
-<script src="news.js?v=10"></script>
+<script src="cloud.js?v=11"></script>
+<script src="news.js?v=11"></script>
 <script>
 'use strict';
 /* ---------- utils ---------- */
@@ -645,7 +647,7 @@ $('#muteBtn').onclick=()=>{muted=!muted;store.set('muted',muted);renderMute()};
 
 /* ---------- online services (online.js, Firebase): ranking, presence, feed ---------- */
 let onlineMod=null;
-const loadRank=()=>onlineMod||(onlineMod=import('./online.js?v=30'));
+const loadRank=()=>onlineMod||(onlineMod=import('./online.js?v=31'));
 const loadOnline=loadRank;
 const PIX_AVAS=['p_office','p_woffice','p_whealth','p_tech','p_cat','p_dog'];
 const myAva=()=>{const a=store.get('partyAva','p_office');return PIX_AVAS.includes(a)?a:'p_office'};

@@ -314,6 +314,7 @@ export function stat(kind,id,aid,n=1){
   if(!FIREBASE_CONFIG)return;
   const D=db(),b=`rooms/_stat/${buckets().d}`,cl=x=>String(x||'').replace(/[.#$\[\]\/]/g,'_').slice(0,16),k=cl(id);
   if(kind==='u')return set(ref(D,`${b}/u/${k}`),1);
+  if(kind==='d')return set(ref(D,`${b}/d/${cl(aid)}`),k);              // device per browser per day: m = phone/tablet, c = computer
   if(kind==='w')return set(ref(D,`${b}/w/${cl(aid)}`),id);              // id = {l:level,c:coins,b:basket items}
   if(kind==='e')return runTransaction(ref(D,`${b}/e/${k}`),c=>(+c||0)+(+n||0)); // economy counter, n = amount
   if((kind==='s'||kind==='o')&&aid)set(ref(D,`${b}/p/${k}/${cl(aid)}`),1);

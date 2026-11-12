@@ -174,7 +174,7 @@ const Stats = {
     loadOnline().then(O => ks.forEach(k => O.stat('e', k, null, e[k]))).catch(() => {}); },
   // one balance per browser per day, for "how rich / what level are people" (no names)
   snap() { const p = Prog.get(), bag = (p.farm && p.farm.bag) || {}; Stats.hit('w', { l: p.lv | 0, c: Math.max(0, p.coins | 0), b: Object.values(bag).reduce((a, v) => a + (+v || 0), 0) }); },
-  boot() { Stats.hit('u', Stats.aid()); Stats.snap(); addEventListener('pagehide', Stats.flush); document.addEventListener('visibilitychange', () => { if (document.hidden) Stats.flush(); }); },
+  boot() { Stats.hit('u', Stats.aid()); Stats.hit('d', matchMedia('(pointer:coarse)').matches ? 'm' : 'c'); Stats.snap(); addEventListener('pagehide', Stats.flush); document.addEventListener('visibilitychange', () => { if (document.hidden) Stats.flush(); }); },
 };
 
 /* ---------- weekly office awards: several small categories so different people win; results flip every Monday ---------- */

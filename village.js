@@ -442,6 +442,7 @@ const Village = (() => {
     if (v.jd !== bkkDay()) { v.jd = bkkDay(); v.jp = []; } v.jp.push(j); Prog.put(p);
     Prog.give(J.pay, 10, 'delivery'); if (typeof Stats !== 'undefined') Stats.econ('delivery', 1);
     toast(`📦 ส่งให้${J.name}แล้ว +${fmtN(J.pay)} 🪙 ❤️`);
+    if (navigator.vibrate && matchMedia('(pointer:coarse)').matches) navigator.vibrate([15, 40, 15]);
     renderBar(); renderCard();
   }
   const jobRow = (J, here) => { const done = jobsDone().includes(J.j), n = haveCrop(J.c), ok = n >= J.q;
@@ -695,7 +696,8 @@ const Village = (() => {
     tags.push([px, py - (W ? 33 : 25 * S()), p.g !== 'village' ? `🎮 ${p.n || '?'} กำลังเล่น` : `🟢 ${p.n || '?'}${p.lv ? ` Lv${p.lv}` : ''}`, p.g !== 'village' ? { fs: 10, bg: '#fff3c4', line: '#c99a1a', hit: { person: p } } : { fs: 10, bg: '#e8ffe0', line: '#3a9b3a', hit: { person: p } }]);
   }
   function drawTags() {                           // lowest on screen last; nudge a tag up if it would cover one already drawn
-    const done = []; tags.sort((a, b) => a[1] - b[1]);
+    // the engine's DOM name tags (people) count as already drawn, so canvas pills step around them too
+    const done = W && W.tagRects && ctx === ovx ? W.tagRects().map(r => [r[0] * dpr, r[1] * dpr, r[2] * dpr]) : []; tags.sort((a, b) => a[1] - b[1]);
     for (const [x, y0, txt, o] of tags) { ctx.font = `600 ${o.fs * dpr}px Kanit, sans-serif`; const w = ctx.measureText(txt).width + 16 * dpr, h = (o.fs + 9) * dpr; let y = y0;
       for (let k = 0; k < 4; k++) { const hit = done.find(r => Math.abs(r[0] - x) < (r[2] + w) / 2 && Math.abs(r[1] - y) < h); if (!hit) break; y = hit[1] - h - 2 * dpr; }
       done.push([x, y, w]); pill(x, y, txt, o); }

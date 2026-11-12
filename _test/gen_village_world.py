@@ -373,6 +373,76 @@ cut("function homeSim() {", "function botThink(k) {")
 rep("  HOME, MY, homeCard, upCard, gardenCard, homeSim,\n", "  MY,\n")
 rep("BUILDINGS, CARS, lotCard, rideCard, gardenRank, runPlots,", "BUILDINGS, CARS, rideCard, runPlots,")
 rep("friendsCard, lotCard, give,", "friendsCard, give,")
+
+# ---------------- phone QoL (12 Nov 2026): ☰ side menu, compact chips, one big action button, stacked name tags, zoom memory, haptics ----------------
+css += ('#more{display:none}\n'
+        '@media (max-width:719px){#title{font-size:11px;padding:2px 8px;top:8px;left:8px;border-width:2px;border-radius:10px}'
+        '#farmhud{font-size:11px;padding:2px 8px;top:36px;left:8px;border-width:2px;border-radius:10px}#toast{top:66px}'
+        '.side{top:8px;right:8px;gap:6px}#more{display:block}.side:not(.open)>.btn:not(#more){display:none}.side.open .lbl{display:inline}}\n'
+        '@media (pointer:coarse){#zin,#zout{display:none}}\n'
+        '#act{position:absolute;right:10px;bottom:96px;z-index:4;display:none;width:66px;height:66px;border-radius:50%;padding:0;'
+        'background:#ffd54a;font-size:11px;line-height:1.1;white-space:normal;box-shadow:0 3px 0 var(--ink)}#act b{display:block;font-size:22px;line-height:1.1}\n')
+assert body.count('<div class="side">') == 1
+body = body.replace('<div class="side">', '<div class="side"><button class="btn" id="more" type="button" aria-label="เมนู">☰</button>', 1)
+body = body.replace('<canvas id="ov"></canvas>', '<canvas id="ov"></canvas><button class="btn" id="act" type="button"></button>', 1)
+assert 'id="act"' in body
+
+# the tap dispatch becomes useHit(hit) so the action button can reuse it
+_a = "  const [wx, wy] = worldAt(e), hit = pick(wx, wy);\n"
+_b = "  closeCard(); me.after = null; go(me, [Math.floor(wx / T), Math.floor(wy / T)]);\n"
+assert s.count(_a) == 1 and s.count(_b) == 1
+_i = s.index(_a) + len(_a); _j = s.index(_b, _i); _body = s[_i:_j]
+assert _body.count('  if (hit?.') >= 10, _body[:200]
+_fn = re.sub(r'return ([^;]+);', r'return (\1, true);', _body)
+s = s[:_i] + "  if (useHit(hit)) return;\n" + s[_j:]
+_k = s.index("cv.addEventListener('pointerdown', e => {", s.index('function pick('))
+s = s[:_k] + "function useHit(hit) {\n" + _fn + "  return false;\n}\n" + s[_k:]
+
+# name tags: me first, then the lowest on screen; a tag that would cover one already placed moves up
+rep("  for (const P of people) { const [sx, sy] = scr(P.px, P.py - 31); show(P.el, sx, sy, sceneOf(cellOf(P)) === scene); }",
+    """  { const L = []; TAGR = [];
+    for (const P of people) { const [sx, sy] = scr(P.px, P.py - 31); show(P.el, sx, sy, sceneOf(cellOf(P)) === scene); if (P.el.style.display !== 'none') L.push([P, sx, sy]); }
+    L.sort((a, b) => (b[0] === me) - (a[0] === me) || b[2] - a[2]);
+    for (const [P, sx, sy0] of L) { const el = P.el; if (el._wt !== el.textContent || !el._w) { el._wt = el.textContent; el._w = el.offsetWidth; el._h = el.offsetHeight; }
+      const w = el._w || 60, h = el._h || 20; let sy = sy0;
+      for (let k = 0; k < 6; k++) { const o = TAGR.find(r => Math.abs(r[0] - sx) < (r[2] + w) / 2 + 2 && sy - h < r[1] && r[1] - r[3] < sy); if (!o) break; sy = o[1] - o[3] - 2; }
+      if (sy !== sy0) el.style.top = sy + 'px'; TAGR.push([sx, sy, w, h]); } }""")
+rep("if (r.ok) say(me, EMO[tool], 900, true);", "if (r.ok) { say(me, EMO[tool], 900, true); if (TOUCH && navigator.vibrate) navigator.vibrate(12); }")
+
+MOBILE = r"""// ---- phone QoL: ☰ folds the side buttons, one big button does whatever is right next to you, zoom is remembered ----
+{ const side = SR.querySelector('.side'), more = SR.getElementById('more');
+  more.onclick = e => { e.stopPropagation(); side.classList.toggle('open'); };
+  side.addEventListener('click', e => { if (e.target.closest('.btn') && e.target.closest('.btn') !== more) side.classList.remove('open'); });
+  cv.addEventListener('pointerdown', () => side.classList.remove('open')); }
+try { const z = +localStorage.getItem('vilZoom'); if (!scene && z >= minSC() && z <= 5) { SC = z; resize(); } } catch (e) {}
+const actB = SR.getElementById('act');
+const ACT_TH = { npc: ['💬', 'คุย'], mach: ['🕹️', 'เล่น'], gacha: ['🎰', 'กาชา'], party: ['🎉', 'ปาร์ตี้'], arank: ['🏆', 'อันดับ'], plot: ['🌱', ''],
+  enter: ['🚪', 'เข้า'], shop: ['🛒', 'ร้าน'], orders: ['📋', 'ออเดอร์'], chest: ['📦', 'กล่อง'], board: ['📌', 'บอร์ด'], tower: ['🏢', 'ตึก'], lot: ['🏠', 'บ้าน'] };
+const ACT_ORDER = Object.keys(ACT_TH);
+function nearAct() {
+  const [cx, cy] = cellOf(me), [fx, fy] = { right: [1, 0], left: [-1, 0], up: [0, -1], down: [0, 1] }[me.dir] || [0, 1], here = sceneOf(cellOf(me));
+  const N = NPCS.find(N => sceneOf(cellOf(N.P)) === here && cdist(cellOf(N.P), [cx, cy]) <= 1); if (N) return { npc: N };
+  if (!scene) { const p = frontPlot(); if (p) return { plot: p }; }
+  let best = null, bs = 1e9;
+  for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+    const h = pick((cx + dx + .5) * T, (cy + dy + .5) * T); if (!h || h.plot || h.npc) continue;
+    const k = ACT_ORDER.findIndex(n => h[n]); if (k < 0) continue;
+    // the cell you face wins, then straight up (machines, doors and boards sit above where you stand), then the rest; type order breaks ties
+    const sc = (dx === fx && dy === fy ? 0 : dx === 0 && dy === -1 ? 1 : Math.abs(dx) + Math.abs(dy) + 1) * 100 + k; if (sc < bs) { bs = sc; best = h; } }
+  return best; }
+let actH = null, actSig = '', zSaved = SC;
+setInterval(() => {
+  if (!scene && SC !== zSaved) { zSaved = SC; try { localStorage.setItem('vilZoom', SC); } catch (e) {} }
+  const h = TOUCH && H.visible() && !me.path.length && card.style.display !== 'block' ? nearAct() : null; actH = h;
+  const k = h ? ACT_ORDER.find(n => h[n]) : ''; let [em, lb] = k ? ACT_TH[k] : ['', ''];
+  if (k === 'plot') { lb = (selEl.textContent || '').replace(/\s*\(.*$/, '').slice(0, 10) || 'ใช้'; }
+  const sig = k + lb; if (sig === actSig) return; actSig = sig;
+  actB.style.display = k ? 'block' : 'none'; actB.innerHTML = k ? `<b>${em}</b>${lb}` : ''; }, 200);
+actB.onclick = e => { e.stopPropagation(); if (actH) useHit(actH); };
+"""
+s = s.replace("@@API@@", MOBILE + "@@API@@")
+# hoisted so the frame loop (defined earlier) can fill it
+rep("const people = [];", "const people = [], TOUCH = matchMedia('(pointer:coarse)').matches; var TAGR = [];")
 # ---------------- start + API ----------------
 rep("window.__cb = { DAY_MS,", "if (window.__TEST__) window.__cb = { DAY_MS,")
 API = r"""// rebuild the static world when the live lots change (stage, colours, garden size); community plots and the room you stand in are kept
@@ -398,7 +468,7 @@ return { me, held, C, R,
   hasRoom: id => !!(LOTS.find(l => l.id === id) || {}).room,
   lotTop: id => { const L = LOTS.find(l => l.id === id); return !L ? 0 : hasHouse(L) && !(L.stage === 2 && L.building) ? (L.y + 3) * T - (isBig(L) ? 130 : 98) : (L.y + 1) * T - 4; },
   get SC() { return SC; }, NPCS, F, BAG, PLOTS: () => PLOTS, rideCard, friendsCard, hud,
-  get LIVE() { return LIVE && LIVEO; }, doAct, giveOrder };"""
+  get LIVE() { return LIVE && LIVEO; }, doAct, giveOrder, tagRects: () => TAGR };"""
 s = s.replace("@@API@@", API)
 
 out = "// GENERATED by _test/gen_village_world.py from _test/village-cozy-big.html — the live village engine (map, rooms, NPCs, rides, community farm).\n" \

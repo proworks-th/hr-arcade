@@ -30,7 +30,7 @@ td.w.in i{background:var(--ok)}td.w.out i{background:var(--blue)}
 <div id="out"><p class="muted">กำลังโหลด…</p></div>
 </main>
 <script type="module">
-import {stats} from './online.js?v=21';
+import {stats} from './online.js?v=22';
 const NAMES={spot:'จับผิดภาพ',run:'วิ่งไปตอกบัตร',whack:'สายด่วนถล่มโต๊ะ',stack:'ซ้อนแฟ้มเสียดฟ้า',tetris:'Printer Tetris',stamp:'ปั๊มตรารัวๆ',
   barista:'บาริสต้าพักเที่ยง',toss:'ปากระดาษลงถัง',slack:'แอบเล่นมือถือ',conga:'ขบวนไปกินข้าว',dance:'Office Audition',
   party:'ปาร์ตี้ออนไลน์',party3d:'ห้องรวม 3D',office:'ออฟฟิศของฉัน',farm:'ฟาร์มดาดฟ้า'};
@@ -40,18 +40,19 @@ const CROP={bok:'ผักบุ้ง',let:'ผักสลัด',car:'แค�
 const SRC={sell:'🧺 ขายผัก',canteen:'🍱 โรงอาหาร',help:'💧 รดน้ำให้เพื่อน',like:'👍 คนถูกใจห้อง',mission:'✅ ภารกิจรายวัน',streak:'🔥 ภารกิจครบวัน',
   party:'🎉 ปาร์ตี้',level:'⬆️ โบนัสเลื่อนขั้น',office:'🏢 ออฟฟิศเลเวลอัป',other:'อื่น ๆ'};
 const SINK={seed:'🌱 เมล็ดพันธุ์',sprinkler:'💦 สปริงเกอร์',gacha:'🎰 กาชา',wardrobe:'👕 ชุด/เครื่องประดับ',furniture:'🪑 ของแต่งห้อง',dye:'🎨 เปลี่ยนสี',fund:'💰 กองทุนออฟฟิศ'};
-const FEAT={room:'🚶 ห้องรวม',tower:'🏢 ตึกออฟฟิศ',chat:'💬 ส่งแชท',wardrobe:'👕 แต่งตัว',gacha:'🎰 กาชา',cloud:'☁️ หน้าเซฟ',boss:'🙈 ปุ่มหัวหน้ามา',season:'🏆 ภารกิจฤดูกาล',pass:'🎫 Season Pass'};
+const FEAT={room:'🎉 ห้องปาร์ตี้',tower:'🏢 ตึกออฟฟิศ',chat:'💬 ส่งแชท',wardrobe:'👕 แต่งตัว',gacha:'🎰 กาชา',cloud:'☁️ หน้าเซฟ',boss:'🙈 ปุ่มหัวหน้ามา',season:'🏆 ภารกิจฤดูกาล',pass:'🎫 Season Pass'};
 const fmt=n=>Math.round(+n||0).toLocaleString('th-TH'),out=document.getElementById('out'),esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const day=k=>new Date(+k.slice(0,4),+k.slice(4,6)-1,+k.slice(6,8)).toLocaleDateString('th-TH',{weekday:'short',day:'numeric',month:'short'});
 stats().then(all=>{
   const days=Object.keys(all).sort().slice(-14).reverse();
   if(!days.length){out.innerHTML='<p class="muted">ยังไม่มีข้อมูล — จะเริ่มนับตั้งแต่มีคนเปิดเว็บ</p>';return}
-  const sum=o=>Object.values(o||{}).reduce((a,b)=>a+(+b||0),0),users=new Set(),games={},gT={},starts={},opens={},ppl={},eco={},bal={};
+  const sum=o=>Object.values(o||{}).reduce((a,b)=>a+(+b||0),0),users=new Set(),games={},gT={},starts={},opens={},ppl={},eco={},bal={},dev={};
   days.forEach(d=>{const D=all[d];Object.keys(D.u||{}).forEach(u=>users.add(u));
     for(const [src,to] of [[D.g,games],[D.s,starts],[D.o,opens]])Object.entries(src||{}).forEach(([k,n])=>to[k]=(to[k]||0)+(+n||0));
     if(D.s)Object.entries(D.g||{}).forEach(([k,n])=>gT[k]=(gT[k]||0)+(+n||0)); // finishes on days that also counted starts
     Object.entries(D.e||{}).forEach(([k,n])=>eco[k]=(eco[k]||0)+(+n||0));
     Object.entries(D.w||{}).forEach(([a,v])=>{if(!bal[a]||d>bal[a].d)bal[a]={...v,d}});
+    Object.entries(D.d||{}).forEach(([a,v])=>{if(!dev[a]||d>dev[a].d)dev[a]={v,d}});
     Object.entries(D.p||{}).forEach(([k,ids])=>{ppl[k]=ppl[k]||new Set();Object.keys(ids||{}).forEach(i=>ppl[k].add(i))})});
   const plays=sum(games),farm=days.reduce((a,d)=>a+(+all[d].f||0),0),np=k=>ppl[k]?ppl[k].size:0;
   const since=Object.keys(all).sort().find(d=>all[d].s||all[d].o);
@@ -86,7 +87,7 @@ stats().then(all=>{
     <div class="cols"><div><h3>เหตุการณ์</h3><div class="box"><table>${kv(ev)}</table></div></div>
       <div><h3>เลเวลของผู้เล่น (ล่าสุดของแต่ละเบราว์เซอร์)</h3><div class="box"><table>${rows(lvB.filter(x=>x[1]),'out')}</table></div></div></div>`;
   out.innerHTML=`<div class="kpi"><div><b>${users.size}</b><span>คนที่เข้ามา (14 วัน)</span></div><div><b>${Object.keys(all[days[0]].u||{}).length}</b><span>คนเข้ามา${day(days[0])}</span></div>
-      <div><b>${plays}</b><span>รอบที่เล่นเกมจบ</span></div><div><b>${farm}</b><span>ครั้งที่เปิดฟาร์ม</span></div></div>
+      <div><b>${plays}</b><span>รอบที่เล่นเกมจบ</span></div><div><b>${farm}</b><span>ครั้งที่เปิดฟาร์ม</span></div>${Object.keys(dev).length?`<div><b>📱 ${Object.values(dev).filter(x=>x.v==='m').length} · 💻 ${Object.values(dev).filter(x=>x.v==='c').length}</b><span>มือถือ · คอม (เริ่มนับ 12 พ.ย.)</span></div>`:''}</div>
     <h2>แต่ละเกม</h2>
     <p class="muted">คน = จำนวนเบราว์เซอร์ที่เปิดเกมนั้น · จบ % ต่ำ = เปิดแล้วเลิกกลางทาง${since?` · นับคนกับการเปิดตั้งแต่${day(since)}`:' · ยังไม่มีข้อมูลการเปิด (เพิ่งเริ่มนับ)'}</p>
     <div class="box"><table><tr><th>เกม</th><th></th><th>คน</th><th>เปิด</th><th>เล่นจบ</th><th>จบ %</th></tr>${gRows||'<tr><td colspan="6" class="muted">ยังไม่มีใครเล่น</td></tr>'}</table></div>
