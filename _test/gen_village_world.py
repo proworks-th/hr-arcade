@@ -338,6 +338,21 @@ rep("const worldAt = e => [e.clientX / SC + view.ox, e.clientY / SC + view.oy];"
     "const worldAt = e => { const b = cv.getBoundingClientRect(); return [(e.clientX - b.left) / SC + view.ox, (e.clientY - b.top) / SC + view.oy]; };")
 rep("const SPEED = (m => m ? +m[1] : 1)(", "const SPEED = (m => m && window.__TEST__ ? +m[1] : 1)(")
 
+# ---------------- zoom with the mouse wheel / trackpad and two-finger pinch (12 Nov 2026), same steps as ＋ / － ----------------
+rep("SR.getElementById('zout').onclick = () => { SC = Math.max(minSC(), SC - 1); resize(); };",
+    """SR.getElementById('zout').onclick = () => { SC = Math.max(minSC(), SC - 1); resize(); };
+const zoomBy = d => { const n = d > 0 ? Math.min(5, SC + 1) : Math.max(minSC(), SC - 1); if (n !== SC) { SC = n; resize(); } };
+let wheelAcc = 0, wheelT = 0;
+cv.addEventListener('wheel', e => { e.preventDefault(); const now = performance.now(); if (now - wheelT > 250) wheelAcc = 0;
+  wheelAcc += e.deltaMode === 1 ? e.deltaY * 33 : e.deltaY; wheelT = now;
+  if (Math.abs(wheelAcc) >= 60) { zoomBy(wheelAcc < 0 ? 1 : -1); wheelAcc = 0; wheelT = now + 120; } }, { passive: false });
+const pinch = new Map(); let pinchD = 0;
+const pDist = () => { const [a, b] = [...pinch.values()]; return Math.hypot(a[0] - b[0], a[1] - b[1]); };
+cv.addEventListener('pointerdown', e => { if (e.pointerType !== 'touch') return; pinch.set(e.pointerId, [e.clientX, e.clientY]); if (pinch.size === 2) { pinchD = pDist(); me.path = []; me.after = null; } });
+cv.addEventListener('pointermove', e => { if (!pinch.has(e.pointerId)) return; pinch.set(e.pointerId, [e.clientX, e.clientY]); if (pinch.size !== 2 || !pinchD) return;
+  const r = pDist() / pinchD; if (r > 1.3 || r < .77) { zoomBy(r > 1 ? 1 : -1); pinchD = pDist(); } });
+for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) cv.addEventListener(ev, e => { pinch.delete(e.pointerId); if (pinch.size < 2) pinchD = 0; });""")
+
 # ---------------- input: live pills first, then the map; tower / board / lots go to the live game ----------------
 rep("  if (scene) return null;\n  for (const B of BUILDINGS)",
     "  if (scene && scene.mach) { const cx = Math.floor(wx / T), on = (c, r) => cx === c && wy >= r * T - 13 && wy < (r + 1) * T;\n"

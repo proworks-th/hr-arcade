@@ -547,6 +547,17 @@ function resize() { cv.width = Math.ceil(VW() / SC); cv.height = Math.ceil(VH() 
 resize(); new ResizeObserver(() => { SC = Math.max(SC, minSC()); resize(); }).observe(host);
 SR.getElementById('zin').onclick = () => { SC = Math.min(5, SC + 1); resize(); };
 SR.getElementById('zout').onclick = () => { SC = Math.max(minSC(), SC - 1); resize(); };
+const zoomBy = d => { const n = d > 0 ? Math.min(5, SC + 1) : Math.max(minSC(), SC - 1); if (n !== SC) { SC = n; resize(); } };
+let wheelAcc = 0, wheelT = 0;
+cv.addEventListener('wheel', e => { e.preventDefault(); const now = performance.now(); if (now - wheelT > 250) wheelAcc = 0;
+  wheelAcc += e.deltaMode === 1 ? e.deltaY * 33 : e.deltaY; wheelT = now;
+  if (Math.abs(wheelAcc) >= 60) { zoomBy(wheelAcc < 0 ? 1 : -1); wheelAcc = 0; wheelT = now + 120; } }, { passive: false });
+const pinch = new Map(); let pinchD = 0;
+const pDist = () => { const [a, b] = [...pinch.values()]; return Math.hypot(a[0] - b[0], a[1] - b[1]); };
+cv.addEventListener('pointerdown', e => { if (e.pointerType !== 'touch') return; pinch.set(e.pointerId, [e.clientX, e.clientY]); if (pinch.size === 2) { pinchD = pDist(); me.path = []; me.after = null; } });
+cv.addEventListener('pointermove', e => { if (!pinch.has(e.pointerId)) return; pinch.set(e.pointerId, [e.clientX, e.clientY]); if (pinch.size !== 2 || !pinchD) return;
+  const r = pDist() / pinchD; if (r > 1.3 || r < .77) { zoomBy(r > 1 ? 1 : -1); pinchD = pDist(); } });
+for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) cv.addEventListener(ev, e => { pinch.delete(e.pointerId); if (pinch.size < 2) pinchD = 0; });
 const cam = { x: me.px, y: me.py }, bubbles = [], held = new Set();
 // keyboard walking: free movement in pixels with a short ease-in, diagonal allowed, sliding along walls and a nudge
 // that lines you up with gaps (doors, between beds). Any key press cancels a click-walk at once — keys have priority.
