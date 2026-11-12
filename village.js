@@ -139,9 +139,16 @@ const Village = (() => {
     if (PT.collar && !asleep && a !== 'jump') { const K = PT.collar, hx = x + (pt.face > 0 ? K.r : K.l) * s, hy = y + (a === 'run' || a === 'walk' ? K.ry : K.y) * s;   // collar; party hat with premium food
       ctx.fillStyle = '#e63946'; ctx.fillRect(hx - (pt.face > 0 ? 3 : 0) * s, hy + 4 * s, 3 * s, 1 * s); ctx.fillStyle = '#ffd84d'; ctx.fillRect(hx - (pt.face > 0 ? 2 : -1) * s, hy + 5 * s, 1 * s, 1 * s);
       if (prem) { ctx.fillStyle = '#ff5c8a'; ctx.beginPath(); ctx.moveTo(hx - 2.5 * s, hy); ctx.lineTo(hx + 2.5 * s, hy); ctx.lineTo(hx, hy - 6 * s); ctx.fill(); ctx.fillStyle = '#fff'; ctx.fillRect(hx - 1.5 * s, hy - 3 * s, 3 * s, 1 * s); ctx.fillStyle = '#ffd84d'; ctx.fillRect(hx - s, hy - 7 * s, 2 * s, 2 * s); } }
+    if (asleep) { const k = (t * .55 + (pt.x || 0) * .37) % 1; ctx.save(); ctx.globalAlpha = k < .8 ? 1 - k / .8 : 0; ctx.fillStyle = '#5b6b8c'; ctx.font = `bold ${Math.round(5 * s + k * 3 * s)}px Kanit,Tahoma,sans-serif`; ctx.fillText('z', x + (pt.face < 0 ? 6 : 22) * s + Math.sin(k * 6) * 2 * s, y + 18 * s - k * 12 * s); ctx.restore(); }   // 💤 drifting z
     if (tag) { const top = y + 19 * s - (prem && !asleep ? 8 : 2) * s; tags.push([x + cw / 2, top, tag[0], { fs: 10, bg: tag[1], hit: tag[2] }]);
       if (tag[2]) hits.push({ l: x + 4 * s, t: y + 12 * s, w: 24 * s, h: 20 * s, hit: tag[2] }); }
   }
+  // ✨ pet juice through the world's particle kit: hearts (feed / pat), magic sparkles (adopt / swap), coat-coloured sparks (dye)
+  function petFx(kind, col) { if (!W || !W.fx) return; const x = (pm.x + .5) * T, y = (pm.y + .55) * T;
+    try { if (kind === 'love') W.fx.burst(x, y - 6, col || 6, { k: 'heart', c: ['#ff5c8a', '#ff8fbf'], sp: 16, up: 26, g: -8, life: 1.1, spread: 10 });
+      else if (kind === 'magic') { W.fx.burst(x, y - 6, 20, { c: ['#ffffff', '#ffd23f', '#b98cff', '#7fd3ff'], sp: 55, up: 30, g: 70, life: .85, s: 2, spread: 8 }); W.fx.ring(x, y + 2); }
+      else W.fx.burst(x, y - 6, 16, { c: [col || '#fff', '#ffffff'], sp: 45, up: 25, g: 80, life: .7, s: 2, spread: 8 });
+      if (typeof SFX !== 'undefined') (kind === 'magic' ? SFX.level : SFX.good)(); } catch (_) {} }
   const catIcon = (c, y) => PET_TYPES[petTy(y)].icon(coatOk(c));
   // what other players see: presence pe = [coat, name, fed 0/1, premium 0/1, type]; the lot record keeps {c, n, y} for the pet napping at home
   const petPres = () => { const pt = myPet(); return pt ? [coatOk(pt.coat), String(pt.n || '').slice(0, 12), petFed(pt) ? 1 : 0, petFed(pt) && pt.prem ? 1 : 0, petTy(pt.type)] : 0; };
@@ -159,14 +166,14 @@ const Village = (() => {
     p.coins -= PET_PRICE; p.vil.pet = { n: PT.nm, type: y, coat: c0, ad: Date.now(), find: 0, ml: 0, pm: 0, fed: Date.now() + MEAL, prem: 0, fd: old ? old.fd || '' : '' }; Prog.put(p);   // the first day's food comes with it
     if (typeof Stats !== 'undefined') Stats.econ('out_pet', PET_PRICE);
     petPick = petTyPick = '';
-    pm.init = false; pm.act = 'jump'; pm.actT = t; petSave(p.vil.pet, `${PT.icon(c0)} รับเลี้ยง${PT.nm}แล้ว! −${fmtN(PET_PRICE)} 🪙${old ? ` · ${old.n} ไปนอนพักที่บ้าน` : ''} · ตั้งชื่อได้เลย`);
+    pm.init = false; pm.act = 'jump'; pm.actT = t; petFx('magic'); petSave(p.vil.pet, `${PT.icon(c0)} รับเลี้ยง${PT.nm}แล้ว! −${fmtN(PET_PRICE)} 🪙${old ? ` · ${old.n} ไปนอนพักที่บ้าน` : ''} · ตั้งชื่อได้เลย`);
     const nm = myName(); feed(`${PT.icon(c0)} ${nm} รับเลี้ยง${PT.n}ตัวใหม่!`);
   }
   // switch to another pet you own: free; its own name, coat and memories come back, today's food carries over
   function swapPet(y) {
     const p = Prog.get(), B = petBook(p), pt = p.vil.pet; if (!pt || !B[y] || petTy(pt.type) === y) return;
     const was = pt.n; for (const k of PKEEP) pt[k] = B[y][k]; pt.type = y; petPick = petTyPick = ''; Prog.put(p);
-    pm.act = 'jump'; pm.actT = t; petSave(pt, `${catIcon(pt.coat, y)} พา${pt.n}ออกมาเดินแล้ว · ${was} ไปนอนพักที่บ้าน`);
+    pm.act = 'jump'; pm.actT = t; petFx('magic'); petSave(pt, `${catIcon(pt.coat, y)} พา${pt.n}ออกมาเดินแล้ว · ${was} ไปนอนพักที่บ้าน`);
   }
   function feedPet(k) {
     const pt = myPet(), f = FOOD[k], p = Prog.get(); if (!pt || !f) return;
@@ -178,7 +185,7 @@ const Village = (() => {
     if (k === 'p' && typeof CROPS !== 'undefined') { const pool = ['car', 'tom', 'chi', 'cor'].filter(id => CROPS[id]), id = pool[Math.floor(Math.random() * pool.length)];
       if (id) { p.farm = p.farm || { plots: [], book: {}, fw: {}, bag: {} }; p.farm.bag = p.farm.bag || {}; p.farm.bag[id] = (p.farm.bag[id] || 0) + 1; extra.push(`ขุดเจอ${CROPS[id][0]} 1 ลูก`); } }
     p.vil.pet = pt; Prog.put(p); if (typeof Stats !== 'undefined') Stats.econ('out_petfood', f[0]);
-    pm.act = k === 'p' ? 'jump' : 'paw'; pm.actT = t; petSave(pt, m + (extra.length ? ' · ' + extra.join(' · ') : ''));
+    pm.act = k === 'p' ? 'jump' : 'paw'; pm.actT = t; petFx('love', k === 'p' ? 10 : 6); petSave(pt, m + (extra.length ? ' · ' + extra.join(' · ') : ''));
   }
   function renamePet() {
     const pt = myPet(), inp = cardEl && cardEl.querySelector('#vilPetName'); if (!pt || !inp) return;
@@ -194,7 +201,7 @@ const Village = (() => {
     if (!pay) return petCard();
     if ((p.coins | 0) < DYE) return toast('เหรียญไม่พอ');
     petPick = ''; p.coins -= DYE; pt.coat = nc; p.vil.pet = pt; Prog.put(p); if (typeof Stats !== 'undefined') Stats.econ('out_dye', DYE);
-    pm.act = 'paw'; pm.actT = t; petSave(pt, `🎨 ${pt.n} ย้อมเป็นสี${COATS[nc][0]}แล้ว −${DYE} 🪙`);
+    pm.act = 'paw'; pm.actT = t; petFx('dye', COATS[nc][1]); petSave(pt, `🎨 ${pt.n} ย้อมเป็นสี${COATS[nc][0]}แล้ว −${DYE} 🪙`);
   }
   const coatBtns = (on, a) => Object.entries(COATS).map(([k, c]) => `<button class="vil-coat${k === on ? ' on' : ''}" type="button" data-a="${a}" data-k="${k}" title="${c[0]}" aria-label="สี${c[0]}" style="background:linear-gradient(135deg,${c[1]} 55%,${c[2]} 55%);border-color:${c[3]}"></button>`).join('');
   function petCard() {
@@ -871,7 +878,7 @@ const Village = (() => {
   }
   function act(g) {
     if (g === 'tower') { goTo([TOWER.door[0], TOWER.door[1] + 1]); typeof Tower !== 'undefined' && Tower.setView('tower'); return; }
-    if (g === 'pet') { openCard(PETC); return; }
+    if (g === 'pet') { petFx('love', 3); openCard(PETC); return; }
     if (g && g.arc != null && W) { W.arcade.walk(g.arc || ''); return; }
     if (g && g.arank) { if (typeof showRanking === 'function') showRanking(); return; }
     if (g && g.alist && W) { W.arcade.to('alist', () => openCard(ARCC)); return; }

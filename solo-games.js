@@ -744,6 +744,7 @@ function congaGame(root, api) {
   const { cv, ctx } = g2canvas(root, W, H), q = k => root.querySelector(`[data-k="${k}"]`), fx = makeFX();
   let who = store.get('runWho', 'adam'); if (!MI_PEOPLE.includes(who)) who = 'adam';
   let level = 0, score = 0, snake = [], dir = [1, 0], queue = [], blocked = new Set(), furn = [], pick1 = null, cake = null, need = 0, got = 0, doorOpen = false;
+  let combo = 0, comboT = -9, lastDir = [1, 0];   // juice only: quick pickups in a row show a combo, no extra score
   let acc = 0, tick = .18, running = false, over = false, t = 0, room = ROOMS[0], clearing = 0, total = 0, go = false;   // go: the line waits for the first turn
   const key = (x, y) => x + ',' + y, free = (x, y) => x >= 0 && x < COLS && y >= TOP && y < ROWS && !blocked.has(key(x, y));
   function hud() { q('lv').textContent = level; q('got').textContent = got; q('need').textContent = need; q('sc').textContent = fmt(score); }
@@ -772,6 +773,7 @@ function congaGame(root, api) {
     level++; room = ROOMS[(level - 1) % ROOMS.length]; layout(); need = 4 + level * 3;   // longer lines (was 3 + 2/level) but a slower walk got = 0; doorOpen = false; cake = null;
     snake = [{ x: 3, y: 11, px: 2, py: 11, who }, { x: 2, y: 11, px: 1, py: 11, who: null }].slice(0, 1); dir = [1, 0]; queue = [];
     tick = Math.max(.12, .22 - level * .008);   // was max(.08, .19 − .012/level): slower start, gentler speed-up acc = 0; go = false; spawnPick(); hud();
+    combo = 0; if (level > 1) { fx.flash('#fff', .12); fx.burst(0, H / 2, { n: 18, colors: ['#ffffff', PAL.yel], speed: 520, grav: 0, size: 3, shape: 'sq', life: .5 }); }
     fx.text(W / 2, H / 2, `ด่าน ${level} — เก็บเพื่อน ${need} คน`, { color: PAL.yel, size: 28, life: 1.6, rise: 10 });
   }
   function die(msg) {
@@ -783,6 +785,8 @@ function congaGame(root, api) {
   function step() {
     if (queue.length) dir = queue.shift();
     const h = snake[0], nx = h.x + dir[0], ny = h.y + dir[1];
+    if (go && (dir[0] !== lastDir[0] || dir[1] !== lastDir[1])) fx.burst(h.x * C + C / 2, (h.y + 1) * C - 4, { n: 5, colors: ['#e8dccb', '#fff'], speed: 70, grav: -20, size: 4, shape: 'puff', life: .35 });
+    lastDir = dir;
     // the open door is in the wall right above the playfield
     if (doorOpen && ny === TOP - 1 && DOOR.includes(nx)) {
       const bonus = got * 10 * level + 100; score += bonus; total += got; clearing = 1.2; api.sfx('level');
@@ -797,8 +801,11 @@ function congaGame(root, api) {
     if (grow) {
       const tail = snake[snake.length - 1]; snake.push({ x: tail.px, y: tail.py, px: tail.px, py: tail.py, who: pick1.who, pop: 1 });
       got++; const p = 10 * level; score += p; api.sfx('good');
+      snake.forEach((s, i) => { s.pop = Math.max(s.pop || 0, 1 - i * .07); });   // a happy wave runs down the line
+      combo = t - comboT < 2.6 ? combo + 1 : 1; comboT = t; if (combo >= 2) fx.text(nx * C + C / 2, ny * C - 34, `คอมโบ x${combo}!`, { color: PAL.green, size: 16 + Math.min(combo, 6) * 2, life: .8, rise: 30 });
+      fx.shake(2, .08);
       fx.text(nx * C + C / 2, ny * C - 10, `+${p}`, { color: PAL.yel, size: 22 }); fx.burst(nx * C + C / 2, ny * C + C / 2, { n: 14, colors: CONFETTI, speed: 220, grav: 300, size: 5, shape: 'paper', life: .7 });
-      if (got >= need && !doorOpen) { doorOpen = true; pick1 = null; fx.text(W / 2, 90, '🚪 ประตูเปิดแล้ว! พาไปกินข้าว', { color: PAL.green, size: 24, life: 1.6, rise: 10 }); fx.flash(PAL.yel, .2); api.sfx('level'); }
+      if (got >= need && !doorOpen) { doorOpen = true; pick1 = null; fx.text(W / 2, 90, '🚪 ประตูเปิดแล้ว! พาไปกินข้าว', { color: PAL.green, size: 24, life: 1.6, rise: 10 }); fx.flash(PAL.yel, .2); fx.burst(DOOR[0] * C + 32, TOP * C, { n: 28, colors: CONFETTI, speed: 300, grav: 420, size: 6, shape: 'paper', life: 1.1 }); fx.shake(4, .15); api.sfx('level'); }
       else spawnPick();
       if (!cake && rnd() < .25) for (let i = 0; i < 50; i++) { const x = Math.floor(rnd() * COLS), y = TOP + Math.floor(rnd() * (ROWS - TOP)); if (free(x, y) && !snake.some(s => s.x === x && s.y === y)) { cake = { x, y, t: 6 }; break; } }
       hud();
