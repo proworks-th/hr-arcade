@@ -169,18 +169,19 @@ const Village = (() => {
     const v = inp.value.replace(/[<>&"]/g, '').trim().slice(0, 12); if (!v) return toast('ใส่ชื่อก่อนนะ');
     if (v === pt.n) return; pt.n = v; petSave(pt, `✏️ ตอนนี้ชื่อ ${v} แล้ว`);
   }
-  // change coat and/or animal: taps only preview (petPick / petTyPick); the 🎨/🔄 button pays one DYE for the whole change
+  // change coat and/or animal: taps only preview (petPick / petTyPick); swapping the animal is free, a new coat costs DYE
   function dyePet(k, pay) {
     const pt = myPet(), p = Prog.get(); if (!pt) return;
     if (k && COATS[k]) petPick = k;
     const was = petTy(pt.type), nc = COATS[petPick] ? petPick : coatOk(pt.coat), ny = PET_TYPES[petTyPick] ? petTyPick : was, swap = ny !== was;
     if (nc === coatOk(pt.coat) && !swap) { petPick = petTyPick = ''; return petCard(); }
     if (!pay) return petCard();
-    if ((p.coins | 0) < DYE) return toast('เหรียญไม่พอ');
-    petPick = petTyPick = ''; p.coins -= DYE; pt.coat = nc; pt.type = ny; if (swap && pt.n === PET_TYPES[was].nm) pt.n = PET_TYPES[ny].nm;
-    p.vil.pet = pt; Prog.put(p); if (typeof Stats !== 'undefined') Stats.econ('out_dye', DYE);
+    const cost = nc !== coatOk(pt.coat) ? DYE : 0;
+    if ((p.coins | 0) < cost) return toast('เหรียญไม่พอ');
+    petPick = petTyPick = ''; p.coins -= cost; pt.coat = nc; pt.type = ny; if (swap && pt.n === PET_TYPES[was].nm) pt.n = PET_TYPES[ny].nm;
+    p.vil.pet = pt; Prog.put(p); if (cost && typeof Stats !== 'undefined') Stats.econ('out_dye', cost);
     pm.act = swap ? 'jump' : 'paw'; pm.actT = t;
-    petSave(pt, swap ? `${PET_TYPES[ny].icon(nc)} ตอนนี้ ${pt.n} เป็น${PET_TYPES[ny].n}สี${COATS[nc][0]}แล้ว −${DYE} 🪙` : `🎨 ย้อมเป็นสี${COATS[nc][0]}แล้ว −${DYE} 🪙`);
+    petSave(pt, swap ? `${PET_TYPES[ny].icon(nc)} ตอนนี้ ${pt.n} เป็น${PET_TYPES[ny].n}สี${COATS[nc][0]}แล้ว${cost ? ` −${cost} 🪙` : ''}` : `🎨 ย้อมเป็นสี${COATS[nc][0]}แล้ว −${cost} 🪙`);
   }
   const coatBtns = (on, a) => Object.entries(COATS).map(([k, c]) => `<button class="vil-coat${k === on ? ' on' : ''}" type="button" data-a="${a}" data-k="${k}" title="${c[0]}" aria-label="สี${c[0]}" style="background:linear-gradient(135deg,${c[1]} 55%,${c[2]} 55%);border-color:${c[3]}"></button>`).join('');
   function petCard() {
@@ -194,7 +195,7 @@ const Village = (() => {
         <button class="btn primary" type="button" data-a="adopt"${coins < PET_PRICE ? ' disabled' : ''}>${APT.icon(ac)} รับเลี้ยง${APT.n}สี${COATS[ac][0]} · 🪙 ${fmtN(PET_PRICE)} (มีอาหารวันแรกให้)</button>${coins < PET_PRICE ? `<p class="vil-need">ขาดอีก 🪙 ${fmtN(PET_PRICE - coins)}</p>` : ''}`;
     } else {
       const fed = petFed(pt), left = Math.max(0, (pt.fed || 0) - Date.now()), full = Math.round(left / MEAL * 100), canEat = left <= MEAL / 2;
-      const cy = petTy(pt.type), cc = coatOk(pt.coat), ty = PET_TYPES[petTyPick] ? petTyPick : cy, pk = COATS[petPick] ? petPick : cc, chg = ty !== cy || pk !== cc, TY = Object.keys(PET_TYPES);
+      const cy = petTy(pt.type), cc = coatOk(pt.coat), ty = PET_TYPES[petTyPick] ? petTyPick : cy, pk = COATS[petPick] ? petPick : cc, chg = ty !== cy || pk !== cc, cost = pk !== cc ? DYE : 0, TY = Object.keys(PET_TYPES);
       h += `<h4>${catIcon(pt.coat, pt.type)} ${escH(pt.n)}</h4><p class="muted">${fed ? 'เดินตามคุณอยู่' : 'หิว เลยนอนรอที่บ้าน 💤'}${fed && pt.prem ? ' · 🎉 ใส่หมวกปาร์ตี้' : ''}</p>
         <div class="vil-pb"><i style="width:${full}%;background:#ffb703"></i></div><small class="muted">อิ่ม ${full}%${fed ? ` · อยู่ได้อีก ${leftTxt(left)}` : ''} · 1 มื้ออยู่ได้ 1 วัน</small>
         ${Object.entries(FOOD).map(([k, f]) => `<button class="btn${k === 'b' ? ' primary' : ''}" type="button" data-a="feed" data-k="${k}"${!canEat || coins < f[0] ? ' disabled' : ''}>${f[2]} ${f[1]} · 🪙 ${f[0]}</button>`).join('')}
@@ -202,8 +203,8 @@ const Village = (() => {
         <div class="vil-name"><input id="vilPetName" maxlength="12" value="${escH(pt.n)}" aria-label="ชื่อสัตว์เลี้ยง"><button class="btn" type="button" data-a="rename">ตั้งชื่อ</button></div>
         ${TY.length > 1 ? `<div class="vil-chips">${TY.map(y => `<button class="vil-chip${y === ty ? ' on' : ''}" type="button" data-a="pty" data-k="${y}">${PET_TYPES[y].icon(pk)} ${PET_TYPES[y].n}</button>`).join('')}</div>` : ''}
         <div class="vil-petrow">${petPrev(ty, pk)}<div class="vil-coats">${coatBtns(pk, 'coat')}</div></div>
-        ${chg ? `<div class="vil-dye"><button class="btn primary" type="button" data-a="dye"${coins < DYE ? ' disabled' : ''}>${ty !== cy ? `🔄 เปลี่ยนเป็น${PET_TYPES[ty].n}${pk !== cc ? 'สี' + COATS[pk][0] : ''}` : `🎨 ย้อมเป็นสี${COATS[pk][0]}`} · 🪙 ${DYE}</button><button class="btn" type="button" data-a="coatx">ไม่เอา</button></div>${coins < DYE ? `<p class="vil-need">ขาดอีก 🪙 ${fmtN(DYE - coins)}</p>` : ''}`
-          : `<small class="muted">${PET_TYPES[cy].n}สี${COATS[cc][0]} · แตะ${TY.length > 1 ? 'ตัวสัตว์หรือ' : ''}สีเพื่อดูก่อน · ${TY.length > 1 ? 'เปลี่ยนตัว/' : ''}ย้อมสี ${DYE} 🪙 · เปลี่ยนชื่อฟรี</small>`}`;
+        ${chg ? `<div class="vil-dye"><button class="btn primary" type="button" data-a="dye"${coins < cost ? ' disabled' : ''}>${ty !== cy ? `🔄 เปลี่ยนเป็น${PET_TYPES[ty].n}${pk !== cc ? 'สี' + COATS[pk][0] : ''}` : `🎨 ย้อมเป็นสี${COATS[pk][0]}`} · ${cost ? `🪙 ${cost}` : 'ฟรี'}</button><button class="btn" type="button" data-a="coatx">ไม่เอา</button></div>${coins < cost ? `<p class="vil-need">ขาดอีก 🪙 ${fmtN(cost - coins)}</p>` : ''}`
+          : `<small class="muted">${PET_TYPES[cy].n}สี${COATS[cc][0]} · แตะ${TY.length > 1 ? 'ตัวสัตว์หรือ' : ''}สีเพื่อดูก่อน · ${TY.length > 1 ? 'เปลี่ยนตัวฟรี · ' : ''}ย้อมสี ${DYE} 🪙 · เปลี่ยนชื่อฟรี</small>`}`;
     }
     cardEl.innerHTML = h; cardEl.hidden = false;
   }
