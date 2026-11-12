@@ -260,6 +260,10 @@ button.pk:hover{transform:translateY(-2px)}div.pk{cursor:default}.pk b{font-size
 .vil-wrap canvas{display:block;width:100%;height:100%;image-rendering:pixelated;cursor:pointer;touch-action:manipulation}
 .vil-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px;font-size:13px}.vil-card{position:absolute;left:8px;top:8px;width:min(330px,calc(100% - 16px));max-height:calc(100% - 16px);overflow:auto;background:#fff;border:3px solid var(--line);border-radius:12px;box-shadow:0 4px 0 var(--line);padding:10px 12px;font-size:13.5px;z-index:2}
 .vil-wrap .vil-card{z-index:3}.vil-card[hidden]{display:none}.vil-card h4{margin:0 34px 2px 0;font-size:16px}.vil-card p{margin:6px 0}
+/* 🕹️ ตึกเกม: card at the cabinet you stand at + the 📋 game list (13 Nov 2026) */
+.vil-arc{position:absolute;left:50%;transform:translateX(-50%);bottom:64px;z-index:3;width:min(440px,calc(100% - 20px));display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--card,#fff8ec);border:3px solid var(--line);border-left:10px solid var(--c);border-radius:14px;box-shadow:0 4px 0 var(--line)}.vil-arc.top{bottom:auto;top:76px}.vil-arc.side{left:8px;top:50%;bottom:auto;transform:translateY(-50%);width:200px;flex-wrap:wrap}.vil-arc.side .t{flex-basis:calc(100% - 44px)}.vil-arc.side .t small{white-space:normal}.vil-arc.side .btn{width:100%}.vil-arc[hidden]{display:none}.vil-arc .e{font-size:30px;line-height:1}.vil-arc .t{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.3}.vil-arc .t b{font-size:15px}.vil-arc .t small{font-size:12px;color:var(--muted,#7a5c48);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.vil-arc .btn{flex:none;min-height:44px}
+.vil-arcl{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:6px;margin-top:8px}.vil-arcl button{display:flex;align-items:center;gap:8px;min-height:48px;padding:6px 8px;font:inherit;text-align:left;background:#fff;border:2px solid var(--line);border-left:8px solid var(--c);border-radius:10px;cursor:pointer;color:inherit}.vil-arcl button:hover{background:#fff8e0}.vil-arcl .e{font-size:24px}.vil-arcl .t{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.25}.vil-arcl .t small{font-size:12px;color:var(--muted,#7a5c48)}.vil-arcl .go{font-size:14px;color:var(--pink,#ff6fa8)}
+@media (max-width:719px){.vil-arc{width:calc(100% - 16px);left:8px;transform:none;bottom:70px;padding:5px 8px;gap:8px;border-width:2px;border-left-width:8px}.vil-arc.top{top:64px}.vil-arc .e{font-size:24px}.vil-arc .t b{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.vil-arc .t small:nth-of-type(1){display:none}.vil-arc .btn{padding:6px 12px}}
 .vil-card .x{position:absolute;right:2px;top:0;min-width:44px;min-height:44px;border:0;background:none;font-size:18px;cursor:pointer;color:var(--ink)}
 .vil-stg{display:grid;grid-template-columns:24px 1fr auto;gap:6px;align-items:center;padding:5px 0;border-top:1px dashed #ddd}.vil-stg small{color:var(--muted)}
 .vil-stg.done{opacity:.55}.vil-stg.cur{font-weight:600}
@@ -596,11 +600,11 @@ button.pk:hover{transform:translateY(-2px)}div.pk{cursor:default}.pk b{font-size
 <script src="gacha.js?v=4"></script>
 <script src="hubroom.js?v=10"></script>
 <script src="tower.js?v=12"></script>
-<script src="village-world.js?v=9"></script>
-<script src="village.js?v=23"></script>
+<script src="village-world.js?v=13"></script>
+<script src="village.js?v=27"></script>
 <script src="farm.js?v=13"></script>
 <script src="cloud.js?v=11"></script>
-<script src="news.js?v=11"></script>
+<script src="news.js?v=12"></script>
 <script>
 'use strict';
 /* ---------- utils ---------- */

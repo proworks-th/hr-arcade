@@ -332,6 +332,11 @@ const Village = (() => {
   // 🕹️ ตึกเกม: the solo games are machines inside; a coworker playing one keeps standing at it (presence g = game id, vx/vy = the machine)
   const arcGames = () => typeof GAMES === 'undefined' ? [] : GAMES.filter(g => !g.online && g.mount);
   const arcIds = () => new Set(arcGames().map(g => g.id));
+  // short cabinet names (13 Nov 2026): the full title is on the card when you stand at a machine
+  const ARC_SHORT = { spot: 'จับผิด', run: 'วิ่ง', whack: 'สายด่วน', tetris: 'Tetris', stamp: 'ปั๊มตรา', barista: 'กาแฟ', toss: 'ปาถัง', slack: 'มือถือ', conga: 'ขบวน', prism: 'ปริซึม', stack: 'ซ้อนแฟ้ม' };   // fits the 2-tile gap at zoom 2
+  const arcShort = g => ARC_SHORT[g.id] || g.title;
+  const scoreTxt = n => (n = Number(n) || 0) >= 1e4 ? Math.round(n / 1e3) + 'k' : n.toLocaleString('en-US');
+  const ARCC = { arcList: 1 };
   const inArc = p => { const r = W && W.arcade && W.arcade.room(); return !!r && p.vx >= r.x0 && p.vx < r.x0 + r.w && p.vy >= r.y0 && p.vy < r.y0 + r.h; };
   const arcTop = {};                               // today's #1 per game, refreshed while the hall is open
   function arcRank(id) { const c = arcTop[id]; if (c && Date.now() - c.t < 90e3) return c.top; arcTop[id] = { t: Date.now(), top: c ? c.top : null };
@@ -449,6 +454,33 @@ const Village = (() => {
     return `<div class="vil-stg${done ? ' done' : ''}"><span>${cropEmo(J.c)}</span><span>${cropName(J.c)} ${J.q} → ${escH(J.name)}<br><small>${J.why} · ${done ? 'ส่งแล้ว ขอบคุณน้า ❤️' : `มี ${Math.min(n, 999)}/${J.q}`}</small></span><span>${done ? '✔'
       : here ? `<button class="btn sm${ok ? ' primary' : ''}" type="button" data-a="deliver" data-k="${J.j}"${ok ? '' : ' disabled'}>📦 ส่ง +${fmtN(J.pay)}</button>`
       : `<button class="btn sm" type="button" data-a="goto" data-k="${J.j}">ไปส่ง → +${fmtN(J.pay)}</button>`}</span></div>`; };
+  // 📋 every game in the hall: tap one to walk to its cabinet (and start it)
+  function arcListCard() {
+    const ft = typeof featuredId === 'function' ? featuredId() : '';
+    return `<h4>📋 เกมในตึกเกม</h4><p class="muted">แตะเกมที่อยากเล่น เดินไปที่ตู้ให้เลย · ⭐ = วันนี้เหรียญ ×2</p><div class="vil-arcl">` + arcGames().map(g => {
+      const top = arcRank(g.id), best = typeof store !== 'undefined' ? store.get('best_' + g.id, 0) : 0;
+      return `<button type="button" data-a="arcgo" data-k="${g.id}" style="--c:${g.color || '#eee'}"><span class="e">${g.emoji}</span><span class="t"><b>${escH(g.title)}${g.id === ft ? ' ⭐×2' : ''}</b>`
+        + `<small>${best ? `สถิติคุณ ${scoreTxt(best)}` : 'ยังไม่เคยเล่น'}${top ? ` · 👑 ${escH(String(top.n || '?').slice(0, 10))} ${scoreTxt(top.s)}` : ''}</small></span><span class="go">▶</span></button>`; }).join('') + '</div>';
+  }
+  // the small card when you stand at a cabinet: full name, today's #1, your best, ▶ play
+  let nearEl = null, nearSig = '';
+  function arcNear(scn) {
+    if (!nearEl) { nearEl = document.createElement('div'); nearEl.className = 'vil-arc'; nearEl.hidden = true; wrapEl.append(nearEl);
+      nearEl.addEventListener('click', e => { const b = e.target.closest('[data-k]'); if (b && W) W.arcade.walk(b.dataset.k); }); }
+    let M = null;
+    if (scn && scn.mach && W && W.me && !W.me.path.length) { const cx = Math.floor(W.me.px / T), cy = Math.floor(W.me.py / T); M = scn.mach.find(m => m.x === cx && m.y + 1 === cy) || null; }
+    const g = M && arcGames().find(x => x.id === M.id);
+    if (!g) { if (!nearEl.hidden) { nearEl.hidden = true; nearSig = ''; } return; }
+    const top = arcRank(g.id), best = typeof store !== 'undefined' ? store.get('best_' + g.id, 0) : 0, ft = typeof featuredId === 'function' && featuredId() === g.id;
+    const low = Math.floor(W.me.py / T) - scn.y0 >= 5;   // standing in the lower half of the hall → card at the top
+    const sig = [g.id, top && top.n, top && top.s, best, ft, low, wrapEl.clientWidth, W.SC].join('|'); if (sig === nearSig) return; nearSig = sig;
+    const side = (wrapEl.clientWidth - scn.w * T * (W.SC || 2)) / 2 >= 215;   // wide screen: beside the hall, never over it
+    nearEl.classList.toggle('top', low && !side); nearEl.classList.toggle('side', side); nearEl.style.setProperty('--c', g.color || '#eee');
+    nearEl.innerHTML = `<span class="e">${g.emoji}</span><span class="t"><b>${escH(g.title)}${ft ? ' ⭐×2' : ''}</b><small>${escH(g.desc || '')}</small>`
+      + `<small>${top ? `👑 วันนี้: ${escH(String(top.n || '?').slice(0, 12))} ${scoreTxt(top.s)}` : '👑 วันนี้ยังไม่มีใครเล่น'}${best ? ` · สถิติคุณ ${scoreTxt(best)}` : ''}</small></span>`
+      + `<button class="btn primary" type="button" data-k="${g.id}">▶ เล่น</button>`;
+    nearEl.hidden = false;
+  }
   function boardCard() {
     const L = jobs(), nd = jobsDone().length;
     return `<h4>📌 บอร์ดประกาศ · งานส่งของวันนี้</h4><p class="muted">ได้มากกว่าส่งโรงอาหาร 30% · เจ้าของบ้านไม่เสียอะไร · ส่งแล้ว ${nd}/${JOB_N}</p>${L.map(J => jobRow(J, false)).join('')}
@@ -605,6 +637,7 @@ const Village = (() => {
     if (cardL === PETC) { const f = document.activeElement; if (f && f.id === 'vilPetName' && cardEl.contains(f)) return; return petCard(); }   // never wipe a name being typed
     const X = `<button class="x" type="button" data-a="close" aria-label="ปิด">✕</button>`;
     if (cardL === BOARDC) { cardEl.innerHTML = X + boardCard(); cardEl.hidden = false; return; }
+    if (cardL === ARCC) { cardEl.innerHTML = X + arcListCard(); cardEl.hidden = false; return; }
     if (cardL.npc != null) { cardEl.innerHTML = X + npcCard(cardL.npc); cardEl.hidden = false; return; }
     const L = cardL, mk = myKey(), mine = L.stage && L.k === mk, mL = myLot(), dis = busy ? ' disabled' : '';
     let h = X;
@@ -645,6 +678,7 @@ const Village = (() => {
     if (a === 'close') return closeCard();
     if (a === 'adopt') return adopt(); if (a === 'feed') return feedPet(b && b.dataset.k); if (a === 'rename') return renamePet(); if (a === 'coat') return dyePet(b && b.dataset.k);
     if (a === 'deliver') return deliver(+(b && b.dataset.k));
+    if (a === 'arcgo') { closeCard(); if (W) W.arcade.walk(b && b.dataset.k); return; }
     if (a === 'roof' || a === 'wall' || a === 'xtra') return decorate(cardL, { [a[0]]: b && b.dataset.k });
     if (a === 'goto') { const J = jobs().find(x => x.j === +(b && b.dataset.k)); if (!J) return;
       if (W && J.to.npc != null && W.NPCS[J.to.npc]) { const P = W.NPCS[J.to.npc].P; goTo(nearestWalk(Math.floor(P.px / T) + 1, Math.floor(P.py / T))); openCard(NPCC[J.to.npc]); return; }   // straight to the deliver button
@@ -698,7 +732,8 @@ const Village = (() => {
   function drawTags() {                           // lowest on screen last; nudge a tag up if it would cover one already drawn
     // the engine's DOM name tags (people) count as already drawn, so canvas pills step around them too
     const done = W && W.tagRects && ctx === ovx ? W.tagRects().map(r => [r[0] * dpr, r[1] * dpr, r[2] * dpr]) : []; tags.sort((a, b) => a[1] - b[1]);
-    for (const [x, y0, txt, o] of tags) { ctx.font = `600 ${o.fs * dpr}px Kanit, sans-serif`; const w = ctx.measureText(txt).width + 16 * dpr, h = (o.fs + 9) * dpr; let y = y0;
+    for (const [x0, y0, txt, o] of tags) { ctx.font = `600 ${o.fs * dpr}px Kanit, sans-serif`; const w = ctx.measureText(txt).width + 16 * dpr, h = (o.fs + 9) * dpr; let y = y0;
+      const x = Math.max(w / 2 + 2 * dpr, Math.min(ctx.canvas.width - w / 2 - 2 * dpr, x0));   // never half off the edge of the map
       for (let k = 0; k < 4; k++) { const hit = done.find(r => Math.abs(r[0] - x) < (r[2] + w) / 2 && Math.abs(r[1] - y) < h); if (!hit) break; y = hit[1] - h - 2 * dpr; }
       done.push([x, y, w]); pill(x, y, txt, o); }
     tags = [];
@@ -772,6 +807,7 @@ const Village = (() => {
     if (g === 'pet') { openCard(PETC); return; }
     if (g && g.arc != null && W) { W.arcade.walk(g.arc || ''); return; }
     if (g && g.arank) { if (typeof showRanking === 'function') showRanking(); return; }
+    if (g && g.alist && W) { W.arcade.to('alist', () => openCard(ARCC)); return; }
     if (g && g.gacha && W) { W.arcade.to('gacha', () => typeof Gacha !== 'undefined' && Gacha.open()); return; }
     if (g && g.party && W) { W.arcade.to('party', partyIn); return; }
     if (g === 'board') { goTo(nearestWalk(BOARD[0], BOARD[1] + 1)); openCard(BOARDC); return; }
@@ -863,18 +899,19 @@ const Village = (() => {
       for (const f of floorSpots()) if (!got.includes(f.i)) ctx.fillText(floorIcon(f), sx((f.x + .5) * T), sy((f.y + .5) * T) - bob * S());    }
     if (scn && scn.mach) {                         // the hall is the leaderboard: today's #1 on every machine, ⭐ = today's ×2 game
       const G = arcGames(), ft = typeof featuredId === 'function' ? featuredId() : '';
-      for (const M of scn.mach) { const g = G.find(x => x.id === M.id); if (!g) continue; const top = arcRank(M.id);
-        const nm = top ? String(top.n || '?') : '', sc = top ? Number(top.s) : 0;
-        pill(sx((M.x + .5) * T), sy(M.y * T - 12), `${g.emoji}${M.id === ft ? ' ×2' : ''}${top ? ` 👑${nm.length > 6 ? nm.slice(0, 6) + '…' : nm} ${sc >= 1e4 ? Math.round(sc / 1e3) + 'k' : sc.toLocaleString('en-US')}` : ''}`,
-          { fs: 9, bg: M.id === ft ? '#fff3c4' : '#fff', line: M.id === ft ? '#c99a1a' : '#3a2a20', hit: { arc: M.id } }); }
-      pill(sx((scn.board[0] + .5) * T), sy(scn.board[1] * T - 12), '🏆 อันดับ', { fs: 10, bg: '#ffe0ea', hit: { arank: 1 } });
+      const sc3 = sc >= 3;
+      for (const M of scn.mach) { const g = G.find(x => x.id === M.id); if (!g) continue; arcRank(M.id);
+        pill(sx((M.x + .5) * T), sy(M.y * T - 12), `${g.emoji} ${arcShort(g)}`,
+          { fs: sc3 ? 11 : 9, bg: M.id === ft ? '#fff3c4' : '#fff', line: M.id === ft ? '#c99a1a' : '#3a2a20', hit: { arc: M.id } }); }
+      tags.push([sx((scn.board[0] + .5) * T), sy(scn.board[1] * T - 12), '🏆 อันดับ', { fs: 10, bg: '#ffe0ea', hit: { arank: 1 } }]);   // tags: stacked, never on top of each other
+      if (scn.alist) tags.push([sx((scn.alist[0] + .5) * T), sy(scn.alist[1] * T - 10), '📋 เกมทั้งหมด', { fs: 10, bg: '#fff3c4', line: '#c99a1a', hit: { alist: 1 } }]);
       if (scn.gacha) { const fr = typeof Gacha !== 'undefined' && Gacha.freeToday();
-        pill(sx((scn.gacha[0] + .5) * T), sy(scn.gacha[1] * T - 14), fr ? '🎁 กาชาฟรี!' : '🎰 กาชา', { fs: 10, bg: fr ? '#fff3c4' : '#fff', line: fr ? '#c99a1a' : '#3a2a20', hit: { gacha: 1 } }); }
+        tags.push([sx((scn.gacha[0] + .5) * T), sy(scn.gacha[1] * T - 14), fr ? '🎁 กาชาฟรี!' : '🎰 กาชา', { fs: 10, bg: fr ? '#fff3c4' : '#fff', line: fr ? '#c99a1a' : '#3a2a20', hit: { gacha: 1 } }]); }
       if (scn.party) { const n = partyN(), sc = typeof HubRoom !== 'undefined' && HubRoom.G ? HubRoom.G.sc : 'lobby', on = sc && sc !== 'lobby' && sc !== 'res';
-        pill(sx((scn.party[0] + .5) * T), sy(scn.party[1] * T - 16), on ? '🎉 กำลังเล่น! เข้าเลย' : `🎉 ห้องปาร์ตี้${n ? ` · ${n} คน` : ''}`,
-          { fs: 10, bg: on ? '#ffd84d' : '#ffe0ea', line: on ? '#c99a1a' : '#d14d72', hit: { party: 1 } }); }
+        tags.push([sx((scn.party[0] + .5) * T), sy(scn.party[1] * T - 16), on ? '🎉 กำลังเล่น! เข้าเลย' : `🎉 ห้องปาร์ตี้${n ? ` · ${n} คน` : ''}`,
+          { fs: 10, bg: on ? '#ffd84d' : '#ffe0ea', line: on ? '#c99a1a' : '#d14d72', hit: { party: 1 } }]); }
     }
-    drawTags();
+    drawTags(); arcNear(scn);
   }
   const HOOKS = {
     lots: () => LOTS.map(L => { const o = { id: L.id, x: L.x, y: L.y, stage: L.stage, owner: L.n || '', rc: roofOf(L), wc: wallOf(L), xs: String(L.xs || ''), building: L.stage ? building(L) : false,
@@ -897,7 +934,7 @@ const Village = (() => {
     tick: liveTick, draw: liveDraw, overlay: liveOverlay,
     games: () => arcGames().map(g => ({ id: g.id, emoji: g.emoji, title: g.title, color: g.color })),
     featured: () => typeof featuredId === 'function' ? featuredId() : '',
-    play: id => arcPlay(id), arcadeRank: () => act({ arank: 1 }), gacha: () => typeof Gacha !== 'undefined' && Gacha.open(), party: () => partyIn(),
+    play: id => arcPlay(id), arcadeRank: () => act({ arank: 1 }), arcList: () => act({ alist: 1 }), gacha: () => typeof Gacha !== 'undefined' && Gacha.open(), party: () => partyIn(),
     tap(x, y) { const px = x * dpr, py = y * dpr, h = hits.slice().reverse().find(r => px >= r.l && px <= r.l + r.w && py >= r.t && py <= r.t + r.h); if (!h) return false; act(h.hit); return true; },
     visible: () => visible(), typing: e => typing(e),
     lot: L => act(L), tower: () => act('tower'), board: () => act('board'),
