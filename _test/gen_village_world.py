@@ -504,6 +504,53 @@ css += ('.sws{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;margin:
         '.sws .sw{width:44px;height:44px;min-width:0;border-radius:50%;padding:0;border:3px solid #fff;box-shadow:0 0 0 2px var(--ink)}'
         '.sws .sw.on{box-shadow:0 0 0 3px var(--ink),0 0 0 6px var(--pink)}\n')
 
+# ---------------- 🌳 deco tree (12 Nov 2026): it was planted at X - 1, outside the lot, which is the walkway beside the park; now the yard's front-right corner past the garden fence ----------------
+rep("  if (has('t')) tree(X - 1, Y + 2, 'sap');", "  if (has('t')) tree(X + 10, Y + 3, 'sap');")
+
+# ---------------- 🎥 free camera (12 Nov 2026, like a MOBA): drag the map or rest the mouse at the edge to look around, tap/click = walk there;
+# 🎯 button / C / Space snaps back. Taps now act on release, so a drag never walks or opens a card.
+_eb = '<button class="btn" id="exit" type="button">🚪 ออกไปข้างนอก</button>'
+assert body.count(_eb) == 1
+body = body.replace(_eb, _eb + '<button class="btn" id="camb" type="button" hidden>🎯 กลับมาที่ตัวฉัน</button>')
+css += '#camb{position:absolute;left:50%;top:10px;transform:translateX(-50%);z-index:3;min-height:44px;background:#ffd54a}#camb[hidden]{display:none}\n'
+rep("const cam = { x: me.px, y: me.py }, bubbles = [], held = new Set();",
+    "const cam = { x: me.px, y: me.py, free: false, ex: 0, ey: 0, eT: 0 }, bubbles = [], held = new Set();")
+rep("  cam.x += (me.px - cam.x) * Math.min(1, dt * 5); cam.y += (camY - cam.y) * Math.min(1, dt * 5);",
+    "  if (!cam.free) { cam.x += (me.px - cam.x) * Math.min(1, dt * 5); cam.y += (camY - cam.y) * Math.min(1, dt * 5); }\n"
+    "  else if ((cam.ex || cam.ey) && performance.now() - cam.eT > 350) { cam.x += cam.ex * 22 * T * dt; cam.y += cam.ey * 22 * T * dt; }   // edge pan after a short rest at the edge\n"
+    "  if (camB.hidden === cam.free) camB.hidden = !cam.free;")
+rep("  const ox = fit(cam.x, sr.w, sr.x, cv.width), oy = fit(cam.y, sr.h, sr.y, cv.height);",
+    "  if (cam.free) { const cl = (c, a, len, b) => len <= b ? a + len / 2 : Math.max(a + b / 2, Math.min(a + len - b / 2, c)); cam.x = cl(cam.x, sr.x, sr.w, cv.width); cam.y = cl(cam.y, sr.y, sr.h, cv.height); }\n"
+    "  const ox = fit(cam.x, sr.w, sr.x, cv.width), oy = fit(cam.y, sr.h, sr.y, cv.height);")
+rep("scene = s; cam.x = me.px; cam.y = me.py;", "scene = s; cam.free = false; cam.x = me.px; cam.y = me.py;")
+cut("cv.addEventListener('pointerdown', e => {\n  { const b = cv.getBoundingClientRect(); if (H.tap(", "cv.addEventListener('pointermove', e => { const [wx, wy] = worldAt(e), h = pick(wx, wy);", repl="""// press = maybe a drag; release without moving = the old tap (walk there / open what's under it)
+let drag = null;
+function tapAt(e) {
+  { const b = cv.getBoundingClientRect(); if (H.tap(e.clientX - b.left, e.clientY - b.top)) return; }
+  const [wx, wy] = worldAt(e), hit = pick(wx, wy);
+  if (useHit(hit)) return;
+  closeCard(); me.after = null; go(me, [Math.floor(wx / T), Math.floor(wy / T)]);
+}
+function camHome() { if (!cam.free) return false; cam.free = false; cam.ex = cam.ey = 0; return true; }
+cv.addEventListener('pointerdown', e => { if (e.button > 0 || pinch.size >= 2) { drag = null; return; } drag = { id: e.pointerId, x: e.clientX, y: e.clientY, moved: false, t: e.pointerType }; });
+cv.addEventListener('pointermove', e => {
+  if (e.pointerType === 'mouse' && !drag) { const b = cv.getBoundingClientRect(), x = e.clientX - b.left, y = e.clientY - b.top, E = 18;
+    const ex = x < E ? -1 : x > b.width - E ? 1 : 0, ey = y < E ? -1 : y > b.height - E ? 1 : 0;
+    if (ex !== cam.ex || ey !== cam.ey) { cam.ex = ex; cam.ey = ey; cam.eT = performance.now(); if (ex || ey) cam.free = true; } }
+  if (!drag || drag.id !== e.pointerId) return; if (pinch.size >= 2) { drag = null; return; }
+  if (!drag.moved) { if (Math.hypot(e.clientX - drag.x, e.clientY - drag.y) < (drag.t === 'touch' ? 12 : 6)) return; drag.moved = true; cam.free = true; drag.cx = view.ox + cv.width / 2; drag.cy = view.oy + cv.height / 2; cv.style.cursor = 'grabbing'; try { cv.setPointerCapture(e.pointerId); } catch (_) {} }
+  cam.x = drag.cx - (e.clientX - drag.x) / SC; cam.y = drag.cy - (e.clientY - drag.y) / SC; });
+cv.addEventListener('pointerup', e => { const d = drag; drag = null; if (!d || d.id !== e.pointerId) return; if (d.moved) { cv.style.cursor = CUR.arrow; return; } tapAt(e); });
+cv.addEventListener('pointercancel', () => { drag = null; });
+cv.addEventListener('pointerleave', () => { cam.ex = cam.ey = 0; });
+camB.onclick = () => camHome();
+""")
+rep("const k = KEYS[e.key.toLowerCase()]; if (k) { held.add(k); e.preventDefault(); return; }",
+    "const k = KEYS[e.key.toLowerCase()]; if (k) { held.add(k); cam.free = false; e.preventDefault(); return; }")
+rep("  if (scene) return; const n = '123456'.indexOf(e.key);",
+    "  if ((e.key.toLowerCase() === 'c' || e.key === ' ' && !(!scene && frontPlot())) && camHome()) { e.preventDefault(); return; }\n  if (scene) return; const n = '123456'.indexOf(e.key);")
+rep("exitB = SR.getElementById('exit'),", "exitB = SR.getElementById('exit'), camB = SR.getElementById('camb'),")
+
 # ---------------- start + API ----------------
 rep("window.__cb = { DAY_MS,", "if (window.__TEST__) window.__cb = { DAY_MS,")
 API = r"""// rebuild the static world when the live lots change (stage, colours, garden size); community plots and the room you stand in are kept
@@ -517,7 +564,7 @@ function relots() { const keep = {}; for (const p of PLOTS) if (!p.home) keep[p.
 const arcRoom = () => ROOMS.find(r => r.kind === 'arcade') || null;
 // 🕹️ quick trip: from anywhere outside the hall, fade straight to its entrance (no walking across the village)
 function warpArc() { const r = arcRoom(); if (!r) return false; if (sceneOf(cellOf(me)) !== r) { me.after = null; place(me, r.entry); me.dir = 'up'; } return true; }
-function warp(c) { me.after = null; place(me, c); cam.x = me.px; cam.y = me.py; const s2 = sceneOf(c); if (s2 !== scene) enterScene(s2); }
+function warp(c) { me.after = null; place(me, c); cam.free = false; cam.x = me.px; cam.y = me.py; const s2 = sceneOf(c); if (s2 !== scene) enterScene(s2); }
 function playAt(M, cb) { closeCard(); const st = M.st || [M.x, M.y + 1], here = () => cdist(cellOf(me), st) <= 0 && sceneOf(cellOf(me)) === sceneOf(st);
   const go2 = () => { if (!here()) return; me.dir = M.st ? 'right' : 'up'; if (cb) cb(); else if (M.id) H.play(M.id); };
   if (here() && !me.path.length) return go2(); travel(me, st, go2); }
