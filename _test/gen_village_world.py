@@ -371,7 +371,7 @@ rep("  const [wx, wy] = worldAt(e), hit = pick(wx, wy);\n",
 rep("h?.lot || h?.plot", "h?.mach || h?.arank || h?.alist || h?.gacha || h?.party || h?.lot || h?.plot")
 rep("  if (hit?.lot) return visit([hit.lot.x + 2, hit.lot.y + 3], () => lotCard(hit.lot), 3);", "  if (hit?.lot) return H.lot(hit.lot.live);")
 rep("addEventListener('keydown', e => { const k = KEYS[e.key.toLowerCase()];", "addEventListener('blur', () => held.clear());\naddEventListener('keydown', e => { if (!e.key || !H.visible() || H.typing(e) || e.ctrlKey || e.metaKey || e.altKey) return; const k = KEYS[e.key.toLowerCase()];")
-rep_line("SR.getElementById('gohome').onclick = ", "SR.getElementById('gohome').onclick = () => { closeCard(); H.home(); };")
+rep_line("SR.getElementById('gohome').onclick = ", "SR.getElementById('gohome').onclick = () => { closeCard(); H.home(); };\nSR.getElementById('goarc').onclick = () => { closeCard(); if (H.arcGo) H.arcGo(); else warpArc(); };")
 
 
 # leftovers of the prototype house section
@@ -397,6 +397,9 @@ css += ('#more{display:none}\n'
         'background:#ffd54a;font-size:11px;line-height:1.1;white-space:normal;box-shadow:0 3px 0 var(--ink)}#act b{display:block;font-size:22px;line-height:1.1}\n')
 assert body.count('<div class="side">') == 1
 body = body.replace('<div class="side">', '<div class="side"><button class="btn" id="more" type="button" aria-label="เมนู">☰</button>', 1)
+assert body.count('id="gohome"') == 1
+body = body.replace('<button class="btn" id="gofarm"', '<button class="btn" id="goarc" type="button" aria-label="ไปตึกเกม">🕹️<span class="lbl"> ตึกเกม</span></button>\n  <button class="btn" id="gofarm"', 1)
+assert 'id="goarc"' in body
 body = body.replace('<canvas id="ov"></canvas>', '<canvas id="ov"></canvas><button class="btn" id="act" type="button"></button>', 1)
 assert 'id="act"' in body
 
@@ -469,16 +472,20 @@ function relots() { const keep = {}; for (const p of PLOTS) if (!p.home) keep[p.
   else if (!walkable(...cellOf(me))) { const c = near(...cellOf(me)); if (c) place(me, c); } }
 // 🕹️ arcade: walk up to a machine (from anywhere in the village), face it, then the live game starts that mini game
 const arcRoom = () => ROOMS.find(r => r.kind === 'arcade') || null;
+// 🕹️ quick trip: from anywhere outside the hall, fade straight to its entrance (no walking across the village)
+function warpArc() { const r = arcRoom(); if (!r) return false; if (sceneOf(cellOf(me)) !== r) { me.after = null; place(me, r.entry); me.dir = 'up'; } return true; }
+function warp(c) { me.after = null; place(me, c); cam.x = me.px; cam.y = me.py; const s2 = sceneOf(c); if (s2 !== scene) enterScene(s2); }
 function playAt(M, cb) { closeCard(); const st = M.st || [M.x, M.y + 1], here = () => cdist(cellOf(me), st) <= 0 && sceneOf(cellOf(me)) === sceneOf(st);
   const go2 = () => { if (!here()) return; me.dir = M.st ? 'right' : 'up'; if (cb) cb(); else if (M.id) H.play(M.id); };
   if (here() && !me.path.length) return go2(); travel(me, st, go2); }
 return { me, held, C, R,
   // board deliveries (village.js) also use vegetables harvested here: count / take '<crop>' from the bag
   bagN: id => count(BAG, id), bagTake(id, n) { if (count(BAG, id) < n) return false; takeFrom(BAG, id, n); save(); hud(); return true; },
-  arcade: { room: arcRoom, walk(id, cb) { const r = arcRoom(); if (!r) return false; const M = r.mach.find(m => m.id === id);
+  arcade: { room: arcRoom, walk(id, cb) { const r = arcRoom(); if (!r) return false; const M = r.mach.find(m => m.id === id); warpArc();
     if (M) playAt(M, cb); else { closeCard(); me.after = null; travel(me, r.entry); } return true; },
-    to(what, cb) { const r = arcRoom(); if (!r || !r[what]) return false; playAt({ x: r[what][0], y: r[what][1], st: what === 'alist' ? [r[what][0] - 1, r[what][1]] : null }, cb); return true; } }, get G() { return G; }, get block() { return block; }, get ctx() { return ctx; }, ov: SR.getElementById('ov'),
-  travel: c => { closeCard(); me.after = null; travel(me, c); }, place: c => place(me, c), sceneOf, scene: () => scene, relots, closeCard,
+    to(what, cb) { const r = arcRoom(); if (!r || !r[what]) return false; warpArc(); playAt({ x: r[what][0], y: r[what][1], st: what === 'alist' ? [r[what][0] - 1, r[what][1]] : null }, cb); return true; } }, get G() { return G; }, get block() { return block; }, get ctx() { return ctx; }, ov: SR.getElementById('ov'),
+  travel: c => { closeCard(); me.after = null; travel(me, c); }, place: c => place(me, c), warp: c => { closeCard(); warp(c); }, warpArc: () => { closeCard(); return warpArc(); },
+  pos: () => cellOf(me), walkable: (x, y) => walkable(x, y), sceneOf, scene: () => scene, relots, closeCard,
   talk: i => { if (NPCS[i]) talkTo(NPCS[i]); }, enterLot: id => { const L = LOTS.find(l => l.id === id); if (L && L.room) enter(L.room); },
   hasRoom: id => !!(LOTS.find(l => l.id === id) || {}).room,
   lotTop: id => { const L = LOTS.find(l => l.id === id); return !L ? 0 : hasHouse(L) && !(L.stage === 2 && L.building) ? (L.y + 3) * T - (isBig(L) ? 130 : 98) : (L.y + 1) * T - 4; },

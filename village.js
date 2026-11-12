@@ -855,6 +855,7 @@ const Village = (() => {
     if (every('bs', 1000)) { const bs = LOTS.map(L => building(L) ? 1 : 0).join(''); if (bs !== bsSig) { const first = !bsSig; bsSig = bs; if (!first) { relotW(); syncHome(); renderCard(); renderBar(); } } }
     for (const a of Object.values(others)) step(a, dt);
     if (every('send', 500)) send();
+    if (every('pos', 3000)) savePos();
     if (every('hud', 1000)) W.hud();                 // the engine's coin line follows the arcade coins       // presence: the cell you walk to (keys: where you are), deduped
     loadFarms();
     if (!W.scene()) { const got = floorGot(); for (const f of floorSpots()) if (!got.includes(f.i) && Math.abs(f.x - me.x) < .6 && Math.abs(f.y - me.y) < .6) pickFloor(f); }
@@ -966,8 +967,21 @@ const Village = (() => {
       t: { get: () => P.t, set() {}, configurable: true } });
     W = w; C = W.C; R = W.R; ov = W.ov; ovx = ov.getContext('2d'); cv.style.display = 'none';
     relotW(); pm.init = false; floorDay = '';
+    spawnSpot();
     for (const id of Object.keys(others)) delete others[id]; syncOthers(); send(true);
   }
+  // 📍 come back where you left off (saved every few seconds); a first visit starts at your own front door
+  const POSK = 'vilPos';
+  function savePos() { if (!W || !W.pos) return; try { localStorage.setItem(POSK, JSON.stringify(W.pos())); } catch (e) { /* private window */ } }
+  function spawnSpot() {
+    if (!W.warp || /[?&]farm=1(?!\d)/.test(location.search)) return;
+    let c = null; try { c = JSON.parse(localStorage.getItem(POSK) || 'null'); } catch (e) { c = null; }
+    const ok = c => Array.isArray(c) && c.length === 2 && W.walkable(c[0], c[1]);
+    if (!ok(c)) { const L = myLot(); c = L && ok(L.front) ? L.front : null; }
+    if (c) W.warp(c);
+  }
+  addEventListener('pagehide', savePos);
+  document.addEventListener('visibilitychange', () => { if (document.hidden) savePos(); });
   function startOld() {
     W = null; if (worldEl) { worldEl.remove(); worldEl = null; } cv.style.display = ''; C = 48; R = 34;
     for (const L of LOTS) if (OLDXY[L.id]) [L.x, L.y] = OLDXY[L.id];
