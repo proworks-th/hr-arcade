@@ -1,6 +1,6 @@
 // "ตึกออฟฟิศ" — the home page's second view: one pixel tower holding everyone's decorated room.
 //  - every coworker with a profile (rooms/_prof) gets an apartment; higher level = higher floor, a bigger room = a wider apartment
-//  - people online right now walk around inside their room (lights on at night), the lobby shows who is in ห้องรวม
+//  - people online right now walk around inside their room (lights on at night), the lobby shows who is in ห้องปาร์ตี้
 //  - the office level adds shared floors on top (canteen, library, …) and a crane builds the next one
 //  - ลิฟต์ (left panel) = floor menu with what waits on each floor; door signs are HTML over the canvas so names stay readable;
 //    tapping a room opens a knock-on-door card (water / like / enter) without leaving the building
@@ -183,11 +183,11 @@ const Tower = (() => {
     ctx.fillStyle = 'rgba(255,255,255,.45)'; for (let i = 0; i < 6; i++) { ctx.beginPath(); const x0 = gx + 40 + i * 140; ctx.moveTo(x0, gy); ctx.lineTo(x0 + 30, gy); ctx.lineTo(x0 - 10, gy + gh); ctx.lineTo(x0 - 40, gy + gh); ctx.fill(); }
     ctx.fillStyle = '#5d4037'; for (let x = gx; x <= gx + gw; x += gw / 6) ctx.fillRect(x - 2, gy, 4, gh); ctx.fillRect(gx, gy - 4, gw, 6);
     const dx = W / 2; ctx.fillStyle = '#3a2a20'; ctx.fillRect(dx - 44, gy + 20, 88, gh - 20); ctx.fillStyle = night() ? '#ffd27a' : '#e2f3ff'; ctx.fillRect(dx - 40, gy + 24, 38, gh - 24); ctx.fillRect(dx + 2, gy + 24, 38, gh - 24);
-    // people hanging out in ห้องรวม, drawn in front of the glass
+    // people hanging out in ห้องปาร์ตี้, drawn in front of the glass
     const inHub = people.filter(p => p.g === 'hub').slice(0, 10);
     inHub.forEach((p, i) => { const ph = t * .3 + i * 2.3, px = gx + 60 + ((Math.sin(ph) * .5 + .5) * (gw - 120) + i * 67) % (gw - 120), who = MI_PEOPLE.includes(p.a) ? p.a : 'adam', dr = Math.cos(ph) > 0 ? 'right' : 'left';
       drawChar(ctx, who, 'run', dr, t + i, px, y + LOBBY - 6, 2); for (const sl of ['f', 'h']) drawAcc(ctx, p[sl], who, 'run', dr, t + i, px, y + LOBBY - 6, 2); });
-    regions.push({ x: BX, y, w: BW, h: LOBBY, kind: 'lobby', tip: 'ห้องรวม — กดเพื่อเข้าไปเดินเล่นและคุยกับเพื่อน' });
+    regions.push({ x: BX, y, w: BW, h: LOBBY, kind: 'lobby', tip: 'ห้องปาร์ตี้ — กดเพื่อเข้าไปเดินเล่นและคุยกับเพื่อน' });
     floorsY.push({ y, h: LOBBY, b: 'G', name: 'ล็อบบี้', s: [] });
     // 📌 notice board (weekly awards + news) on the left, 🛎️ counter (missions / pass) on the right
     const bx = gx + 24, by = gy + 16, bw = 190, bh = 80;
@@ -202,7 +202,7 @@ const Tower = (() => {
     ctx.fillStyle = '#ffd23f'; ctx.beginPath(); ctx.arc(kx + kw - 34, ky - 8, 9, Math.PI, 0); ctx.fill(); ctx.fillRect(kx + kw - 45, ky - 9, 22, 3); ctx.fillRect(kx + kw - 35, ky - 21, 2, 4);
     regions.push({ x: kx - 6, y: ky - 28, w: kw + 12, h: 80, kind: 'counter', tip: '🛎️ เคาน์เตอร์ — ภารกิจวันนี้และ Season Pass' });
     signs.push({ x: kx + 10, y: ky + 12, w: kw - 20, cls: 'lob-s', act: 'counter', html: '🛎️ ภารกิจ · Pass' });
-    signs.push({ x: dx - 140, y: y + 24, w: 280, cls: 'lob-s door', act: 'lobby', html: `🎉 ห้องรวม · ${n ? `<b>${n}</b> คนอยู่ตอนนี้` : 'ยังว่างอยู่'} · เข้าไปเลย` });
+    signs.push({ x: dx - 140, y: y + 24, w: 280, cls: 'lob-s door', act: 'lobby', html: `🎉 ห้องปาร์ตี้ · ${n ? `<b>${n}</b> คนอยู่ตอนนี้` : 'ยังว่างอยู่'} · เข้าไปเลย` });
   }
   function draw() {
     const Lo = layout(), h = size(Lo); if (h !== H) { H = h; fit(); }
@@ -385,9 +385,11 @@ const Tower = (() => {
     loadOnline().then(M => { O = M; M.watchOnline(l => people = l); }).catch(() => {});
     requestAnimationFrame(frame);
   }
-  // home page view switch: ห้องรวม (walk + chat), ตึก (everyone's rooms) or หมู่บ้าน (village.js, hidden until release)
+  // home page view switch: ห้องปาร์ตี้ (walk + chat), ตึก (everyone's rooms) or หมู่บ้าน (village.js, hidden until release)
   function setView(v) {
     const vilOn = typeof Village !== 'undefined' && Village.on(); if (v === 'village' && !vilOn) v = 'room';  // village tab is hidden until release
+    // with the village on, the party room (old ห้องรวม) has no tab of its own: it opens from the pink door in ตึกเกม and its tab shows only while you are inside
+    const rb = document.querySelector('[data-view=room]'); if (rb) rb.hidden = vilOn && v !== 'room';
     store.set('hubView', v); const room = document.getElementById('room'), vil = document.getElementById('village');
     if (room) room.hidden = v !== 'room'; if (el) el.hidden = v !== 'tower'; if (vil) vil.hidden = v !== 'village';
     document.getElementById('hub')?.classList.toggle('vil-on', v === 'village');   // village view: only the tabs + map + bar, page locked (no scroll)
@@ -395,14 +397,15 @@ const Tower = (() => {
     document.querySelectorAll('[data-view]').forEach(b => b.classList.toggle('on', b.dataset.view === v));
     if (v === 'tower') { start(); load(); }
     if (v === 'village') Village.show();
-    if (typeof presence === 'function') presence(v === 'village' ? 'village' : 'hub');   // others see you in the village or in ห้องรวม
+    if (typeof presence === 'function') presence(v === 'village' ? 'village' : 'hub');   // others see you in the village or in ห้องปาร์ตี้
   }
   return {
     mount(slot) { const first = !el; if (!el) build(); slot.replaceWith(el); if (first && innerWidth < 720) zoom = 2; fit();
       // the village is home (like a farm-life game): everyone starts there once, then we remember their last tab
       const vilOn = typeof Village !== 'undefined' && Village.on();
       if (vilOn && !store.get('vilHome', 0)) { store.set('vilHome', 1); store.set('hubView', 'village'); }
-      setView(store.get('hubView', vilOn ? 'village' : 'room')); },
+      let v0 = store.get('hubView', vilOn ? 'village' : 'room'); if (vilOn && v0 === 'room' && !/[?&]join=room/.test(location.search)) v0 = 'village';
+      setView(v0); },
     setView, refresh: load,
     _dbg: { draw, get regions() { return regions; }, get rooms() { return rooms; }, openCard, set t(v) { t = v; } },
   };

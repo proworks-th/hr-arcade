@@ -1,4 +1,4 @@
-// "ห้องรวม" — the hub is a shared pixel office (LimeZu Modern Interiors, same kit as the solo games):
+// "ห้องปาร์ตี้" — the hub is a shared pixel office (LimeZu Modern Interiors, same kit as the solo games):
 // everyone on the home page walks around, chats in speech bubbles, and party games run on the stage in the middle.
 //  - presence (rooms/_hub/on/{sid}) carries each player's target cell; every client walks the others there itself
 //  - chat = rooms/_hub/chat · the party game = rooms/_hub/game, owned by the host (earliest visible player in the room)
@@ -103,7 +103,8 @@ const HubRoom = (() => {
       <div class="room-pad" data-k="pad" hidden></div>
       <div class="room-bar"><input data-k="say" maxlength="80" placeholder="พิมพ์คุยกับเพื่อน แล้วกด Enter" aria-label="แชท">
         <span class="room-emo">${['👋', '😂', '👍', '🔥', '☕'].map(e => `<button class="btn sm" data-e="${e}">${e}</button>`).join('')}</span>
-        <button class="btn sm primary" data-k="party">🎉 เล่นปาร์ตี้</button><button class="btn sm" data-k="invite" title="คัดลอกลิงก์ชวนเพื่อน">🔗 ชวน</button></div>`;
+        <button class="btn sm primary" data-k="party">🎉 เล่นปาร์ตี้</button><button class="btn sm" data-k="invite" title="คัดลอกลิงก์ชวนเพื่อน">🔗 ชวน</button>
+        <button class="btn sm" data-k="back" type="button" ${typeof Village !== 'undefined' && Village.on() ? '' : 'hidden'}>🚪 กลับหมู่บ้าน</button></div>`;
     const stage = el.querySelector('.room-stage'); ({ cv, ctx, at } = g2canvas(stage, W, H)); stage.insertBefore(cv.parentNode, stage.firstChild);
     const q = k => el.querySelector(`[data-k=${k}]`);
     cv.addEventListener('pointerdown', e => {
@@ -119,6 +120,7 @@ const HubRoom = (() => {
     el.querySelectorAll('[data-e]').forEach(b => b.onclick = () => sayIt(b.dataset.e));
     q('party').onclick = partyPicker;
     q('invite').onclick = invite;
+    q('back').onclick = () => typeof Tower !== 'undefined' && Tower.setView('village');
     q('pad').addEventListener('pointerdown', e => { const b = e.target.closest('[data-d]'); if (!b) return; e.preventDefault(); padPress(b.dataset.d); });
     addEventListener('keydown', onKey);
     document.addEventListener('visibilitychange', () => send({}, true));
@@ -157,7 +159,7 @@ const HubRoom = (() => {
   function partyPicker() {
     if (G.sc !== 'lobby') { toast(`${GAME_TH[G.sc] || 'เกม'} กำลังเล่นอยู่ — รอรอบหน้านะ`); return; }
     const ov = document.createElement('div'); ov.className = 'overlay';
-    ov.innerHTML = `<div class="panel popin"><h2>🎉 เล่นปาร์ตี้</h2><p class="muted">ทุกคนที่อยู่ในห้องรวมตอนนี้ (${roster().length} คน) จะเล่นด้วยกัน</p>
+    ov.innerHTML = `<div class="panel popin"><h2>🎉 เล่นปาร์ตี้</h2><p class="muted">ทุกคนที่อยู่ในห้องปาร์ตี้ตอนนี้ (${roster().length} คน) จะเล่นด้วยกัน</p>
       <div class="pick">
         <div class="pk"><b>🕺 เต้น</b><small>กดลูกศรตาม แล้ว Space ตรงจังหวะ</small><span class="songs" data-k="songs">⏳</span></div>
         <button class="pk" data-g="tug" type="button"><b>🪢 ชักเย่อ</b><small>รัว Space · คนเดียวก็เล่นได้ (สู้หัวหน้า)</small></button>
@@ -176,7 +178,7 @@ const HubRoom = (() => {
     if (!O) return; if (music) music.unlock();
     const t0 = now(), seed = Math.floor(Math.random() * 1e9);
     O.txGame(cur => { if (cur && cur.sc && cur.sc !== 'lobby' && t0 - (cur.at || 0) < 180000) return; return { sc: kind, at: t0 + LEAD, by: myName() || 'ใครสักคน', seed, song }; })
-      .then(r => { if (r.committed) { const nm = myName(); if (nm) O.pushFeed(`🎉 ${nm} เปิด${GAME_TH[kind]}ในห้องรวม มาเล่นด้วยกัน!`, nm, myWho()); } });
+      .then(r => { if (r.committed) { const nm = myName(); if (nm) O.pushFeed(`🎉 ${nm} เปิด${GAME_TH[kind]}ในห้องปาร์ตี้ มาเล่นด้วยกัน!`, nm, myWho()); } });
   }
   function onGame(st) {
     const prev = G.sc; G = st || { sc: 'lobby' };
@@ -206,7 +208,7 @@ const HubRoom = (() => {
       .then(r => { if (r.committed && feed) O.pushFeed(feed, '', ''); }); };
     if (G.sc === 'dance' && D && D.M && t0 > G.at + songOf().bars * barSec(songOf()) * 1000 + 2500) {
       const list = roster().map(p => ({ n: p.n, w: p.a, s: p.me ? D.score : p.da === G.at ? p.ds || 0 : 0, mc: p.me ? D.maxc : p.dmc || 0 })).sort((a, b) => b.s - a.s);
-      end({ res: list, song: G.song | 0 }, list[0] && list[0].s > 0 ? `💃 ${list[0].n} ชนะการเต้นในห้องรวม (${list[0].s} คะแนน) จาก ${list.length} คน` : '');
+      end({ res: list, song: G.song | 0 }, list[0] && list[0].s > 0 ? `💃 ${list[0].n} ชนะการเต้นในห้องปาร์ตี้ (${list[0].s} คะแนน) จาก ${list.length} คน` : '');
     }
     if (G.sc === 'tug' && t0 > G.at) { const S = tugState(t0); if (Math.abs(S.d) >= TUG_GOAL || t0 > G.at + TUG_MS) { const win = S.d > 0 ? 'A' : S.d < 0 ? 'B' : '';
       const names = (win === 'A' ? S.A : S.B).map(x => x.n).join(', ');
@@ -228,7 +230,7 @@ const HubRoom = (() => {
       body = `<h2>🪢 ชักเย่อ</h2><div class="big-res">${!G.win ? '🤝 เสมอ!' : G.bot ? (G.win === 'A' ? '🎉 ชนะหัวหน้า!' : '😅 หัวหน้าชนะ ลองใหม่!') : `🎉 ทีม${G.win === 'A' ? 'ซ้าย 🟦' : 'ขวา 🟥'}ชนะ!`}</div>
         <ol class="rank">${L.map(x => `<li>${img(x.w)}<b>${x.tm === 'A' ? '🟦' : '🟥'} ${esc(x.n)}</b><span>💪 ${x.tp}${x === mvp && L.length > 1 && x.tp ? ' ⭐MVP' : ''}</span></li>`).join('')}</ol>`; }
     else if (G.g === 'race') body = `<h2>🏃 วิ่งไปตอกบัตร</h2><ol class="rank">${L.map((x, i) => `<li>${img(x.w)}<b>${esc(x.n)}</b><span>${x.fin ? `${m[i] || '#' + (i + 1)} ${(x.fin / 1000).toFixed(1)} วิ` : `ยังไม่ถึง (${Math.max(0, Math.round(x.p / RACE_LEN * 100))}%)`}</span></li>`).join('')}</ol>`;
-    r.innerHTML = `<div class="panel">${body}<p class="muted">กลับห้องรวมในไม่กี่วินาที</p></div>`;
+    r.innerHTML = `<div class="panel">${body}<p class="muted">กลับห้องปาร์ตี้ในไม่กี่วินาที</p></div>`;
   }
 
   /* ---------- 🕺 เต้น (same rules as the old 3D Office Audition) ---------- */
@@ -434,7 +436,7 @@ const HubRoom = (() => {
     if (o.i !== offI) { offI = o.i; setItems(o.i); }
     if (seen && o.lv > seen) {                    // the office levelled up since we last looked: everyone gets a gift
       const p = Prog.get(); p.coins += 20 * (o.lv - seen); store.set('prog', p); Prog.sync(); typeof Stats !== 'undefined' && Stats.econ('in_office', 20 * (o.lv - seen));
-      toast(`🏢 ออฟฟิศเลเวลอัป! Lv ${o.lv} · ห้องรวมได้ ${o.cur.n} (+${20 * (o.lv - seen)} 🪙 ของขวัญทุกคน)`);
+      toast(`🏢 ออฟฟิศเลเวลอัป! Lv ${o.lv} · ห้องปาร์ตี้ได้ ${o.cur.n} (+${20 * (o.lv - seen)} 🪙 ของขวัญทุกคน)`);
       if (visible()) for (let i = 0; i < 5; i++) burst(W * (i + .5) / 5, H * .4, 30);
     }
     store.set('offLv', o.lv); renderOffice();
@@ -443,7 +445,7 @@ const HubRoom = (() => {
     const n = fundI(v.got), was = fundN; fund = v;
     if (n !== fundN) { fundN = n; setItems(); }
     if (n > was && store.get('fundSeen', '') === v.m + ':' + was && visible()) {   // a goal was reached while we watched
-      toast(`💰 กองทุนออฟฟิศครบเป้า! ห้องรวมได้ ${FUND[n - 1][1]} ถึงสิ้นเดือน`); for (let i = 0; i < 5; i++) burst(W * (i + .5) / 5, H * .4, 30);
+      toast(`💰 กองทุนออฟฟิศครบเป้า! ห้องปาร์ตี้ได้ ${FUND[n - 1][1]} ถึงสิ้นเดือน`); for (let i = 0; i < 5; i++) burst(W * (i + .5) / 5, H * .4, 30);
     }
     store.set('fundSeen', v.m + ':' + n); renderOffice();
     const pn = document.querySelector('.office-p[data-tab=fund]'); if (pn) fundTab(pn);
@@ -470,7 +472,7 @@ const HubRoom = (() => {
     const el = panel.querySelector('[data-k=body]'), got = fund.got, i = fundN, nx = FUND[i], from = i ? FUND[i - 1][0] : 0;
     const pc = nx ? Math.min(100, (got - from) / (nx[0] - from) * 100) : 100, me = (myName() || '').trim().toLowerCase(), coins = Prog.get().coins;
     const mon = typeof seasonName === 'function' && fund.m ? seasonName(fund.m) : 'เดือนนี้';
-    el.innerHTML = `<h2>💰 กองทุนออฟฟิศ</h2><p class="muted">ลงเหรียญได้ตามใจ ไม่บังคับ · ครบเป้าแล้วห้องรวมได้ของแต่งถึงสิ้นเดือน · ยอดเริ่มใหม่ทุกต้นเดือน · ท็อป 3 ผู้สนับสนุนได้ถ้วยไปวางในห้อง (ลงรวมอย่างน้อย 🪙 100)</p>
+    el.innerHTML = `<h2>💰 กองทุนออฟฟิศ</h2><p class="muted">ลงเหรียญได้ตามใจ ไม่บังคับ · ครบเป้าแล้วห้องปาร์ตี้ได้ของแต่งถึงสิ้นเดือน · ยอดเริ่มใหม่ทุกต้นเดือน · ท็อป 3 ผู้สนับสนุนได้ถ้วยไปวางในห้อง (ลงรวมอย่างน้อย 🪙 100)</p>
       <div class="fund-sum"><b>${mon}: 🪙 ${fmt(got)}</b><span class="xpbar"><i style="width:${pc}%"></i></span><small>${nx ? `อีก 🪙 ${fmt(nx[0] - got)} → ${nx[1]}` : '🎉 ครบทุกเป้าแล้ว!'}</small></div>
       <ul class="off-list fund-list">${FUND.map((r, k) => `<li class="${k < i ? 'ok' : k === i ? 'nx' : ''}"><span>${ico(r[2])}</span><b>${r[1]}</b><small>${k < i ? '✅ ได้แล้ว' : `🪙 ${fmt(r[0])}`}</small></li>`).join('')}</ul>
       <div class="row fund-give">${FUND_AMT.map(a => `<button type="button" class="btn${a > coins ? '' : ' primary'}" data-give="${a}">ลง 🪙 ${fmt(a)}</button>`).join('')}</div>
@@ -499,7 +501,7 @@ const HubRoom = (() => {
   function lvTab(panel) {
     const o = officeLv(offPts), el = panel.querySelector('[data-k=body]');
     el.innerHTML = `<h2>🏢 ออฟฟิศ Lv ${o.lv}</h2>
-      <p class="muted">ทุกเหรียญที่ใครก็ได้หาได้ จะนับเป็นแต้มออฟฟิศด้วย · ครบเป้าแล้วห้องรวมได้ของใหม่ถาวร และทุกคนได้ของขวัญ 20 🪙</p>
+      <p class="muted">ทุกเหรียญที่ใครก็ได้หาได้ จะนับเป็นแต้มออฟฟิศด้วย · ครบเป้าแล้วห้องปาร์ตี้ได้ของใหม่ถาวร และทุกคนได้ของขวัญ 20 🪙</p>
       <ul class="off-list">${OFFICE.slice(1).map((r, i) => `<li class="${i + 1 <= o.i ? 'ok' : i === o.i ? 'nx' : ''}"><span>${ico(r[2])}</span><b>${r[1]}</b><small>${i + 1 <= o.i ? '✅ ได้แล้ว' : `${fmt(r[0])} แต้ม`}</small></li>`).join('')}</ul>
       <h3>คนช่วยเยอะสุด</h3><ol class="off-top" data-k="top"><li class="muted">กำลังโหลด…</li></ol>`;
     O && O.officeBoard().then(L => { const me = (myName() || '').trim().toLowerCase(), el2 = el.querySelector('[data-k=top]'); if (!el2) return;

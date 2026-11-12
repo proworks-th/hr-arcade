@@ -336,6 +336,9 @@ const Village = (() => {
   const arcTop = {};                               // today's #1 per game, refreshed while the hall is open
   function arcRank(id) { const c = arcTop[id]; if (c && Date.now() - c.t < 90e3) return c.top; arcTop[id] = { t: Date.now(), top: c ? c.top : null };
     if (typeof loadRank === 'function') loadRank().then(R => R.board(id, 'd')).then(rows => { arcTop[id].top = rows && rows[0] || null; }).catch(() => {}); return arcTop[id].top; }
+  // 🎉 the party room (old ห้องรวม) is behind the pink door in ตึกเกม: party games, chat, office level, gacha
+  const partyN = () => people.filter(p => !p.me && p.g === 'hub' && p.v !== 0).length;
+  function partyIn() { if (typeof Tower === 'undefined') return; Tower.setView('room'); typeof Stats !== 'undefined' && Stats.open('room'); scrollTo(0, 0); }
   function arcPlay(id) { if (typeof Tower !== 'undefined') store.set('hubView', 'village'); if (typeof startGame === 'function') startGame(id); }
   function syncOthers() {
     const ids = arcIds(), here = people.filter(p => !p.me && p.vx != null && ((p.g === 'village' && p.v !== 0) || (ids.has(p.g) && inArc(p))));
@@ -767,6 +770,8 @@ const Village = (() => {
     if (g === 'pet') { openCard(PETC); return; }
     if (g && g.arc != null && W) { W.arcade.walk(g.arc || ''); return; }
     if (g && g.arank) { if (typeof showRanking === 'function') showRanking(); return; }
+    if (g && g.gacha && W) { W.arcade.to('gacha', () => typeof Gacha !== 'undefined' && Gacha.open()); return; }
+    if (g && g.party && W) { W.arcade.to('party', partyIn); return; }
     if (g === 'board') { goTo(nearestWalk(BOARD[0], BOARD[1] + 1)); openCard(BOARDC); return; }
     if (g && g.npc != null && W) { W.talk(g.npc); return; }
     if (g && g.npc != null) { const [nx, ny] = NPCS[g.npc].at; goTo(nearestWalk(nx + 1, ny)); openCard(NPCC[g.npc]); return; }
@@ -861,6 +866,11 @@ const Village = (() => {
         pill(sx((M.x + .5) * T), sy(M.y * T - 12), `${g.emoji}${M.id === ft ? ' ×2' : ''}${top ? ` 👑${nm.length > 6 ? nm.slice(0, 6) + '…' : nm} ${sc >= 1e4 ? Math.round(sc / 1e3) + 'k' : sc.toLocaleString('en-US')}` : ''}`,
           { fs: 9, bg: M.id === ft ? '#fff3c4' : '#fff', line: M.id === ft ? '#c99a1a' : '#3a2a20', hit: { arc: M.id } }); }
       pill(sx((scn.board[0] + .5) * T), sy(scn.board[1] * T - 12), '🏆 อันดับ', { fs: 10, bg: '#ffe0ea', hit: { arank: 1 } });
+      if (scn.gacha) { const fr = typeof Gacha !== 'undefined' && Gacha.freeToday();
+        pill(sx((scn.gacha[0] + .5) * T), sy(scn.gacha[1] * T - 14), fr ? '🎁 กาชาฟรี!' : '🎰 กาชา', { fs: 10, bg: fr ? '#fff3c4' : '#fff', line: fr ? '#c99a1a' : '#3a2a20', hit: { gacha: 1 } }); }
+      if (scn.party) { const n = partyN(), sc = typeof HubRoom !== 'undefined' && HubRoom.G ? HubRoom.G.sc : 'lobby', on = sc && sc !== 'lobby' && sc !== 'res';
+        pill(sx((scn.party[0] + .5) * T), sy(scn.party[1] * T - 16), on ? '🎉 กำลังเล่น! เข้าเลย' : `🎉 ห้องปาร์ตี้${n ? ` · ${n} คน` : ''}`,
+          { fs: 10, bg: on ? '#ffd84d' : '#ffe0ea', line: on ? '#c99a1a' : '#d14d72', hit: { party: 1 } }); }
     }
     drawTags();
   }
@@ -885,7 +895,7 @@ const Village = (() => {
     tick: liveTick, draw: liveDraw, overlay: liveOverlay,
     games: () => arcGames().map(g => ({ id: g.id, emoji: g.emoji, title: g.title, color: g.color })),
     featured: () => typeof featuredId === 'function' ? featuredId() : '',
-    play: id => arcPlay(id), arcadeRank: () => act({ arank: 1 }),
+    play: id => arcPlay(id), arcadeRank: () => act({ arank: 1 }), gacha: () => typeof Gacha !== 'undefined' && Gacha.open(), party: () => partyIn(),
     tap(x, y) { const px = x * dpr, py = y * dpr, h = hits.slice().reverse().find(r => px >= r.l && px <= r.l + r.w && py >= r.t && py <= r.t + r.h); if (!h) return false; act(h.hit); return true; },
     visible: () => visible(), typing: e => typing(e),
     lot: L => act(L), tower: () => act('tower'), board: () => act('board'),
@@ -937,6 +947,7 @@ const Village = (() => {
     show() { if (!el) return; start(); renderBar(); requestAnimationFrame(() => { resize(); if (world) cam = camTarget(); send(true); }); },
     setGarden, needs,
     // walk into 🕹️ ตึกเกม (to a machine when id is given); waits for the engine to load the first time
+    party(n = 0) { if (W && W.arcade) return void W.arcade.to('party', partyIn); if (n < 60) setTimeout(() => Village.party(n + 1), 150); },
     arcade(id, n = 0) { if (W && W.arcade) return void W.arcade.walk(id || ''); if (n < 60) setTimeout(() => Village.arcade(id, n + 1), 150); },
     _dbg: { me, LOTS, others, pm, adopt, feedPet, dyePet, renamePet, myPet, moveHouse, moveInfo, get farms() { return farms; }, syncHome, gCell, get hits() { return hits; }, get ready() { return !!(world || W); }, get W() { return W; }, act, lock, goTo, fast: false, floorSpots, reserve, jobs, jobsDone, deliver, haveCrop, NPCS, BOARDC, next, help, myLot, get busy() { return busy; }, decorate, movedIn, get held() { return W ? W.held : held; }, gSize, tinted, roofOf, wallOf },
   };

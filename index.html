@@ -124,7 +124,7 @@ a.btn{text-decoration:none;display:inline-flex;align-items:center;gap:6px;color:
 .crew-it{flex:none;display:flex;align-items:center;gap:6px;background:#fff;border:2px solid #e6dccb;border-radius:12px;padding:4px 10px 4px 6px}
 .crew-it.me{border-color:var(--line);background:#fff3c4}.crew-it img{height:28px;image-rendering:pixelated}
 .crew-it>span{display:grid;line-height:1.2}.crew-it b{font-size:13px}.crew-it small{font-size:11.5px;color:var(--muted);white-space:nowrap}
-/* ห้องรวม */
+/* ห้องปาร์ตี้ */
 .room-h{display:flex;align-items:center;gap:8px;margin:0 0 6px;flex-wrap:wrap}.room-h .heads{margin-left:auto}
 .room{margin-bottom:16px}
 .room-stage{position:relative}
@@ -592,13 +592,13 @@ button.pk:hover{transform:translateY(-2px)}div.pk{cursor:default}.pk b{font-size
 <script src="office.js?v=30"></script>
 <script src="wardrobe.js?v=9"></script>
 <script src="gacha.js?v=4"></script>
-<script src="hubroom.js?v=9"></script>
-<script src="tower.js?v=11"></script>
-<script src="village-world.js?v=5"></script>
-<script src="village.js?v=21"></script>
+<script src="hubroom.js?v=10"></script>
+<script src="tower.js?v=12"></script>
+<script src="village-world.js?v=6"></script>
+<script src="village.js?v=22"></script>
 <script src="farm.js?v=13"></script>
 <script src="cloud.js?v=10"></script>
-<script src="news.js?v=9"></script>
+<script src="news.js?v=10"></script>
 <script>
 'use strict';
 /* ---------- utils ---------- */
@@ -666,9 +666,9 @@ const MISSIONS=[
   {id:'whack20',t:'ทำคอมโบ 20 ในสายด่วนถล่มโต๊ะ',g:'whack',ok:e=>e.game==='whack'&&e.st.combo>=20},
   {id:'stack20',t:'ซ้อนแฟ้มให้ถึง 20 ชั้น',g:'stack',ok:e=>e.game==='stack'&&e.st.floors>=20},
   {id:'stack3',t:'วางแฟ้มเป๊ะ 3 ครั้งในรอบเดียว',g:'stack',ok:e=>e.game==='stack'&&e.st.perfects>=3},
-  {id:'tug',t:'เล่นชักเย่อในห้องรวม 1 รอบ',g:'party',ok:e=>e.kind==='tug'},
-  {id:'dance',t:'เต้นในห้องรวมให้จบ 1 เพลง',g:'party',ok:e=>e.kind==='dance'},
-  {id:'chair',t:'วิ่งไปตอกบัตรกับเพื่อนในห้องรวม 1 รอบ',g:'party',ok:e=>e.kind==='chair'},
+  {id:'tug',t:'เล่นชักเย่อในห้องปาร์ตี้ 1 รอบ',g:'party',ok:e=>e.kind==='tug'},
+  {id:'dance',t:'เต้นในห้องปาร์ตี้ให้จบ 1 เพลง',g:'party',ok:e=>e.kind==='dance'},
+  {id:'chair',t:'วิ่งไปตอกบัตรกับเพื่อนในห้องปาร์ตี้ 1 รอบ',g:'party',ok:e=>e.kind==='chair'},
   {id:'mix3',t:'เล่นเกมเดี่ยวให้ครบ 3 เกม',g:'any',ok:(e,m)=>m.played.length>=3},
   {id:'tetris10',t:'Printer Tetris เคลียร์ 10 แถว',g:'tetris',ok:e=>e.game==='tetris'&&e.st.lines>=10},
   {id:'stamp10',t:'ปั๊มตรา PERFECT 10 ครั้งในรอบเดียว',g:'stamp',ok:e=>e.game==='stamp'&&e.st.perfect>=10},
@@ -704,7 +704,7 @@ window.addEventListener('hra-party',e=>recordMission({game:'party',kind:e.detail
 {const q=store.get('pendingMissions',[]);if(q.length){store.set('pendingMissions',[]);setTimeout(()=>q.forEach(recordMission),0)}}
 
 /* ---------- hub live panel renderers (data arrives from Firebase watchers) ---------- */
-const ACT={office:'🏠 แต่งออฟฟิศ',party:'อยู่ห้องปาร์ตี้',party3d:'🎉 อยู่ห้องปาร์ตี้',hub:'อยู่ห้องรวม',village:'🏘️ อยู่ในหมู่บ้าน',busy:'🙈 แอบทำงาน',spot:'🔍 จับผิดภาพ',run:'🏃 วิ่งไปตอกบัตร',whack:'☎️ สายด่วน',stack:'📚 ซ้อนแฟ้ม',tetris:'🖨️ Printer Tetris',stamp:'🔏 ปั๊มตรา',barista:'☕ บาริสต้า',toss:'🗑️ ปากระดาษ',slack:'📱 แอบเล่นมือถือ',conga:'🍱 ขบวนไปกินข้าว'};
+const ACT={office:'🏠 แต่งออฟฟิศ',party:'อยู่ห้องปาร์ตี้',party3d:'🎉 อยู่ห้องปาร์ตี้',hub:'อยู่ห้องปาร์ตี้',village:'🏘️ อยู่ในหมู่บ้าน',busy:'🙈 แอบทำงาน',spot:'🔍 จับผิดภาพ',run:'🏃 วิ่งไปตอกบัตร',whack:'☎️ สายด่วน',stack:'📚 ซ้อนแฟ้ม',tetris:'🖨️ Printer Tetris',stamp:'🔏 ปั๊มตรา',barista:'☕ บาริสต้า',toss:'🗑️ ปากระดาษ',slack:'📱 แอบเล่นมือถือ',conga:'🍱 ขบวนไปกินข้าว'};
 let onlineList=null,feedList=null;
 function renderOnline(){
   const el=document.querySelector('[data-k=onlist]');if(!el)return;
@@ -729,7 +729,7 @@ function renderMissions(){
   document.querySelector('#mBtn').classList.toggle('all',done>=3);
   el.innerHTML=list.map(m=>{const d=s.done.includes(m.id),g=m.g==='any'?null:m.g;
     return`<li class="${d?'done':''}"><span class="ck">${d?'✅':'⬜'}</span><span>${m.t}</span>${!d&&g?`<button class="btn sm go" data-go="${g}">เล่น</button>`:''}</li>`}).join('');
-  el.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>{if(b.dataset.go==='party'){HubRoom.picker()}else startGame(b.dataset.go)});
+  el.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>{if(b.dataset.go==='party'){Tower.setView('room');HubRoom.picker()}else startGame(b.dataset.go)});
 }
 let crewList=null,crewT=0;
 function renderCrew(){
@@ -744,7 +744,7 @@ function renderCrew(){
 }
 function partyInvite(G,name){
   const d=document.createElement('div');d.className='invite';
-  d.innerHTML=`<span>🎉 <b>${esc(G.by||'เพื่อน')}</b> เปิด ${name} ในห้องรวม!</span><button class="btn sm primary">เข้าร่วม</button><button class="btn sm" aria-label="ปิด">✕</button>`;
+  d.innerHTML=`<span>🎉 <b>${esc(G.by||'เพื่อน')}</b> เปิด ${name} ในห้องปาร์ตี้!</span><button class="btn sm primary">เข้าร่วม</button><button class="btn sm" aria-label="ปิด">✕</button>`;
   const [go,x]=d.querySelectorAll('button');go.onclick=()=>{d.remove();store.set('hubView','room');goHome()};x.onclick=()=>d.remove();
   document.body.appendChild(d);setTimeout(()=>d.remove(),15000);
 }
@@ -771,7 +771,7 @@ function onboarding(){
   if(store.get('name','').trim()||store.get('onboarded',false))return;
   if(window.__TEST__&&!/onboard/.test(location.search))return;
   let who=meWho();const ov=document.createElement('div');ov.className='overlay';
-  ov.innerHTML=`<div class="panel popin onb"><h2>👋 ยินดีต้อนรับสู่ห้องพักสมอง</h2><p class="muted">เลือกตัวละครกับตั้งชื่อเล่น แล้วเข้าห้องรวมไปเจอเพื่อนได้เลย</p>
+  ov.innerHTML=`<div class="panel popin onb"><h2>👋 ยินดีต้อนรับสู่ห้องพักสมอง</h2><p class="muted">เลือกตัวละครกับตั้งชื่อเล่น แล้วเข้าห้องปาร์ตี้ไปเจอเพื่อนได้เลย</p>
     <div class="onb-who">${MI_PEOPLE.map(w=>`<button type="button" data-w="${w}" class="${w===who?'on':''}"><img src="assets/mi/${w}_down.png" alt="${w}"></button>`).join('')}</div>
     <input maxlength="20" placeholder="ชื่อเล่น เช่น พล" aria-label="ชื่อเล่น">
     <ul class="onb-tips"><li>🚶 คลิกพื้นในห้องเพื่อเดิน</li><li>💬 พิมพ์คุยกับเพื่อนด้านล่างห้อง</li><li>🎉 กด "เล่นปาร์ตี้" เล่นพร้อมกันทั้งห้อง</li><li>🎮 เกมเดี่ยวอยู่ใต้ห้อง เล่นได้เหรียญไปแต่งห้อง</li></ul>
@@ -1487,8 +1487,8 @@ function showHelp(){
     <p>🏆 คะแนนส่งเข้า<b>อันดับรวม</b>อัตโนมัติตอนจบเกม ใช้ชื่อเล่นด้านบน — อย่าใช้ชื่อซ้ำกับเพื่อน</p>
     <p>🎯 ภารกิจวันนี้ทุกคนได้ชุดเดียวกัน ทำครบ 3 ข้อ = 🔥 ต่อเนื่อง</p>
     <p>📋 จบเกมแล้วกด "อวดในไลน์" เพื่อคัดลอกคะแนนไปแปะในกลุ่ม</p>
-    <p>🚶 <b>ห้องรวม</b>: คลิกพื้นหรือกดลูกศรเพื่อเดิน · Enter แล้วพิมพ์คุย · กด 🎉 เล่นปาร์ตี้ = ทุกคนในห้องเล่นด้วยกัน (เต้น / ชักเย่อ / วิ่งไปตอกบัตร) · 🔗 ชวน = คัดลอกลิงก์ไปแปะในไลน์</p>
-    <p>🎰 <b>กาชา</b>: ตู้หน้าห้องรวม หมุนฟรีวันละครั้ง · ได้ป้ายติดข้างชื่อ กับเฟอร์นิเจอร์ชุดทอง (มีแต่ในตู้) · ป้ายซ้ำได้แสตมป์ไว้แลกป้ายที่อยากได้</p>
+    <p>🎉 <b>ห้องปาร์ตี้</b> (ประตูชมพูในตึกเกม): คลิกพื้นหรือกดลูกศรเพื่อเดิน · Enter แล้วพิมพ์คุย · กด 🎉 เล่นปาร์ตี้ = ทุกคนในห้องเล่นด้วยกัน (เต้น / ชักเย่อ / วิ่งไปตอกบัตร) · 🔗 ชวน = คัดลอกลิงก์ไปแปะในไลน์</p>
+    <p>🎰 <b>กาชา</b>: ตู้ในตึกเกม (และในห้องปาร์ตี้) หมุนฟรีวันละครั้ง · ได้ป้ายติดข้างชื่อ กับเฟอร์นิเจอร์ชุดทอง (มีแต่ในตู้) · ป้ายซ้ำได้แสตมป์ไว้แลกป้ายที่อยากได้</p>
     <p>⭐ <b>เกมแนะนำวันนี้</b> ได้เหรียญ ×2 — เปลี่ยนทุกวัน ทุกคนได้เกมเดียวกัน</p>
     <p>🌱 <b>ฟาร์มดาดฟ้า</b>: ปลูกผัก (3 นาที – 3 ชม.) เก็บใส่ตะกร้าเมื่อว่าง แล้วขาย ส่งโรงอาหาร หรือส่งให้เพื่อน · ผักไม่มีวันเหี่ยว · ขยายห้อง = แปลงเพิ่ม (4 → 10) · ผักที่สุกตอนฝนตก แดดทอง หรือรุ้ง จะกลายพันธุ์ ขายได้แพงขึ้น · ทุกคนมีผลไม้ประจำตัว 1 อย่างที่ปลูกได้คนเดียว</p>
     <p>🏠 <b>ออฟฟิศของฉัน</b>: ทุกเกมและภารกิจได้ 🪙 กับ XP · เลเวลขึ้นได้ฉายาใหม่และปลดล็อกของ · เอาเหรียญไปซื้อเฟอร์นิเจอร์แต่งห้อง เพื่อนเข้ามาดูและกดถูกใจได้ (ถูกใจ 1 ครั้ง = +5 🪙)</p>
@@ -1524,7 +1524,7 @@ function renderHub(){
       <span class="me-coins">🪙 ${fmt(P.coins)}</span>
     </section>
     <div class="alerts" data-k="alerts"></div>
-    <div class="room-h"><span class="seg">${Village.on()?'<button data-view="village" type="button">🏘️ หมู่บ้าน</button>':''}<button data-view="room" type="button">🏠 ห้องรวม</button><button data-view="tower" type="button">🏢 ตึกออฟฟิศ</button></span><span class="dot"></span><span class="muted" data-k="oncount"></span><div class="heads" data-k="onlist"></div><button class="off-bar" id="offBar" type="button"></button></div>
+    <div class="room-h"><span class="seg">${Village.on()?'<button data-view="village" type="button">🏘️ หมู่บ้าน</button>':''}<button data-view="room" type="button">🎉 ห้องปาร์ตี้</button><button data-view="tower" type="button">🏢 ตึกออฟฟิศ</button></span><span class="dot"></span><span class="muted" data-k="oncount"></span><div class="heads" data-k="onlist"></div><button class="off-bar" id="offBar" type="button"></button></div>
     <div data-k="room"></div><div data-k="tower"></div><div data-k="village"></div>
     <section class="solo"><div class="sec-h"><h3>เกม</h3>${arc?'':`<button class="btn primary play-cta" id="playFeat" type="button">▶ เล่น${GAMES.find(g=>g.id===featuredId()).title} <small>🪙×2</small></button>`}<button class="chip" id="mBtn" type="button" aria-expanded="${mOpen}">🎯 ภารกิจวันนี้ <b data-k="mcount">0/3</b> <span data-k="streak"></span> ${mOpen?'▴':'▾'}</button><button class="chip sea-chip" id="ladBtn" type="button" title="Season Pass">🎫</button><button class="chip sea-chip" id="seaBtn" type="button" title="ภารกิจฤดูกาล">🏆<span class="sea-l"> ฤดูกาล</span> <b>${Season.done(Season.get())}/${SEASON_CH.length}</b></button></div>
       <div class="mpanel"${mOpen?'':' hidden'}><ul class="mlist" data-k="mlist"></ul></div>
@@ -1556,7 +1556,7 @@ renderHub();
 onboarding();
 Cloud.boot();Stats.boot();$('#newsBtn').onclick=News.open;News.boot();setTimeout(roomNews,2500);setTimeout(claimCups,3500);
 if(/[?&]join=room/.test(location.search)){Tower.setView('room');setTimeout(()=>{document.getElementById('room')?.scrollIntoView({behavior:'smooth',block:'center'});
-  const G=HubRoom.G;toast(G.sc&&G.sc!=='lobby'&&G.sc!=='res'?'🎉 เพื่อนกำลังเล่นอยู่ในห้องรวม — รอบหน้าเล่นด้วยกัน!':'👋 เพื่อนชวนมาที่ห้องรวม ทักทายกันได้เลย')},600)}
+  const G=HubRoom.G;toast(G.sc&&G.sc!=='lobby'&&G.sc!=='res'?'🎉 เพื่อนกำลังเล่นอยู่ในห้องปาร์ตี้ — รอบหน้าเล่นด้วยกัน!':'👋 เพื่อนชวนมาที่ห้องปาร์ตี้ ทักทายกันได้เลย')},600)}
 // test-mode hook for verify/run.py (absent for normal visits)
 if(window.__TEST__)window.__app={open:id=>startGame(id),home:()=>goHome(),start:()=>{const b=document.querySelector('.overlay .btn.primary');b&&b.click()},
   state:()=>({screen:hub.hidden?(current&&current.g.id):'hub',started:!!(current&&current.started),ended:!!(current&&current.ended)})};
