@@ -79,7 +79,10 @@ a.btn{text-decoration:none;display:inline-flex;align-items:center;gap:6px;color:
 
 /* stage & shared */
 #stage{--chrome:180px;max-width:1680px;margin:0 auto;padding:12px 16px 40px}
-.game{position:relative}
+.game{position:relative;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.game input,.game textarea{user-select:text;-webkit-user-select:text;-webkit-touch-callout:default}
+.kbd-hint{display:none;font-size:.75em;opacity:.7;margin-left:6px;border:2px solid currentColor;border-radius:6px;padding:0 5px}
+@media (hover:hover) and (pointer:fine){.kbd-hint{display:inline-block}}
 /* hub v2: three calm sections — me, party, games (+ a quiet feed) */
 #hub{max-width:1040px}
 #hub .me,#hub .party,#hub .scard,#hub .mpanel{background:#fff;border:2px solid var(--line);border-radius:14px;box-shadow:0 3px 0 var(--line)}
@@ -882,12 +885,13 @@ function startGame(id){
         <div class="rankline" data-a="rk"></div><div class="reward"><b>+${rw.coins} 🪙</b>${mult>1?' <i class="feat-b">×2 เกมแนะนำ</i>':''} · <b>+${rw.xp} XP</b>${Village.on()?(rw.bricks?` · <b>+${rw.bricks} 🧱</b>`:' · <span class="muted">🧱 วันนี้ครบ 12 ก้อนแล้ว</span>'):''}<div class="xpbar big"><i style="width:${rw.ups.length?0:rw.before.xp/needXP(rw.before.lv)*100}%"></i></div>
           <small>${rw.ups.length?`🎉 เลื่อนขั้นเป็น <b>Lv ${rw.after.lv} · ${Prog.title(rw.after.lv)}</b>!`:`Lv ${rw.after.lv} · ${Prog.title(rw.after.lv)} · อีก ${needXP(rw.after.lv)-rw.after.xp} XP`}</small>
           ${unlockHTML(rw)}</div>
-        <div class="row"><button class="btn primary res-cta" data-a="again">${g.again||'🔁 เล่นอีกรอบ'}</button></div>
+        <div class="row"><button class="btn primary res-cta" data-a="again">${g.again||'🔁 เล่นอีกรอบ'}<span class="kbd-hint">R</span></button></div>
         <div class="res-links"><button class="linkbtn" data-a="board">🏆 อันดับ</button><button class="linkbtn" data-a="share">📋 อวดในไลน์</button><button class="linkbtn" data-a="home">🏠 หน้าแรก</button></div></div>`;
       requestAnimationFrame(()=>requestAnimationFrame(()=>{const b=ov.querySelector('.reward .xpbar i');if(b)b.style.width=(rw.after.xp/needXP(rw.after.lv)*100)+'%'}));
       if(rw.ups.length)setTimeout(()=>{const pn=ov.querySelector('.panel');if(pn){const R=pn.getBoundingClientRect();domBurst(pn,R.width/2,R.height/3,{n:40,dist:220,size:10});api.sfx('level')}},350);
       ov.querySelectorAll('[data-a=dress]').forEach(b=>b.onclick=()=>Wardrobe.open());
       ov.querySelector('[data-a=again]').onclick=()=>startGame(g.id);
+      cur.endAt=performance.now();cur.resOv=ov;
       ov.querySelector('[data-a=home]').onclick=goHome;
       ov.querySelector('[data-a=board]').onclick=()=>showRanking(g.id,'d');
       const rk=ov.querySelector('[data-a=rk]');
@@ -1069,6 +1073,13 @@ window.addEventListener('keydown',e=>{
   if(e.key==='Escape'||e.key==='`'){e.preventDefault();toggleBoss();return}
   if(bossOn){bossType&&bossType(e);return}
   if($('#pauseOv')){if(e.key==='Enter'||e.key===' '){e.preventDefault();$('#pauseOv button').click()}return}
+  // R (any keyboard layout, e.code) or Enter on the result screen = play again; a short guard stops a key still held from the game
+  if(current&&current.ended&&current.resOv&&current.resOv.isConnected&&!e.repeat&&!/^(INPUT|TEXTAREA)$/.test((e.target||{}).tagName||'')
+    &&(e.code==='KeyR'||e.key==='Enter')&&!e.ctrlKey&&!e.metaKey&&!e.altKey&&performance.now()-current.endAt>500&&!document.querySelector('body>.overlay')){
+    e.preventDefault();startGame(current.g.id);return}
+  // on a game's intro card, Space / Enter / R presses the main start button, so R → R/Space is a full keyboard replay
+  if(current&&!current.started&&!e.repeat&&(e.key===' '||e.key==='Enter'||e.code==='KeyR')&&!document.querySelector('body>.overlay')){
+    const b=current.root.querySelector('.overlay .btn.primary');if(b){e.preventDefault();b.click();return}}
   if(current&&current.started&&!current.ended&&current.keyFn)current.keyFn(e);
 });
 
