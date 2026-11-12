@@ -378,13 +378,13 @@ def village(page, base, shot):
       out.hungry = document.querySelector('.vil-bar [data-a=pet]').textContent.includes('💤');
       const b0 = bag(), c1 = c(); D.feedPet('p'); out.prem = [c1 - c(), bag() - b0, Prog.get().vil.pet.prem];
       const p2 = Prog.get(); p2.vil.pet.fed = Date.now() - 1000; Prog.put(p2); const c2 = c(); D.feedPet('b'); out.second = c2 - c();
-      const c3 = c(); D.dyePet('black'); out.dye = [c3 - c(), Prog.get().vil.pet.coat];
+      const c3 = c(); D.dyePet('black'); out.dyePv = [c3 - c(), Prog.get().vil.pet.coat]; D.dyePet('black', true); out.dye = [c3 - c(), Prog.get().vil.pet.coat];   // 1st tap previews free, 🎨 pays
       D.act('pet'); await w(100); const inp = document.querySelector('#vilPetName'); inp.value = 'ข้าวตัง'; document.querySelector('.vil-card [data-a=rename]').click();
       await w(600); out.name = Prog.get().vil.pet.n;
       out.lot = (await M.get(M.ref(null, 'rooms/_vil/lots/3'))).val().pet;
       out.pres = Object.values((await M.get(M.ref(null, 'rooms/_hub/on'))).val() || {}).some(v => Array.isArray(v.pe) && v.pe[1] === 'ข้าวตัง' && v.pe[0] === 'black' && v.pe[2] === 1);
       return out; }''')
-    want = {'adopt': [6000, True, True], 'full': 6000, 'hungry': True, 'prem': [350, 1, 1], 'second': 150, 'dye': [300, 'black'], 'name': 'ข้าวตัง', 'lot': {'c': 'black', 'n': 'ข้าวตัง'}, 'pres': True}
+    want = {'adopt': [6000, True, True], 'full': 6000, 'hungry': True, 'prem': [350, 1, 1], 'second': 150, 'dyePv': [0, 'orange'], 'dye': [300, 'black'], 'name': 'ข้าวตัง', 'lot': {'c': 'black', 'n': 'ข้าวตัง', 'y': 'cat'}, 'pres': True}
     if any(pt.get(k) != v for k, v in want.items()) or not pt.get('adoptBtn'):
         raise AssertionError('pet wrong: ' + json.dumps(pt, ensure_ascii=False))
     page.wait_for_timeout(1500)

@@ -62,7 +62,13 @@ const Village = (() => {
   const COATS = { white: ['ขาว', '#e0e0e0', '#b5b5b5', '#2f2f2e'], orange: ['ส้ม', '#f4a640', '#d9772b', '#3a2416'], grey: ['เทา', '#9aa3ad', '#717b86', '#262a30'],
     black: ['ดำ', '#3d3a44', '#29262e', '#111013'], cream: ['ครีม', '#f3dfb8', '#d8bb8a', '#4a3524'], choc: ['ช็อกโกแลต', '#8a5a3c', '#663f28', '#24150d'], pink: ['ชมพูพาสเทล', '#ffc4d6', '#f293b2', '#4a2633'], mint: ['มิ้นต์', '#b8ecd6', '#82cdb0', '#1f3d33'] };
   const CATROW = { idle: [0, 4, 4], clean: [2, 4, 6], run: [4, 8, 14], sleep: [6, 4, 2.5], paw: [7, 6, 9], jump: [8, 7, 10], walk: [9, 8, 10] };   // row, frames, fps
-  const PETS = new Image(), coatCache = {}, PETC = { pet: 1 };      // PETC = the pet card
+  // 🐾 pet types: add a new animal here (sprite sheet + its 3 grey source tones) and every coat colour works for it automatically
+  //   key = the sheet's [base, shade, outline] grey values the coats replace; rows = CATROW-style animation rows; collar = draw the cat collar/hat
+  const PET_TYPES = { cat: { n: 'แมว', nm: 'เหมียว', icon: c => c === 'black' ? '🐈‍⬛' : '🐱', src: 'assets/pixel/elthen_cat.png', cell: 32, rows: CATROW, key: [224, 181, 47], collar: true } };
+  const petTy = y => PET_TYPES[y] ? y : 'cat';
+  const PETIMG = {}, coatCache = {}, PETC = { pet: 1 };      // PETC = the pet card
+  const petImg = y => { y = petTy(y); let im = PETIMG[y]; if (!im) { im = PETIMG[y] = new Image(); if (started) im.src = PET_TYPES[y].src; } return im; };
+  let petPick = '', adoptPick = { y: 'cat', c: 'orange' };   // coat being previewed in the card (nothing is charged until the 🎨 button)
   // test mode only: ?vilFast=1 makes one build hour last one second
   const HOUR = () => { if (!window.__TEST__) return 3600e3; const f = Village._dbg.fast || (/[?&]vilFast=1\b/.test(location.search) ? 1000 : 0); return f ? (f === true ? 1000 : +f) : 3600e3; };   // _dbg.fast = ms per hour
   const fmtN = n => Math.round(n).toLocaleString('en-US'), escH = s => String(s || '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -87,13 +93,20 @@ const Village = (() => {
   const petFed = pt => !!pt && Date.now() < (pt.fed || 0);
   const coatOk = c => COATS[c] ? c : 'orange';
   const pm = { x: 0, y: 0, face: 1, moving: false, act: null, actT: 0, init: false };   // where my cat is on the map
-  function coatSheet(k) {
-    k = coatOk(k); if (coatCache[k]) return coatCache[k];
-    const c = document.createElement('canvas'); c.width = PETS.width; c.height = PETS.height; const g = c.getContext('2d'); g.drawImage(PETS, 0, 0);
+  function coatSheet(k, y) {
+    k = coatOk(k); y = petTy(y); const id = y + ':' + k; if (coatCache[id]) return coatCache[id];
+    const im = petImg(y), [kb, ks, ko] = PET_TYPES[y].key, c = document.createElement('canvas'); c.width = im.width; c.height = im.height; const g = c.getContext('2d'); g.drawImage(im, 0, 0);
     const d = g.getImageData(0, 0, c.width, c.height), px = d.data, hex = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16)), [, b, s, o] = COATS[k], B = hex(b), Sd = hex(s), Ou = hex(o);
-    for (let i = 0; i < px.length; i += 4) { if (!px[i + 3]) continue; const v = px[i]; const m = v === 224 && px[i + 1] === 224 ? B : v === 181 && px[i + 1] === 181 ? Sd : v === 47 && px[i + 1] === 47 ? Ou : null; if (m) { px[i] = m[0]; px[i + 1] = m[1]; px[i + 2] = m[2]; } }
-    g.putImageData(d, 0, 0); return coatCache[k] = c;
+    for (let i = 0; i < px.length; i += 4) { if (!px[i + 3]) continue; const v = px[i]; if (px[i + 1] !== v) continue; const m = v === kb ? B : v === ks ? Sd : v === ko ? Ou : null; if (m) { px[i] = m[0]; px[i + 1] = m[1]; px[i + 2] = m[2]; } }
+    g.putImageData(d, 0, 0); return coatCache[id] = c;
   }
+  // one still frame of a pet in a coat, for the card preview (before you pay)
+  function petPrev(y, k) { const im = petImg(y); if (!im.complete || !im.width) return '<div style="height:96px"></div>'; const n = PET_TYPES[petTy(y)].cell, c = document.createElement('canvas'); c.width = n; c.height = n;
+    const g = c.getContext('2d'); g.drawImage(coatSheet(k, y), 0, 0, n, n, 0, 0, n, n);
+    const d = g.getImageData(0, 0, n, n).data; let x0 = n, y0 = n, x1 = -1, y1 = -1;      // crop to the sprite so it fills the preview box
+    for (let yy = 0; yy < n; yy++) for (let xx = 0; xx < n; xx++) if (d[(yy * n + xx) * 4 + 3]) { x0 = Math.min(x0, xx); y0 = Math.min(y0, yy); x1 = Math.max(x1, xx); y1 = Math.max(y1, yy); }
+    if (x1 < 0) return ''; const w = x1 - x0 + 1, h = y1 - y0 + 1, z = Math.max(1, Math.floor(80 / Math.max(w, h))), o = document.createElement('canvas'); o.width = w; o.height = h;
+    o.getContext('2d').drawImage(c, x0, y0, w, h, 0, 0, w, h); return `<span class="vil-petpv"><img src="${o.toDataURL()}" alt="" width="${w * z}" height="${h * z}"></span>`; }
   const homeOf = L => L && movedIn(L) ? [L.front[0] + 1, L.front[1]] : [TOWER.door[0] + 1, TOWER.door[1] + 1];
   // a cat walks after its owner while fed, otherwise back to its home spot
   function follow(pt, owner, fed, home, dt) {
@@ -104,36 +117,38 @@ const Village = (() => {
     if (d > .15) { const mv = Math.min(d, (fed ? Math.max(owner.sp || 3.2, 3) * 1.15 : 1.5) * dt * (d > 3 ? 2 : 1)); pt.x += dx / d * mv; pt.y += dy / d * mv; if (Math.abs(dx) > .05) pt.face = dx > 0 ? 1 : -1; }
     pt.moving = d > .15;
   }
-  function drawCat(pt, coat, prem, asleep, tag) {
-    if (!PETS.complete || !PETS.width) return;
+  function drawCat(pt, coat, prem, asleep, tag, ty) {
+    ty = petTy(ty); const PT = PET_TYPES[ty], CR = PT.rows, im = petImg(ty); if (!im.complete || !im.width) return; const Cn = PT.cell;
     let a = asleep ? 'sleep' : pt.moving ? 'run' : (Math.floor((t + (pt.x | 0)) / 7) % 3 === 2 ? 'clean' : 'idle');
-    if (pt.act) { const r = CATROW[pt.act]; if ((t - pt.actT) * r[2] < r[1] * (pt.act === 'jump' ? 2 : 1)) a = pt.act; else pt.act = null; }
-    const [row, n, fps] = CATROW[a], fr = Math.floor((pt.act ? t - pt.actT : t) * fps) % n;
+    if (pt.act && !CR[pt.act]) pt.act = null;
+    if (pt.act) { const r = CR[pt.act]; if ((t - pt.actT) * r[2] < r[1] * (pt.act === 'jump' ? 2 : 1)) a = pt.act; else pt.act = null; }
+    const [row, n, fps] = CR[a] || CR.idle, fr = Math.floor((pt.act ? t - pt.actT : t) * fps) % n;
     const s = S() * .9, cw = 32 * s, x = sx((pt.x + .5) * T) - cw / 2, y = sy((pt.y + 1) * T) - cw;
     ctx.fillStyle = 'rgba(0,0,0,.2)'; ctx.beginPath(); ctx.ellipse(x + cw / 2, y + 31.5 * s, 6 * s, 1.6 * s, 0, 0, 7); ctx.fill();
     ctx.save(); ctx.imageSmoothingEnabled = false;
-    if (pt.face < 0) { ctx.translate(x + cw, 0); ctx.scale(-1, 1); ctx.drawImage(coatSheet(coat), fr * 32, row * 32, 32, 32, 0, y, cw, cw); } else ctx.drawImage(coatSheet(coat), fr * 32, row * 32, 32, 32, x, y, cw, cw);
+    if (pt.face < 0) { ctx.translate(x + cw, 0); ctx.scale(-1, 1); ctx.drawImage(coatSheet(coat, ty), fr * Cn, row * Cn, Cn, Cn, 0, y, cw, cw); } else ctx.drawImage(coatSheet(coat, ty), fr * Cn, row * Cn, Cn, Cn, x, y, cw, cw);
     ctx.restore();
-    if (!asleep && a !== 'jump') { const hx = x + (pt.face > 0 ? 19 : 13) * s, hy = y + (a === 'run' || a === 'walk' ? 21 : 20) * s;   // collar; party hat with premium food
+    if (PT.collar && !asleep && a !== 'jump') { const hx = x + (pt.face > 0 ? 19 : 13) * s, hy = y + (a === 'run' || a === 'walk' ? 21 : 20) * s;   // collar; party hat with premium food
       ctx.fillStyle = '#e63946'; ctx.fillRect(hx - (pt.face > 0 ? 3 : 0) * s, hy + 4 * s, 3 * s, 1 * s); ctx.fillStyle = '#ffd84d'; ctx.fillRect(hx - (pt.face > 0 ? 2 : -1) * s, hy + 5 * s, 1 * s, 1 * s);
       if (prem) { ctx.fillStyle = '#ff5c8a'; ctx.beginPath(); ctx.moveTo(hx - 2.5 * s, hy); ctx.lineTo(hx + 2.5 * s, hy); ctx.lineTo(hx, hy - 6 * s); ctx.fill(); ctx.fillStyle = '#fff'; ctx.fillRect(hx - 1.5 * s, hy - 3 * s, 3 * s, 1 * s); ctx.fillStyle = '#ffd84d'; ctx.fillRect(hx - s, hy - 7 * s, 2 * s, 2 * s); } }
     if (tag) { const top = y + 19 * s - (prem && !asleep ? 8 : 2) * s; tags.push([x + cw / 2, top, tag[0], { fs: 10, bg: tag[1], hit: tag[2] }]);
       if (tag[2]) hits.push({ l: x + 4 * s, t: y + 12 * s, w: 24 * s, h: 20 * s, hit: tag[2] }); }
   }
-  const catIcon = c => coatOk(c) === 'black' ? '🐈‍⬛' : '🐱';
-  // what other players see: presence pe = [coat, name, fed 0/1, premium 0/1]; the lot record keeps {c, n} for the cat napping at home
-  const petPres = () => { const pt = myPet(); return pt ? [coatOk(pt.coat), String(pt.n || '').slice(0, 12), petFed(pt) ? 1 : 0, petFed(pt) && pt.prem ? 1 : 0] : 0; };
-  function petToLot() { const pt = myPet(), L = myLot(); if (!O || !L || !pt) return; const mk = myKey(), v = { c: coatOk(pt.coat), n: String(pt.n || '').slice(0, 12) };
-    if (L.pet && L.pet.c === v.c && L.pet.n === v.n) return;
+  const catIcon = (c, y) => PET_TYPES[petTy(y)].icon(coatOk(c));
+  // what other players see: presence pe = [coat, name, fed 0/1, premium 0/1, type]; the lot record keeps {c, n, y} for the pet napping at home
+  const petPres = () => { const pt = myPet(); return pt ? [coatOk(pt.coat), String(pt.n || '').slice(0, 12), petFed(pt) ? 1 : 0, petFed(pt) && pt.prem ? 1 : 0, petTy(pt.type)] : 0; };
+  function petToLot() { const pt = myPet(), L = myLot(); if (!O || !L || !pt) return; const mk = myKey(), v = { c: coatOk(pt.coat), n: String(pt.n || '').slice(0, 12), y: petTy(pt.type) };
+    if (L.pet && L.pet.c === v.c && L.pet.n === v.n && petTy(L.pet.y) === v.y) return;
     O.txLot(L.id, cur => cur && cur.k === mk ? { ...cur, pet: v } : cur ? undefined : null).catch(() => {}); }
   function petSave(pt, m) { const p = Prog.get(); p.vil = p.vil || {}; p.vil.pet = pt; Prog.put(p); if (m) toast(m); send(true); petToLot(); renderBar(); renderCard(); }
   function adopt() {
     const p = Prog.get(); if (myPet()) return;
     if ((p.coins | 0) < PET_PRICE) return toast(`ต้องมี 🪙 ${fmtN(PET_PRICE)} ขาดอีก ${fmtN(PET_PRICE - (p.coins | 0))}`);
-    p.coins -= PET_PRICE; p.vil = p.vil || {}; p.vil.pet = { n: 'เหมียว', coat: 'orange', fed: Date.now() + MEAL, prem: 0, fd: '' }; Prog.put(p);   // the first day's food comes with it
+    const y = petTy(adoptPick.y), PT = PET_TYPES[y], c0 = coatOk(adoptPick.c);
+    p.coins -= PET_PRICE; p.vil = p.vil || {}; p.vil.pet = { n: PT.nm, type: y, coat: c0, fed: Date.now() + MEAL, prem: 0, fd: '' }; Prog.put(p);   // the first day's food comes with it
     if (typeof Stats !== 'undefined') Stats.econ('out_pet', PET_PRICE);
-    pm.init = false; pm.act = 'jump'; pm.actT = t; petSave(p.vil.pet, `🐱 รับเลี้ยงเหมียวแล้ว! −${fmtN(PET_PRICE)} 🪙 · ตั้งชื่อได้เลย`);
-    const nm = myName(); feed(`🐱 ${nm} รับเลี้ยงแมวตัวใหม่!`);
+    pm.init = false; pm.act = 'jump'; pm.actT = t; petSave(p.vil.pet, `${PT.icon(c0)} รับเลี้ยง${PT.nm}แล้ว! −${fmtN(PET_PRICE)} 🪙 · ตั้งชื่อได้เลย`);
+    const nm = myName(); feed(`${PT.icon(c0)} ${nm} รับเลี้ยง${PT.n}ตัวใหม่!`);
   }
   function feedPet(k) {
     const pt = myPet(), f = FOOD[k], p = Prog.get(); if (!pt || !f) return;
@@ -152,26 +167,34 @@ const Village = (() => {
     const v = inp.value.replace(/[<>&"]/g, '').trim().slice(0, 12); if (!v) return toast('ใส่ชื่อก่อนนะ');
     if (v === pt.n) return; pt.n = v; petSave(pt, `✏️ ตอนนี้ชื่อ ${v} แล้ว`);
   }
-  function dyePet(k) {
+  function dyePet(k, pay) {
     const pt = myPet(), p = Prog.get(); if (!pt || !COATS[k] || k === pt.coat) return;
+    if (!pay) { petPick = k; return petCard(); }                       // tapping a colour only previews it
     if ((p.coins | 0) < DYE) return toast('เหรียญไม่พอ');
-    p.coins -= DYE; pt.coat = k; p.vil.pet = pt; Prog.put(p); if (typeof Stats !== 'undefined') Stats.econ('out_dye', DYE);
+    petPick = ''; p.coins -= DYE; pt.coat = k; p.vil.pet = pt; Prog.put(p); if (typeof Stats !== 'undefined') Stats.econ('out_dye', DYE);
     pm.act = 'paw'; pm.actT = t; petSave(pt, `🎨 ย้อมเป็นสี${COATS[k][0]}แล้ว −${DYE} 🪙`);
   }
+  const coatBtns = (on, a) => Object.entries(COATS).map(([k, c]) => `<button class="vil-coat${k === on ? ' on' : ''}" type="button" data-a="${a}" data-k="${k}" title="${c[0]}" aria-label="สี${c[0]}" style="background:linear-gradient(135deg,${c[1]} 55%,${c[2]} 55%);border-color:${c[3]}"></button>`).join('');
   function petCard() {
     const pt = myPet(), coins = Prog.get().coins | 0; let h = `<button class="x" type="button" data-a="close" aria-label="ปิด">✕</button>`;
     if (!pt) {
-      h += `<h4>🐾 รับเลี้ยงแมว</h4><p class="muted">เดินตามคุณในหมู่บ้าน · มื้อแรกของวันคาบเหรียญมาให้ ${PET_FIND} 🪙<br>หิวแล้วแค่นอนรอที่บ้าน ไม่หนี ไม่ป่วย ไม่ตาย</p>
-        <button class="btn primary" type="button" data-a="adopt"${coins < PET_PRICE ? ' disabled' : ''}>🐱 รับเลี้ยง · 🪙 ${fmtN(PET_PRICE)} (มีอาหารวันแรกให้)</button>${coins < PET_PRICE ? `<p class="vil-need">ขาดอีก 🪙 ${fmtN(PET_PRICE - coins)}</p>` : ''}`;
+      const ay = petTy(adoptPick.y), ac = coatOk(adoptPick.c), APT = PET_TYPES[ay], TY = Object.keys(PET_TYPES);
+      h += `<h4>🐾 รับเลี้ยงสัตว์</h4><p class="muted">เดินตามคุณในหมู่บ้าน · มื้อแรกของวันคาบเหรียญมาให้ ${PET_FIND} 🪙<br>หิวแล้วแค่นอนรอที่บ้าน ไม่หนี ไม่ป่วย ไม่ตาย</p>
+        ${TY.length > 1 ? `<div class="vil-chips">${TY.map(y => `<button class="vil-chip${y === ay ? ' on' : ''}" type="button" data-a="aty" data-k="${y}">${PET_TYPES[y].icon('orange')} ${PET_TYPES[y].n}</button>`).join('')}</div>` : ''}
+        <div class="vil-petrow">${petPrev(ay, ac)}<div class="vil-coats">${coatBtns(ac, 'acoat')}</div></div>
+        <small class="muted">สีขน${COATS[ac][0]} · เลือกสีตอนรับเลี้ยงได้ฟรี</small>
+        <button class="btn primary" type="button" data-a="adopt"${coins < PET_PRICE ? ' disabled' : ''}>${APT.icon(ac)} รับเลี้ยง${APT.n}สี${COATS[ac][0]} · 🪙 ${fmtN(PET_PRICE)} (มีอาหารวันแรกให้)</button>${coins < PET_PRICE ? `<p class="vil-need">ขาดอีก 🪙 ${fmtN(PET_PRICE - coins)}</p>` : ''}`;
     } else {
       const fed = petFed(pt), left = Math.max(0, (pt.fed || 0) - Date.now()), full = Math.round(left / MEAL * 100), canEat = left <= MEAL / 2;
-      h += `<h4>${catIcon(pt.coat)} ${escH(pt.n)}</h4><p class="muted">${fed ? 'เดินตามคุณอยู่' : 'หิว เลยนอนรอที่บ้าน 💤'}${fed && pt.prem ? ' · 🎉 ใส่หมวกปาร์ตี้' : ''}</p>
+      const pk = COATS[petPick] && petPick !== coatOk(pt.coat) ? petPick : '';
+      h += `<h4>${catIcon(pt.coat, pt.type)} ${escH(pt.n)}</h4><p class="muted">${fed ? 'เดินตามคุณอยู่' : 'หิว เลยนอนรอที่บ้าน 💤'}${fed && pt.prem ? ' · 🎉 ใส่หมวกปาร์ตี้' : ''}</p>
         <div class="vil-pb"><i style="width:${full}%;background:#ffb703"></i></div><small class="muted">อิ่ม ${full}%${fed ? ` · อยู่ได้อีก ${leftTxt(left)}` : ''} · 1 มื้ออยู่ได้ 1 วัน</small>
         ${Object.entries(FOOD).map(([k, f]) => `<button class="btn${k === 'b' ? ' primary' : ''}" type="button" data-a="feed" data-k="${k}"${!canEat || coins < f[0] ? ' disabled' : ''}>${f[2]} ${f[1]} · 🪙 ${f[0]}</button>`).join('')}
         <p class="muted" style="font-size:12px">${canEat ? '' : 'ยังอิ่มอยู่ ให้อาหารได้อีกตอนเหลือไม่ถึงครึ่ง · '}พรีเมียม: หมวกปาร์ตี้ + ตีลังกา + ขุดเจอผักให้ 1 ลูก${pt.fd === bkkDay() ? ' · วันนี้คาบเหรียญมาให้แล้ว' : ` · มื้อแรกของวัน +${PET_FIND} 🪙`}</p>
         <div class="vil-name"><input id="vilPetName" maxlength="12" value="${escH(pt.n)}" aria-label="ชื่อสัตว์เลี้ยง"><button class="btn" type="button" data-a="rename">ตั้งชื่อ</button></div>
-        <div class="vil-coats">${Object.entries(COATS).map(([k, c]) => `<button class="vil-coat${k === coatOk(pt.coat) ? ' on' : ''}" type="button" data-a="coat" data-k="${k}" title="${c[0]}" aria-label="สี${c[0]}" style="background:linear-gradient(135deg,${c[1]} 55%,${c[2]} 55%);border-color:${c[3]}"${k !== coatOk(pt.coat) && coins < DYE ? ' disabled' : ''}></button>`).join('')}</div>
-        <small class="muted">สีขน${COATS[coatOk(pt.coat)][0]} · ย้อมสีใหม่ ${DYE} 🪙 · เปลี่ยนชื่อฟรี</small>`;
+        <div class="vil-petrow">${petPrev(pt.type, pk || pt.coat)}<div class="vil-coats">${coatBtns(pk || coatOk(pt.coat), 'coat')}</div></div>
+        ${pk ? `<div class="vil-dye"><button class="btn primary" type="button" data-a="dye" data-k="${pk}"${coins < DYE ? ' disabled' : ''}>🎨 ย้อมเป็นสี${COATS[pk][0]} · 🪙 ${DYE}</button><button class="btn" type="button" data-a="coatx">ไม่เอา</button></div>${coins < DYE ? `<p class="vil-need">ขาดอีก 🪙 ${fmtN(DYE - coins)}</p>` : ''}`
+          : `<small class="muted">สีขน${COATS[coatOk(pt.coat)][0]} · แตะสีเพื่อดูก่อน · ย้อมสีใหม่ ${DYE} 🪙 · เปลี่ยนชื่อฟรี</small>`}`;
     }
     cardEl.innerHTML = h; cardEl.hidden = false;
   }
@@ -325,8 +348,8 @@ const Village = (() => {
   }
   function send(force) {                          // one write per new target cell (or tab shown/hidden)
     if (!O) return; const tg = me.path.length ? me.path[me.path.length - 1] : [Math.round(me.x), Math.round(me.y)];
-    const v = document.hidden || !visible() ? 0 : 1, pe = petPres(), rd = (W && W.ride) || '', sig = `${tg[0]},${tg[1]},${v},${pe},${rd}`; if (!force && sig === sentSig) return; sentSig = sig;
-    O.setPresence({ vx: tg[0], vy: tg[1], v, pe, rd });   // rd = the bike/scooter you're on, so coworkers see it too
+    const v = document.hidden || !visible() ? 0 : 1, pe = petPres(), rd = (W && W.ride) || '', rc = rd ? W.rideCol || '' : '', sig = `${tg[0]},${tg[1]},${v},${pe},${rd},${rc}`; if (!force && sig === sentSig) return; sentSig = sig;
+    O.setPresence({ vx: tg[0], vy: tg[1], v, pe, rd, rc });   // rd = the bike/scooter you're on, so coworkers see it too
   }
   // live coworkers: walk each one to the cell they last sent
   // 🕹️ ตึกเกม: the solo games are machines inside; a coworker playing one keeps standing at it (presence g = game id, vx/vy = the machine)
@@ -368,7 +391,7 @@ const Village = (() => {
   function renderBar() {
     if (!barEl) return; const L = lock(), ck = b => b ? '✓' : '', B = Prog.bricks(), mL = myLot();
     const full = document.getElementById('hub')?.classList.contains('vil-full'), jd = jobsDone().length;
-    barEl.innerHTML = `<button class="btn sm" type="button" data-a="full" aria-pressed="${!!full}" aria-label="${full ? 'ย่อแผนที่' : 'ขยายแผนที่เต็มจอ'}">${full ? '🗗' : '⛶'}<span class="bl"> ${full ? 'ย่อ' : 'เต็มจอ'}</span></button>${mL ? '<button class="btn sm" type="button" data-a="home" aria-label="บ้านฉัน">📍<span class="bl"> บ้านฉัน</span></button>' : ''}<button class="btn sm" type="button" data-a="pet">${(pt => pt ? `${catIcon(pt.coat)}<span class="bl"> ${escH(pt.n)}</span>${petFed(pt) ? '' : ' 💤'}` : '🐾<span class="bl"> สัตว์เลี้ยง</span>')(myPet())}</button><span class="vil-brick" title="อิฐได้จากมินิเกม รอบละ 1–3 ก้อน วันละไม่เกิน ${B.cap} + อิฐบนถนนในหมู่บ้านวันละ ${FLOOR_N} ก้อน">🧱 ${fmtN(B.n)} <small>เกม ${B.today}/${B.cap} · ถนน ${bricksGot()}/${FLOOR_N}</small></span><button class="btn sm vil-bd" type="button" data-a="board" aria-label="งานส่งของ ${jd}/${JOB_N}">📦<span class="bl"> ส่งของ</span> <b class="${jd < JOB_N ? 'vil-n' : ''}">${jd}/${JOB_N}</b></button><span class="muted">${mL ? `⭐ บ้านคุณ แปลง ${mL.id} · ${STAGE_TH[mL.stage]}${building(mL) ? ` ${Math.round(pctOf(mL) * 100)}%` : ''}`
+    barEl.innerHTML = `<button class="btn sm" type="button" data-a="full" aria-pressed="${!!full}" aria-label="${full ? 'ย่อแผนที่' : 'ขยายแผนที่เต็มจอ'}">${full ? '🗗' : '⛶'}<span class="bl"> ${full ? 'ย่อ' : 'เต็มจอ'}</span></button>${mL ? '<button class="btn sm" type="button" data-a="home" aria-label="บ้านฉัน">📍<span class="bl"> บ้านฉัน</span></button>' : ''}<button class="btn sm" type="button" data-a="pet">${(pt => pt ? `${catIcon(pt.coat, pt.type)}<span class="bl"> ${escH(pt.n)}</span>${petFed(pt) ? '' : ' 💤'}` : '🐾<span class="bl"> สัตว์เลี้ยง</span>')(myPet())}</button><span class="vil-brick" title="อิฐได้จากมินิเกม รอบละ 1–3 ก้อน วันละไม่เกิน ${B.cap} + อิฐบนถนนในหมู่บ้านวันละ ${FLOOR_N} ก้อน">🧱 ${fmtN(B.n)} <small>เกม ${B.today}/${B.cap} · ถนน ${bricksGot()}/${FLOOR_N}</small></span><button class="btn sm vil-bd" type="button" data-a="board" aria-label="งานส่งของ ${jd}/${JOB_N}">📦<span class="bl"> ส่งของ</span> <b class="${jd < JOB_N ? 'vil-n' : ''}">${jd}/${JOB_N}</b></button><span class="muted">${mL ? `⭐ บ้านคุณ แปลง ${mL.id} · ${STAGE_TH[mL.stage]}${building(mL) ? ` ${Math.round(pctOf(mL) * 100)}%` : ''}`
       : L.ok ? '✅ ครบเงื่อนไขแล้ว · แตะป้าย 🪧 เพื่อจองที่ดิน'
       : `🔒 สร้างบ้านได้เมื่อมีห้อง ${UNLOCK_W} + Lv ${UNLOCK_LV} · ตอนนี้ ห้อง ${L.w}/${UNLOCK_W} ${ck(L.w >= UNLOCK_W)} · Lv ${L.lv}/${UNLOCK_LV} ${ck(L.lv >= UNLOCK_LV)}`}</span>`;
   }
@@ -676,7 +699,9 @@ const Village = (() => {
   }
   function cardAct(a, b) {
     if (a === 'close') return closeCard();
-    if (a === 'adopt') return adopt(); if (a === 'feed') return feedPet(b && b.dataset.k); if (a === 'rename') return renamePet(); if (a === 'coat') return dyePet(b && b.dataset.k);
+    if (a === 'adopt') return adopt(); if (a === 'feed') return feedPet(b && b.dataset.k); if (a === 'rename') return renamePet(); if (a === 'coat') return dyePet(b && b.dataset.k); if (a === 'dye') return dyePet(b && b.dataset.k, true);
+    if (a === 'coatx') { petPick = ''; return petCard(); }
+    if (a === 'acoat') { adoptPick.c = b.dataset.k; return petCard(); } if (a === 'aty') { adoptPick.y = b.dataset.k; return petCard(); }
     if (a === 'deliver') return deliver(+(b && b.dataset.k));
     if (a === 'arcgo') { closeCard(); if (W) W.arcade.walk(b && b.dataset.k); return; }
     if (a === 'roof' || a === 'wall' || a === 'xtra') return decorate(cardL, { [a[0]]: b && b.dataset.k });
@@ -728,10 +753,10 @@ const Village = (() => {
     const rd = W && W.drawRide && p.rd && p.g === 'village' && !W.sceneOf([Math.round(a.x), Math.round(a.y)]) ? p.rd : '', mv = !!a.path.length;
     a.sp = 3.2 * (rd ? W.rideMul(rd) : 1);
     const RP = rd && { px, py: py - 3, dir: a.dir }, side = a.dir === 'left' || a.dir === 'right', lift = rd ? 5 + (mv ? Math.round(Math.sin((a.t + t) * 18) * .6) : 0) : 0, an2 = rd ? 'idle_anim' : an;
-    if (rd) { W.drawRide(ctx, RP, rd, true); if (side) W.drawRide(ctx, RP, rd, false); ctx.save(); ctx.beginPath(); ctx.rect(px - 10, py - lift - 34, 20, 28); ctx.clip(); }
+    if (rd) { W.drawRide(ctx, RP, rd, true, p.rc); if (side) W.drawRide(ctx, RP, rd, false, p.rc); ctx.save(); ctx.beginPath(); ctx.rect(px - 10, py - lift - 34, 20, 28); ctx.clip(); }
     drawChar(ctx, who, an2, a.dir, a.t + t, px, py - lift, k);
     if (typeof drawAcc === 'function') for (const sl of ['f', 'h']) if (p[sl]) drawAcc(ctx, p[sl], who, an2, a.dir, a.t + t, px, py - lift, k);
-    if (rd) { ctx.restore(); if (a.dir === 'down') W.drawRide(ctx, RP, rd, false); }
+    if (rd) { ctx.restore(); if (a.dir === 'down') W.drawRide(ctx, RP, rd, false, p.rc); }
     if (p.g !== 'village' && !a.path.length) a.dir = 'up';          // playing a machine in the arcade: face the screen
     tags.push([px, py - (W ? 33 : 25 * S()), p.g !== 'village' ? `🎮 ${p.n || '?'} กำลังเล่น` : `🟢 ${p.n || '?'}${p.lv ? ` Lv${p.lv}` : ''}`, p.g !== 'village' ? { fs: 10, bg: '#fff3c4', line: '#c99a1a', hit: { person: p } } : { fs: 10, bg: '#e8ffe0', line: '#3a9b3a', hit: { person: p } }]);
   }
@@ -783,12 +808,12 @@ const Village = (() => {
     const pt = myPet(), list = [...Object.values(others).map(a => ({ y: a.y, d: () => drawOther(a) })), { y: me.y, d: drawMe }], away = new Set();
     if (pt) { const fed = petFed(pt); follow(pm, me, fed, homeOf(myLot()), dt);
       if (fed !== pm.wasFed) { pm.wasFed = fed; renderBar(); send(true); if (cardL === PETC) renderCard(); }   // got hungry while you were here
-      list.push({ y: pm.y - .01, d: () => drawCat(pm, pt.coat, fed && pt.prem, !fed && !pm.moving, [fed ? `${catIcon(pt.coat)} ${pt.n}` : `💤 ${pt.n} หิวแล้ว`, fed ? '#fff3c4' : '#eee', 'pet']) }); }
+      list.push({ y: pm.y - .01, d: () => drawCat(pm, pt.coat, fed && pt.prem, !fed && !pm.moving, [fed ? `${catIcon(pt.coat, pt.type)} ${pt.n}` : `💤 ${pt.n} หิวแล้ว`, fed ? '#fff3c4' : '#eee', 'pet'], pt.type) }); }
     for (const a of Object.values(others)) { const pe = a.p.pe; if (!Array.isArray(pe)) continue; const fed = !!pe[2];
       if (!fed) continue; away.add(a.p.k || key(a.p.n)); const c = a.cat || (a.cat = { x: 0, y: 0, face: 1, moving: false, init: false });
-      follow(c, a, true, null, dt); list.push({ y: c.y - .01, d: () => drawCat(c, pe[0], !!pe[3], false, null) }); }
+      follow(c, a, true, null, dt); list.push({ y: c.y - .01, d: () => drawCat(c, pe[0], !!pe[3], false, null, pe[4]) }); }
     for (const L of LOTS) { if (L.stage !== 5 || !L.pet || L.k === mk || away.has(L.k)) continue; const h = homeOf(L), c = L.cat || (L.cat = { x: h[0], y: h[1], face: -1, moving: false, init: true });
-      list.push({ y: c.y - .01, d: () => drawCat(c, L.pet.c, false, true, null) }); }
+      list.push({ y: c.y - .01, d: () => drawCat(c, L.pet.c, false, true, null, L.pet.y) }); }
     NPCS.forEach((N, i) => list.push({ y: N.at[1], d: () => { const px = sx((N.at[0] + .5) * T), py = sy((N.at[1] + 1) * T - 1), k = S() * .75;
       ctx.fillStyle = 'rgba(0,0,0,.22)'; ctx.beginPath(); ctx.ellipse(px, py - 1, 6 * S(), 2.2 * S(), 0, 0, 7); ctx.fill();
       drawChar(ctx, N.who, 'idle_anim', 'down', t + i, px, py, k);
@@ -876,11 +901,11 @@ const Village = (() => {
     const out = [], pt = myPet(), mk = myKey(), away = new Set();
     for (const a of Object.values(others)) if (inScene(a.x, a.y, sc)) out.push({ y: a.y * T + 12, d: () => drawOther(a) });
     if (pt && inScene(pm.x, pm.y, sc)) { const fed = petFed(pt);
-      out.push({ y: pm.y * T + 11, d: () => drawCat(pm, pt.coat, fed && pt.prem, !fed && !pm.moving, [fed ? `${catIcon(pt.coat)} ${pt.n}` : `💤 ${pt.n} หิวแล้ว`, fed ? '#fff3c4' : '#eee', 'pet']) }); }
+      out.push({ y: pm.y * T + 11, d: () => drawCat(pm, pt.coat, fed && pt.prem, !fed && !pm.moving, [fed ? `${catIcon(pt.coat, pt.type)} ${pt.n}` : `💤 ${pt.n} หิวแล้ว`, fed ? '#fff3c4' : '#eee', 'pet'], pt.type) }); }
     for (const a of Object.values(others)) { const pe = a.p.pe; if (!Array.isArray(pe) || !pe[2] || !a.cat) continue; away.add(a.p.k || key(a.p.n));
-      if (inScene(a.cat.x, a.cat.y, sc)) out.push({ y: a.cat.y * T + 11, d: () => drawCat(a.cat, pe[0], !!pe[3], false, null) }); }
+      if (inScene(a.cat.x, a.cat.y, sc)) out.push({ y: a.cat.y * T + 11, d: () => drawCat(a.cat, pe[0], !!pe[3], false, null, pe[4]) }); }
     if (!sc) for (const L of LOTS) { if (L.stage !== 5 || !L.pet || L.k === mk || away.has(L.k)) continue; const h = homeOf(L), c = L.cat || (L.cat = { x: h[0], y: h[1], face: -1, moving: false, init: true });
-      out.push({ y: c.y * T + 11, d: () => drawCat(c, L.pet.c, false, true, null) }); }
+      out.push({ y: c.y * T + 11, d: () => drawCat(c, L.pet.c, false, true, null, L.pet.y) }); }
     return out;
   }
   // after the engine drew the world: name tags, lot / tower / board pills and the road pickups on the overlay canvas (screen px × dpr)
@@ -931,6 +956,7 @@ const Village = (() => {
     coins: () => Prog.get().coins | 0,
     setCoins(v) { const p = Prog.get(); p.coins = Math.max(0, Math.round(v)); Prog.put(p); renderBar(); },
     rides: () => ({ ...((Prog.get().vil || {}).rides || {}) }),
+    ridePaint(k, n) { if (typeof Stats !== 'undefined') Stats.econ('out_dye', n); },
     rideBought(k) { const p = Prog.get(); p.vil = p.vil || {}; p.vil.rides = { ...(p.vil.rides || {}), [k]: 1 }; Prog.put(p); if (typeof Stats !== 'undefined') Stats.econ('out_ride', 1); },
     day: () => bkkDay(), week: () => Math.floor((Date.now() + 7 * 3600e3) / (7 * 864e5)),
     drawMe(g, P, rd, lift) { const who = typeof meWho === 'function' ? meWho() : 'adam', an = P.moving && !rd ? 'run' : 'idle_anim', cx = Math.round(P.px), by = Math.round(P.py) + 3 - lift;
@@ -996,7 +1022,7 @@ const Village = (() => {
     requestAnimationFrame(frame);
   }
   function start() {
-    if (started) return; started = true; PETS.src = 'assets/pixel/elthen_cat.png';
+    if (started) return; started = true; for (const y of Object.keys(PET_TYPES)) petImg(y).src = PET_TYPES[y].src;
     startWorld().catch(e => { console.warn('village engine fallback', e); startOld(); });
     loadOnline().then(M => { O = M; send(true); M.watchOffset(v => offset = v || 0); M.watchOnline(l => { people = l; syncOthers(); }); if (M.watchLots) M.watchLots(applyLots); hookFarm(); }).catch(() => {});
   }

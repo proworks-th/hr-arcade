@@ -461,6 +461,49 @@ actB.onclick = e => { e.stopPropagation(); if (actH) useHit(actH); };
 s = s.replace("@@API@@", MOBILE + "@@API@@")
 # hoisted so the frame loop (defined earlier) can fill it
 rep("const people = [];", "const people = [], TOUCH = matchMedia('(pointer:coarse)').matches; var TAGR = [];")
+# ---------------- 🎨 ride colours (13 Nov 2026): every ride comes in 8 paints; pick free before buying, repaint later for RPAINT; coworkers see it ----------------
+m = re.search(r"const RIDE_SPR = \(\(\) => \{(.*?)\} \}; \}\)\(\);", s, re.S)
+assert m, 'RIDE_SPR'
+mk = m.group(1)
+mk_bike, mk_scoot = mk.split('    scoot:')
+mk_bike = mk_bike.replace("'#3a86ff'", 'M').replace("'#2f6fd6'", 'Sd')
+mk_scoot = mk_scoot.replace("'#ff5c8a'", 'M').replace("'#d94673'", 'Sd')
+assert 'M' in mk_bike and 'Sd' in mk_scoot
+s = s.replace(m.group(0), """const rideMk = (M, Sd) => {""" + mk_bike + '    scoot:' + mk_scoot + """} }; };
+// paint list: [name, body colour]; the shade is derived. RDEF = each ride's factory colour (what it looked like before paints)
+const RCOL = { blue: ['ฟ้า', '#3a86ff'], pink: ['ชมพู', '#ff5c8a'], red: ['แดง', '#e63946'], orange: ['ส้ม', '#ff9f1c'], yellow: ['เหลือง', '#f7c531'], green: ['เขียว', '#2ec27e'], purple: ['ม่วง', '#9b5de5'], black: ['ดำ', '#3d3a44'] };
+const RDEF = { bike: 'blue', scoot: 'pink' }, RPAINT = 300, RSC = {};
+const rShade = h => '#' + [1, 3, 5].map(i => Math.round(parseInt(h.slice(i, i + 2), 16) * .8).toString(16).padStart(2, '0')).join('');
+const rcolOk = (k, c) => RCOL[c] ? c : RDEF[k] || 'blue';
+const rideSpr = (k, c) => { c = rcolOk(k, c); const id = k + ':' + c; if (!RSC[id]) { const all = rideMk(RCOL[c][1], rShade(RCOL[c][1])); for (const r of Object.keys(all)) RSC[r + ':' + c] = all[r]; } return RSC[id]; };
+const RIDE_SPR = rideMk('#3a86ff', '#2f6fd6');   // which rides have sprites (and their default look)""", 1)
+rep("function drawRide(g, P, k, back) { const S = RIDE_SPR[k],",
+    "function drawRide(g, P, k, back, col) { const S = rideSpr(k, col || (P === me ? F.rcol[k] : '')),")
+rep("const F = { ride: 'walk', rides: { walk: 1 },", "const F = { ride: 'walk', rides: { walk: 1 }, rcol: {},")
+a = s.index('function rideCard(sel) {'); b = s.index('let lastRide')
+s = s[:a] + r"""function rideCard(sel, pick) { openN = null; card.dataset.k = 'rides'; card.anchor = null; sel = sel || F.ride; F.rcol = F.rcol || {};
+  const R = RIDES[sel], own = F.rides[sel], ok = F.coins >= R[1], paint = !!RIDE_SPR[sel], cur = rcolOk(sel, F.rcol[sel]), pk = paint && RCOL[pick] ? pick : cur, repaint = own && paint && pk !== cur;
+  const prev = (k, c) => { if (!RIDE_SPR[k]) return '<span style="font-size:26px">🚶</span>'; const im = rideSpr(k, c).side; return `<img src="${im.toDataURL()}" alt="" style="width:${im.width * 3}px;image-rendering:pixelated">`; };
+  card.innerHTML = `<h3>🚲 ยานพาหนะ</h3><p class="sub">ซื้อครั้งเดียว ใช้ได้ตลอด · ขี่ได้เฉพาะนอกบ้าน · กดปุ่ม R สลับขี่/เดิน</p>
+    <div class="opts">${Object.entries(RIDES).map(([k, r]) => `<button data-k="${k}" class="${k === sel ? 'pri' : ''}">${r[0]}<br><small>${F.rides[k] ? (F.ride === k ? '✅ ใช้อยู่' : 'มีแล้ว') : r[1].toLocaleString() + ' 🪙'} · ×${r[2]}</small></button>`).join('')}</div>
+    <div class="pv" style="justify-content:center;align-items:center;gap:12px;margin-top:8px">${prev(sel, pk)}<div><b>${R[0]}</b>${paint ? ` · สี${RCOL[pk][0]}` : ''}<br><small>${R[3]}</small></div></div>
+    ${paint ? `<div class="sws">${Object.entries(RCOL).map(([c, v]) => `<button class="sw${c === pk ? ' on' : ''}" data-c="${c}" title="${v[0]}" aria-label="สี${v[0]}" style="background:${v[1]}"></button>`).join('')}</div>
+    <p class="sub" style="text-align:center">${own ? `แตะสีเพื่อดูก่อน · ทาสีใหม่ ${RPAINT} 🪙` : 'เลือกสีก่อนซื้อได้ฟรี'}</p>` : ''}
+    <div class="row">${repaint ? `<button class="pri" data-a="paint" ${F.coins >= RPAINT ? '' : 'disabled'}>${F.coins >= RPAINT ? `🎨 ทาสี${RCOL[pk][0]} · ${RPAINT} 🪙` : `ขาดอีก ${(RPAINT - F.coins).toLocaleString()} 🪙`}</button><button data-c="${cur}">ไม่เอา</button>`
+      : own ? (F.ride === sel ? '<button disabled>✅ ใช้อยู่</button>' : `<button class="pri" data-a="use">ใช้${R[0].split(' ')[1]}</button>`)
+      : `<button class="pri" data-a="buy" ${ok ? '' : 'disabled'}>${ok ? `ซื้อ${paint ? 'สี' + RCOL[pk][0] : ''} · ${R[1].toLocaleString()} 🪙` : `ขาดอีก ${(R[1] - F.coins).toLocaleString()} 🪙`}</button>`}<button data-a="x">ปิด</button></div>`;
+  cardShow();
+  card.onclick = e => { const b = e.target.closest('button'); if (!b || b.disabled) return;
+    if (b.dataset.c) return rideCard(sel, b.dataset.c);
+    if (b.dataset.k) return rideCard(b.dataset.k); const a = b.dataset.a; if (a === 'x') return closeCard();
+    if (a === 'buy' && F.coins >= R[1]) { F.coins -= R[1]; F.rides[sel] = 1; F.ride = sel; if (paint) F.rcol[sel] = pk; H.rideBought(sel); save(); hud(); toast(`${R[0]} ของคุณแล้ว! ขี่ได้เลย`); return rideCard(sel); }
+    if (a === 'paint' && F.coins >= RPAINT) { F.coins -= RPAINT; F.rcol[sel] = pk; if (H.ridePaint) H.ridePaint(sel, RPAINT); save(); hud(); toast(`🎨 ${R[0]} สี${RCOL[pk][0]}แล้ว −${RPAINT} 🪙`); return rideCard(sel); }
+    if (a === 'use') { F.ride = sel; save(); toast(sel === 'walk' ? '🚶 ลงเดิน' : `${R[0]} ขึ้นขี่แล้ว`); return rideCard(sel); } }; }
+""" + s[b:]
+css += ('.sws{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;margin:8px 0 2px}'
+        '.sws .sw{width:44px;height:44px;min-width:0;border-radius:50%;padding:0;border:3px solid #fff;box-shadow:0 0 0 2px var(--ink)}'
+        '.sws .sw.on{box-shadow:0 0 0 3px var(--ink),0 0 0 6px var(--pink)}\n')
+
 # ---------------- start + API ----------------
 rep("window.__cb = { DAY_MS,", "if (window.__TEST__) window.__cb = { DAY_MS,")
 API = r"""// rebuild the static world when the live lots change (stage, colours, garden size); community plots and the room you stand in are kept
@@ -486,7 +529,7 @@ return { me, held, C, R,
     to(what, cb) { const r = arcRoom(); if (!r || !r[what]) return false; warpArc(); playAt({ x: r[what][0], y: r[what][1], st: what === 'alist' ? [r[what][0] - 1, r[what][1]] : null }, cb); return true; } }, get G() { return G; }, get block() { return block; }, get ctx() { return ctx; }, ov: SR.getElementById('ov'),
   travel: c => { closeCard(); me.after = null; travel(me, c); }, place: c => place(me, c), warp: c => { closeCard(); warp(c); }, warpArc: () => { closeCard(); return warpArc(); },
   pos: () => cellOf(me), walkable: (x, y) => walkable(x, y), get ride() { return riding(me); }, rideMul: k => RIDES[k]?.[2] || 1,
-  drawRide: (g, P, k, back) => { if (RIDE_SPR[k]) drawRide(g, P, k, back); }, sceneOf, scene: () => scene, relots, closeCard,
+  drawRide: (g, P, k, back, col) => { if (RIDE_SPR[k]) drawRide(g, P, k, back, col || ''); }, get rideCol() { const k = riding(me); return k ? rcolOk(k, F.rcol[k]) : ''; }, sceneOf, scene: () => scene, relots, closeCard,
   talk: i => { if (NPCS[i]) talkTo(NPCS[i]); }, enterLot: id => { const L = LOTS.find(l => l.id === id); if (L && L.room) enter(L.room); },
   hasRoom: id => !!(LOTS.find(l => l.id === id) || {}).room,
   lotTop: id => { const L = LOTS.find(l => l.id === id); return !L ? 0 : hasHouse(L) && !(L.stage === 2 && L.building) ? (L.y + 3) * T - (isBig(L) ? 130 : 98) : (L.y + 1) * T - 4; },
