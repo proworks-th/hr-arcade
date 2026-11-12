@@ -399,8 +399,19 @@ const Village = (() => {
   const cropEmo = id => ({ bok: '🥬', let: '🥗', car: '🥕', tom: '🍅', chi: '🌶️', cor: '🌽', pum: '🎃', wat: '🍉' })[id] || '🥬';
   const unitPay = id => cropOk(id) ? Math.round(CROPS[id][3] * DELIVER) : 0;
   // who can receive: the NPCs on the plaza + every moved-in house (lots in id order, so everyone gets the same list)
+  // the day's list is frozen the first time it is made (after the lots loaded), so a neighbour moving in / moving house
+  // can't swap a job you are on the way to deliver (prog.vil.jl = { d, a: [[crop, qty, whyIdx, 'n0' | 'L12'], ...] })
   function jobs() {
-    const d = bkkDay(), rnd = rng(+d.replace(/-/g, '') % 2147483646 + 7), houses = LOTS.filter(L => L.k && movedIn(L)), mk = myKey(), out = [], N = NPCS.length + houses.length, used = new Set();
+    const d = bkkDay(), v = Prog.get().vil || {}, jl = v.jl;
+    if (jl && jl.d === d && Array.isArray(jl.a)) return jl.a.map(([c, q, w, t], j) => {
+      const L = t[0] === 'L' ? LOTS.find(x => x.id === +t.slice(1) && x.k && movedIn(x)) : null, to = L ? { L } : { npc: t[0] === 'n' ? +t.slice(1) % NPCS.length : j % NPCS.length };
+      return { j, c, q, why: WHY[w] || WHY[0], to, pay: q * unitPay(c), name: to.L ? to.L.n || '?' : NPCS[to.npc].n }; });
+    const out = jobsMake(d);
+    if (lotsSig) { const p = Prog.get(); p.vil = p.vil || {}; p.vil.jl = { d, a: out.map(J => [J.c, J.q, Math.max(0, WHY.indexOf(J.why)), J.to.L ? 'L' + J.to.L.id : 'n' + J.to.npc]) }; Prog.put(p); }
+    return out;
+  }
+  function jobsMake(d) {
+    const rnd = rng(+d.replace(/-/g, '') % 2147483646 + 7), houses = LOTS.filter(L => L.k && movedIn(L)), mk = myKey(), out = [], N = NPCS.length + houses.length, used = new Set();
     for (let i = 0; i < 3; i++) rnd();
     for (let j = 0; j < JOB_N; j++) {
       const c = JOB_CROPS[Math.floor(rnd() * JOB_CROPS.length)], q = 3 + Math.floor(rnd() * 4), why = WHY[Math.floor(rnd() * WHY.length)];
@@ -413,12 +424,17 @@ const Village = (() => {
   }
   const jobsDone = () => { const v = Prog.get().vil || {}; return v.jd === bkkDay() ? v.jp || [] : []; };
   const jobsFor = g => jobs().filter(J => !jobsDone().includes(J.j) && (g.npc != null ? J.to.npc === g.npc : J.to.L === g));
-  function haveCrop(id) { const bag = (Prog.get().farm || {}).bag || {}; return Object.keys(bag).filter(k => k.split('.')[0] === id).reduce((a, k) => a + (bag[k] | 0), 0); }
+  // vegetables count from BOTH bags: the farm basket (farm.js) and the village bag (community farm harvests, engine BAG)
+  const farmHave = id => { const bag = (Prog.get().farm || {}).bag || {}; return Object.keys(bag).filter(k => k.split('.')[0] === id).reduce((a, k) => a + (bag[k] | 0), 0); };
+  const vilHave = id => W && W.bagN ? W.bagN(id) : 0;
+  function haveCrop(id) { return farmHave(id) + vilHave(id); }
   function deliver(j) {
     const J = jobs().find(x => x.j === j); if (!J || jobsDone().includes(j)) return renderCard();
     if (haveCrop(J.c) < J.q) return toast(`มี${cropName(J.c)} ${haveCrop(J.c)}/${J.q} · ปลูกเพิ่มที่สวน แล้วค่อยมาส่งนะ`);
-    const p = Prog.get(), bag = p.farm.bag, v = p.vil || (p.vil = {}); let left = J.q;
-    for (const k of Object.keys(bag).filter(k => k.split('.')[0] === J.c).sort((a, z) => (typeof bagPrice === 'function' ? bagPrice(a) - bagPrice(z) : 0))) {
+    const fromVil = Math.max(0, J.q - farmHave(J.c));             // farm basket first (plain ones before mutations), the rest from the village bag
+    if (fromVil && !(W && W.bagTake && W.bagTake(J.c, fromVil))) return toast('ส่งไม่สำเร็จ ลองใหม่อีกครั้งนะ');
+    const p = Prog.get(), bag = (p.farm = p.farm || {}).bag = p.farm.bag || {}, v = p.vil || (p.vil = {}); let left = J.q - fromVil;
+    if (left) for (const k of Object.keys(bag).filter(k => k.split('.')[0] === J.c).sort((a, z) => (typeof bagPrice === 'function' ? bagPrice(a) - bagPrice(z) : 0))) {
       const u = Math.min(left, bag[k] | 0); bag[k] -= u; if (!bag[k]) delete bag[k]; left -= u; if (!left) break; }
     if (v.jd !== bkkDay()) { v.jd = bkkDay(); v.jp = []; } v.jp.push(j); Prog.put(p);
     Prog.give(J.pay, 10, 'delivery'); if (typeof Stats !== 'undefined') Stats.econ('delivery', 1);
@@ -432,7 +448,7 @@ const Village = (() => {
   function boardCard() {
     const L = jobs(), nd = jobsDone().length;
     return `<h4>📌 บอร์ดประกาศ · งานส่งของวันนี้</h4><p class="muted">ได้มากกว่าส่งโรงอาหาร 30% · เจ้าของบ้านไม่เสียอะไร · ส่งแล้ว ${nd}/${JOB_N}</p>${L.map(J => jobRow(J, false)).join('')}
-      <p class="muted" style="font-size:12px">งานใหม่ทุกวัน เหมือนกันทุกคน · ใช้ผักในตะกร้า (ผักธรรมดาก่อนผักกลายพันธุ์)</p>`;
+      <p class="muted" style="font-size:12px">งานใหม่ทุกวัน เหมือนกันทุกคน · ใช้ผักในตะกร้าฟาร์มก่อน (ผักธรรมดาก่อนผักกลายพันธุ์) แล้วต่อด้วยผักในกระเป๋าหมู่บ้าน</p>`;
   }
   function npcCard(i) {
     const N = NPCS[i], L = jobsFor({ npc: i });

@@ -363,6 +363,8 @@ function playAt(M, cb) { closeCard(); const st = [M.x, M.y + 1], here = () => cd
   const go2 = () => { if (!here()) return; me.dir = 'up'; if (cb) cb(); else H.play(M.id); };
   if (here() && !me.path.length) return go2(); travel(me, st, go2); }
 return { me, held, C, R,
+  // board deliveries (village.js) also use vegetables harvested here: count / take '<crop>' from the bag
+  bagN: id => count(BAG, id), bagTake(id, n) { if (count(BAG, id) < n) return false; takeFrom(BAG, id, n); save(); hud(); return true; },
   arcade: { room: arcRoom, walk(id, cb) { const r = arcRoom(); if (!r) return false; const M = r.mach.find(m => m.id === id);
     if (M) playAt(M, cb); else { closeCard(); me.after = null; travel(me, r.entry); } return true; } }, get G() { return G; }, get block() { return block; }, get ctx() { return ctx; }, ov: SR.getElementById('ov'),
   travel: c => { closeCard(); me.after = null; travel(me, c); }, place: c => place(me, c), sceneOf, scene: () => scene, relots, closeCard,

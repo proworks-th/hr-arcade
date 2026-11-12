@@ -1,0 +1,12 @@
+{"cfg":"tri/RG","seed":1,"cells":{"0,0":"G","1,0":"RRG","0,1":"GGRR"},"res":0,"resCap":0,"par":3}
+{"cfg":"tri/RG","seed":2,"cells":{"0,0":"GRRR","1,0":"","0,1":"GGRG"},"res":0,"resCap":0,"par":4}
+{"cfg":"tri/RG","seed":3,"cells":{"0,0":"RRG","1,0":"GRRG","0,1":"G"},"res":0,"resCap":0,"par":4}
+{"cfg":"tri/RG","seed":4,"cells":{"0,0":"RR","1,0":"GR","0,1":"GGGR"},"res":0,"resCap":0,"par":3}
+{"cfg":"tri/RG","seed":5,"cells":{"0,0":"RG","1,0":"GRRR","0,1":"GG"},"res":0,"resCap":0,"par":3}
+{"cfg":"tri/RG","seed":6,"cells":{"0,0":"RRG","1,0":"RRGG","0,1":"G"},"res":0,"resCap":0,"par":3}
+{"cfg":"tri/RG","seed":7,"cells":{"0,0":"RGGG","1,0":"GR","0,1":"RR"},"res":0,"resCap":0,"par":3}
+{"cfg":"tri/RG","seed":8,"cells":{"0,0":"","1,0":"RRRG","0,1":"GRGG"},"res":0,"resCap":0,"par":4}
+{"cfg":"tri/RG","seed":9,"cells":{"0,0":"RRG","1,0":"G","0,1":"RGGR"},"res":0,"resCap":0,"par":4}
+{"cfg":"tri/RG","seed":12,"cells":{"0,0":"RGR","1,0":"G","0,1":"GRGR"},"res":0,"resCap":0,"par":6}
+{"cfg":"tri/RG","seed":13,"cells":{"0,0":"RG","1,0":"RRRG","0,1":"GG"},"res":0,"resCap":0,"par":3}
+{"cfg":"tri/RG","seed":14,"cells":{"0,0":"GG","1,0":"RG","0,1":"RRGR"},"res":0,"resCap":0,"par":4}

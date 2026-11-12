@@ -1,0 +1,15 @@
+{"cfg":"zig/RGBY","seed":10,"cells":{"0,0":"GGY","1,0":"Y","1,-1":"GRG","2,-1":"YB","0,1":"","-1,1":"BRR","2,0":"RYBB"},"res":1,"resCap":3,"par":11}
+{"cfg":"zig/RGBY","seed":20,"cells":{"0,0":"BBGR","1,0":"BGR","1,-1":"GGRB","2,-1":"Y","0,1":"R","-1,1":"Y","2,0":"YY"},"res":1,"resCap":3,"par":11}
+{"cfg":"zig/RGBY","seed":21,"cells":{"0,0":"YGRB","1,0":"GG","1,-1":"R","2,-1":"B","0,1":"YBBR","-1,1":"YGY","2,0":"R"},"res":1,"resCap":3,"par":12}
+{"cfg":"zig/RGBY","seed":29,"cells":{"0,0":"RY","1,0":"YYGR","1,-1":"R","2,-1":"BB","0,1":"BGB","-1,1":"R","2,0":"GGY"},"res":1,"resCap":3,"par":11}
+{"cfg":"zig/RGBY","seed":31,"cells":{"0,0":"GGG","1,0":"Y","1,-1":"RBGY","2,-1":"Y","0,1":"RB","-1,1":"BBYR","2,0":"R"},"res":1,"resCap":3,"par":12}
+{"cfg":"zig/RGBY","seed":32,"cells":{"0,0":"GY","1,0":"","1,-1":"YGG","2,-1":"RRBB","0,1":"R","-1,1":"YY","2,0":"BGRB"},"res":1,"resCap":3,"par":11}
+{"cfg":"zig/RGBY","seed":37,"cells":{"0,0":"RRB","1,0":"GBGG","1,-1":"BRYB","2,-1":"Y","0,1":"GY","-1,1":"R","2,0":"Y"},"res":1,"resCap":3,"par":11}
+{"cfg":"zig/RGBY","seed":39,"cells":{"0,0":"RGGR","1,0":"B","1,-1":"YY","2,-1":"BGBB","0,1":"YGR","-1,1":"RY","2,0":""},"res":1,"resCap":3,"par":11}
+{"cfg":"zig/RGBY","seed":49,"cells":{"0,0":"BR","1,0":"R","1,-1":"BB","2,-1":"YY","0,1":"GRBY","-1,1":"RG","2,0":"YGG"},"res":1,"resCap":3,"par":11}
+{"cfg":"zig/RGBY","seed":50,"cells":{"0,0":"B","1,0":"YBB","1,-1":"B","2,-1":"GGY","0,1":"RRGG","-1,1":"Y","2,0":"YRR"},"res":1,"resCap":3,"par":10}
+{"cfg":"zig/RGBY","seed":54,"cells":{"0,0":"BBYG","1,0":"","1,-1":"BY","2,-1":"YB","0,1":"RY","-1,1":"RRRG","2,0":"GG"},"res":1,"resCap":3,"par":10}
+{"cfg":"zig/RGBY","seed":55,"cells":{"0,0":"GYBR","1,0":"BRR","1,-1":"RG","2,-1":"YY","0,1":"GG","-1,1":"YB","2,0":"B"},"res":1,"resCap":3,"par":11}
+{"cfg":"zig/RGBY","seed":66,"cells":{"0,0":"R","1,0":"YR","1,-1":"BGGG","2,-1":"R","0,1":"GRYY","-1,1":"B","2,0":"BBY"},"res":1,"resCap":3,"par":10}
+{"cfg":"zig/RGBY","seed":70,"cells":{"0,0":"YGR","1,0":"YYYG","1,-1":"RG","2,-1":"BBRB","0,1":"GB","-1,1":"R","2,0":""},"res":1,"resCap":3,"par":11}
+{"cfg":"zig/RGBY","seed":84,"cells":{"0,0":"YYBR","1,0":"GBR","1,-1":"YY","2,-1":"G","0,1":"","-1,1":"BR","2,0":"RBGG"},"res":1,"resCap":3,"par":11}

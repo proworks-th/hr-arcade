@@ -30,7 +30,23 @@ function prismGame(root, api) {
   let R = 50, P = [], order = [], resBox = [], shown = {};
   // eased per-slot animation values (index = board cell or reservoir)
   let liftV = [], bounce = [], pop = [], orbs = [], rings = [], locksOff = [], litPulse = {};
-  const isDaily = () => typeof lv === 'string';
+  const isDaily = () => lv === dayKey, isClimb = () => typeof lv === 'string' && lv[0] === 'c';
+  /* ---------- 🗼 endless climb: floors get harder (pool prism-climb.js sorted easy → hard, then the hardest tier
+     repeats with shuffled colours). 3 hearts per run: finishing over the move allowance or using a hint costs one;
+     no hearts left = back to the last checkpoint (every 10 floors). Allowance shrinks as you climb. ---------- */
+  const CL = window.PRISM_CLIMB || [], CL_TOP = Math.max(1, Math.ceil(CL.length * .25));
+  const climb = () => ({ f: 1, hp: 3, best: 1, ...(store.get('prism_climb', null) || {}) }), climbPut = c => store.set('prism_climb', c);
+  const cpOf = f => Math.floor((f - 1) / 10) * 10 + 1;
+  function climbDef(f) {
+    if (!CL.length) return LV[LV.length - 1];
+    if (f <= CL.length) return CL[f - 1];
+    const k = (f * 2654435761 >>> 0), src = CL[CL.length - CL_TOP + k % CL_TOP], cols = ['R', 'G', 'B', 'Y', 'P'];
+    for (let i = cols.length - 1; i > 0; i--) { const j = (k >>> (i * 3)) % (i + 1); [cols[i], cols[j]] = [cols[j], cols[i]]; }
+    const map = Object.fromEntries(['R', 'G', 'B', 'Y', 'P'].map((c, i) => [c, cols[i]])), cells = {};
+    for (const [key, v] of Object.entries(src.cells)) cells[key] = v.replace(/[RGBYP]/g, c => map[c]);
+    return { ...src, cells };
+  }
+  const allowOf = (f, par) => Math.max(0, Math.ceil(par / 4) - Math.floor(f / 15));
 
   /* ---------- solver in a worker (falls back to a small search on the main thread) ---------- */
   let worker = null, reqId = 0; const waiting = {};
@@ -56,7 +72,7 @@ function prismGame(root, api) {
     for (let i = 0; i < geo.nRes; i++) resBox.push({ x: W - 126, y: TOP + 16 + (H - TOP - 40 - tot) / 2 + i * (rh + gap), w: 104, h: rh });
   }
   function startLevel(n, resume = true) {
-    lv = n; def = n === dayKey ? dailyDef : LV[n - 1]; ({ geo, st: st0 } = PC.load(def)); layout();
+    lv = n; def = n === dayKey ? dailyDef : typeof n === 'string' && n[0] === 'c' ? { name: '🗼 หอคอยไม่รู้จบ', tip: 'ทำให้ได้ในเป้า + ส่วนเผื่อ ไม่งั้นเสีย ❤️ · ใบ้ = เสีย ❤️', ...climbDef(+n.slice(1)) } : LV[n - 1]; ({ geo, st: st0 } = PC.load(def)); layout();
     totals = {}; for (const s of st0.s) for (const c of s) totals[c] = (totals[c] || 0) + 1;
     st = PC.clone(st0); path = []; hist = []; lit = {}; sel = -1; steps = []; step = null; hintMv = null; hintUsed = false; won = false; msg = null;
     const N = st.s.length; liftV = Array(N).fill(0); bounce = Array(N).fill(0); pop = Array.from({ length: N }, (_, i) => -i * .045); orbs = []; rings = []; locksOff = [];
@@ -76,6 +92,11 @@ function prismGame(root, api) {
   const starsFor = mv => { const p = def.par, s = mv <= p ? 3 : mv <= p + Math.max(1, Math.ceil(p / 4)) ? 2 : 1; return hintUsed ? Math.min(2, s) : s; };
   const dailyScore = mv => Math.max(100, 1000 - Math.max(0, mv - def.par) * 40 - (hintUsed ? 300 : 0));
   function hud() {
+    if (isClimb()) { const c = climb(), f = +lv.slice(1), al = allowOf(f, def.par);
+      q('lvw').innerHTML = `🗼 ชั้น <b>${f}</b>`; q('nm').textContent = '❤️'.repeat(c.hp) + '🖤'.repeat(3 - c.hp);
+      q('mv').textContent = path.length; q('par').textContent = al ? `${def.par} (+${al})` : def.par;
+      q('stars').textContent = path.length > def.par + al ? '⚠️ เกินเป้า เสีย ❤️' : ''; q('tip').textContent = def.tip;
+      const hs = root.querySelector('[data-k=hs]'); if (hs) hs.textContent = hintUsed ? '' : '(−❤️)'; return; }
     q('lvw').innerHTML = isDaily() ? '📅 <b>ประจำวัน</b>' : `⚡ ด่าน <b>${lv}</b>`; q('nm').textContent = isDaily() ? `เป้า ${def.par} ตา = 1000 แต้ม` : def.name;
     q('mv').textContent = path.length; q('par').textContent = def.par;
     q('stars').textContent = isDaily() ? `${dailyScore(path.length)} แต้ม` : '⭐'.repeat(starsFor(path.length)); q('tip').textContent = def.tip;
@@ -149,6 +170,7 @@ function prismGame(root, api) {
   }
   function hint() {
     if (!playing || won || step || steps.length) return;
+    if (!hintUsed && isClimb()) { const c = climb(); if (c.hp <= 1) { msg = { s: 'เหลือ ❤️ ดวงเดียว ใช้คำใบ้ไม่ได้ · ลอง ↩️ ย้อน', t: 3 }; return; } c.hp--; climbPut(c); }
     if (!hintUsed) { hintUsed = true; hud(); }
     if (plan && plan.res !== undefined) showHint(); else { plan && (plan.wantHint = true); msg = { s: '💡 กำลังคิด…', t: 3 }; }
   }
@@ -163,6 +185,16 @@ function prismGame(root, api) {
     const mv = path.length;
     for (let k = 0; k < 4; k++) fx.burst(W / 2 + (k - 1.5) * 140, H / 2, { n: 22, colors: CONFETTI, speed: 360, grav: 500, size: 6, shape: 'paper', life: 1.2 });
     api.sfx('level');
+    if (isClimb()) {
+      const f = +lv.slice(1), c = climb(), al = allowOf(f, def.par), over = mv > def.par + al, fresh = f >= c.best;
+      if (over) c.hp--;
+      const dead = c.hp <= 0, nf = dead ? cpOf(Math.max(c.best, f + 1)) : f + 1;
+      const score = fresh ? 60 + Math.min(f, 60) * 12 : 10 + Math.min(f, 60);
+      climbPut({ f: nf, hp: dead ? 3 : c.hp, best: Math.max(c.best, f + 1) }); store.set('prism_cur', null);
+      fx.text(W / 2, H / 2 - 20, dead ? '💔 หัวใจหมด!' : over ? `ผ่านชั้น ${f} · เสีย ❤️` : `🗼 ผ่านชั้น ${f}!`, { color: dead ? PAL.red : PAL.yel, size: 38, life: 1.6, rise: 30 });
+      api.after(1.6, () => api.end(score, `🗼 ชั้น ${f} · ${mv} ตา (เป้า ${def.par}${al ? '+' + al : ''})${dead ? ` · หัวใจหมด กลับไปชั้น ${nf}` : ` · ${'❤️'.repeat(c.hp)}`}`, false, { climb: f, moves: mv, par: def.par }));
+      return;
+    }
     if (isDaily()) {
       // daily: fewest moves wins the ranking; only the first clear of the day pays full coins
       const score = dailyScore(mv), rec = dayRec(), first = !rec.best;
@@ -184,12 +216,13 @@ function prismGame(root, api) {
     if (step || steps.length) return;
     const s = prog().s, un = unlocked(), dr = dayRec(), ov = document.createElement('div'); ov.className = 'overlay';
     const dayBtn = dailyDef ? `<button class="btn pz-day${lv === dayKey ? ' on' : ''}" data-n="${dayKey}"><b>📅</b><small>ด่านประจำวัน</small><i>${dr.best ? 'วันนี้ ' + dr.best + ' แต้ม' : 'ยังไม่เล่น'}</i></button>` : '';
-    ov.innerHTML = `<div class="panel popin pz-pick"><h2>🗺️ เลือกด่าน</h2><div class="pz-grid">${dayBtn}${LV.map((d, i) => { const n = i + 1, ok = n <= un;
+    const cc = climb(), clBtn = CL.length ? `<button class="btn pz-day${isClimb() ? ' on' : ''}" data-n="c${cc.f}"><b>🗼</b><small>หอคอยไม่รู้จบ</small><i>ชั้น ${cc.f} · สูงสุด ${cc.best - 1 || 0}</i></button>` : '';
+    ov.innerHTML = `<div class="panel popin pz-pick"><h2>🗺️ เลือกด่าน</h2><div class="pz-grid">${dayBtn}${clBtn}${LV.map((d, i) => { const n = i + 1, ok = n <= un;
       return `<button class="btn${n === lv ? ' on' : ''}${n > 12 ? ' pz-hard' : ''}" data-n="${n}" ${ok ? '' : 'disabled'}><b>${ok ? n : '🔒'}</b><small>${ok ? d.name : 'ผ่านด่านก่อนหน้า'}</small><i>${s[n] ? '⭐'.repeat(s[n]) : ok ? '·' : ''}</i></button>`; }).join('')}</div>
       <div class="row"><button class="btn" data-k="x">ปิด</button></div></div>`;
     ov.onclick = e => { if (e.target === ov) ov.remove(); };
     ov.querySelector('[data-k=x]').onclick = () => { ov.remove(); if (!playing && !won) startLevel(Math.min(un, LV.length)); };
-    ov.querySelectorAll('[data-n]').forEach(b => b.onclick = () => { ov.remove(); const n = b.dataset.n; startLevel(n[0] === 'd' ? n : +n); });
+    ov.querySelectorAll('[data-n]').forEach(b => b.onclick = () => { ov.remove(); const n = b.dataset.n; store.set('prism_mode', n[0] === 'c' ? 'climb' : ''); startLevel(n[0] === 'd' || n[0] === 'c' ? n : +n, n[0] === 'c' && (store.get('prism_cur', null) || {}).lv === n); });
     root.appendChild(ov);
   }
 
@@ -374,18 +407,29 @@ function prismGame(root, api) {
   });
 
   const un = unlocked(), next = Math.min(un, LV.length), cur = store.get('prism_cur', null), dr = dayRec();
-  const curOk = cur && cur.lv && (typeof cur.lv === 'number' || cur.lv === dayKey);
+  const cc = climb(), clKey = 'c' + cc.f;
+  const curOk = cur && cur.lv && (typeof cur.lv === 'number' || cur.lv === dayKey || cur.lv === clKey);
   def = null; draw();
-  const btns = [];
-  if (curOk) btns.push({ label: cur.lv === dayKey ? '▶ เล่นต่อ ด่านประจำวัน' : `▶ เล่นต่อ ด่าน ${cur.lv}`, primary: true, go() { startLevel(cur.lv); } });
-  const dayBtn = dailyDef && { label: `📅 ด่านประจำวัน${dr.best ? ` <small>(วันนี้ ${dr.best})</small>` : ''}`, go() { startLevel(dayKey, false); } };
-  const lvBtn = { label: `▶ ด่าน ${next}`, go() { startLevel(next); } };
-  // newcomers learn on the campaign first; after level 6 the daily is the main event
-  if (!curOk) { if (dayBtn && un > 6) { dayBtn.primary = true; btns.push(dayBtn, lvBtn); } else { lvBtn.primary = true; btns.push(lvBtn); dayBtn && btns.push(dayBtn); } }
-  else { dayBtn && cur.lv !== dayKey && btns.push(dayBtn); }
+  const btns = [], mode = m => store.set('prism_mode', m);
+  const clBtn = CL.length && un > 6 && { label: `🗼 หอคอย ชั้น ${cc.f} <small>${'❤️'.repeat(cc.hp)}</small>`, go() { mode('climb'); startLevel(clKey, !!(cur && cur.lv === clKey)); } };
+  const dayBtn = dailyDef && { label: `📅 ด่านประจำวัน${dr.best ? ` <small>(วันนี้ ${dr.best})</small>` : ''}`, go() { mode(''); startLevel(dayKey, false); } };
+  const lvBtn = { label: `▶ ด่าน ${next}`, go() { mode(''); startLevel(next); } };
+  if (clBtn && (store.get('prism_mode', '') === 'climb' || (curOk && cur.lv === clKey))) {
+    // mid-climb: the next floor is the main button (R / Space after a floor = straight up)
+    if (curOk && cur.lv === clKey) clBtn.label = `▶ ปีนต่อ ชั้น ${cc.f} <small>${'❤️'.repeat(cc.hp)}</small>`;
+    clBtn.primary = true; btns.push(clBtn);
+    if (curOk && cur.lv !== clKey) btns.push({ label: cur.lv === dayKey ? '▶ เล่นต่อ ด่านประจำวัน' : `▶ เล่นต่อ ด่าน ${cur.lv}`, go() { mode(''); startLevel(cur.lv); } });
+    else btns.push(dayBtn || lvBtn);
+  } else {
+    if (curOk) { btns.push({ label: cur.lv === dayKey ? '▶ เล่นต่อ ด่านประจำวัน' : `▶ เล่นต่อ ด่าน ${cur.lv}`, primary: true, go() { mode(''); startLevel(cur.lv); } }); dayBtn && cur.lv !== dayKey && btns.push(dayBtn); }
+    // newcomers learn on the campaign first; after level 6 the daily is the main event
+    else if (dayBtn && un > 6) { dayBtn.primary = true; btns.push(dayBtn, lvBtn); } else { lvBtn.primary = true; btns.push(lvBtn); dayBtn && btns.push(dayBtn); }
+    clBtn && btns.push(clBtn);
+  }
   btns.push({ label: '🗺️ เลือกด่าน', go() { picker(); } });
   api.intro({ how: `<p>⚡ ย้าย<b>พลังสีบนสุด</b>ไปช่องที่ติดกัน · รวมสีเดียวกันให้ครบ <b>4 ชั้น</b> = ชาร์จคริสตัล · ชาร์จหมดทุกสี = ผ่านด่าน</p>
       <p>📦 <b>ที่พัก</b>รับพลังจากช่องไหนก็ได้ แต่มีที่น้อย · 🔒 ช่องล็อกเปิดเมื่อมีการชาร์จข้างๆ</p>
+      <p>🗼 <b>หอคอยไม่รู้จบ</b> (ปลดล็อกหลังด่าน 6) ยากขึ้นทุกชั้น · มี ❤️ 3 ดวง เกินเป้าหรือใช้ใบ้เสีย 1 ดวง · หมดแล้วกลับไปจุดเซฟทุก 10 ชั้น</p>
       <p>📅 <b>ด่านประจำวัน</b> เหมือนกันทั้งออฟฟิศ ใช้ตาน้อยที่สุดได้อันดับ · ด่าน 13 ขึ้นไปคือด่านโหด</p>
       <p>⏳ ไม่จับเวลา · ↩️ ย้อนได้ไม่จำกัด · ทำได้ใน<b>เป้าจำนวนตา</b> = ⭐⭐⭐ · ใช้คำใบ้ได้สูงสุด ⭐⭐</p>`, buttons: btns });
   if (window.__TEST__) window.__prism = { tap, hint, undo, restart, startLevel, dayKey, get st() { return st; }, get geo() { return geo; }, get plan() { return plan; }, get hintMv() { return hintMv; }, get busy() { return !!step || steps.length > 0 || orbs.length > 0; }, get won() { return won; } };
