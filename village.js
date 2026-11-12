@@ -325,8 +325,8 @@ const Village = (() => {
   }
   function send(force) {                          // one write per new target cell (or tab shown/hidden)
     if (!O) return; const tg = me.path.length ? me.path[me.path.length - 1] : [Math.round(me.x), Math.round(me.y)];
-    const v = document.hidden || !visible() ? 0 : 1, pe = petPres(), sig = `${tg[0]},${tg[1]},${v},${pe}`; if (!force && sig === sentSig) return; sentSig = sig;
-    O.setPresence({ vx: tg[0], vy: tg[1], v, pe });
+    const v = document.hidden || !visible() ? 0 : 1, pe = petPres(), rd = (W && W.ride) || '', sig = `${tg[0]},${tg[1]},${v},${pe},${rd}`; if (!force && sig === sentSig) return; sentSig = sig;
+    O.setPresence({ vx: tg[0], vy: tg[1], v, pe, rd });   // rd = the bike/scooter you're on, so coworkers see it too
   }
   // live coworkers: walk each one to the cell they last sent
   // 🕹️ ตึกเกม: the solo games are machines inside; a coworker playing one keeps standing at it (presence g = game id, vx/vy = the machine)
@@ -724,8 +724,14 @@ const Village = (() => {
     const p = a.p, who = typeof MI_PEOPLE !== 'undefined' && MI_PEOPLE.includes(p.a) ? p.a : 'adam', an = a.path.length ? 'run' : 'idle_anim', k = W ? 1 : S() * .75;
     const px = sx((a.x + .5) * T), py = sy((a.y + 1) * T - 1);
     ctx.fillStyle = 'rgba(0,0,0,.22)'; ctx.beginPath(); ctx.ellipse(px, sy((a.y + 1) * T - 2), 6 * S(), 2.2 * S(), 0, 0, 7); ctx.fill();
-    drawChar(ctx, who, an, a.dir, a.t + t, px, py, k);
-    if (typeof drawAcc === 'function') for (const sl of ['f', 'h']) if (p[sl]) drawAcc(ctx, p[sl], who, an, a.dir, a.t + t, px, py, k);
+    // 🛵 their ride (outdoors only, same as yours): ride behind, rider lifted + clipped at the seat, front of the ride on top
+    const rd = W && W.drawRide && p.rd && p.g === 'village' && !W.sceneOf([Math.round(a.x), Math.round(a.y)]) ? p.rd : '', mv = !!a.path.length;
+    a.sp = 3.2 * (rd ? W.rideMul(rd) : 1);
+    const RP = rd && { px, py: py - 3, dir: a.dir }, side = a.dir === 'left' || a.dir === 'right', lift = rd ? 5 + (mv ? Math.round(Math.sin((a.t + t) * 18) * .6) : 0) : 0, an2 = rd ? 'idle_anim' : an;
+    if (rd) { W.drawRide(ctx, RP, rd, true); if (side) W.drawRide(ctx, RP, rd, false); ctx.save(); ctx.beginPath(); ctx.rect(px - 10, py - lift - 34, 20, 28); ctx.clip(); }
+    drawChar(ctx, who, an2, a.dir, a.t + t, px, py - lift, k);
+    if (typeof drawAcc === 'function') for (const sl of ['f', 'h']) if (p[sl]) drawAcc(ctx, p[sl], who, an2, a.dir, a.t + t, px, py - lift, k);
+    if (rd) { ctx.restore(); if (a.dir === 'down') W.drawRide(ctx, RP, rd, false); }
     if (p.g !== 'village' && !a.path.length) a.dir = 'up';          // playing a machine in the arcade: face the screen
     tags.push([px, py - (W ? 33 : 25 * S()), p.g !== 'village' ? `🎮 ${p.n || '?'} กำลังเล่น` : `🟢 ${p.n || '?'}${p.lv ? ` Lv${p.lv}` : ''}`, p.g !== 'village' ? { fs: 10, bg: '#fff3c4', line: '#c99a1a', hit: { person: p } } : { fs: 10, bg: '#e8ffe0', line: '#3a9b3a', hit: { person: p } }]);
   }
