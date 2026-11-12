@@ -68,7 +68,7 @@ cut("const LOTS = [];\n// 10 lots in a ring", "for (const L of LOTS) setG(L.x + 
 rep("function makeRoom(o) { const i = ROOMS.length, x0 = RX0 + 2 + (i % 8) * 16, y0 = 1 + (i >> 3) * 12, r = { ...o, x0, y0 };",
     "function makeRoom(o) { const i = o.slot ?? ROOMS.length, x0 = RX0 + 2 + (i % 8) * 16, y0 = 1 + (i >> 3) * 12, r = { ...o, x0, y0, slot: i };")
 rep("  L.room = makeRoom({ kind: isBig(L)", "  L.room = makeRoom({ slot: LOTS.indexOf(L), kind: isBig(L)")
-rep("B.room = makeRoom({ ...room, key, out, title });", "B.room = makeRoom({ ...room, key, out, title, slot: 12 + BUILDINGS.length });")
+rep("B.room = makeRoom({ ...room, key, out, title });", "B.room = makeRoom({ ...room, key, out, title, slot: room.slot ?? 12 + BUILDINGS.length });")
 rep("makeRoom({ kind: 'barn', key: 'barn',", "makeRoom({ slot: 15, kind: 'barn', key: 'barn',")
 # the house garden = the live farm (farm.js plots): beds where the live game puts them, real crops drawn on them
 rep("""  L.garden = gCells(L);   // real plots (added with the farm plots below); you can walk between the beds, like Stardew
@@ -89,6 +89,32 @@ rep(", [57, 22, 67], [55, 27, 68], [51, 24, 67]]) put('city'", "]) put('city'")
 rep("[60, 13, 68]", "[59, 13, 68]")
 rep("rect(59, 12, 59, 25, (x, y) => setG(x, y, 5)); rect(59, 25, 70, 25, (x, y) => setG(x, y, 5));", "rect(60, 12, 60, 25, (x, y) => setG(x, y, 5)); rect(60, 25, 70, 25, (x, y) => setG(x, y, 5));")
 rep("for (const x of [60, 69]) { put('city', [86, 98], x, 24);", "for (const x of [61, 69]) { put('city', [86, 98], x, 24);")
+
+# ---------------- 🕹️ ตึกเกม (12 Nov 2026): the arcade hall south of the lake — every solo game is a machine inside ----------------
+# lessons: _test/references-arcade.md · machines from H.games(), tap = walk up + H.play(id); labels / live players drawn by village.js
+rep(", [66, 30, 67]", ""); rep(", [63, 31, 68]", "")
+_cafe = s[s.index("building('cafe', 50, 13"):].split('\n')[0]
+rep(_cafe, _cafe + "\nbuilding('arcade', 61, 27, 8, 3, 'blue', 'red', [3, 'double'], '🕹️ ตึกเกม', { kind: 'arcade', w: 12, h: 7, wall: '#3d3478', floor: '#6a5aa8', slot: 16 });"
+    "\nrect(64, 32, 65, 33, (x, y) => setG(x, y, 5));")
+rep("  if (r.kind === 'barn') {", """  if (r.kind === 'arcade') { lampW(1); lampW(10); rug('#ff6fa8', 1, 6, 10, 1);
+    const SP = [[0, 2], [2, 2], [4, 2], [6, 2], [8, 2], [10, 2], [1, 4], [3, 4], [5, 4], [7, 4], [9, 4]];
+    r.mach = []; H.games().slice(0, SP.length).forEach((gm, i) => { const x = X + SP[i][0], y = Y + SP[i][1], M = { id: gm.id, x, y }; r.mach.push(M); block[y][x] = 1;
+      add(y * T + 14, (g, t) => drawCab(g, gm, x * T, y * T, t)); });
+    r.board = [X + 11, Y + 2]; block[Y + 2][X + 11] = 1; add((Y + 2) * T + 14, g => drawTrophy(g, (X + 11) * T, (Y + 2) * T)); }
+  if (r.kind === 'barn') {""")
+# arcade cabinet + trophy board, drawn live (featured glow pulses, screen flickers)
+rep("/* ============ ground, painted once ============ */", """function drawCab(g, gm, x, y, t) {
+  const L = x + 1, B = y + 15, ft = H.featured() === gm.id, f = (a, b, w, h, c) => { g.fillStyle = c; g.fillRect(L + a, B - 26 + b, w, h); };
+  if (ft) { g.fillStyle = `rgba(255,214,74,${.35 + .25 * Math.sin(t * 4)})`; g.fillRect(L - 2, B - 29, 18, 30); }
+  f(0, 0, 14, 26, O); f(1, 1, 12, 4, gm.color || '#ff8fbf'); f(1, 5, 12, 20, '#2f2a52'); f(1, 5, 1, 20, '#4a4380');
+  f(2, 6, 10, 8, '#141226'); f(3, 7, 8, 6, `hsl(${(t * 40 + gm.id.length * 47) % 360},70%,${22 + 6 * Math.sin(t * 3 + x)}%)`);
+  f(1, 15, 12, 3, '#3d3670'); f(3, 15, 1, 2, '#ff5c8a'); f(8, 16, 2, 1, '#4cc3ff'); f(10, 16, 2, 1, '#ffd23f'); f(2, 21, 10, 2, '#1d1a36');
+  g.font = '7px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(gm.emoji, L + 7, B - 16);
+  if (ft) { g.font = '6px sans-serif'; g.fillText('⭐', L + 7, B - 30); } }
+function drawTrophy(g, x, y) { const f = (a, b, w, h, c) => { g.fillStyle = c; g.fillRect(x + a, y + b, w, h); };
+  f(1, -10, 14, 25, O); f(2, -9, 12, 18, '#f7e3b5'); f(2, 9, 12, 5, '#a8643a'); f(5, -7, 6, 5, '#ffd23f'); f(7, -2, 2, 3, '#ffd23f'); f(5, 1, 6, 1, '#c99a1a');
+  for (let i = 0; i < 3; i++) f(4, 3 + i * 2, 8, 1, '#c9a27a'); }
+/* ============ ground, painted once ============ */""")
 
 # ---------------- world build → a function that can run again when lots change ----------------
 A = "/* ============ world grid"; B = "/* ============ people ============ */"
@@ -305,9 +331,12 @@ rep("const SPEED = (m => m ? +m[1] : 1)(", "const SPEED = (m => m && window.__TE
 
 # ---------------- input: live pills first, then the map; tower / board / lots go to the live game ----------------
 rep("  if (scene) return null;\n  for (const B of BUILDINGS)",
+    "  if (scene && scene.mach) { const cx = Math.floor(wx / T), on = (c, r) => cx === c && wy >= r * T - 13 && wy < (r + 1) * T;\n"
+    "    const M = scene.mach.find(m => on(m.x, m.y)); if (M) return { mach: M }; if (on(...scene.board)) return { arank: 1 }; }\n"
     "  if (scene) return null;\n  if (wx >= TOWER.x * T && wx < (TOWER.x + TOWER.w) * T && wy > 0 && wy < 7 * T + 4) return { tower: 1 };\n  if (Math.floor(wx / T) === BOARD[0] && wy > BOARD[1] * T - 12 && wy < (BOARD[1] + 1) * T) return { board: 1 };\n  for (const B of BUILDINGS)")
 rep("  const [wx, wy] = worldAt(e), hit = pick(wx, wy);\n",
-    "  { const b = cv.getBoundingClientRect(); if (H.tap(e.clientX - b.left, e.clientY - b.top)) return; }\n  const [wx, wy] = worldAt(e), hit = pick(wx, wy);\n  if (hit?.tower) return H.tower();\n  if (hit?.board) return H.board();\n")
+    "  { const b = cv.getBoundingClientRect(); if (H.tap(e.clientX - b.left, e.clientY - b.top)) return; }\n  const [wx, wy] = worldAt(e), hit = pick(wx, wy);\n  if (hit?.tower) return H.tower();\n  if (hit?.board) return H.board();\n  if (hit?.mach) return playAt(hit.mach);\n  if (hit?.arank) return H.arcadeRank();\n")
+rep("h?.lot || h?.plot", "h?.mach || h?.arank || h?.lot || h?.plot")
 rep("  if (hit?.lot) return visit([hit.lot.x + 2, hit.lot.y + 3], () => lotCard(hit.lot), 3);", "  if (hit?.lot) return H.lot(hit.lot.live);")
 rep("addEventListener('keydown', e => { const k = KEYS[e.key.toLowerCase()];", "addEventListener('blur', () => held.clear());\naddEventListener('keydown', e => { if (!e.key || !H.visible() || H.typing(e) || e.ctrlKey || e.metaKey || e.altKey) return; const k = KEYS[e.key.toLowerCase()];")
 rep_line("SR.getElementById('gohome').onclick = ", "SR.getElementById('gohome').onclick = () => { closeCard(); H.home(); };")
@@ -328,7 +357,14 @@ function relots() { const keep = {}; for (const p of PLOTS) if (!p.home) keep[p.
   if (was) { const s2 = ROOMS.find(r => r.slot === was.slot) || null; scene = s2;
     if (!s2) { place(me, was.out); scene = null; enterScene(null); } else if (!walkable(...cellOf(me))) place(me, s2.entry); }
   else if (!walkable(...cellOf(me))) { const c = near(...cellOf(me)); if (c) place(me, c); } }
-return { me, held, C, R, get G() { return G; }, get block() { return block; }, get ctx() { return ctx; }, ov: SR.getElementById('ov'),
+// 🕹️ arcade: walk up to a machine (from anywhere in the village), face it, then the live game starts that mini game
+const arcRoom = () => ROOMS.find(r => r.kind === 'arcade') || null;
+function playAt(M, cb) { closeCard(); const st = [M.x, M.y + 1], here = () => cdist(cellOf(me), st) <= 0 && sceneOf(cellOf(me)) === sceneOf(st);
+  const go2 = () => { if (!here()) return; me.dir = 'up'; if (cb) cb(); else H.play(M.id); };
+  if (here() && !me.path.length) return go2(); travel(me, st, go2); }
+return { me, held, C, R,
+  arcade: { room: arcRoom, walk(id, cb) { const r = arcRoom(); if (!r) return false; const M = r.mach.find(m => m.id === id);
+    if (M) playAt(M, cb); else { closeCard(); me.after = null; travel(me, r.entry); } return true; } }, get G() { return G; }, get block() { return block; }, get ctx() { return ctx; }, ov: SR.getElementById('ov'),
   travel: c => { closeCard(); me.after = null; travel(me, c); }, place: c => place(me, c), sceneOf, scene: () => scene, relots, closeCard,
   talk: i => { if (NPCS[i]) talkTo(NPCS[i]); }, enterLot: id => { const L = LOTS.find(l => l.id === id); if (L && L.room) enter(L.room); },
   hasRoom: id => !!(LOTS.find(l => l.id === id) || {}).room,

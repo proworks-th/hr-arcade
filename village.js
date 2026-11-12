@@ -329,8 +329,16 @@ const Village = (() => {
     O.setPresence({ vx: tg[0], vy: tg[1], v, pe });
   }
   // live coworkers: walk each one to the cell they last sent
+  // 🕹️ ตึกเกม: the solo games are machines inside; a coworker playing one keeps standing at it (presence g = game id, vx/vy = the machine)
+  const arcGames = () => typeof GAMES === 'undefined' ? [] : GAMES.filter(g => !g.online && g.mount);
+  const arcIds = () => new Set(arcGames().map(g => g.id));
+  const inArc = p => { const r = W && W.arcade && W.arcade.room(); return !!r && p.vx >= r.x0 && p.vx < r.x0 + r.w && p.vy >= r.y0 && p.vy < r.y0 + r.h; };
+  const arcTop = {};                               // today's #1 per game, refreshed while the hall is open
+  function arcRank(id) { const c = arcTop[id]; if (c && Date.now() - c.t < 90e3) return c.top; arcTop[id] = { t: Date.now(), top: c ? c.top : null };
+    if (typeof loadRank === 'function') loadRank().then(R => R.board(id, 'd')).then(rows => { arcTop[id].top = rows && rows[0] || null; }).catch(() => {}); return arcTop[id].top; }
+  function arcPlay(id) { if (typeof Tower !== 'undefined') store.set('hubView', 'village'); if (typeof startGame === 'function') startGame(id); }
   function syncOthers() {
-    const here = people.filter(p => !p.me && p.g === 'village' && p.v !== 0 && p.vx != null);
+    const ids = arcIds(), here = people.filter(p => !p.me && p.vx != null && ((p.g === 'village' && p.v !== 0) || (ids.has(p.g) && inArc(p))));
     for (const id of Object.keys(others)) if (!here.some(p => p.id === id)) delete others[id];
     if (!block) return;
     for (const p of here) {
@@ -664,7 +672,8 @@ const Village = (() => {
     ctx.fillStyle = 'rgba(0,0,0,.22)'; ctx.beginPath(); ctx.ellipse(px, sy((a.y + 1) * T - 2), 6 * S(), 2.2 * S(), 0, 0, 7); ctx.fill();
     drawChar(ctx, who, an, a.dir, a.t + t, px, py, k);
     if (typeof drawAcc === 'function') for (const sl of ['f', 'h']) if (p[sl]) drawAcc(ctx, p[sl], who, an, a.dir, a.t + t, px, py, k);
-    tags.push([px, py - (W ? 33 : 25 * S()), `🟢 ${p.n || '?'}${p.lv ? ` Lv${p.lv}` : ''}`, { fs: 10, bg: '#e8ffe0', line: '#3a9b3a', hit: { person: p } }]);
+    if (p.g !== 'village' && !a.path.length) a.dir = 'up';          // playing a machine in the arcade: face the screen
+    tags.push([px, py - (W ? 33 : 25 * S()), p.g !== 'village' ? `🎮 ${p.n || '?'} กำลังเล่น` : `🟢 ${p.n || '?'}${p.lv ? ` Lv${p.lv}` : ''}`, p.g !== 'village' ? { fs: 10, bg: '#fff3c4', line: '#c99a1a', hit: { person: p } } : { fs: 10, bg: '#e8ffe0', line: '#3a9b3a', hit: { person: p } }]);
   }
   function drawTags() {                           // lowest on screen last; nudge a tag up if it would cover one already drawn
     const done = []; tags.sort((a, b) => a[1] - b[1]);
@@ -740,6 +749,8 @@ const Village = (() => {
   function act(g) {
     if (g === 'tower') { goTo([TOWER.door[0], TOWER.door[1] + 1]); typeof Tower !== 'undefined' && Tower.setView('tower'); return; }
     if (g === 'pet') { openCard(PETC); return; }
+    if (g && g.arc != null && W) { W.arcade.walk(g.arc || ''); return; }
+    if (g && g.arank) { if (typeof showRanking === 'function') showRanking(); return; }
     if (g === 'board') { goTo(nearestWalk(BOARD[0], BOARD[1] + 1)); openCard(BOARDC); return; }
     if (g && g.npc != null && W) { W.talk(g.npc); return; }
     if (g && g.npc != null) { const [nx, ny] = NPCS[g.npc].at; goTo(nearestWalk(nx + 1, ny)); openCard(NPCC[g.npc]); return; }
@@ -826,7 +837,14 @@ const Village = (() => {
           else pill(x, y, `${onK.has(L.k) ? '🟢 ' : ''}${L.n || '?'} · ${movedIn(L) && !b ? 'บ้าน' : STAGE_TH[L.stage] + pc}${b && !helpers(L)[mk] && Object.keys(helpers(L)).length < HELP_CAP ? ' · 🔨' : ''}${jobK.has('L' + L.id) ? ' · 📦' : ''}`, { bg: movedIn(L) && !b ? '#fff' : b ? '#ffd84d' : '#f3f3f3', hit: L }); } }
       const got = floorGot(), bob = Math.sin(t * 3);
       ctx.font = `${11 * S()}px sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      for (const f of floorSpots()) if (!got.includes(f.i)) ctx.fillText(floorIcon(f), sx((f.x + .5) * T), sy((f.y + .5) * T) - bob * S());
+      for (const f of floorSpots()) if (!got.includes(f.i)) ctx.fillText(floorIcon(f), sx((f.x + .5) * T), sy((f.y + .5) * T) - bob * S());    }
+    if (scn && scn.mach) {                         // the hall is the leaderboard: today's #1 on every machine, ⭐ = today's ×2 game
+      const G = arcGames(), ft = typeof featuredId === 'function' ? featuredId() : '';
+      for (const M of scn.mach) { const g = G.find(x => x.id === M.id); if (!g) continue; const top = arcRank(M.id);
+        const nm = top ? String(top.n || '?') : '', sc = top ? Number(top.s) : 0;
+        pill(sx((M.x + .5) * T), sy(M.y * T - 12), `${g.emoji}${M.id === ft ? ' ×2' : ''}${top ? ` 👑${nm.length > 6 ? nm.slice(0, 6) + '…' : nm} ${sc >= 1e4 ? Math.round(sc / 1e3) + 'k' : sc.toLocaleString('en-US')}` : ''}`,
+          { fs: 9, bg: M.id === ft ? '#fff3c4' : '#fff', line: M.id === ft ? '#c99a1a' : '#3a2a20', hit: { arc: M.id } }); }
+      pill(sx((scn.board[0] + .5) * T), sy(scn.board[1] * T - 12), '🏆 อันดับ', { fs: 10, bg: '#ffe0ea', hit: { arank: 1 } });
     }
     drawTags();
   }
@@ -849,6 +867,9 @@ const Village = (() => {
       if (typeof drawAcc === 'function' && typeof Wardrobe !== 'undefined') for (const sl of ['f', 'h']) drawAcc(g, Wardrobe.eq(sl), who, an, P.dir, P.t, cx, by, 1);
       g.restore(); },
     tick: liveTick, draw: liveDraw, overlay: liveOverlay,
+    games: () => arcGames().map(g => ({ id: g.id, emoji: g.emoji, title: g.title, color: g.color })),
+    featured: () => typeof featuredId === 'function' ? featuredId() : '',
+    play: id => arcPlay(id), arcadeRank: () => act({ arank: 1 }),
     tap(x, y) { const px = x * dpr, py = y * dpr, h = hits.slice().reverse().find(r => px >= r.l && px <= r.l + r.w && py >= r.t && py <= r.t + r.h); if (!h) return false; act(h.hit); return true; },
     visible: () => visible(), typing: e => typing(e),
     lot: L => act(L), tower: () => act('tower'), board: () => act('board'),
@@ -899,6 +920,8 @@ const Village = (() => {
     mount(slot) { if (!slot) return; if (!on()) { slot.remove(); return; } if (!el) build(); slot.replaceWith(el); renderBar(); },
     show() { if (!el) return; start(); renderBar(); requestAnimationFrame(() => { resize(); if (world) cam = camTarget(); send(true); }); },
     setGarden, needs,
+    // walk into 🕹️ ตึกเกม (to a machine when id is given); waits for the engine to load the first time
+    arcade(id, n = 0) { if (W && W.arcade) return void W.arcade.walk(id || ''); if (n < 60) setTimeout(() => Village.arcade(id, n + 1), 150); },
     _dbg: { me, LOTS, others, pm, adopt, feedPet, dyePet, renamePet, myPet, moveHouse, moveInfo, get farms() { return farms; }, syncHome, gCell, get hits() { return hits; }, get ready() { return !!(world || W); }, get W() { return W; }, act, lock, goTo, fast: false, floorSpots, reserve, jobs, jobsDone, deliver, haveCrop, NPCS, BOARDC, next, help, myLot, get busy() { return busy; }, decorate, movedIn, get held() { return W ? W.held : held; }, gSize, tinted, roofOf, wallOf },
   };
 })();

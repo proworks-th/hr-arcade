@@ -34,7 +34,7 @@ const kt = (sh, id) => ktc[sh + id] ??= (() => { const s = K[sh], cols = s.width
 function tiles(sh, rows) { const c = mk(Math.max(...rows.map(r => r.length)) * 16, rows.length * 16), g = c.getContext('2d');
   rows.forEach((r, y) => r.forEach((id, x) => { if (id != null) g.drawImage(kt(sh, id), x * 16, y * 16); })); return c; }
 
-let T, VC, VR, RX0, C, R, O, rnd, ri, grid, G, block, res, setG, rect, PARK, POND, TOWER, BOARD, WELL, STAGE_TH, ROOFS, ROOF_IN, WALLS, WALL_IN, LOTS, MY, BED_AT, ROOMS, ROOM, makeRoom, sceneOf, ga, alphaAt, qStats, WANT, QPICK, grassAt, hexRGB, paint, cottageRaw, bigRaw, houseCache, isBig, hasHouse, houseFor, sprite, SIGN, STAKE, JAR, LANTERN, BOARD_S, WELL_S, LAMP, SCAFF, FOUND, BRICKS, tower, STALL, BED, SOFA, COUNTER, COFFEE, RACK, MIRROR, FRAME, MENU, WLAMP, RUG, BUNT, skyAt, objs, glows, places, add, MAPLE, tree, fence, at, put, putS, bunting, G_ORDER, gCells, flower, lot, cityB, BUILDINGS, building, SALA, BED_F, LANE_W, LANE_E, ROAD_X0, ROAD_X1, CARS, barn, BARN, ANIM, PLOTS, CHEST_S, inLot, free, furnish, ground;
+let T, VC, VR, RX0, C, R, O, rnd, ri, grid, G, block, res, setG, rect, PARK, POND, TOWER, BOARD, WELL, STAGE_TH, ROOFS, ROOF_IN, WALLS, WALL_IN, LOTS, MY, BED_AT, ROOMS, ROOM, makeRoom, sceneOf, ga, alphaAt, qStats, WANT, QPICK, grassAt, hexRGB, paint, cottageRaw, bigRaw, houseCache, isBig, hasHouse, houseFor, sprite, SIGN, STAKE, JAR, LANTERN, BOARD_S, WELL_S, LAMP, SCAFF, FOUND, BRICKS, tower, STALL, BED, SOFA, COUNTER, COFFEE, RACK, MIRROR, FRAME, MENU, WLAMP, RUG, BUNT, skyAt, objs, glows, places, add, MAPLE, tree, fence, at, put, putS, bunting, G_ORDER, gCells, flower, lot, cityB, BUILDINGS, building, SALA, BED_F, LANE_W, LANE_E, ROAD_X0, ROAD_X1, CARS, barn, BARN, ANIM, PLOTS, CHEST_S, inLot, free, furnish, drawCab, drawTrophy, ground;
 function buildWorld() {
 /* ============ world grid: the live 48×34 village, grown to 72×48, plus a strip of rooms off to the right ============ */
 T = 16, VC = 72, VR = 48, RX0 = 76, C = RX0 + 8 * 16, R = VR, O = '#3b2316';
@@ -251,10 +251,12 @@ building = function building(key, x, y, w, roofH, roof, wall, door, title, room)
   add((y + h) * T, g => g.drawImage(spr, x * T, y * T), { shadow: [(x + w / 2) * T, (y + h) * T - 1, w * 7] });
   for (let i = 1; i < w - 1; i += 2) glows.push([(x + i) * T + 8, (y + roofH) * T + 8, 12, .45]);
   const out = [x + door[0], y + h], B = { key, x, y, w, h, title, out };
-  B.room = makeRoom({ ...room, key, out, title, slot: 12 + BUILDINGS.length }); BUILDINGS.push(B); places.push([(x + w / 2) * T, y * T - 2, title]); return B; }
+  B.room = makeRoom({ ...room, key, out, title, slot: room.slot ?? 12 + BUILDINGS.length }); BUILDINGS.push(B); places.push([(x + w / 2) * T, y * T - 2, title]); return B; }
 building('canteen', 50, 2, 7, 3, 'brown', 'red', [3, 'double'], '🍲 โรงอาหาร', { kind: 'canteen', w: 12, h: 7, wall: '#f7e3b5', floor: '#c9a27a' });
 building('shop', 59, 2, 7, 3, 'blue', 'brown', [3, 'shop'], '👕 ร้านเสื้อผ้า', { kind: 'shop', w: 10, h: 6, wall: '#ffd9e6', floor: '#d9b48a' });
 building('cafe', 50, 13, 6, 3, 'blue', 'red', [2, 'single'], '☕ คาเฟ่', { kind: 'cafe', w: 10, h: 6, wall: '#d9efe6', floor: '#a8703f' });
+building('arcade', 61, 27, 8, 3, 'blue', 'red', [3, 'double'], '🕹️ ตึกเกม', { kind: 'arcade', w: 12, h: 7, wall: '#3d3478', floor: '#6a5aa8', slot: 16 });
+rect(64, 32, 65, 33, (x, y) => setG(x, y, 5));
 putS(STALL, 67, 6, { dx: 2 }); block[6][69] = 1; block[6][70] = 1;
 add(6 * T + 16, g => { ['mgo', 'ram', 'lyc', 'wat', 'pum', 'tom'].filter(id => CROPS[id]).forEach((id, i) => { const a = cropArt(id); g.drawImage(a, 67 * T + 8 + i * 7 - (a.width >> 1) + 2, 6 * T + 11 - a.height + (i % 2) * 2); }); });
 places.push([69 * T, 3 * T + 6, '🥭 แผงผลไม้']);
@@ -287,7 +289,7 @@ for (const [x, y] of [[25, 15], [31, 15], [27, 20], [29, 11]]) { at(LAMP, x * T 
 bunting(25 * T + 8, 14 * T - 10, 31 * T + 8, 14 * T - 10, 7);
 // park + lake (Tiny Battle water) on the town side
 (() => { const x0 = 61, y0 = 15, w = 8, h = 9; rect(x0, y0, x0 + w - 1, y0 + h - 1, (x, y) => { G[y][x] = 6; block[y][x] = 1; }); })();
-for (const [x, y, id] of [[59, 13, 68], [69, 14, 67], [70, 21, 68], [60, 29, 68], [66, 30, 67], [70, 30, 68], [63, 31, 68]]) put('city', [id, id + 12], x, y);
+for (const [x, y, id] of [[59, 13, 68], [69, 14, 67], [70, 21, 68], [60, 29, 68], [70, 30, 68]]) put('city', [id, id + 12], x, y);
 putS(tiles('city', [[93, 94, 95]]), 61, 26); putS(tiles('city', [[93, 94, 95]]), 66, 26);
 for (const x of [61, 69]) { put('city', [86, 98], x, 24); glows.push([x * T + 8, 23 * T + 6, 26, .6]); }
 places.push([65 * T, 15 * T - 4, '🌊 บึงหมู่บ้าน']);
@@ -371,12 +373,28 @@ furnish = function furnish(r) {
     PS(COUNTER(false), 0, 2); PS(COFFEE, 1, 2); PS(COUNTER(false), 2, 2);
     for (const [tx, ty] of [[6, 3], [8, 3], [8, 5]]) { P('dungeon', 72, tx, ty); P('dungeon', 73, tx - 1, ty, { block: false }); }
     P('city', 70, 9, 2); P('city', 71, 0, 5); rug('#4cc3ff', 1, 4, 3, 2); }
+  if (r.kind === 'arcade') { lampW(1); lampW(10); rug('#ff6fa8', 1, 6, 10, 1);
+    const SP = [[0, 2], [2, 2], [4, 2], [6, 2], [8, 2], [10, 2], [1, 4], [3, 4], [5, 4], [7, 4], [9, 4]];
+    r.mach = []; H.games().slice(0, SP.length).forEach((gm, i) => { const x = X + SP[i][0], y = Y + SP[i][1], M = { id: gm.id, x, y }; r.mach.push(M); block[y][x] = 1;
+      add(y * T + 14, (g, t) => drawCab(g, gm, x * T, y * T, t)); });
+    r.board = [X + 11, Y + 2]; block[Y + 2][X + 11] = 1; add((Y + 2) * T + 14, g => drawTrophy(g, (X + 11) * T, (Y + 2) * T)); }
   if (r.kind === 'barn') { win(3); win(7); lampW(5);
     P('farm', 96, 0, 2); P('farm', 97, 1, 2); P('farm', 96, 0, 3); P('farm', 121, 3, 2); P('farm', 121, 6, 2); P('farm', 120, 8, 4);
     P('farm', 122, 1, 5, { block: false }); P('farm', 122, 3, 4, { block: false }); P('farm', 124, 9, 2); P('farm', 73, 4, 4); P('farm', 85, 9, 5); }
 }
 ROOMS.forEach(furnish);
 
+drawCab = function drawCab(g, gm, x, y, t) {
+  const L = x + 1, B = y + 15, ft = H.featured() === gm.id, f = (a, b, w, h, c) => { g.fillStyle = c; g.fillRect(L + a, B - 26 + b, w, h); };
+  if (ft) { g.fillStyle = `rgba(255,214,74,${.35 + .25 * Math.sin(t * 4)})`; g.fillRect(L - 2, B - 29, 18, 30); }
+  f(0, 0, 14, 26, O); f(1, 1, 12, 4, gm.color || '#ff8fbf'); f(1, 5, 12, 20, '#2f2a52'); f(1, 5, 1, 20, '#4a4380');
+  f(2, 6, 10, 8, '#141226'); f(3, 7, 8, 6, `hsl(${(t * 40 + gm.id.length * 47) % 360},70%,${22 + 6 * Math.sin(t * 3 + x)}%)`);
+  f(1, 15, 12, 3, '#3d3670'); f(3, 15, 1, 2, '#ff5c8a'); f(8, 16, 2, 1, '#4cc3ff'); f(10, 16, 2, 1, '#ffd23f'); f(2, 21, 10, 2, '#1d1a36');
+  g.font = '7px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(gm.emoji, L + 7, B - 16);
+  if (ft) { g.font = '6px sans-serif'; g.fillText('⭐', L + 7, B - 30); } }
+drawTrophy = function drawTrophy(g, x, y) { const f = (a, b, w, h, c) => { g.fillStyle = c; g.fillRect(x + a, y + b, w, h); };
+  f(1, -10, 14, 25, O); f(2, -9, 12, 18, '#f7e3b5'); f(2, 9, 12, 5, '#a8643a'); f(5, -7, 6, 5, '#ffd23f'); f(7, -2, 2, 3, '#ffd23f'); f(5, 1, 6, 1, '#c99a1a');
+  for (let i = 0; i < 3; i++) f(4, 3 + i * 2, 8, 1, '#c9a27a'); }
 /* ============ ground, painted once ============ */
 ground = mk(C * T, R * T);
 (() => { const g = ground.getContext('2d'); g.fillStyle = '#1b1422'; g.fillRect(0, 0, ground.width, ground.height);
@@ -1003,6 +1021,8 @@ function toggleRide() { const owned = Object.keys(F.rides).filter(k => k !== 'wa
 /* ============ input ============ */
 function pick(wx, wy) {
   for (const N of NPCS) if (sceneOf(cellOf(N.P)) === scene && Math.abs(N.P.px - wx) < 10 && wy > N.P.py - 30 && wy < N.P.py + 4) return { npc: N };
+  if (scene && scene.mach) { const cx = Math.floor(wx / T), on = (c, r) => cx === c && wy >= r * T - 13 && wy < (r + 1) * T;
+    const M = scene.mach.find(m => on(m.x, m.y)); if (M) return { mach: M }; if (on(...scene.board)) return { arank: 1 }; }
   if (scene) return null;
   if (wx >= TOWER.x * T && wx < (TOWER.x + TOWER.w) * T && wy > 0 && wy < 7 * T + 4) return { tower: 1 };
   if (Math.floor(wx / T) === BOARD[0] && wy > BOARD[1] * T - 12 && wy < (BOARD[1] + 1) * T) return { board: 1 };
@@ -1021,6 +1041,8 @@ cv.addEventListener('pointerdown', e => {
   const [wx, wy] = worldAt(e), hit = pick(wx, wy);
   if (hit?.tower) return H.tower();
   if (hit?.board) return H.board();
+  if (hit?.mach) return playAt(hit.mach);
+  if (hit?.arank) return H.arcadeRank();
   if (hit?.npc) return talkTo(hit.npc);
   if (hit?.enter) { toast('🚪 ' + hit.enter.title); return enter(hit.enter); }
   if (hit?.plot) return useItem(hit.plot);
@@ -1030,7 +1052,7 @@ cv.addEventListener('pointerdown', e => {
   if (hit?.lot) return H.lot(hit.lot.live);
   closeCard(); me.after = null; go(me, [Math.floor(wx / T), Math.floor(wy / T)]);
 });
-cv.addEventListener('pointermove', e => { const [wx, wy] = worldAt(e), h = pick(wx, wy); hoverP = e.pointerType === 'mouse' ? h?.plot || null : null; cv.style.cursor = CUR[h?.npc ? 'talk' : h?.enter ? 'door' : h?.lot || h?.plot || h?.shop || h?.orders || h?.chest ? 'hand' : 'arrow']; });
+cv.addEventListener('pointermove', e => { const [wx, wy] = worldAt(e), h = pick(wx, wy); hoverP = e.pointerType === 'mouse' ? h?.plot || null : null; cv.style.cursor = CUR[h?.npc ? 'talk' : h?.enter ? 'door' : h?.mach || h?.arank || h?.lot || h?.plot || h?.shop || h?.orders || h?.chest ? 'hand' : 'arrow']; });
 cv.addEventListener('pointerleave', () => { hoverP = null; });
 cv.style.cursor = CUR.arrow;
 exitB.onclick = () => { if (scene) { place(me, scene.out); me.dir = 'down'; } };
@@ -1064,7 +1086,14 @@ function relots() { const keep = {}; for (const p of PLOTS) if (!p.home) keep[p.
   if (was) { const s2 = ROOMS.find(r => r.slot === was.slot) || null; scene = s2;
     if (!s2) { place(me, was.out); scene = null; enterScene(null); } else if (!walkable(...cellOf(me))) place(me, s2.entry); }
   else if (!walkable(...cellOf(me))) { const c = near(...cellOf(me)); if (c) place(me, c); } }
-return { me, held, C, R, get G() { return G; }, get block() { return block; }, get ctx() { return ctx; }, ov: SR.getElementById('ov'),
+// 🕹️ arcade: walk up to a machine (from anywhere in the village), face it, then the live game starts that mini game
+const arcRoom = () => ROOMS.find(r => r.kind === 'arcade') || null;
+function playAt(M, cb) { closeCard(); const st = [M.x, M.y + 1], here = () => cdist(cellOf(me), st) <= 0 && sceneOf(cellOf(me)) === sceneOf(st);
+  const go2 = () => { if (!here()) return; me.dir = 'up'; if (cb) cb(); else H.play(M.id); };
+  if (here() && !me.path.length) return go2(); travel(me, st, go2); }
+return { me, held, C, R,
+  arcade: { room: arcRoom, walk(id, cb) { const r = arcRoom(); if (!r) return false; const M = r.mach.find(m => m.id === id);
+    if (M) playAt(M, cb); else { closeCard(); me.after = null; travel(me, r.entry); } return true; } }, get G() { return G; }, get block() { return block; }, get ctx() { return ctx; }, ov: SR.getElementById('ov'),
   travel: c => { closeCard(); me.after = null; travel(me, c); }, place: c => place(me, c), sceneOf, scene: () => scene, relots, closeCard,
   talk: i => { if (NPCS[i]) talkTo(NPCS[i]); }, enterLot: id => { const L = LOTS.find(l => l.id === id); if (L && L.room) enter(L.room); },
   hasRoom: id => !!(LOTS.find(l => l.id === id) || {}).room,

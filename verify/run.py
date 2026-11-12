@@ -58,7 +58,7 @@ def canvas_blank(page, selector):
 # ---------- screens: name -> steps(page, base, shot) ----------
 def hub(page, base, shot):
     page.goto(base + '/index.html?test=1')
-    page.wait_for_function("window.__app && document.querySelector('.solo-grid .scard')", timeout=3000)
+    page.wait_for_function("window.__app && document.querySelector('#arcGo, .solo-grid .scard')", timeout=3000)
     page.wait_for_timeout(600)  # mock DB callbacks fill the online box / feed / champions
     page.click('#helpBtn')
     page.wait_for_selector('.overlay .help', timeout=2000)
