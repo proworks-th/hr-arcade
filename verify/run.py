@@ -198,9 +198,9 @@ MARKET_TEST = """async () => {
   await F.mktHouse(); await w(50); out.expire = [await val('rooms/_mkt/o/x3'), Prog.get().farm.bag.car | 0];
   // NPC: find a crop whose vendor is buying right now; selling at its price fills from the vendor
   const pick = Object.keys(CROPS).map(id => [id, npcOpen(id, {}, now).filter(o => o.s === 'b').sort((a, b) => b.p - a.p)[0]]).find(x => x[1] && !['wat', 'tom', 'car'].includes(x[0]));
-  if (pick) { const [id, v] = pick; await set('rooms/_mkt/bt/' + v.id, null); await w(30);
+  if (pick) { const [id, v] = pick; for (const o of npcOpen(id, {}, now)) await set('rooms/_mkt/bt/' + o.id, null); await w(30);
     const pp = Prog.get(); pp.farm.bag[id] = 3; Prog.put(pp); F.f.bag[id] = 3; c0 = Prog.get().coins;
-    const got = await F.mktPlace('s', id, 1, Math.min(v.p, mktBand(id)[1])); out.npc = [got, Prog.get().coins - c0 === v.p, (await val('rooms/_mkt/bt/' + v.id)) === 1]; }
+    const got = await F.mktPlace('s', id, 1, Math.min(v.p, mktBand(id)[1])); out.npc = [got, Prog.get().coins - c0 === v.p, (await Promise.all(npcOpen(id, {}, now).filter(o => o.s === 'b' && o.p === v.p).map(o => val('rooms/_mkt/bt/' + o.id)))).reduce((a, n) => a + (n | 0), 0) === 1]; }   // two vendors can tie on price: either may fill
   // NPC later: a vendor that was buying while my order rested (placed before it opened) fills it on the next housekeeping
   let late = null; for (const id of Object.keys(CROPS)) { if (['wat', 'tom', 'car'].includes(id)) continue;
     const v = npcOpen(id, {}, now - 10 * 3600e3, now - 6e4).find(o => o.s === 'b' && o.from > now - 10 * 3600e3 + 6e5 && o.to < now); if (v) { late = [id, v]; break; } }
@@ -363,6 +363,12 @@ def village(page, base, shot):
     # step 6: pet. Adopt 6,000 (first day's food included), can't overfeed, hungry → naps, first meal of the day +50,
     # premium digs up a vegetable, dye 300, rename free; others see it (presence pe + lot record)
     page.evaluate("document.querySelector('.vil-card [data-a=close]').click()")
+    # full-screen map: hides the profile bar + tabs, the map grows; a second tap brings them back
+    fs = page.evaluate('''async () => { const w = ms => new Promise(r => setTimeout(r, ms)), h0 = document.querySelector('.vil-wrap').offsetHeight, b = () => document.querySelector('.vil-bar [data-a=full]');
+      b().click(); await w(150); const on = [document.querySelector('#hub .me').offsetParent === null, document.querySelector('.vil-wrap').offsetHeight > h0];
+      b().click(); await w(150); return [...on, document.querySelector('#hub .me').offsetParent !== null, document.querySelector('.vil-wrap').offsetHeight === h0]; }''')
+    if fs != [True, True, True, True]:
+        raise AssertionError('full-screen map toggle wrong: ' + json.dumps(fs))
     pt = page.evaluate('''async () => { const D = Village._dbg, M = await import('/verify/mocks/firebase-database.js'), w = ms => new Promise(r => setTimeout(r, ms));
       const c = () => Prog.get().coins, out = { c0: c() }, bag = () => Object.values(Prog.get().farm.bag).reduce((a, n) => a + n, 0);
       D.act('pet'); out.adoptBtn = !!document.querySelector('.vil-card [data-a=adopt]:not([disabled])');

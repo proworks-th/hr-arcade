@@ -34,6 +34,12 @@ assert '<small style="font-weight:400;color:var(--muted)">· ตัวอย่�
 body = body.replace(' <small style="font-weight:400;color:var(--muted)">· ตัวอย่าง 2</small>', '')
 body = body.replace('<canvas id="cv"></canvas>', '<canvas id="cv"></canvas><canvas id="ov"></canvas>')
 assert '<canvas id="ov">' in body
+# one chip at the top-left: place + clock (was two stacked chips), farm HUD moves up into the freed row
+_clk = '<div class="chip" id="clock">🕒 <b id="tm"></b><input id="hour"'
+assert body.count(_clk) == 1
+body = re.sub(r'(<span id="where">หมู่บ้าน</span>)(</div>\s*)' + re.escape(_clk), r'\1 · 🕒 <b id="tm"></b>\2<div id="clock" hidden><input id="hour"', body)
+assert body.count('id="tm"') == 1 and '<div id="clock" hidden>' in body
+css += '#farmhud{top:60px}\n#toast{top:108px}\n#title{font-size:13px}\n'
 
 # ---------------- wrapper ----------------
 rep("(async () => {\n", "return (async () => {\n", 1)

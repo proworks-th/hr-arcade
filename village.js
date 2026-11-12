@@ -351,7 +351,8 @@ const Village = (() => {
   function lock() { const p = Prog.get(), w = roomW(p.room || {}); return { w, lv: p.lv || 1, ok: w >= UNLOCK_W && (p.lv || 1) >= UNLOCK_LV }; }
   function renderBar() {
     if (!barEl) return; const L = lock(), ck = b => b ? '✓' : '', B = Prog.bricks(), mL = myLot();
-    barEl.innerHTML = `${mL ? '<button class="btn sm" type="button" data-a="home">📍 บ้านฉัน</button>' : ''}<button class="btn sm" type="button" data-a="pet">${(pt => pt ? `${catIcon(pt.coat)} ${escH(pt.n)}${petFed(pt) ? '' : ' 💤'}` : '🐾 สัตว์เลี้ยง')(myPet())}</button><span class="vil-brick">🪙 ${fmtN(Prog.get().coins)}</span><span class="vil-brick" title="อิฐได้จากมินิเกม รอบละ 1–3 ก้อน วันละไม่เกิน ${B.cap} + อิฐบนถนนในหมู่บ้านวันละ ${FLOOR_N} ก้อน">🧱 ${fmtN(B.n)} <small>เกม ${B.today}/${B.cap} · ถนน ${bricksGot()}/${FLOOR_N}</small></span><button class="btn sm" type="button" data-a="board">📦 ส่งของ ${jobsDone().length}/${JOB_N}</button><span class="muted">${mL ? `⭐ บ้านคุณ แปลง ${mL.id} · ${STAGE_TH[mL.stage]}${building(mL) ? ` ${Math.round(pctOf(mL) * 100)}%` : ''}`
+    const full = document.getElementById('hub')?.classList.contains('vil-full'), jd = jobsDone().length;
+    barEl.innerHTML = `<button class="btn sm" type="button" data-a="full" aria-pressed="${!!full}" aria-label="${full ? 'ย่อแผนที่' : 'ขยายแผนที่เต็มจอ'}">${full ? '🗗' : '⛶'}<span class="bl"> ${full ? 'ย่อ' : 'เต็มจอ'}</span></button>${mL ? '<button class="btn sm" type="button" data-a="home" aria-label="บ้านฉัน">📍<span class="bl"> บ้านฉัน</span></button>' : ''}<button class="btn sm" type="button" data-a="pet">${(pt => pt ? `${catIcon(pt.coat)}<span class="bl"> ${escH(pt.n)}</span>${petFed(pt) ? '' : ' 💤'}` : '🐾<span class="bl"> สัตว์เลี้ยง</span>')(myPet())}</button><span class="vil-brick" title="อิฐได้จากมินิเกม รอบละ 1–3 ก้อน วันละไม่เกิน ${B.cap} + อิฐบนถนนในหมู่บ้านวันละ ${FLOOR_N} ก้อน">🧱 ${fmtN(B.n)} <small>เกม ${B.today}/${B.cap} · ถนน ${bricksGot()}/${FLOOR_N}</small></span><button class="btn sm vil-bd" type="button" data-a="board" aria-label="งานส่งของ ${jd}/${JOB_N}">📦<span class="bl"> ส่งของ</span> <b class="${jd < JOB_N ? 'vil-n' : ''}">${jd}/${JOB_N}</b></button><span class="muted">${mL ? `⭐ บ้านคุณ แปลง ${mL.id} · ${STAGE_TH[mL.stage]}${building(mL) ? ` ${Math.round(pctOf(mL) * 100)}%` : ''}`
       : L.ok ? '✅ ครบเงื่อนไขแล้ว · แตะป้าย 🪧 เพื่อจองที่ดิน'
       : `🔒 สร้างบ้านได้เมื่อมีห้อง ${UNLOCK_W} + Lv ${UNLOCK_LV} · ตอนนี้ ห้อง ${L.w}/${UNLOCK_W} ${ck(L.w >= UNLOCK_W)} · Lv ${L.lv}/${UNLOCK_LV} ${ck(L.lv >= UNLOCK_LV)}`}</span>`;
   }
@@ -747,13 +748,28 @@ const Village = (() => {
   }
 
   /* ---------- DOM ---------- */
+  function setFull(on) {
+    const hub = document.getElementById('hub'); if (!hub) return;
+    on = on === undefined ? !hub.classList.contains('vil-full') : !!on; hub.classList.toggle('vil-full', on);
+    try { localStorage.setItem('vilFull', on ? '1' : ''); } catch (e) { /* private window */ }
+    renderBar(); resize(); requestAnimationFrame(resize);
+  }
+  // phones: a card is a bottom sheet; drag it down from its top to close
+  function sheetSwipe(c, close) {
+    let y0 = null, dy = 0;
+    c.addEventListener('touchstart', e => { y0 = c.scrollTop <= 0 && e.touches.length === 1 && innerWidth < 720 ? e.touches[0].clientY : null; dy = 0; }, { passive: true });
+    c.addEventListener('touchmove', e => { if (y0 == null) return; dy = e.touches[0].clientY - y0; if (dy > 0) c.style.transform = `translateY(${dy}px)`; else { y0 = null; c.style.transform = ''; } }, { passive: true });
+    c.addEventListener('touchend', () => { if (y0 != null && dy > 90) close(); c.style.transform = ''; y0 = null; });
+  }
   function build() {
     el = document.createElement('section'); el.className = 'village'; el.id = 'village'; el.hidden = true;
     el.innerHTML = `<div class="vil-wrap"><canvas aria-label="แผนที่หมู่บ้าน"></canvas><div class="vil-card" role="dialog" aria-label="ที่ดินและบ้าน" hidden></div></div><div class="vil-bar"></div>`;
     cv = el.querySelector('canvas'); ctx = cv.getContext('2d'); wrapEl = el.querySelector('.vil-wrap'); barEl = el.querySelector('.vil-bar'); cardEl = el.querySelector('.vil-card');
     cardEl.addEventListener('click', e => { const b = e.target.closest('[data-a]'); if (b && !b.disabled) cardAct(b.dataset.a, b); });
     cardEl.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id === 'vilPetName') renamePet(); });
-    barEl.addEventListener('click', e => { if (e.target.closest('[data-a=home]')) { const L = myLot(); if (L) act(L); } if (e.target.closest('[data-a=pet]')) act('pet'); if (e.target.closest('[data-a=board]')) act('board'); });
+    barEl.addEventListener('click', e => { if (e.target.closest('[data-a=home]')) { const L = myLot(); if (L) act(L); } if (e.target.closest('[data-a=pet]')) act('pet'); if (e.target.closest('[data-a=board]')) act('board'); if (e.target.closest('[data-a=full]')) setFull(); });
+    sheetSwipe(cardEl, closeCard);
+    try { if (localStorage.getItem('vilFull')) document.getElementById('hub')?.classList.add('vil-full'); } catch (e) { /* private window */ }
     el.addEventListener('keydown', e => { if (e.key === 'Escape') closeCard(); });
     cv.addEventListener('click', tap);
     window.addEventListener('resize', resize);
