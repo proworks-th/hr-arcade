@@ -92,6 +92,12 @@ const Village = (() => {
   let W = null, ov = null, ovx = null, worldEl = null, tickAt = {};   // the cozy engine (village-world.js) and its overlay canvas
   /* ---------- pet ---------- */
   const myPet = () => (Prog.get().vil || {}).pet || null;
+  // 🐾 pet book: every animal you've owned keeps its own name, coat and memories in prog.vil.pets[type]
+  // (ad = adopted ms, find = coins it found, ml = meals, pm = premium meals); prog.vil.pet is the one walking with you, food is shared
+  const PKEEP = ['n', 'coat', 'ad', 'find', 'ml', 'pm'];
+  function petBook(p) { p.vil = p.vil || {}; const B = p.vil.pets = p.vil.pets || {}, pt = p.vil.pet;
+    if (pt) { if (!pt.ad) pt.ad = Date.now(); const r = B[petTy(pt.type)] = {}; for (const k of PKEEP) if (pt[k] != null) r[k] = pt[k]; } return B; }
+  const petDays = r => Math.max(1, Math.floor((Date.now() - ((r && r.ad) || Date.now())) / 864e5) + 1);
   const petFed = pt => !!pt && Date.now() < (pt.fed || 0);
   const coatOk = c => COATS[c] ? c : 'orange';
   const pm = { x: 0, y: 0, face: 1, moving: false, act: null, actT: 0, init: false };   // where my cat is on the map
@@ -139,26 +145,36 @@ const Village = (() => {
   const catIcon = (c, y) => PET_TYPES[petTy(y)].icon(coatOk(c));
   // what other players see: presence pe = [coat, name, fed 0/1, premium 0/1, type]; the lot record keeps {c, n, y} for the pet napping at home
   const petPres = () => { const pt = myPet(); return pt ? [coatOk(pt.coat), String(pt.n || '').slice(0, 12), petFed(pt) ? 1 : 0, petFed(pt) && pt.prem ? 1 : 0, petTy(pt.type)] : 0; };
-  function petToLot() { const pt = myPet(), L = myLot(); if (!O || !L || !pt) return; const mk = myKey(), v = { c: coatOk(pt.coat), n: String(pt.n || '').slice(0, 12), y: petTy(pt.type) };
-    if (L.pet && L.pet.c === v.c && L.pet.n === v.n && petTy(L.pet.y) === v.y) return;
+  function petToLot() { const pt = myPet(), L = myLot(); if (!O || !L || !pt) return; const mk = myKey(), y = petTy(pt.type), B = petBook(Prog.get());
+    const v = { c: coatOk(pt.coat), n: String(pt.n || '').slice(0, 12), y, o: Object.entries(B).filter(([k]) => k !== y && PET_TYPES[k]).map(([k, r]) => [k, coatOk(r.coat), String(r.n || '').slice(0, 12)]) };
+    if (!v.o.length) delete v.o;
+    if (L.pet && JSON.stringify({ c: L.pet.c, n: L.pet.n, y: petTy(L.pet.y), o: L.pet.o }) === JSON.stringify({ c: v.c, n: v.n, y: v.y, o: v.o })) return;
     O.txLot(L.id, cur => cur && cur.k === mk ? { ...cur, pet: v } : cur ? undefined : null).catch(() => {}); }
-  function petSave(pt, m) { const p = Prog.get(); p.vil = p.vil || {}; p.vil.pet = pt; Prog.put(p); if (m) toast(m); send(true); petToLot(); renderBar(); renderCard(); }
+  function petSave(pt, m) { const p = Prog.get(); p.vil = p.vil || {}; p.vil.pet = pt; petBook(p); Prog.put(p); if (m) toast(m); send(true); petToLot(); renderBar(); renderCard(); }
+  // buy an animal you don't have yet; the one walking now goes home to nap and keeps its memories
   function adopt() {
-    const p = Prog.get(); if (myPet()) return;
+    const p = Prog.get(), B = petBook(p), y = petTy(adoptPick.y), old = p.vil.pet; if (B[y]) return;
     if ((p.coins | 0) < PET_PRICE) return toast(`ต้องมี 🪙 ${fmtN(PET_PRICE)} ขาดอีก ${fmtN(PET_PRICE - (p.coins | 0))}`);
-    const y = petTy(adoptPick.y), PT = PET_TYPES[y], c0 = coatOk(adoptPick.c);
-    p.coins -= PET_PRICE; p.vil = p.vil || {}; p.vil.pet = { n: PT.nm, type: y, coat: c0, fed: Date.now() + MEAL, prem: 0, fd: '' }; Prog.put(p);   // the first day's food comes with it
+    const PT = PET_TYPES[y], c0 = coatOk(adoptPick.c);
+    p.coins -= PET_PRICE; p.vil.pet = { n: PT.nm, type: y, coat: c0, ad: Date.now(), find: 0, ml: 0, pm: 0, fed: Date.now() + MEAL, prem: 0, fd: old ? old.fd || '' : '' }; Prog.put(p);   // the first day's food comes with it
     if (typeof Stats !== 'undefined') Stats.econ('out_pet', PET_PRICE);
-    pm.init = false; pm.act = 'jump'; pm.actT = t; petSave(p.vil.pet, `${PT.icon(c0)} รับเลี้ยง${PT.nm}แล้ว! −${fmtN(PET_PRICE)} 🪙 · ตั้งชื่อได้เลย`);
+    petPick = petTyPick = '';
+    pm.init = false; pm.act = 'jump'; pm.actT = t; petSave(p.vil.pet, `${PT.icon(c0)} รับเลี้ยง${PT.nm}แล้ว! −${fmtN(PET_PRICE)} 🪙${old ? ` · ${old.n} ไปนอนพักที่บ้าน` : ''} · ตั้งชื่อได้เลย`);
     const nm = myName(); feed(`${PT.icon(c0)} ${nm} รับเลี้ยง${PT.n}ตัวใหม่!`);
+  }
+  // switch to another pet you own: free; its own name, coat and memories come back, today's food carries over
+  function swapPet(y) {
+    const p = Prog.get(), B = petBook(p), pt = p.vil.pet; if (!pt || !B[y] || petTy(pt.type) === y) return;
+    const was = pt.n; for (const k of PKEEP) pt[k] = B[y][k]; pt.type = y; petPick = petTyPick = ''; Prog.put(p);
+    pm.act = 'jump'; pm.actT = t; petSave(pt, `${catIcon(pt.coat, y)} พา${pt.n}ออกมาเดินแล้ว · ${was} ไปนอนพักที่บ้าน`);
   }
   function feedPet(k) {
     const pt = myPet(), f = FOOD[k], p = Prog.get(); if (!pt || !f) return;
     if ((pt.fed || 0) - Date.now() > MEAL / 2) return toast(`${pt.n} ยังอิ่มอยู่ ค่อยให้อาหารอีกทีตอนเหลือไม่ถึงครึ่ง`);
     if ((p.coins | 0) < f[0]) return toast('เหรียญไม่พอ');
-    p.coins -= f[0]; pt.fed = Date.now() + MEAL; pt.prem = k === 'p' ? 1 : 0;
+    p.coins -= f[0]; pt.fed = Date.now() + MEAL; pt.prem = k === 'p' ? 1 : 0; pt.ml = (pt.ml | 0) + 1; if (k === 'p') pt.pm = (pt.pm | 0) + 1;
     let m = `${f[2]} ${pt.n} อิ่มแล้ว −${f[0]} 🪙`; const d = bkkDay(), extra = [];
-    if (pt.fd !== d) { pt.fd = d; p.coins += PET_FIND; extra.push(`คาบเหรียญมาให้ +${PET_FIND} 🪙`); if (typeof Stats !== 'undefined') Stats.econ('in_petfind', PET_FIND); }
+    if (pt.fd !== d) { pt.fd = d; p.coins += PET_FIND; pt.find = (pt.find | 0) + PET_FIND; extra.push(`คาบเหรียญมาให้ +${PET_FIND} 🪙`); if (typeof Stats !== 'undefined') Stats.econ('in_petfind', PET_FIND); }
     if (k === 'p' && typeof CROPS !== 'undefined') { const pool = ['car', 'tom', 'chi', 'cor'].filter(id => CROPS[id]), id = pool[Math.floor(Math.random() * pool.length)];
       if (id) { p.farm = p.farm || { plots: [], book: {}, fw: {}, bag: {} }; p.farm.bag = p.farm.bag || {}; p.farm.bag[id] = (p.farm.bag[id] || 0) + 1; extra.push(`ขุดเจอ${CROPS[id][0]} 1 ลูก`); } }
     p.vil.pet = pt; Prog.put(p); if (typeof Stats !== 'undefined') Stats.econ('out_petfood', f[0]);
@@ -169,19 +185,16 @@ const Village = (() => {
     const v = inp.value.replace(/[<>&"]/g, '').trim().slice(0, 12); if (!v) return toast('ใส่ชื่อก่อนนะ');
     if (v === pt.n) return; pt.n = v; petSave(pt, `✏️ ตอนนี้ชื่อ ${v} แล้ว`);
   }
-  // change coat and/or animal: taps only preview (petPick / petTyPick); swapping the animal is free, a new coat costs DYE
+  // new coat for the pet walking with you: taps only preview (petPick); the 🎨 button pays DYE
   function dyePet(k, pay) {
     const pt = myPet(), p = Prog.get(); if (!pt) return;
     if (k && COATS[k]) petPick = k;
-    const was = petTy(pt.type), nc = COATS[petPick] ? petPick : coatOk(pt.coat), ny = PET_TYPES[petTyPick] ? petTyPick : was, swap = ny !== was;
-    if (nc === coatOk(pt.coat) && !swap) { petPick = petTyPick = ''; return petCard(); }
+    const nc = COATS[petPick] ? petPick : coatOk(pt.coat);
+    if (nc === coatOk(pt.coat)) { petPick = ''; return petCard(); }
     if (!pay) return petCard();
-    const cost = nc !== coatOk(pt.coat) ? DYE : 0;
-    if ((p.coins | 0) < cost) return toast('เหรียญไม่พอ');
-    petPick = petTyPick = ''; p.coins -= cost; pt.coat = nc; pt.type = ny; if (swap && pt.n === PET_TYPES[was].nm) pt.n = PET_TYPES[ny].nm;
-    p.vil.pet = pt; Prog.put(p); if (cost && typeof Stats !== 'undefined') Stats.econ('out_dye', cost);
-    pm.act = swap ? 'jump' : 'paw'; pm.actT = t;
-    petSave(pt, swap ? `${PET_TYPES[ny].icon(nc)} ตอนนี้ ${pt.n} เป็น${PET_TYPES[ny].n}สี${COATS[nc][0]}แล้ว${cost ? ` −${cost} 🪙` : ''}` : `🎨 ย้อมเป็นสี${COATS[nc][0]}แล้ว −${cost} 🪙`);
+    if ((p.coins | 0) < DYE) return toast('เหรียญไม่พอ');
+    petPick = ''; p.coins -= DYE; pt.coat = nc; p.vil.pet = pt; Prog.put(p); if (typeof Stats !== 'undefined') Stats.econ('out_dye', DYE);
+    pm.act = 'paw'; pm.actT = t; petSave(pt, `🎨 ${pt.n} ย้อมเป็นสี${COATS[nc][0]}แล้ว −${DYE} 🪙`);
   }
   const coatBtns = (on, a) => Object.entries(COATS).map(([k, c]) => `<button class="vil-coat${k === on ? ' on' : ''}" type="button" data-a="${a}" data-k="${k}" title="${c[0]}" aria-label="สี${c[0]}" style="background:linear-gradient(135deg,${c[1]} 55%,${c[2]} 55%);border-color:${c[3]}"></button>`).join('');
   function petCard() {
@@ -195,16 +208,24 @@ const Village = (() => {
         <button class="btn primary" type="button" data-a="adopt"${coins < PET_PRICE ? ' disabled' : ''}>${APT.icon(ac)} รับเลี้ยง${APT.n}สี${COATS[ac][0]} · 🪙 ${fmtN(PET_PRICE)} (มีอาหารวันแรกให้)</button>${coins < PET_PRICE ? `<p class="vil-need">ขาดอีก 🪙 ${fmtN(PET_PRICE - coins)}</p>` : ''}`;
     } else {
       const fed = petFed(pt), left = Math.max(0, (pt.fed || 0) - Date.now()), full = Math.round(left / MEAL * 100), canEat = left <= MEAL / 2;
-      const cy = petTy(pt.type), cc = coatOk(pt.coat), ty = PET_TYPES[petTyPick] ? petTyPick : cy, pk = COATS[petPick] ? petPick : cc, chg = ty !== cy || pk !== cc, cost = pk !== cc ? DYE : 0, TY = Object.keys(PET_TYPES);
+      if (!pt.ad) { const p0 = Prog.get(); petBook(p0); Prog.put(p0); pt.ad = p0.vil.pet.ad; }   // older saves: start the pet book today
+      const B = petBook(Prog.get()), cy = petTy(pt.type), cc = coatOk(pt.coat), ty = PET_TYPES[petTyPick] ? petTyPick : cy, R = ty === cy ? pt : B[ty], TY = Object.keys(PET_TYPES);
+      const pk = COATS[petPick] ? petPick : cc, ac = coatOk(adoptPick.c);
       h += `<h4>${catIcon(pt.coat, pt.type)} ${escH(pt.n)}</h4><p class="muted">${fed ? 'เดินตามคุณอยู่' : 'หิว เลยนอนรอที่บ้าน 💤'}${fed && pt.prem ? ' · 🎉 ใส่หมวกปาร์ตี้' : ''}</p>
         <div class="vil-pb"><i style="width:${full}%;background:#ffb703"></i></div><small class="muted">อิ่ม ${full}%${fed ? ` · อยู่ได้อีก ${leftTxt(left)}` : ''} · 1 มื้ออยู่ได้ 1 วัน</small>
         ${Object.entries(FOOD).map(([k, f]) => `<button class="btn${k === 'b' ? ' primary' : ''}" type="button" data-a="feed" data-k="${k}"${!canEat || coins < f[0] ? ' disabled' : ''}>${f[2]} ${f[1]} · 🪙 ${f[0]}</button>`).join('')}
         <p class="muted" style="font-size:12px">${canEat ? '' : 'ยังอิ่มอยู่ ให้อาหารได้อีกตอนเหลือไม่ถึงครึ่ง · '}พรีเมียม: หมวกปาร์ตี้ + ตีลังกา + ขุดเจอผักให้ 1 ลูก${pt.fd === bkkDay() ? ' · วันนี้คาบเหรียญมาให้แล้ว' : ` · มื้อแรกของวัน +${PET_FIND} 🪙`}</p>
         <div class="vil-name"><input id="vilPetName" maxlength="12" value="${escH(pt.n)}" aria-label="ชื่อสัตว์เลี้ยง"><button class="btn" type="button" data-a="rename">ตั้งชื่อ</button></div>
-        ${TY.length > 1 ? `<div class="vil-chips">${TY.map(y => `<button class="vil-chip${y === ty ? ' on' : ''}" type="button" data-a="pty" data-k="${y}">${PET_TYPES[y].icon(pk)} ${PET_TYPES[y].n}</button>`).join('')}</div>` : ''}
-        <div class="vil-petrow">${petPrev(ty, pk)}<div class="vil-coats">${coatBtns(pk, 'coat')}</div></div>
-        ${chg ? `<div class="vil-dye"><button class="btn primary" type="button" data-a="dye"${coins < cost ? ' disabled' : ''}>${ty !== cy ? `🔄 เปลี่ยนเป็น${PET_TYPES[ty].n}${pk !== cc ? 'สี' + COATS[pk][0] : ''}` : `🎨 ย้อมเป็นสี${COATS[pk][0]}`} · ${cost ? `🪙 ${cost}` : 'ฟรี'}</button><button class="btn" type="button" data-a="coatx">ไม่เอา</button></div>${coins < cost ? `<p class="vil-need">ขาดอีก 🪙 ${fmtN(cost - coins)}</p>` : ''}`
-          : `<small class="muted">${PET_TYPES[cy].n}สี${COATS[cc][0]} · แตะ${TY.length > 1 ? 'ตัวสัตว์หรือ' : ''}สีเพื่อดูก่อน · ${TY.length > 1 ? 'เปลี่ยนตัวฟรี · ' : ''}ย้อมสี ${DYE} 🪙 · เปลี่ยนชื่อฟรี</small>`}`;
+        <div class="vil-chips">${TY.map(y => `<button class="vil-chip${y === ty ? ' on' : ''}" type="button" data-a="pty" data-k="${y}">${B[y] ? `${catIcon(y === cy ? pt.coat : B[y].coat, y)} ${escH(y === cy ? pt.n : B[y].n)}${y === cy ? ' 🐾' : ''}` : `${PET_TYPES[y].icon('orange')} ${PET_TYPES[y].n} · 🪙 ${fmtN(PET_PRICE)}`}</button>`).join('')}</div>
+        ${R ? `<p class="vil-mem">🗓️ อยู่ด้วยกัน ${petDays(R)} วัน · คาบเหรียญมาให้ ${fmtN(R.find | 0)} 🪙 · กินไป ${fmtN(R.ml | 0)} มื้อ${R.pm ? ` (พรีเมียม ${fmtN(R.pm)})` : ''}</p>` : ''}
+        ${ty === cy ? `<div class="vil-petrow">${petPrev(cy, pk)}<div class="vil-coats">${coatBtns(pk, 'coat')}</div></div>
+        ${pk !== cc ? `<div class="vil-dye"><button class="btn primary" type="button" data-a="dye"${coins < DYE ? ' disabled' : ''}>🎨 ย้อมเป็นสี${COATS[pk][0]} · 🪙 ${DYE}</button><button class="btn" type="button" data-a="coatx">ไม่เอา</button></div>${coins < DYE ? `<p class="vil-need">ขาดอีก 🪙 ${fmtN(DYE - coins)}</p>` : ''}`
+          : `<small class="muted">${PET_TYPES[cy].n}สี${COATS[cc][0]} · แตะสีเพื่อดูก่อน · ย้อมสี ${DYE} 🪙 · เปลี่ยนชื่อฟรี${TY.length > 1 ? ' · แตะตัวอื่นด้านบนเพื่อสลับตัว' : ''}</small>`}`
+        : R ? `<div class="vil-petrow">${petPrev(ty, coatOk(R.coat))}<p class="muted">${escH(R.n)} นอนพักอยู่ที่บ้าน<br><small>สลับตัวฟรี · ${escH(pt.n)} จะไปนอนพักแทน · อาหารที่ให้ไว้ยังอยู่</small></p></div>
+        <div class="vil-dye"><button class="btn primary" type="button" data-a="swap" data-k="${ty}">🔄 พา${escH(R.n)}ออกมาเดิน · ฟรี</button><button class="btn" type="button" data-a="coatx">ไม่เอา</button></div>`
+        : `<div class="vil-petrow">${petPrev(ty, ac)}<div class="vil-coats">${coatBtns(ac, 'acoat')}</div></div><small class="muted">${PET_TYPES[ty].n}สี${COATS[ac][0]} · เลือกสีตอนรับเลี้ยงได้ฟรี · ${escH(pt.n)} ยังอยู่กับคุณ (นอนพักที่บ้าน)</small>
+        <div class="vil-dye"><button class="btn primary" type="button" data-a="adopt"${coins < PET_PRICE ? ' disabled' : ''}>${PET_TYPES[ty].icon(ac)} รับเลี้ยง${PET_TYPES[ty].n}สี${COATS[ac][0]} · 🪙 ${fmtN(PET_PRICE)}</button><button class="btn" type="button" data-a="coatx">ไม่เอา</button></div>${coins < PET_PRICE ? `<p class="vil-need">ขาดอีก 🪙 ${fmtN(PET_PRICE - coins)}</p>` : ''}`}`;
+
     }
     cardEl.innerHTML = h; cardEl.hidden = false;
   }
@@ -711,7 +732,8 @@ const Village = (() => {
     if (a === 'close') return closeCard();
     if (a === 'adopt') return adopt(); if (a === 'feed') return feedPet(b && b.dataset.k); if (a === 'rename') return renamePet(); if (a === 'coat') return dyePet(b && b.dataset.k); if (a === 'dye') return dyePet(b && b.dataset.k, true);
     if (a === 'coatx') { petPick = petTyPick = ''; return petCard(); }
-    if (a === 'pty') { petTyPick = b.dataset.k; return dyePet(); }
+    if (a === 'pty') { petTyPick = b.dataset.k; petPick = ''; if (!(petBook(Prog.get()))[petTyPick]) adoptPick.y = petTyPick; return petCard(); }
+    if (a === 'swap') return swapPet(b && b.dataset.k);
     if (a === 'acoat') { adoptPick.c = b.dataset.k; return petCard(); } if (a === 'aty') { adoptPick.y = b.dataset.k; return petCard(); }
     if (a === 'deliver') return deliver(+(b && b.dataset.k));
     if (a === 'arcgo') { closeCard(); if (W) W.arcade.walk(b && b.dataset.k); return; }
@@ -825,6 +847,9 @@ const Village = (() => {
       follow(c, a, true, null, dt); list.push({ y: c.y - .01, d: () => drawCat(c, pe[0], !!pe[3], false, null, pe[4]) }); }
     for (const L of LOTS) { if (L.stage !== 5 || !L.pet || L.k === mk || away.has(L.k)) continue; const h = homeOf(L), c = L.cat || (L.cat = { x: h[0], y: h[1], face: -1, moving: false, init: true });
       list.push({ y: c.y - .01, d: () => drawCat(c, L.pet.c, false, true, null, L.pet.y) }); }
+    for (const L of LOTS) { const o = L.stage === 5 && L.pet && Array.isArray(L.pet.o) ? L.pet.o : null; if (!o) continue; const h = homeOf(L); L.cats = L.cats || [];
+      o.slice(0, 4).forEach((q, i) => { if (!Array.isArray(q)) return; const c = L.cats[i] || (L.cats[i] = { x: 0, y: 0, face: 1, moving: false }); c.x = h[0] - 2 - i; c.y = h[1];
+        list.push({ y: c.y - .01, d: () => drawCat(c, q[1], false, true, null, q[0]) }); }); }
     NPCS.forEach((N, i) => list.push({ y: N.at[1], d: () => { const px = sx((N.at[0] + .5) * T), py = sy((N.at[1] + 1) * T - 1), k = S() * .75;
       ctx.fillStyle = 'rgba(0,0,0,.22)'; ctx.beginPath(); ctx.ellipse(px, py - 1, 6 * S(), 2.2 * S(), 0, 0, 7); ctx.fill();
       drawChar(ctx, N.who, 'idle_anim', 'down', t + i, px, py, k);
@@ -917,6 +942,9 @@ const Village = (() => {
       if (inScene(a.cat.x, a.cat.y, sc)) out.push({ y: a.cat.y * T + 11, d: () => drawCat(a.cat, pe[0], !!pe[3], false, null, pe[4]) }); }
     if (!sc) for (const L of LOTS) { if (L.stage !== 5 || !L.pet || L.k === mk || away.has(L.k)) continue; const h = homeOf(L), c = L.cat || (L.cat = { x: h[0], y: h[1], face: -1, moving: false, init: true });
       out.push({ y: c.y * T + 11, d: () => drawCat(c, L.pet.c, false, true, null, L.pet.y) }); }
+    if (!sc) for (const L of LOTS) { const o = L.stage === 5 && L.pet && Array.isArray(L.pet.o) ? L.pet.o : null; if (!o) continue; const h = homeOf(L); L.cats = L.cats || [];
+      o.slice(0, 4).forEach((q, i) => { if (!Array.isArray(q)) return; const c = L.cats[i] || (L.cats[i] = { x: 0, y: 0, face: 1, moving: false }); c.x = h[0] - 2 - i; c.y = h[1];
+        out.push({ y: c.y * T + 11, d: () => drawCat(c, q[1], false, true, null, q[0]) }); }); }
     return out;
   }
   // after the engine drew the world: name tags, lot / tower / board pills and the road pickups on the overlay canvas (screen px × dpr)
@@ -1045,6 +1073,6 @@ const Village = (() => {
     // walk into 🕹️ ตึกเกม (to a machine when id is given); waits for the engine to load the first time
     party(n = 0) { if (W && W.arcade) return void W.arcade.to('party', partyIn); if (n < 60) setTimeout(() => Village.party(n + 1), 150); },
     arcade(id, n = 0) { if (W && W.arcade) return void W.arcade.walk(id || ''); if (n < 60) setTimeout(() => Village.arcade(id, n + 1), 150); },
-    _dbg: { me, LOTS, others, pm, adopt, feedPet, dyePet, renamePet, myPet, moveHouse, moveInfo, get farms() { return farms; }, syncHome, gCell, get hits() { return hits; }, get ready() { return !!(world || W); }, get W() { return W; }, act, lock, goTo, fast: false, floorSpots, reserve, jobs, jobsDone, deliver, haveCrop, NPCS, BOARDC, next, help, myLot, get busy() { return busy; }, decorate, movedIn, get held() { return W ? W.held : held; }, gSize, tinted, roofOf, wallOf },
+    _dbg: { me, LOTS, others, pm, adopt, feedPet, dyePet, renamePet, swapPet, petBook, myPet, moveHouse, moveInfo, get farms() { return farms; }, syncHome, gCell, get hits() { return hits; }, get ready() { return !!(world || W); }, get W() { return W; }, act, lock, goTo, fast: false, floorSpots, reserve, jobs, jobsDone, deliver, haveCrop, NPCS, BOARDC, next, help, myLot, get busy() { return busy; }, decorate, movedIn, get held() { return W ? W.held : held; }, gSize, tinted, roofOf, wallOf },
   };
 })();

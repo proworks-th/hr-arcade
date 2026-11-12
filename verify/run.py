@@ -381,10 +381,14 @@ def village(page, base, shot):
       const c3 = c(); D.dyePet('black'); out.dyePv = [c3 - c(), Prog.get().vil.pet.coat]; D.dyePet('black', true); out.dye = [c3 - c(), Prog.get().vil.pet.coat];   // 1st tap previews free, 🎨 pays
       D.act('pet'); await w(100); const inp = document.querySelector('#vilPetName'); inp.value = 'ข้าวตัง'; document.querySelector('.vil-card [data-a=rename]').click();
       await w(600); out.name = Prog.get().vil.pet.n;
+      const p3 = Prog.get(); p3.coins += 7000; Prog.put(p3); const c4 = c();   // pet book: buy a dog, the cat naps at home; swapping back is free and keeps its name/coat/meals
+      D.act('pet'); await w(100); document.querySelector('.vil-card [data-a=pty][data-k=dog]').click(); await w(50); document.querySelector('.vil-card [data-a=adopt]').click(); await w(300);
+      out.dog = [c4 - c(), Prog.get().vil.pet.type, Object.keys(Prog.get().vil.pets).sort().join()];
+      const c5 = c(); D.swapPet('cat'); await w(600); const q = Prog.get().vil.pet; out.back = [c5 - c(), q.type, q.n, q.coat, q.ml];
       out.lot = (await M.get(M.ref(null, 'rooms/_vil/lots/3'))).val().pet;
       out.pres = Object.values((await M.get(M.ref(null, 'rooms/_hub/on'))).val() || {}).some(v => Array.isArray(v.pe) && v.pe[1] === 'ข้าวตัง' && v.pe[0] === 'black' && v.pe[2] === 1);
       return out; }''')
-    want = {'adopt': [6000, True, True], 'full': 6000, 'hungry': True, 'prem': [350, 1, 1], 'second': 150, 'dyePv': [0, 'orange'], 'dye': [300, 'black'], 'name': 'ข้าวตัง', 'lot': {'c': 'black', 'n': 'ข้าวตัง', 'y': 'cat'}, 'pres': True}
+    want = {'adopt': [6000, True, True], 'full': 6000, 'hungry': True, 'prem': [350, 1, 1], 'second': 150, 'dyePv': [0, 'orange'], 'dye': [300, 'black'], 'name': 'ข้าวตัง', 'lot': {'c': 'black', 'n': 'ข้าวตัง', 'y': 'cat', 'o': [['dog', 'orange', 'ตูบ']]}, 'dog': [6000, 'dog', 'cat,dog'], 'back': [0, 'cat', 'ข้าวตัง', 'black', 2], 'pres': True}
     if any(pt.get(k) != v for k, v in want.items()) or not pt.get('adoptBtn'):
         raise AssertionError('pet wrong: ' + json.dumps(pt, ensure_ascii=False))
     page.wait_for_timeout(1500)
@@ -402,7 +406,7 @@ def village(page, base, shot):
     page.click('.farm [data-a=garden]')
     g = page.evaluate('''async () => { const M = await import('/verify/mocks/firebase-database.js'); await new Promise(r => setTimeout(r, 400));
       return [Farm.n(), Prog.get().coins, (await M.get(M.ref(null, 'rooms/_vil/lots/3'))).val().g, (await M.get(M.ref(null, 'rooms/_farm/' + Village._dbg.myLot().k))).val()] }''')
-    if g[0] != 18 or g[1] != 3205 or g[2] != 18:  # 20,000 after the house + 5 helping − pet 6,000 − 400 + 50 − 150 − 300 − garden 10,000
+    if g[0] != 18 or g[1] != 4205 or g[2] != 18:  # 20,000 after the house + 5 helping − pet 6,000 − 400 + 50 − 150 − 300 + 7,000 − dog 6,000 − garden 10,000
         raise AssertionError('garden upgrade wrong: ' + json.dumps(g[:3]))
     page.wait_for_timeout(1200)
     fr = page.evaluate('''async () => { const M = await import('/verify/mocks/firebase-database.js'); const v = (await M.get(M.ref(null, 'rooms/_farm/' + Village._dbg.myLot().k))).val(); return v && [v.n, v.plots.length, v.plots.filter(Boolean).length] }''')
