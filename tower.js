@@ -398,7 +398,11 @@ const Tower = (() => {
     if (typeof presence === 'function') presence(v === 'village' ? 'village' : 'hub');   // others see you in the village or in ห้องรวม
   }
   return {
-    mount(slot) { const first = !el; if (!el) build(); slot.replaceWith(el); if (first && innerWidth < 720) zoom = 2; fit(); setView(store.get('hubView', 'room')); },
+    mount(slot) { const first = !el; if (!el) build(); slot.replaceWith(el); if (first && innerWidth < 720) zoom = 2; fit();
+      // the village is home (like a farm-life game): everyone starts there once, then we remember their last tab
+      const vilOn = typeof Village !== 'undefined' && Village.on();
+      if (vilOn && !store.get('vilHome', 0)) { store.set('vilHome', 1); store.set('hubView', 'village'); }
+      setView(store.get('hubView', vilOn ? 'village' : 'room')); },
     setView, refresh: load,
     _dbg: { draw, get regions() { return regions; }, get rooms() { return rooms; }, openCard, set t(v) { t = v; } },
   };

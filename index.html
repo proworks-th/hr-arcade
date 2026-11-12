@@ -593,7 +593,7 @@ button.pk:hover{transform:translateY(-2px)}div.pk{cursor:default}.pk b{font-size
 <script src="wardrobe.js?v=9"></script>
 <script src="gacha.js?v=4"></script>
 <script src="hubroom.js?v=9"></script>
-<script src="tower.js?v=10"></script>
+<script src="tower.js?v=11"></script>
 <script src="village-world.js?v=5"></script>
 <script src="village.js?v=21"></script>
 <script src="farm.js?v=13"></script>
@@ -1524,7 +1524,7 @@ function renderHub(){
       <span class="me-coins">🪙 ${fmt(P.coins)}</span>
     </section>
     <div class="alerts" data-k="alerts"></div>
-    <div class="room-h"><span class="seg"><button class="on" data-view="room" type="button">🏠 ห้องรวม</button><button data-view="tower" type="button">🏢 ตึกออฟฟิศ</button>${Village.on()?'<button data-view="village" type="button">🏘️ หมู่บ้าน</button>':''}</span><span class="dot"></span><span class="muted" data-k="oncount"></span><div class="heads" data-k="onlist"></div><button class="off-bar" id="offBar" type="button"></button></div>
+    <div class="room-h"><span class="seg">${Village.on()?'<button data-view="village" type="button">🏘️ หมู่บ้าน</button>':''}<button data-view="room" type="button">🏠 ห้องรวม</button><button data-view="tower" type="button">🏢 ตึกออฟฟิศ</button></span><span class="dot"></span><span class="muted" data-k="oncount"></span><div class="heads" data-k="onlist"></div><button class="off-bar" id="offBar" type="button"></button></div>
     <div data-k="room"></div><div data-k="tower"></div><div data-k="village"></div>
     <section class="solo"><div class="sec-h"><h3>เกม</h3>${arc?'':`<button class="btn primary play-cta" id="playFeat" type="button">▶ เล่น${GAMES.find(g=>g.id===featuredId()).title} <small>🪙×2</small></button>`}<button class="chip" id="mBtn" type="button" aria-expanded="${mOpen}">🎯 ภารกิจวันนี้ <b data-k="mcount">0/3</b> <span data-k="streak"></span> ${mOpen?'▴':'▾'}</button><button class="chip sea-chip" id="ladBtn" type="button" title="Season Pass">🎫</button><button class="chip sea-chip" id="seaBtn" type="button" title="ภารกิจฤดูกาล">🏆<span class="sea-l"> ฤดูกาล</span> <b>${Season.done(Season.get())}/${SEASON_CH.length}</b></button></div>
       <div class="mpanel"${mOpen?'':' hidden'}><ul class="mlist" data-k="mlist"></ul></div>
@@ -1549,7 +1549,7 @@ function renderHub(){
   $('#seaBtn').onclick=()=>Season.open();$('#ladBtn').onclick=()=>Pass.open();Pass.chip($('#ladBtn'));$('#mBtn').onclick=()=>{store.set('mOpen',!store.get('mOpen',false));renderHub()};
   $('#feedMore').onclick=()=>{feedOpen=!feedOpen;$('#feedMore').textContent=feedOpen?'ย่อ':'ดูทั้งหมด';renderFeed()};
   $('#crewMore').onclick=()=>{window.officeTab='friends';startGame('office');window.officeTab=null};
-  presence(Village.on()&&store.get('hubView','room')==='village'?'village':'hub');startLive();renderOnline();renderFeed();renderMissions();renderCrew();beatenAlerts().catch(()=>{});
+  presence(Village.on()&&store.get('hubView',Village.on()?'village':'room')==='village'?'village':'hub');startLive();renderOnline();renderFeed();renderMissions();renderCrew();beatenAlerts().catch(()=>{});
   hub.querySelectorAll('.scard').forEach(c=>c.onclick=()=>startGame(c.dataset.g));
 }
 renderHub();
