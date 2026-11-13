@@ -770,9 +770,9 @@ function congaGame(root, api) {
       if (free(x, y) && !snake.some(s => s.x === x && s.y === y) && !(cake && cake.x === x && cake.y === y)) { pick1 = { x, y, who: pick(rnd, MI_PEOPLE), pop: 1 }; return; } }
   }
   function startLevel() {
-    level++; room = ROOMS[(level - 1) % ROOMS.length]; layout(); need = 4 + level * 3;   // longer lines (was 3 + 2/level) but a slower walk got = 0; doorOpen = false; cake = null;
+    level++; room = ROOMS[(level - 1) % ROOMS.length]; layout(); need = 4 + level * 3; got = 0; doorOpen = false; cake = null;   // longer lines (was 3 + 2/level) but a slower walk
     snake = [{ x: 3, y: 11, px: 2, py: 11, who }, { x: 2, y: 11, px: 1, py: 11, who: null }].slice(0, 1); dir = [1, 0]; queue = [];
-    tick = Math.max(.12, .22 - level * .008);   // was max(.08, .19 − .012/level): slower start, gentler speed-up acc = 0; go = false; spawnPick(); hud();
+    tick = Math.max(.12, .22 - level * .008); acc = 0; go = false; spawnPick(); hud();   // was max(.08, .19 − .012/level): slower start, gentler speed-up
     combo = 0; if (level > 1) { fx.flash('#fff', .12); fx.burst(0, H / 2, { n: 18, colors: ['#ffffff', PAL.yel], speed: 520, grav: 0, size: 3, shape: 'sq', life: .5 }); }
     fx.text(W / 2, H / 2, `ด่าน ${level} — เก็บเพื่อน ${need} คน`, { color: PAL.yel, size: 28, life: 1.6, rise: 10 });
   }
