@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<base href="../">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ต้นแบบ: ดันเจี้ยนใต้ตึก · HR Arcade</title>
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;600;800&display=swap" rel="stylesheet">
+<style id="hubcss"></style>
+<style>
+body{font-family:Kanit,"Leelawadee UI",Tahoma,sans-serif}
+.proto-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;max-width:900px;margin:10px auto 0;padding:0 12px;font-size:13px}
+.proto-bar .sp{flex:1}
+.proto-bar .btn{min-height:44px}
+#stage{max-width:900px;margin:8px auto;padding:0 12px}
+#boss{position:fixed;inset:0;z-index:99;background:#fff;display:none;font:13px Arial,sans-serif;color:#222}
+#boss table{border-collapse:collapse;margin:8px}#boss td{border:1px solid #d0d0d0;padding:2px 10px;min-width:80px}
+#boss .bar{background:#217346;color:#fff;padding:6px 10px;font-weight:bold}
+.pause{position:fixed;inset:0;z-index:50;background:rgba(43,33,64,.55);display:none;align-items:center;justify-content:center}
+.pause .panel{background:#fff;border:3px solid #2b2140;border-radius:16px;padding:16px 20px;text-align:center}
+.res table{margin:8px auto;border-collapse:collapse}
+.res td{padding:2px 10px;text-align:left;color:#7a6f8c;line-height:1.5}.res td+td{text-align:right;font-weight:700;color:#2b2140}
+</style>
+</head>
+<body>
+<div class="proto-bar">
+  <b>ต้นแบบ · ดันเจี้ยนใต้ตึก</b><span class="sp"></span>
+  <span id="skl"></span>
+  <button class="btn" id="bossBtn" type="button">หัวหน้ามา! (Esc)</button>
+  <a class="btn" href="_test/skills-proto.html">หน้าความชำนาญ</a>
+</div>
+<div id="stage"></div>
+<div class="pause" id="pause"><div class="panel"><h2>พักเกมไว้</h2><p>ไม่มีอะไรขยับระหว่างพัก</p><button class="btn primary" id="resume" type="button">เล่นต่อ</button></div></div>
+<div id="boss"><div class="bar">Book1 - Excel</div><table id="bossT"></table><p style="margin:8px">กด Esc เพื่อกลับ</p></div>
+<div id="toast" class="toast"></div>
+
+<script>
+// ---- mocks of the hub globals (index.html / office.js); same save key as skills-proto so XP shows up there ----
+const KEY = 'skills_proto';
+const dayOff = +(localStorage.getItem(KEY + '_day') || 0);
+const bkkDay = () => new Date(Date.now() + 7 * 3600e3 + dayOff * 864e5).toISOString().slice(0, 10);
+const Prog = { get() { try { return JSON.parse(localStorage.getItem(KEY)) || { who: 'amelia', name: 'น้องฝ้าย', lv: 14 }; } catch { return { who: 'amelia', name: 'น้องฝ้าย', lv: 14 }; } },
+  put(p) { localStorage.setItem(KEY, JSON.stringify(p)); } };
+const rnd = Math.random, pick = (r, a) => a[Math.floor(r() * a.length)], fmt = n => Math.round(n).toLocaleString('th-TH');
+const meWho = () => Prog.get().who || 'adam';
+function toast(m) { const d = document.createElement('div'); d.textContent = m; document.getElementById('toast').appendChild(d); setTimeout(() => d.remove(), 1900); }
+</script>
+<script src="solo-games.js"></script>
+<script src="_test/skills.js"></script>
+<script src="_test/dungeon/data.js"></script>
+<script src="_test/dungeon/engine.js"></script>
+<script src="_test/dungeon/gen.js"></script>
+<script src="_test/dungeon/game.js"></script>
+<script>
+'use strict';
+const $ = s => document.querySelector(s);
+// the hub's real CSS, so the game looks the way it would inside index.html
+fetch('index.html').then(r => r.text()).then(h => { const m = h.match(/<style>([\s\S]*?)<\/style>/); if (m) $('#hubcss').textContent = m[1]; }).catch(() => {});
+
+let ac; const beep = (f, d, type = 'sine', v = .06) => { try { ac ||= new AudioContext(); const o = ac.createOscillator(), g = ac.createGain(); o.type = type; o.frequency.value = f; g.gain.value = v;
+  g.gain.exponentialRampToValueAtTime(.001, ac.currentTime + d); o.connect(g).connect(ac.destination); o.start(); o.stop(ac.currentTime + d); } catch {} };
+const SFX = { good() { beep(660, .07); setTimeout(() => beep(990, .09), 60); }, bad() { beep(170, .25, 'sawtooth', .05); }, tick() { beep(900, .03, 'square', .03); }, level() { [523, 659, 784].forEach((f, i) => setTimeout(() => beep(f, .12), i * 90)); } };
+
+// ---- runtime: same loop + pause rules as index.html ----
+let bossOn = false, paused = false, keyFn = null, started = false, ended = false;
+const loops = new Set(); let lastT = performance.now();
+(function frame(t) { const dt = Math.min(.05, (t - lastT) / 1000); lastT = t; if (!paused && !bossOn) for (const f of [...loops]) f(dt); requestAnimationFrame(frame); })(lastT);
+function setBoss(on) { bossOn = on; $('#boss').style.display = on ? 'block' : 'none'; if (!on && started && !ended) showPause(); }
+function showPause() { paused = true; $('#pause').style.display = 'flex'; }
+$('#resume').onclick = () => { paused = false; $('#pause').style.display = 'none'; };
+$('#bossBtn').onclick = () => setBoss(true);
+$('#bossT').innerHTML = Array.from({ length: 18 }, (_, r) => `<tr>${Array.from({ length: 7 }, (_, c) => `<td>${r === 0 ? ['รหัส', 'ชื่อ', 'แผนก', 'ลาป่วย', 'ลากิจ', 'พักร้อน', 'คงเหลือ'][c] : c === 0 ? 'E' + (1000 + r) : c > 2 ? (r * 7 + c * 3) % 9 : ''}</td>`).join('')}</tr>`).join('');
+addEventListener('keydown', e => {
+  if (e.key === 'Escape') { e.preventDefault(); setBoss(!bossOn); return; }
+  if (bossOn) return;
+  if (!started && (e.key === ' ' || e.key === 'Enter')) { const b = document.querySelector('#stage .overlay .btn.primary'); if (b) { e.preventDefault(); b.click(); return; } }
+  if (started && !ended && keyFn) keyFn(e);
+});
+document.addEventListener('visibilitychange', () => { if (document.hidden && !bossOn && started && !ended) showPause(); });
+
+function skillLine() { $('#skl').textContent = `การต่อสู้ ขั้น ${Skills.tier('combat')}/5 · วันนี้ได้อีก ${Skills.todayLeft('combat')} XP`; }
+function start() {
+  const stage = $('#stage'); stage.innerHTML = ''; loops.clear(); started = ended = false; keyFn = null;
+  const root = document.createElement('div'); root.className = 'game game-cellar'; stage.appendChild(root);
+  const api = {
+    loop(fn) { loops.add(fn); return () => loops.delete(fn); },
+    after(s, fn) { let t = s; const off = api.loop(dt => { t -= dt; if (t <= 0) { off(); fn(); } }); },
+    sfx(n) { SFX[n] && SFX[n](); }, toast, onKey(fn) { keyFn = fn; }, get paused() { return paused || bossOn; },
+    intro({ how, buttons }) {
+      const ov = document.createElement('div'); ov.className = 'overlay';
+      ov.innerHTML = `<div class="panel popin"><h2>ดันเจี้ยนใต้ตึก</h2><div class="how">${how}</div><div class="row"></div></div>`;
+      for (const b of buttons) { const el = document.createElement('button'); el.className = 'btn' + (b.primary ? ' primary' : ''); el.textContent = b.label; el.onclick = () => { ov.remove(); started = true; b.go(); }; ov.querySelector('.row').appendChild(el); }
+      root.appendChild(ov);
+    },
+    end(score, extra, daily, stats) {
+      ended = true;
+      // pay like Prog.award (office.js): base coins = score / norm (cap 60), ×2 game pay, 1–3 bricks
+      const c = Math.max(2, Math.min(60, Math.round(score / DD.NORM))), coins = c * 2, bricks = c < 12 ? 1 : c < 25 ? 2 : 3;
+      const r = Skills.add('combat', 10 + stats.kills + stats.floor * 5);
+      const mm = String(Math.floor(stats.secs / 60)), ss = String(stats.secs % 60).padStart(2, '0');
+      const arms = Object.entries(stats.arms).map(([k, a]) => a.evo ? DD.ARMS[k].evo.name : `${DD.ARMS[k].name} Lv ${a.lv}`).join(' · ');
+      const pas = Object.entries(stats.pas).map(([k, n]) => `${DD.PASSIVES[k].name} Lv ${n}`).join(' · ') || 'ไม่มี';
+      const by = Object.entries(stats.by).sort((a, b) => b[1] - a[1]).map(([k, n]) => `<tr><td>${DD.MON[k].name}</td><td>${n}</td></tr>`).join('');
+      const ov = document.createElement('div'); ov.className = 'overlay';
+      ov.innerHTML = `<div class="panel popin res"><h2>จบรอบ</h2><p>${extra}</p><table>
+        <tr><td>ชั้นลึกสุด</td><td>B${stats.floor}</td></tr><tr><td>สถิติวันนี้</td><td>B${stats.best}${stats.newBest ? ' ใหม่!' : ''}</td></tr>
+        <tr><td>เวลา</td><td>${mm}:${ss}</td></tr><tr><td>คะแนน</td><td>${fmt(score)}</td></tr>
+        <tr><td>เหรียญ (×2)</td><td>${coins}</td></tr><tr><td>อิฐ</td><td>${bricks}</td></tr>
+        <tr><td>XP การต่อสู้</td><td>${r.got ? '+' + r.got : 'ครบเพดานวันนี้'}</td></tr></table>
+        ${r.up ? `<p><b>ขึ้นขั้น ${r.up}!</b> ได้ตำแหน่ง "${Skills.DEF.combat[2][r.up - 1]}"</p>` : ''}
+        <p class="muted" style="font-size:13px">เลเวลในรอบ ${stats.lv} · อาวุธ: ${arms}<br>พลัง: ${pas}</p>
+        <p class="muted" style="font-size:12px">คลังอาวุธ: พบแล้ว ${Object.keys(stats.codex.found).length}/${Object.keys(DD.ARMS).length} · วิวัฒนาการแล้ว ${Object.keys(stats.codex.evo).length} · ลึกสุดตลอดกาล B${stats.codex.best}</p>
+        ${by ? `<details><summary>ปราบแยกตามชนิด</summary><table>${by}</table></details>` : ''}
+        <div class="row"><button class="btn primary" type="button">เล่นอีกรอบ</button></div></div>`;
+      ov.querySelector('button').onclick = start; root.appendChild(ov); skillLine();
+    },
+  };
+  Dungeon.mount(root, api); skillLine();
+}
+start();
+// test hook (verify)
+window.__cellar = { start, state: () => ({ paused, bossOn, started, ended }) };
+</script>
+</body>
+</html>

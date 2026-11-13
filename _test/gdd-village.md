@@ -162,3 +162,5 @@ Rule: a skill rewards doing what you already do. It is never a wall: nothing in 
 - A daily XP cap per skill keeps it fair for people who play 10 minutes a day.
 - Building XP from helping others makes cooperation the fastest path, which fits rule set §9.
 - Launch with 2–3 skills (Farming, Building, Pet care: their data exists after v2.0), add Cooking with recipes later.
+
+**Update 12–13 Nov 2026:** superseded by `prd-skills-dungeon.md` + `gdd-dungeon.md` §9 (owner: 7 skills — Farming, Cooking, Pet care, Mining, Foraging, Fishing, Combat; walls by tool not skill; titles as the social reward; a new map for the gathering skills; combat via the dungeon).

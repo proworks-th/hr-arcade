@@ -28,6 +28,13 @@ Status (9 Nov 2026), GDD draft 2.2:
 - Live game: mini games pay ×2 coins since 9 Nov (GAME_PAY in office.js).
 Art rule: CC0 or written permission only. Decided 9 Nov: bricks from games only; unlock needs room 22 AND Lv 12. Decided 9 Nov too: no paid speed-up, pet 6,000; ×2 game pay checked (GDD §2b), house stays 50,000. Parked: light players. Life skills = future plan (GDD §12).
 
+## Dungeon + life skills (13 Nov 2026)
+- `prd-skills-dungeon.md` - PRD: goals, owner rules, requirements, decisions log, open questions, next-level backlog
+- `gdd-dungeon.md` - GDD: every system and number as built (floors, waves, monsters, weapons, passives, evolutions, progression, skills)
+- `combat-proto.html` - playable endless daily dungeon (`?seed=`, `?floor=N`, `?test=1`); code in `dungeon/` (see `dungeon/README.md`)
+- `skills-proto.html` + `skills.js` - life skills prototype (tiers, daily cap, titles, combat perks)
+- Tests: `node _test/dungeon/test-gen.js` · `python _test/dungeon/test-play.py`
+
 ## Other mockups
 `mockup-*.html`, `wireframe-office.html`, `wireframes.html`, `mock-*.js` (offline mocks for the mockups)
 

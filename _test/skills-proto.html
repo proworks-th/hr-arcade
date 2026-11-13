@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<base href="../">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ต้นแบบ: ความชำนาญ · HR Arcade</title>
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#3b2316;--card:#fff8ec;--muted:#7a5c48;--pink:#ff6fa8;--ok:#2f7d3a;--line:#d9c4a8}
+*{box-sizing:border-box}
+body{margin:0;background:#f4ead8;color:var(--ink);font:14px/1.45 Kanit,"Leelawadee UI",Tahoma,sans-serif}
+main{max-width:1100px;margin:0 auto;padding:16px}
+h1{font-size:20px;margin:0 0 2px}h2{font-size:16px;margin:0 0 8px}
+.sub{color:var(--muted);margin:0 0 14px;font-size:13px}
+.card{background:var(--card);border:3px solid var(--ink);border-radius:16px;box-shadow:0 4px 0 var(--ink);padding:12px 14px}
+.top{display:grid;grid-template-columns:260px 1fr;gap:14px;margin-bottom:14px}
+.tag{display:flex;flex-direction:column;align-items:center;gap:6px}
+.tag canvas{width:96px;height:160px;image-rendering:pixelated;background:#e3f1ff;border:2px solid var(--ink);border-radius:12px}
+.nm{background:#ffe066;border:2px solid var(--ink);border-radius:9px;padding:0 8px;font-weight:600;font-size:13px;text-align:center}
+.nm small{display:block;font-weight:500;font-size:11px;color:var(--muted)}
+select,button{font:inherit;color:var(--ink)}
+select{min-height:44px;border:2px solid var(--ink);border-radius:10px;background:#fff;padding:0 8px;width:100%}
+button{min-height:44px;font-weight:600;border:2px solid var(--ink);border-radius:12px;background:#fff;cursor:pointer;padding:0 12px}
+button.pri{background:var(--pink);color:#fff}
+button:disabled{opacity:.45;cursor:default}
+.acts{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px}
+.acts .grp{display:flex;flex-direction:column;gap:6px}
+.acts .grp b{font-size:13px}
+.log{margin-top:10px;font-size:13px;background:#fff;border:2px dashed var(--ink);border-radius:10px;padding:6px 10px;min-height:40px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px}
+.sk h3{margin:0;font-size:16px;display:flex;justify-content:space-between;align-items:baseline}
+.sk h3 span{font-size:13px;color:var(--muted);font-weight:500}
+.bar{height:12px;border:2px solid var(--ink);border-radius:8px;background:#fff;overflow:hidden;margin:6px 0 2px}
+.bar i{display:block;height:100%;background:#5fbf5a}
+.meta{display:flex;justify-content:space-between;font-size:12px;color:var(--muted)}
+.sk ol{list-style:none;margin:8px 0 0;padding:0;font-size:13px}
+.sk li{display:grid;grid-template-columns:28px 1fr;gap:6px;padding:4px 0;border-top:1px dashed var(--line)}
+.sk li b{font-size:12px}
+.sk li.ok{color:var(--ok);font-weight:600}
+.sk li.lock{color:var(--muted)}
+.sk.off{opacity:.6}
+.sk.off .bar i{background:#bbb}
+.eff{margin-top:8px;font-size:12px;background:#fff;border:2px solid var(--ink);border-radius:10px;padding:4px 8px}
+.eff table{border-collapse:collapse;width:100%}
+.eff td,.eff th{padding:1px 4px;text-align:right}.eff th:first-child,.eff td:first-child{text-align:left}
+@media (max-width:720px){.top{grid-template-columns:1fr}.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<main>
+<h1>ต้นแบบ: ความชำนาญ (เฟส 1)</h1>
+<p class="sub">ทดลองระบบ ไม่บันทึกลงเกมจริง · ข้อมูลอยู่ในเบราว์เซอร์นี้เท่านั้น (คีย์ skills_proto) · เฟส 1 เปิด 3 สาย: การเกษตร ดูแลสัตว์เลี้ยง การต่อสู้</p>
+
+<div class="top">
+  <div class="card tag">
+    <canvas id="me" width="48" height="80" aria-label="ตัวละครของคุณ"></canvas>
+    <div class="nm" id="nm"></div>
+    <label style="width:100%;font-size:13px">ตำแหน่งบนป้ายชื่อ
+      <select id="title"></select></label>
+  </div>
+  <div class="card">
+    <h2>ลองทำกิจกรรม</h2>
+    <div class="acts">
+      <div class="grp"><b>การเกษตร</b>
+        <button data-a="farm" data-n="4">เก็บผักสลัด (+4)</button>
+        <button data-a="farm" data-n="18">เก็บข้าวโพด (+18)</button>
+        <button data-a="farm" data-n="33">เก็บแตงโม (+33)</button></div>
+      <div class="grp"><b>ดูแลสัตว์เลี้ยง</b>
+        <button data-a="pet" data-n="20">ให้อาหารธรรมดา (+20)</button>
+        <button data-a="pet" data-n="40">ให้อาหารพรีเมียม (+40)</button>
+        <button data-a="pet" data-n="3">ลูบหัว (+3)</button></div>
+      <div class="grp"><b>การต่อสู้</b>
+        <button data-a="combat" data-n="45">จบ 1 รอบในดันเจี้ยน (+45)</button>
+        <button id="goCombat" type="button">เปิดเกมต่อสู้ต้นแบบ</button></div>
+      <div class="grp"><b>เวลา</b>
+        <button id="nextDay" type="button">ข้ามไปวันถัดไป</button>
+        <button id="reset" type="button">ล้างข้อมูลต้นแบบ</button></div>
+    </div>
+    <div class="log" id="log">แต่ละสายได้ไม่เกิน 200 XP ต่อวัน · กดซ้ำเพื่อดูว่าถึงเพดานแล้วเป็นยังไง</div>
+  </div>
+</div>
+
+<div class="grid" id="grid"></div>
+</main>
+
+<script>
+// ---- mocks: the live game has these in office.js / index.html ----
+const KEY = 'skills_proto';
+let dayOff = +(localStorage.getItem(KEY + '_day') || 0);
+const bkkDay = () => new Date(Date.now() + 7 * 3600e3 + dayOff * 864e5).toISOString().slice(0, 10);
+const Prog = { get() { try { return JSON.parse(localStorage.getItem(KEY)) || { who: 'amelia', name: 'น้องฝ้าย', lv: 14 }; } catch { return { who: 'amelia', name: 'น้องฝ้าย', lv: 14 }; } },
+  put(p) { localStorage.setItem(KEY, JSON.stringify(p)); } };
+const rnd = Math.random, pick = (r, a) => a[Math.floor(r() * a.length)];
+</script>
+<script src="solo-games.js"></script>
+<script src="_test/skills.js"></script>
+<script>
+'use strict';
+const $ = s => document.querySelector(s);
+const LV_TITLE = 'หัวหน้าทีม';   // what the live game shows for Lv 14 (office.js TITLES)
+
+function draw() {
+  const g = $('#me').getContext('2d'); let t = 0;
+  const loop = () => { t += 1 / 60; g.clearRect(0, 0, 48, 80); drawChar(g, Prog.get().who, 'idle_anim', 'down', t, 24, 76, 2); requestAnimationFrame(loop); }; loop();
+}
+function nameTag() {
+  const p = Prog.get(), t = Skills.title();
+  $('#nm').innerHTML = `${p.name}<small>${t || LV_TITLE}${t ? '' : ' (ตำแหน่งตามเลเวล)'}</small>`;
+  const sel = $('#title'), cur = (p.sk || {}).title || '';
+  sel.innerHTML = `<option value="">ตามเลเวล: ${LV_TITLE}</option>` + Skills.titles().map(o =>
+    `<option value="${o.id}:${o.t}"${cur === o.id + ':' + o.t ? ' selected' : ''}>${o.name} · ${Skills.DEF[o.id][0]} ขั้น ${o.t}</option>`).join('');
+}
+// what the bonus does to real numbers, so the cap is visible
+function effect(id) {
+  if (id === 'farm') { const g = Skills.bonus('farm', 'grow'), ex = Skills.bonus('farm', 'extra');
+    const rows = [['ผักสลัด', 10], ['ข้าวโพด', 90], ['แตงโม', 180]].map(([n, m]) => `<tr><td>${n}</td><td>${m} นาที</td><td>${Math.round(m * (1 - g))} นาที</td></tr>`).join('');
+    return `<table><tr><th>ผัก</th><th>ปกติ</th><th>ตอนนี้</th></tr>${rows}</table>ผลเพิ่ม: โอกาส ${Math.round(ex * 100)}% · เพดาน: โตเร็ว 10%, ผลเพิ่ม 10%`; }
+  if (id === 'pet') return `อิ่มนาน 24 + ${Skills.bonus('pet', 'fedH')} ชม. · เพดาน +4 ชม.`;
+  if (id === 'combat') return `ติดตัวทุกรอบในดันเจี้ยน: หัวใจ 5 + ${Skills.bonus('combat', 'hp')} · แรง +${Math.round(Skills.bonus('combat', 'dmg') * 100)}% · สุ่มตัวเลือกใหม่ ${Skills.bonus('combat', 'reroll')} ครั้ง · ${Skills.bonus('combat', 'lv') ? 'เริ่มที่ Lv 2' : 'เริ่มที่ Lv 1'} · ${Skills.bonus('combat', 'pick') ? 'เลือกอาวุธเริ่มต้นได้' : 'เริ่มด้วยดาบ'}`;
+  return '';
+}
+function grid() {
+  $('#grid').innerHTML = Object.entries(Skills.DEF).map(([id, [name, phase, titles]]) => {
+    const t = Skills.tier(id), n = Skills.next(id), off = phase > 1;
+    const perks = (Skills.PERKS[id] || titles.map(x => ({ u: 'ตำแหน่ง "' + x + '"' })));
+    return `<section class="card sk${off ? ' off' : ''}">
+      <h3>${name}<span>${off ? 'เปิดเฟส 2 (แผนที่ใหม่)' : `ขั้น ${t}/5`}</span></h3>
+      <div class="bar"><i style="width:${off ? 0 : n ? n.frac * 100 : 100}%"></i></div>
+      <div class="meta"><span>${off ? '—' : n ? `${n.at} / ${n.hi} XP` : 'เต็มแล้ว'}</span><span>${off ? '' : `วันนี้ได้อีก ${Skills.todayLeft(id)} XP`}</span></div>
+      <ol>${perks.map((p, i) => `<li class="${!off && i < t ? 'ok' : 'lock'}"><b>${i + 1}</b><span>${p.u}${off ? '' : ` <small>(${Skills.TIER_XP[i]} XP)</small>`}</span></li>`).join('')}</ol>
+      ${off ? '' : `<div class="eff">${effect(id)}</div>`}
+    </section>`; }).join('');
+}
+function render() { nameTag(); grid(); }
+
+document.querySelectorAll('[data-a]').forEach(b => b.onclick = () => {
+  const id = b.dataset.a, r = Skills.add(id, +b.dataset.n);
+  $('#log').textContent = r.got ? `${Skills.DEF[id][0]} +${r.got} XP${r.capped ? ' (ชนเพดานวันนี้พอดี)' : ''}${r.up ? ` · ขึ้นขั้น ${r.up}! ได้ตำแหน่ง "${Skills.DEF[id][2][r.up - 1]}"` : ''}`
+    : `${Skills.DEF[id][0]}: ครบ 200 XP ของวันนี้แล้ว · ยังเล่นได้ตามปกติ แค่ไม่ได้ XP สายนี้เพิ่ม`;
+  render();
+});
+$('#title').onchange = e => { const [id, t] = e.target.value.split(':'); Skills.wear(id || null, +t); render(); };
+$('#nextDay').onclick = () => { dayOff++; localStorage.setItem(KEY + '_day', dayOff); $('#log').textContent = `วันใหม่ (${bkkDay()}) · เพดาน XP รีเซ็ตแล้ว`; render(); };
+$('#reset').onclick = () => { localStorage.removeItem(KEY); localStorage.removeItem(KEY + '_day'); dayOff = 0; $('#log').textContent = 'ล้างแล้ว'; render(); };
+$('#goCombat').onclick = () => location.href = '_test/combat-proto.html';
+draw(); render();
+</script>
+</body>
+</html>
