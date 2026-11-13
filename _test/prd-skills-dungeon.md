@@ -117,6 +117,7 @@ Out of scope for now: co-op combat, paid anything, Building and Errands skills (
 | 13 Nov | Daily checkpoints (start after a boss beaten today) | |
 | 13 Nov | Leaderboard: daily + all-time | |
 | 13 Nov | 7 skills confirmed (Building, Errands dropped); Cooking in Phase 2 | |
+| 13 Nov | **Mini games: no coin cap per round** (live on main, b15ced8); XP keeps its cap (max 190/round); bricks unchanged | owner: "no cap", after seeing the exploit-risk trade-off |
 
 ## 9. Open questions (for the owner / next agent)
 
@@ -134,7 +135,7 @@ Resolved 13 Nov: pay rule, Building/Errands, Cooking timing, checkpoints, leader
 | Risk | Mitigation |
 |---|---|
 | Runs too long for a break (B12 took 15 min in playtest 1) | checkpoint stairs (§9.5); pay cap means no reason to grind deep |
-| Coin inflation: no pay cap + daily checkpoints means a player can start at B11 every day and farm the most valuable floors (B12 run ≈ 488 coins, B20 ≈ 1,252; median holding ~10,600) | owner accepted (13 Nov). Watch `rooms/_stat` after launch; levers if needed: catch-up runs pay less, a daily dungeon coin limit, or a higher divisor |
+| Coins with no cap anywhere (dungeon and, since 13 Nov, mini games): honest play is fine per minute (dungeon B12 ≈ 488 coins in ~15 min ≈ 33/min; a top mini-game round used to be up to 120 in 1–2 min), but scores are reported by the browser, so a bug or an edited score can now pay any amount | owner accepted (13 Nov). Watch `rooms/_stat` for outlier rounds; levers if needed: a soft cap (half rate above 60 base) with a high hard ceiling that only catches bugs/cheats, server-side sanity checks (score vs round time) |
 | Office PCs too slow for swarms | measured budget; monster cap 60; far monsters sleep; prerendered map |
 | Fairness of a shared daily leaderboard | same seed for all; client-reported depth is fakeable: fine for an office game, or validate run length |
 | Art licence | Kenney CC0; LimeZu avatars already used site-wide (non-commercial) |
