@@ -253,7 +253,7 @@ const Village = (() => {
     if ((L.g | 0) < g) setGarden(g); }
   function openGarden(L) { if (L.k !== myKey()) window.farmVisit = L.k; if (typeof startGame === 'function') startGame('farm'); }
   const srvNow = () => Date.now() + offset;
-  const myLots = () => LOTS.filter(L => L.stage && L.k && L.k === myKey());
+  const myLots = () => LOTS.filter(L => L.stage && ((L.k && L.k === myKey()) || (L.u && L.u === myUid())));
   const myLot = () => myLots().sort((a, b) => b.mv - a.mv)[0];   // after a move the newest (mv) is home, even before the old lot is freed
   const building = L => L.stage >= 2 && L.end > srvNow();
   const movedIn = L => L.stage > 2 || (L.stage === 2 && !building(L));   // the starter house is built
@@ -261,6 +261,8 @@ const Village = (() => {
   const others = {};                              // sid -> walker of a live coworker in the village
   const key = n => O && O.nameKey ? O.nameKey(n) : (n || '').trim().toLowerCase().replace(/[.#$\[\]\/]/g, '_').slice(0, 24) || '_';
   const myKey = () => key(typeof myName === 'function' ? myName() : '');
+  // the account id (Google, or the guest id that becomes Google): houses are matched by it too, so a rename never orphans a house
+  const myUid = () => (typeof Cloud !== 'undefined' && Cloud.acct && Cloud.acct.uid) || '';
   const onlineKeys = () => new Set(people.filter(p => p.v !== 0).map(p => key(p.n)));
 
   /* ---------- map ---------- */
@@ -328,8 +330,8 @@ const Village = (() => {
   // rooms/_vil/lots -> houses on the map (repaint only when something changed)
   function applyLots(v) {
     const sig = JSON.stringify(v || {}); if (sig === lotsSig) return; lotsSig = sig; lotRaw = v || {};
-    for (const L of LOTS) { const d = (v || {})[L.id] || {}; Object.assign(L, { stage: Math.max(0, Math.min(5, d.stage | 0)), k: d.k || '', n: d.n || '', who: d.who || '', g: d.g | 0, h: d.h | 0, end: +d.end || 0, hp: d.hp || null, pet: d.pet && d.pet.c ? d.pet : null, rc: d.rc || '', wc: d.wc || '', xs: typeof d.xs === 'string' ? d.xs.slice(0, 8) : '', cz: d.cz | 0, mv: +d.mv || 0 }); }
-    healMove();
+    for (const L of LOTS) { const d = (v || {})[L.id] || {}; Object.assign(L, { stage: Math.max(0, Math.min(5, d.stage | 0)), k: d.k || '', n: d.n || '', who: d.who || '', g: d.g | 0, h: d.h | 0, end: +d.end || 0, hp: d.hp || null, pet: d.pet && d.pet.c ? d.pet : null, rc: d.rc || '', wc: d.wc || '', xs: typeof d.xs === 'string' ? d.xs.slice(0, 8) : '', cz: d.cz | 0, mv: +d.mv || 0, u: d.u || '' }); }
+    healMove(); healOwner();
     if (W) relotW(); else if (base) { rebuild(); if (loaded >= 2) paintWorld(); }
     syncHome(); renderCard(); renderBar();
   }
@@ -591,7 +593,7 @@ const Village = (() => {
     if (!nm) return toast('ตั้งชื่อเล่นที่แถบบนก่อน แล้วค่อยจองที่ดิน');
     if (!lock().ok || myLot() || L.stage || missing(s).length) return renderCard();
     const gN = Math.min(24, Math.max(10, typeof Farm !== 'undefined' && Farm.n ? Farm.n() : 10));   // the rooftop farm moves here now
-    const ok = await tx(L, cur => cur && cur.k ? undefined : { k: mk, n: nm.slice(0, 20), who: typeof meWho === 'function' ? meWho() : 'adam', stage: 1, end: 0, t: srvNow(), g: gN });
+    const ok = await tx(L, cur => cur && cur.k ? undefined : { k: mk, n: nm.slice(0, 20), who: typeof meWho === 'function' ? meWho() : 'adam', stage: 1, end: 0, t: srvNow(), g: gN, ...(myUid() ? { u: myUid() } : {}) });
     if (!ok) { toast('😅 แปลงนี้มีคนจองไปแล้ว ลองแปลงอื่นนะ'); return renderCard(); }
     pay(s[2], 0, 0); const p = Prog.get(); p.vil.lot = L.id; p.vil.g = Math.max(gN, p.vil.g | 0); Prog.put(p); if (typeof Farm !== 'undefined' && Farm.pub) Farm.pub();
     toast(`🪧 จองแปลง ${L.id} แล้ว! 🌱 ฟาร์มย้ายมาข้างที่ดินแล้ว −${fmtN(s[2])} 🪙`); feed(`🪧 ${nm} จองที่ดินแปลง ${L.id} ใน${L.lane} เตรียมสร้างบ้าน!`);
@@ -683,6 +685,19 @@ const Village = (() => {
     renderBar(); openCard(L);
   }
   // two lots with my name (a move whose second write failed): free the older one, never one with the same mv
+  // your house carries your account id: after a rename it is relabelled with the new name; an older house without an id
+  // is adopted the first time its owner (same name) is here signed in. Runs on lot updates and every 15 s (the account
+  // may sign in after the village loaded).
+  let ownSig = '';
+  function healOwner() {
+    // paused while the hub moves your records to a new name, or it would relabel the house back to the old one
+    const uid = myUid(), mk = myKey(), nm = typeof myName === 'function' ? myName() : ''; if (!O || !uid || !mk || mk === '_' || window.__renaming) return;
+    const todo = LOTS.filter(L => L.stage && ((L.u === uid && L.k !== mk) || (L.k === mk && !L.u)));
+    const sig = todo.map(L => L.id + ':' + L.k + ':' + L.u).join(); if (!todo.length || sig === ownSig) return; ownSig = sig;
+    for (const L of todo) O.txLot(L.id, cur => !cur ? undefined : cur.u === uid && cur.k !== mk ? { ...cur, k: mk, n: nm.slice(0, 20) }
+      : cur.k === mk && !cur.u ? { ...cur, u: uid } : undefined).catch(() => {});
+  }
+  setInterval(() => { try { healOwner(); } catch (e) {} }, 15000);
   function healMove() {
     const mine = myLots(); if (mine.length < 2 || !O || moving) return; const keep = myLot(), mk = myKey(), sig = mine.map(L => L.id).join();
     if (healing === sig) return; healing = sig;

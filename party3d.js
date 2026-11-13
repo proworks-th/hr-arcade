@@ -656,7 +656,7 @@ function joinPanel(){
     <div class="avas">${CHARS.map(k=>`<button class="${k===c?'on':''}" data-c="${k}"><img src="assets/3d/chars/previews/character-${k}.png" alt=""></button>`).join('')}</div>
     <div style="margin-top:14px"><button class="btn primary" data-go>🚪 เข้าห้อง</button></div></div>`;
   ov.querySelectorAll('[data-c]').forEach(b=>b.onclick=()=>{c=b.dataset.c;ov.querySelectorAll('[data-c]').forEach(x=>x.classList.toggle('on',x===b))});
-  ov.querySelector('[data-go]').onclick=()=>{music.unlock();const n=ov.querySelector('input').value.trim()||'ผู้เล่นปริศนา';store.set('name',n);store.set('avatar3d',c);ov.remove();join(n,c)};
+  ov.querySelector('[data-go]').onclick=()=>{music.unlock();const n=ov.querySelector('input').value.trim()||'ผู้เล่นปริศนา';if(!store.get('name','').trim())store.set('name',n);store.set('avatar3d',c);ov.remove();join(n,c)};
   document.body.appendChild(ov);
 }
 async function join(n,c){
