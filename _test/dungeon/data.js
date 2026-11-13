@@ -123,7 +123,11 @@ const DD = {
   GEM: { small: 3, big: 12 },                // gem score; monsters drop gems worth about their points
   CLEAR: depth => 40 * depth,                 // bonus for clearing a floor
   CHEST: depth => 25 * depth,
-  // pay like Prog.award (office.js): base coins = score / NORM (cap 60), ×GAME_PAY 2, bricks 1–3
-  NORM: 25,
+  // pay (owner, 13 Nov): coins = round(score / 20), no cap, no ×2 game pay, no bricks (the dungeon will drop its own
+  // material later). Measured on 30 days of maps: reaching B5 ≈ 94 coins, B10 ≈ 351, B12 ≈ 488, B20 ≈ 1,252.
+  NORM: 20, PAY_CAP: null, GAME_PAY: 1, BRICKS: false,
+  // daily checkpoints (owner, 13 Nov): beat a boss today → later runs today may start on the floor after it (B6, B11…).
+  // Starting deeper gives catch-up level-ups so the build isn't empty: 3 picks per 5 floors skipped.
+  CHECKPOINT: { every: 5, catchUp: 3 },
 };
 if (typeof module !== 'undefined') module.exports = DD;

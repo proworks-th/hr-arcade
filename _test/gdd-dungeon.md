@@ -140,6 +140,7 @@ Projectiles stop at walls; orbit/nova/quake do not need line of sight. Knockback
 | Discovery | wand (B3), spear (B6), hammer (B11): glowing chest near the start the first time you reach that depth; unlocked forever | `localStorage dgn_codex` (live: Prog) |
 | Armoury | found weapons, evolutions seen, deepest ever, runs, kills | same |
 | Daily best | deepest floor today | `dgn_best_<day>` (live: rooms/_stat leaderboard) |
+| Daily checkpoint | deepest boss beaten today | `dgn_cp_<day>` (live: Prog, per day) |
 
 | Combat tier (XP) | Perk (carries into every run) |
 |---|---|
@@ -150,9 +151,30 @@ Projectiles stop at walls; orbit/nova/quake do not need line of sight. Knockback
 | 5 (5,000) | +20% damage · 2 rerolls · title ตำนานดันเจี้ยน |
 
 ## 8. Economy and pay
-- Pay like `Prog.award`: base coins = score ÷ `DD.NORM` (25), clamp 2–60, ×2 game pay; bricks 1 / 2 / 3 at base < 12 / < 25 / ≥ 25.
-- Floor clear bonus 40·depth; chests 25·depth. Run upgrades never touch coins.
-- Measured (pre-VS tuning, 30 seeds): cap reached at B4–B5. **Open decision**, see PRD §9.1.
+- **Coins = round(score ÷ 20). No cap, no ×2 game pay, no bricks** (owner, 13 Nov). Combat XP as in §7.
+- Score = gems (monster points × depth bonus) + floor clear 40·depth + chests 25·depth. Run upgrades never touch coins.
+- Measured on 30 days of maps (kills to the door target only; waves beyond it add more):
+
+| Reach | Run score | Coins |
+|---|---|---|
+| B1 | 125 | 6 |
+| B3 | 701 | 35 |
+| B5 | 1,880 | 94 |
+| B8 | 4,592 | 230 |
+| B10 | 7,030 | 351 |
+| B12 | 9,754 | 488 |
+| B15 | 14,638 | 732 |
+| B20 | 25,045 | 1,252 |
+
+- Risk accepted by the owner: checkpoints let a player start deep every day (PRD §10). The dungeon will drop its own material instead of bricks (design open, PRD §9.1).
+
+### 8.1 Daily checkpoints
+Beating a boss saves the floor in today's checkpoint (`dgn_cp_<day>`). The intro card offers B1 or the floor after any boss
+beaten today (B6, B11…), latest pre-selected. Starting deeper grants 3 level-up picks per 5 floors skipped (B6: Lv 4,
+B11: Lv 7) so the build isn't empty. Checkpoints reset with the daily map.
+
+### 8.2 Leaderboard (go-live step)
+Deepest floor today (fair: same map for everyone) and all-time deepest, in `rooms/_stat`. The prototype keeps only the local daily best.
 
 ## 9. Life skills (all activities)
 
@@ -187,3 +209,4 @@ detail card (XP sources with numbers, now-vs-next bonus, tier ladder with checkm
 1. **12 Nov (manual combat):** "hard to attack on phone", "swing a little delayed", "monsters take too many hits", B12 in 15 min → on-screen buttons, input buffer, faster swing, lower HP; last 3 monsters came to you.
 2. **13 Nov:** "attack too fast, too easy; easy first then juice up" → curve; "keep warnings honest" → fixed-length warnings; auto-attack → **pivot to Vampire Survivors logic**, floors + waves, full build, lasting progression.
 3. **13 Nov (VS build):** "levelling really fast" → steeper XP; "waves a little thin" → bigger, faster waves; "B1 easy when you kite, good for motivation" → keep.
+4. **13 Nov (numbers):** pay → score ÷ 20, no cap, no ×2, no bricks; daily checkpoints; leaderboard daily + all-time; 7 skills confirmed.

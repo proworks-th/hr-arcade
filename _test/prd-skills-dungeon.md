@@ -80,7 +80,10 @@ Out of scope for now: co-op combat, paid anything, Building and Errands skills (
 - R8. The door opens at a kill target (placed monsters × 1.15); lairs open when the boss falls; waves pour in while it's shut.
 - R9. You only move and dodge; 4 weapon + 4 passive slots; 7 weapons, 8 passives, 5 levels each; evolution = weapon Lv 5 + partner passive, from a boss chest or the vault altar.
 - R10. Fog of war, minimap (big map on M / tap), edge arrow to the open door / waiting chest.
-- R11. Esc / hidden tab freezes the game; leaving or fainting pays out (score ÷ 25, cap 60, ×2, bricks 1–3) and combat XP.
+- R11. Esc / hidden tab freezes the game; leaving or fainting pays out **coins = round(score ÷ 20), no cap, no ×2 game pay, no bricks** and combat XP.
+- R11a. Daily checkpoints: beat a boss today → later runs today may start on the floor after it (B6, B11…), with 3 catch-up level-ups per 5 floors skipped.
+- R11b. Leaderboard: deepest floor **today** (same map for everyone) and **all-time**, in `rooms/_stat` (go-live step).
+- R11c. The dungeon drops its own building material (not bricks) — design open, see §9.
 - R12. Phone: steer by dragging anywhere; one dodge button under the right thumb; all touch targets ≥ 44 px.
 
 ### 7.3 Lasting progression
@@ -108,24 +111,30 @@ Out of scope for now: co-op combat, paid anything, Building and Errands skills (
 | 13 Nov | Vampire Survivors logic for the whole game, floors + waves, full build system | "use the logic of Vampire Survivors" |
 | 13 Nov | Lasting progression across runs | "this mode has no progression on personal skills" |
 | 13 Nov | Slower levelling, thicker waves; B1 stays easy (playtest 2) | "levelling really fast", "waves a little thin", "B1 easy when you kite, good for motivation" |
+| 13 Nov | Next step: tune the prototype's numbers to the live game; stay a prototype for now | "tune numbers only" |
+| 13 Nov | Pay: score ÷ 20, no cap, no ×2 game pay | owner chose this after seeing B12 ≈ 488 coins and the checkpoint-farming risk (§10) |
+| 13 Nov | No bricks from the dungeon; it will have its own material | "no brick, we will have other material" |
+| 13 Nov | Daily checkpoints (start after a boss beaten today) | |
+| 13 Nov | Leaderboard: daily + all-time | |
+| 13 Nov | 7 skills confirmed (Building, Errands dropped); Cooking in Phase 2 | |
 
 ## 9. Open questions (for the owner / next agent)
 
-1. **Pay cap:** score per floor ≈ B1 105 · B2 200 · B3 350 · B4 760 · B5 720 (old tuning), so the 60-coin cap lands at B4–B5.
-   Keep it, or set `DD.NORM` ≈ 60 so the cap lands around B8–B10? (Re-measure after the XP/wave changes.)
-2. Building and Errands skills were dropped from the owner's list on 12 Nov. Confirm.
-3. Cooking: Phase 1 with crop-only recipes, or Phase 2 when fish/herbs exist? (Default used: Phase 2.)
-4. Leaderboard "deepest floor today" in `rooms/_stat` (best depth is local only in the prototype). Anti-cheat level?
-5. Checkpoint stairs (start at B6 / B11 after beating that boss today)? Proposed, not chosen.
-6. Where the skills screen opens: village side menu, hub profile, or both (proposed: both).
-7. Does the dungeon get its own building in the village, or stay in the arcade list?
+Resolved 13 Nov: pay rule, Building/Errands, Cooking timing, checkpoints, leaderboard (see §8).
+
+1. **The dungeon's own material:** what is it (ore, monster parts, dungeon stone?), what does it build or craft, and how
+   does it drop (per floor, per boss, per kill)? It replaces bricks for the dungeon and links to the new map's crafting.
+2. Where the skills screen opens: village side menu, hub profile, or both (proposed: both).
+3. Does the dungeon get its own building in the village, or stay in the arcade list?
+4. Leaderboard anti-cheat: accept client-reported depth (office trust), or sanity-check (run time vs depth, score vs depth)?
+5. When to go live (after more playtesting of B5–B15 with the new XP/wave tuning).
 
 ## 10. Risks
 
 | Risk | Mitigation |
 |---|---|
 | Runs too long for a break (B12 took 15 min in playtest 1) | checkpoint stairs (§9.5); pay cap means no reason to grind deep |
-| Coin inflation | pay cap; run upgrades never touch coins; skill bonuses capped |
+| Coin inflation: no pay cap + daily checkpoints means a player can start at B11 every day and farm the most valuable floors (B12 run ≈ 488 coins, B20 ≈ 1,252; median holding ~10,600) | owner accepted (13 Nov). Watch `rooms/_stat` after launch; levers if needed: catch-up runs pay less, a daily dungeon coin limit, or a higher divisor |
 | Office PCs too slow for swarms | measured budget; monster cap 60; far monsters sleep; prerendered map |
 | Fairness of a shared daily leaderboard | same seed for all; client-reported depth is fakeable: fine for an office game, or validate run length |
 | Art licence | Kenney CC0; LimeZu avatars already used site-wide (non-commercial) |
@@ -133,7 +142,8 @@ Out of scope for now: co-op combat, paid anything, Building and Errands skills (
 ## 11. Acceptance criteria for going live (Phase 1B)
 
 - [ ] Owner playtest sign-off on B1–B10 feel (levelling pace, wave density, boss fights).
-- [ ] Pay decision (§9.1) made and `DD.NORM` set; `PROG_NORM.dungeon` added in `office.js`.
+- [x] Pay decision made (score ÷ 20, no cap, no ×2, no bricks). Live: award coins directly, not through `Prog.award`'s 2–60 clamp and GAME_PAY.
+- [ ] Daily + all-time leaderboard in `rooms/_stat`; daily checkpoint stored per player per day.
 - [ ] Added to `GAMES` in `index.html`; uses the real `Prog`, `Skills` (live), `meWho()`; best depth to `rooms/_stat`.
 - [ ] `verify/run.py` screen with `?seed=`; desktop + phone screenshots; no console errors.
 - [ ] `node _test/dungeon/test-gen.js` passes; browser smoke test (`_test/dungeon/test-play.py`) passes.
@@ -145,7 +155,7 @@ Ranked by value ÷ cost; none are decided.
 
 | # | Idea | Why it matters | Size |
 |---|---|---|---|
-| 1 | Checkpoint stairs (Stardew elevator) | short breaks still reach new depths | S |
+| 1 | ~~Checkpoint stairs~~ built 13 Nov (daily) | | |
 | 2 | Daily leaderboard + "today's dungeon" card in the village | social pull, uses the shared seed | S–M |
 | 3 | Combo meter (fast kills → gem multiplier, small heal at 20) | moment-to-moment juice | S |
 | 4 | Potion belt (carry 2, drink on a button) | agency in hard fights | S |

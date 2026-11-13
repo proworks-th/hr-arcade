@@ -14,7 +14,7 @@ const Dungeon = {
     const sk = typeof Skills !== 'undefined' ? Skills : null;
     const R = Math.random, pickR = a => a[Math.floor(R() * a.length)];
     const store2 = { get: (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } }, set: (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} } };
-    const BEST = 'dgn_best_' + day;
+    const BEST = 'dgn_best_' + day, CP = 'dgn_cp_' + day;   // daily best, daily checkpoint (deepest boss beaten today)
 
     // ---------- art: Tiny Dungeon tiles cut once, cached as 16 px canvases ----------
     const sheet = new Image(); sheet.src = 'assets/village/kenney-dungeon.png'; const tc = {};
@@ -176,7 +176,7 @@ const Dungeon = {
       const pts = Math.round(m.d.pts * (1 + (S.depth - 1) * .12)); spill(m.x, m.y - 10, pts);
       fxW.burst(m.x, m.y - m.d.r, { n: m.d.boss ? 50 : 12, colors: m.kind.includes('slime') ? ['#3fd29b', '#b6f5dc', '#fff'] : ['#8a93a3', '#d9dde3', '#fff'], speed: 240, grav: 300, size: 5, shape: 'puff', life: .55 });
       if (m.d.ai === 'split') for (const k of [-1, 1]) { const x = m.x + k * 22; if (!DE.blocked(g, T, x, m.y, 12)) mons.push(mk('slime', x, m.y, true)); }
-      if (m.d.boss) { boss = null; S.bossDown = true; fxS.shake(12, .5); fxS.flash(PAL.yel, .3); for (const k of [-1, 1]) drops.push({ x: m.x + k * 40, y: m.y, t: 0 });
+      if (m.d.boss) { boss = null; S.bossDown = true; if (S.depth > store2.get(CP, 0)) store2.set(CP, S.depth); fxS.shake(12, .5); fxS.flash(PAL.yel, .3); for (const k of [-1, 1]) drops.push({ x: m.x + k * 40, y: m.y, t: 0 });
         bossChest = { x: m.x, y: m.y + 10 }; fxS.text(W / 2, 92, 'บอสทิ้งหีบไว้! เดินไปเปิด', { color: PAL.yel, size: 22, life: 2, rise: 6 }); }
       else if (P.hp < P.max && R() < .06) drops.push({ x: m.x, y: m.y, t: 0 });
       count(); checkDoor(); setHudSoon();
@@ -586,8 +586,19 @@ const Dungeon = {
     (function ready() { if (!tile(0)) return setTimeout(ready, 40); build(1); S.mode = 'intro'; fog.revealAll(); })();
     setHud(); draw();
     const best = store2.get(BEST, 0);
-    function begin(id) { const start = Math.max(1, +(q.get('floor') || 1)); S.arms = { [id]: { lv: 1, t: .5 } }; S.pending = perk('lv'); build(start);
+    // start floor: ?floor= for tests, else the checkpoint picked on the intro card (B1, or the floor after a boss beaten today)
+    function begin(id) {
+      const start = Math.max(1, +(q.get('floor') || cpPick));
+      S.arms = { [id]: { lv: 1, t: .5 } }; S.pending = perk('lv') + Math.floor((start - 1) / DD.CHECKPOINT.every) * DD.CHECKPOINT.catchUp; build(start);
       S.mode = 'play'; S.t0 = performance.now(); if (S.pending) { S.lv += S.pending; api.after(.4, levelPick); } }
+    const cpMax = store2.get(CP, 0), cps = [1]; for (let f = DD.CHECKPOINT.every; f <= cpMax; f += DD.CHECKPOINT.every) cps.push(f + 1);
+    // the intro card is removed before go() runs, so remember the chosen floor as soon as it changes
+    let cpPick = cps[cps.length - 1]; root.addEventListener('change', e => { if (e.target.name === 'dgncp') cpPick = +e.target.value; });
+    const cpHTML = cps.length > 1 ? `<div class="dgn-cp" role="radiogroup" aria-label="เริ่มที่ชั้น">${cps.map((f, i) => `<label><input type="radio" name="dgncp" value="${f}"${i === cps.length - 1 ? ' checked' : ''}>
+      <span>B${f}${f > 1 ? ` <small>+${Math.floor((f - 1) / DD.CHECKPOINT.every) * DD.CHECKPOINT.catchUp} เลเวล</small>` : ''}</span></label>`).join('')}</div>` : '';
+    css.textContent += `.dgn-cp{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin:6px 0}.dgn-cp label{display:inline-flex}.dgn-cp input{position:absolute;opacity:0}
+      .dgn-cp span{min-height:44px;min-width:64px;display:inline-flex;flex-direction:column;align-items:center;justify-content:center;border:2px solid #2b2140;border-radius:10px;padding:2px 10px;font-weight:700;cursor:pointer;background:#fff}
+      .dgn-cp span small{font-weight:500;font-size:11px;color:#6b5f7a}.dgn-cp input:checked+span{background:#ffd23f}.dgn-cp input:focus-visible+span{outline:3px solid #4cc3ff}`;
     // combat skill tier 1+: choose the starting weapon from everything you've ever found (lasting progression)
     const startArms = perk('pick') ? Object.keys(DD.ARMS).filter(id => codex.found[id]) : ['sword'];
     const found = Object.keys(DD.ARMS).filter(id => codex.found[id]).length;
@@ -595,6 +606,7 @@ const Dungeon = {
       <p><b>คุณแค่เดินกับหลบ อาวุธโจมตีเอง</b> · เก็บอัญมณีเพื่อเลเวลอัป แล้วเลือกอาวุธหรือพลังเพิ่ม (มีได้อย่างละ 4) · อาวุธ Lv 5 + พลังคู่ของมัน = วิวัฒนาการจากหีบบอส</p>
       <p>ปราบให้ครบเป้าเพื่อเปิดประตู มอนสเตอร์จะโผล่ออกมาเป็นระลอก (มีวงม่วงเตือนก่อนเสมอ) · ทุก 5 ชั้นมีบอส · ชั้นหลังบอสเป็นห้องสมบัติ</p>
       <p>คอม: WASD / ลูกศร เดิน · Shift หรือ Space = หลบ · M = แผนที่ · ตอนเลือก: 1 2 3 · R = สุ่มใหม่<br>มือถือ: ลากนิ้วตรงไหนก็ได้เพื่อเดิน · ปุ่ม "หลบ" มุมขวาล่าง · แตะแผนที่มุมขวาบนเพื่อขยาย</p>
+      ${cpHTML ? `<p><b>จุดเช็กพอยต์วันนี้</b> · ปราบบอสแล้ว เริ่มชั้นถัดไปได้ (ได้เลเวลชดเชย)</p>${cpHTML}` : ''}
       <p class="muted">คลังอาวุธ: พบแล้ว ${found}/${Object.keys(DD.ARMS).length} อาวุธ · วิวัฒนาการแล้ว ${Object.keys(codex.evo).length} · ลึกสุด B${codex.best} · เล่นมาแล้ว ${codex.runs} รอบ${perk('pick') ? '' : ' · ถึงขั้นการต่อสู้ 1 จะเลือกอาวุธเริ่มต้นได้'}</p>`,
       buttons: startArms.map((id, i) => ({ label: startArms.length > 1 ? `เริ่มด้วย${DD.ARMS[id].name}` : 'ลงดันเจี้ยน', primary: i === 0, go() { begin(id); } })) });
 

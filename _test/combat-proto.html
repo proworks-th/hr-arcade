@@ -94,8 +94,8 @@ function start() {
     },
     end(score, extra, daily, stats) {
       ended = true;
-      // pay like Prog.award (office.js): base coins = score / norm (cap 60), ×2 game pay, 1–3 bricks
-      const c = Math.max(2, Math.min(60, Math.round(score / DD.NORM))), coins = c * 2, bricks = c < 12 ? 1 : c < 25 ? 2 : 3;
+      // pay (owner, 13 Nov): coins = round(score / 20), no cap, no ×2, no bricks
+      const coins = Math.round(score / DD.NORM) * DD.GAME_PAY;
       const r = Skills.add('combat', 10 + stats.kills + stats.floor * 5);
       const mm = String(Math.floor(stats.secs / 60)), ss = String(stats.secs % 60).padStart(2, '0');
       const arms = Object.entries(stats.arms).map(([k, a]) => a.evo ? DD.ARMS[k].evo.name : `${DD.ARMS[k].name} Lv ${a.lv}`).join(' · ');
@@ -105,7 +105,7 @@ function start() {
       ov.innerHTML = `<div class="panel popin res"><h2>จบรอบ</h2><p>${extra}</p><table>
         <tr><td>ชั้นลึกสุด</td><td>B${stats.floor}</td></tr><tr><td>สถิติวันนี้</td><td>B${stats.best}${stats.newBest ? ' ใหม่!' : ''}</td></tr>
         <tr><td>เวลา</td><td>${mm}:${ss}</td></tr><tr><td>คะแนน</td><td>${fmt(score)}</td></tr>
-        <tr><td>เหรียญ (×2)</td><td>${coins}</td></tr><tr><td>อิฐ</td><td>${bricks}</td></tr>
+        <tr><td>เหรียญ</td><td>${coins}</td></tr>
         <tr><td>XP การต่อสู้</td><td>${r.got ? '+' + r.got : 'ครบเพดานวันนี้'}</td></tr></table>
         ${r.up ? `<p><b>ขึ้นขั้น ${r.up}!</b> ได้ตำแหน่ง "${Skills.DEF.combat[2][r.up - 1]}"</p>` : ''}
         <p class="muted" style="font-size:13px">เลเวลในรอบ ${stats.lv} · อาวุธ: ${arms}<br>พลัง: ${pas}</p>
