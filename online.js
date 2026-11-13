@@ -358,3 +358,21 @@ export async function officeBoard(){
   const s=await get(ref(db(),'rooms/_office/by'));
   return Object.entries(s.val()||{}).map(([k,v])=>({k,...v})).sort((a,b)=>b.p-a.p);
 }
+
+/* ---------- rename (13 Nov 2026): name-keyed records follow the player to the new name ---------- */
+// Village houses also carry the owner's account uid (village.js), so a house can't be orphaned by a rename again.
+// Refuses a name another player already uses (their profile exists), so two people can't merge by sharing a name.
+export async function renameRecords(oldName,newName){
+  if(!FIREBASE_CONFIG)return{ok:false,offline:true};
+  const D=db(),ok=nameKey(oldName),nk=nameKey(newName),nm=newName.trim().slice(0,20);
+  if(!oldName.trim()||ok===nk)return{ok:true};
+  if((await get(ref(D,`rooms/_prof/${nk}`))).exists())return{ok:false,taken:true};
+  const likes=(await get(ref(D,`rooms/_like/${ok}`))).val();
+  if(likes)await runTransaction(ref(D,`rooms/_like/${nk}`),cur=>({...likes,...(cur||{})}));
+  const off=(await get(ref(D,`rooms/_office/by/${ok}`))).val();
+  if(off&&off.p)await runTransaction(ref(D,`rooms/_office/by/${nk}`),cur=>({n:nm,p:((cur&&cur.p)||0)+off.p}));
+  const lots=(await get(ref(D,'rooms/_vil/lots'))).val()||{};
+  for(const id of Object.keys(lots))if(lots[id]&&lots[id].k===ok)await runTransaction(ref(D,`rooms/_vil/lots/${id|0}`),cur=>cur&&cur.k===ok?{...cur,k:nk,n:nm}:undefined);
+  for(const p of [`rooms/_like/${ok}`,`rooms/_office/by/${ok}`,`rooms/_prof/${ok}`,`rooms/_farm/${ok}`])await remove(ref(D,p));
+  return{ok:true};
+}

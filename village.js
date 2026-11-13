@@ -139,9 +139,16 @@ const Village = (() => {
     if (PT.collar && !asleep && a !== 'jump') { const K = PT.collar, hx = x + (pt.face > 0 ? K.r : K.l) * s, hy = y + (a === 'run' || a === 'walk' ? K.ry : K.y) * s;   // collar; party hat with premium food
       ctx.fillStyle = '#e63946'; ctx.fillRect(hx - (pt.face > 0 ? 3 : 0) * s, hy + 4 * s, 3 * s, 1 * s); ctx.fillStyle = '#ffd84d'; ctx.fillRect(hx - (pt.face > 0 ? 2 : -1) * s, hy + 5 * s, 1 * s, 1 * s);
       if (prem) { ctx.fillStyle = '#ff5c8a'; ctx.beginPath(); ctx.moveTo(hx - 2.5 * s, hy); ctx.lineTo(hx + 2.5 * s, hy); ctx.lineTo(hx, hy - 6 * s); ctx.fill(); ctx.fillStyle = '#fff'; ctx.fillRect(hx - 1.5 * s, hy - 3 * s, 3 * s, 1 * s); ctx.fillStyle = '#ffd84d'; ctx.fillRect(hx - s, hy - 7 * s, 2 * s, 2 * s); } }
+    if (asleep) { const k = (t * .55 + (pt.x || 0) * .37) % 1; ctx.save(); ctx.globalAlpha = k < .8 ? 1 - k / .8 : 0; ctx.fillStyle = '#5b6b8c'; ctx.font = `bold ${Math.round(5 * s + k * 3 * s)}px Kanit,Tahoma,sans-serif`; ctx.fillText('z', x + (pt.face < 0 ? 6 : 22) * s + Math.sin(k * 6) * 2 * s, y + 18 * s - k * 12 * s); ctx.restore(); }   // 💤 drifting z
     if (tag) { const top = y + 19 * s - (prem && !asleep ? 8 : 2) * s; tags.push([x + cw / 2, top, tag[0], { fs: 10, bg: tag[1], hit: tag[2] }]);
       if (tag[2]) hits.push({ l: x + 4 * s, t: y + 12 * s, w: 24 * s, h: 20 * s, hit: tag[2] }); }
   }
+  // ✨ pet juice through the world's particle kit: hearts (feed / pat), magic sparkles (adopt / swap), coat-coloured sparks (dye)
+  function petFx(kind, col) { if (!W || !W.fx) return; const x = (pm.x + .5) * T, y = (pm.y + .55) * T;
+    try { if (kind === 'love') W.fx.burst(x, y - 6, col || 6, { k: 'heart', c: ['#ff5c8a', '#ff8fbf'], sp: 16, up: 26, g: -8, life: 1.1, spread: 10 });
+      else if (kind === 'magic') { W.fx.burst(x, y - 6, 20, { c: ['#ffffff', '#ffd23f', '#b98cff', '#7fd3ff'], sp: 55, up: 30, g: 70, life: .85, s: 2, spread: 8 }); W.fx.ring(x, y + 2); }
+      else W.fx.burst(x, y - 6, 16, { c: [col || '#fff', '#ffffff'], sp: 45, up: 25, g: 80, life: .7, s: 2, spread: 8 });
+      if (typeof SFX !== 'undefined') (kind === 'magic' ? SFX.level : SFX.good)(); } catch (_) {} }
   const catIcon = (c, y) => PET_TYPES[petTy(y)].icon(coatOk(c));
   // what other players see: presence pe = [coat, name, fed 0/1, premium 0/1, type]; the lot record keeps {c, n, y} for the pet napping at home
   const petPres = () => { const pt = myPet(); return pt ? [coatOk(pt.coat), String(pt.n || '').slice(0, 12), petFed(pt) ? 1 : 0, petFed(pt) && pt.prem ? 1 : 0, petTy(pt.type)] : 0; };
@@ -159,14 +166,14 @@ const Village = (() => {
     p.coins -= PET_PRICE; p.vil.pet = { n: PT.nm, type: y, coat: c0, ad: Date.now(), find: 0, ml: 0, pm: 0, fed: Date.now() + MEAL, prem: 0, fd: old ? old.fd || '' : '' }; Prog.put(p);   // the first day's food comes with it
     if (typeof Stats !== 'undefined') Stats.econ('out_pet', PET_PRICE);
     petPick = petTyPick = '';
-    pm.init = false; pm.act = 'jump'; pm.actT = t; petSave(p.vil.pet, `${PT.icon(c0)} รับเลี้ยง${PT.nm}แล้ว! −${fmtN(PET_PRICE)} 🪙${old ? ` · ${old.n} ไปนอนพักที่บ้าน` : ''} · ตั้งชื่อได้เลย`);
+    pm.init = false; pm.act = 'jump'; pm.actT = t; petFx('magic'); petSave(p.vil.pet, `${PT.icon(c0)} รับเลี้ยง${PT.nm}แล้ว! −${fmtN(PET_PRICE)} 🪙${old ? ` · ${old.n} ไปนอนพักที่บ้าน` : ''} · ตั้งชื่อได้เลย`);
     const nm = myName(); feed(`${PT.icon(c0)} ${nm} รับเลี้ยง${PT.n}ตัวใหม่!`);
   }
   // switch to another pet you own: free; its own name, coat and memories come back, today's food carries over
   function swapPet(y) {
     const p = Prog.get(), B = petBook(p), pt = p.vil.pet; if (!pt || !B[y] || petTy(pt.type) === y) return;
     const was = pt.n; for (const k of PKEEP) pt[k] = B[y][k]; pt.type = y; petPick = petTyPick = ''; Prog.put(p);
-    pm.act = 'jump'; pm.actT = t; petSave(pt, `${catIcon(pt.coat, y)} พา${pt.n}ออกมาเดินแล้ว · ${was} ไปนอนพักที่บ้าน`);
+    pm.act = 'jump'; pm.actT = t; petFx('magic'); petSave(pt, `${catIcon(pt.coat, y)} พา${pt.n}ออกมาเดินแล้ว · ${was} ไปนอนพักที่บ้าน`);
   }
   function feedPet(k) {
     const pt = myPet(), f = FOOD[k], p = Prog.get(); if (!pt || !f) return;
@@ -178,7 +185,7 @@ const Village = (() => {
     if (k === 'p' && typeof CROPS !== 'undefined') { const pool = ['car', 'tom', 'chi', 'cor'].filter(id => CROPS[id]), id = pool[Math.floor(Math.random() * pool.length)];
       if (id) { p.farm = p.farm || { plots: [], book: {}, fw: {}, bag: {} }; p.farm.bag = p.farm.bag || {}; p.farm.bag[id] = (p.farm.bag[id] || 0) + 1; extra.push(`ขุดเจอ${CROPS[id][0]} 1 ลูก`); } }
     p.vil.pet = pt; Prog.put(p); if (typeof Stats !== 'undefined') Stats.econ('out_petfood', f[0]);
-    pm.act = k === 'p' ? 'jump' : 'paw'; pm.actT = t; petSave(pt, m + (extra.length ? ' · ' + extra.join(' · ') : ''));
+    pm.act = k === 'p' ? 'jump' : 'paw'; pm.actT = t; petFx('love', k === 'p' ? 10 : 6); petSave(pt, m + (extra.length ? ' · ' + extra.join(' · ') : ''));
   }
   function renamePet() {
     const pt = myPet(), inp = cardEl && cardEl.querySelector('#vilPetName'); if (!pt || !inp) return;
@@ -194,7 +201,7 @@ const Village = (() => {
     if (!pay) return petCard();
     if ((p.coins | 0) < DYE) return toast('เหรียญไม่พอ');
     petPick = ''; p.coins -= DYE; pt.coat = nc; p.vil.pet = pt; Prog.put(p); if (typeof Stats !== 'undefined') Stats.econ('out_dye', DYE);
-    pm.act = 'paw'; pm.actT = t; petSave(pt, `🎨 ${pt.n} ย้อมเป็นสี${COATS[nc][0]}แล้ว −${DYE} 🪙`);
+    pm.act = 'paw'; pm.actT = t; petFx('dye', COATS[nc][1]); petSave(pt, `🎨 ${pt.n} ย้อมเป็นสี${COATS[nc][0]}แล้ว −${DYE} 🪙`);
   }
   const coatBtns = (on, a) => Object.entries(COATS).map(([k, c]) => `<button class="vil-coat${k === on ? ' on' : ''}" type="button" data-a="${a}" data-k="${k}" title="${c[0]}" aria-label="สี${c[0]}" style="background:linear-gradient(135deg,${c[1]} 55%,${c[2]} 55%);border-color:${c[3]}"></button>`).join('');
   function petCard() {
@@ -246,7 +253,7 @@ const Village = (() => {
     if ((L.g | 0) < g) setGarden(g); }
   function openGarden(L) { if (L.k !== myKey()) window.farmVisit = L.k; if (typeof startGame === 'function') startGame('farm'); }
   const srvNow = () => Date.now() + offset;
-  const myLots = () => LOTS.filter(L => L.stage && L.k && L.k === myKey());
+  const myLots = () => LOTS.filter(L => L.stage && ((L.k && L.k === myKey()) || (L.u && L.u === myUid())));
   const myLot = () => myLots().sort((a, b) => b.mv - a.mv)[0];   // after a move the newest (mv) is home, even before the old lot is freed
   const building = L => L.stage >= 2 && L.end > srvNow();
   const movedIn = L => L.stage > 2 || (L.stage === 2 && !building(L));   // the starter house is built
@@ -254,6 +261,8 @@ const Village = (() => {
   const others = {};                              // sid -> walker of a live coworker in the village
   const key = n => O && O.nameKey ? O.nameKey(n) : (n || '').trim().toLowerCase().replace(/[.#$\[\]\/]/g, '_').slice(0, 24) || '_';
   const myKey = () => key(typeof myName === 'function' ? myName() : '');
+  // the account id (Google, or the guest id that becomes Google): houses are matched by it too, so a rename never orphans a house
+  const myUid = () => (typeof Cloud !== 'undefined' && Cloud.acct && Cloud.acct.uid) || '';
   const onlineKeys = () => new Set(people.filter(p => p.v !== 0).map(p => key(p.n)));
 
   /* ---------- map ---------- */
@@ -321,8 +330,8 @@ const Village = (() => {
   // rooms/_vil/lots -> houses on the map (repaint only when something changed)
   function applyLots(v) {
     const sig = JSON.stringify(v || {}); if (sig === lotsSig) return; lotsSig = sig; lotRaw = v || {};
-    for (const L of LOTS) { const d = (v || {})[L.id] || {}; Object.assign(L, { stage: Math.max(0, Math.min(5, d.stage | 0)), k: d.k || '', n: d.n || '', who: d.who || '', g: d.g | 0, h: d.h | 0, end: +d.end || 0, hp: d.hp || null, pet: d.pet && d.pet.c ? d.pet : null, rc: d.rc || '', wc: d.wc || '', xs: typeof d.xs === 'string' ? d.xs.slice(0, 8) : '', cz: d.cz | 0, mv: +d.mv || 0 }); }
-    healMove();
+    for (const L of LOTS) { const d = (v || {})[L.id] || {}; Object.assign(L, { stage: Math.max(0, Math.min(5, d.stage | 0)), k: d.k || '', n: d.n || '', who: d.who || '', g: d.g | 0, h: d.h | 0, end: +d.end || 0, hp: d.hp || null, pet: d.pet && d.pet.c ? d.pet : null, rc: d.rc || '', wc: d.wc || '', xs: typeof d.xs === 'string' ? d.xs.slice(0, 8) : '', cz: d.cz | 0, mv: +d.mv || 0, u: d.u || '' }); }
+    healMove(); healOwner();
     if (W) relotW(); else if (base) { rebuild(); if (loaded >= 2) paintWorld(); }
     syncHome(); renderCard(); renderBar();
   }
@@ -584,7 +593,7 @@ const Village = (() => {
     if (!nm) return toast('ตั้งชื่อเล่นที่แถบบนก่อน แล้วค่อยจองที่ดิน');
     if (!lock().ok || myLot() || L.stage || missing(s).length) return renderCard();
     const gN = Math.min(24, Math.max(10, typeof Farm !== 'undefined' && Farm.n ? Farm.n() : 10));   // the rooftop farm moves here now
-    const ok = await tx(L, cur => cur && cur.k ? undefined : { k: mk, n: nm.slice(0, 20), who: typeof meWho === 'function' ? meWho() : 'adam', stage: 1, end: 0, t: srvNow(), g: gN });
+    const ok = await tx(L, cur => cur && cur.k ? undefined : { k: mk, n: nm.slice(0, 20), who: typeof meWho === 'function' ? meWho() : 'adam', stage: 1, end: 0, t: srvNow(), g: gN, ...(myUid() ? { u: myUid() } : {}) });
     if (!ok) { toast('😅 แปลงนี้มีคนจองไปแล้ว ลองแปลงอื่นนะ'); return renderCard(); }
     pay(s[2], 0, 0); const p = Prog.get(); p.vil.lot = L.id; p.vil.g = Math.max(gN, p.vil.g | 0); Prog.put(p); if (typeof Farm !== 'undefined' && Farm.pub) Farm.pub();
     toast(`🪧 จองแปลง ${L.id} แล้ว! 🌱 ฟาร์มย้ายมาข้างที่ดินแล้ว −${fmtN(s[2])} 🪙`); feed(`🪧 ${nm} จองที่ดินแปลง ${L.id} ใน${L.lane} เตรียมสร้างบ้าน!`);
@@ -676,6 +685,19 @@ const Village = (() => {
     renderBar(); openCard(L);
   }
   // two lots with my name (a move whose second write failed): free the older one, never one with the same mv
+  // your house carries your account id: after a rename it is relabelled with the new name; an older house without an id
+  // is adopted the first time its owner (same name) is here signed in. Runs on lot updates and every 15 s (the account
+  // may sign in after the village loaded).
+  let ownSig = '';
+  function healOwner() {
+    // paused while the hub moves your records to a new name, or it would relabel the house back to the old one
+    const uid = myUid(), mk = myKey(), nm = typeof myName === 'function' ? myName() : ''; if (!O || !uid || !mk || mk === '_' || window.__renaming) return;
+    const todo = LOTS.filter(L => L.stage && ((L.u === uid && L.k !== mk) || (L.k === mk && !L.u)));
+    const sig = todo.map(L => L.id + ':' + L.k + ':' + L.u).join(); if (!todo.length || sig === ownSig) return; ownSig = sig;
+    for (const L of todo) O.txLot(L.id, cur => !cur ? undefined : cur.u === uid && cur.k !== mk ? { ...cur, k: mk, n: nm.slice(0, 20) }
+      : cur.k === mk && !cur.u ? { ...cur, u: uid } : undefined).catch(() => {});
+  }
+  setInterval(() => { try { healOwner(); } catch (e) {} }, 15000);
   function healMove() {
     const mine = myLots(); if (mine.length < 2 || !O || moving) return; const keep = myLot(), mk = myKey(), sig = mine.map(L => L.id).join();
     if (healing === sig) return; healing = sig;
@@ -871,7 +893,7 @@ const Village = (() => {
   }
   function act(g) {
     if (g === 'tower') { goTo([TOWER.door[0], TOWER.door[1] + 1]); typeof Tower !== 'undefined' && Tower.setView('tower'); return; }
-    if (g === 'pet') { openCard(PETC); return; }
+    if (g === 'pet') { petFx('love', 3); openCard(PETC); return; }
     if (g && g.arc != null && W) { W.arcade.walk(g.arc || ''); return; }
     if (g && g.arank) { if (typeof showRanking === 'function') showRanking(); return; }
     if (g && g.alist && W) { W.arcade.to('alist', () => openCard(ARCC)); return; }

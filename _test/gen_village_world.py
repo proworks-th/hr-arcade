@@ -551,6 +551,51 @@ rep("  if (scene) return; const n = '123456'.indexOf(e.key);",
     "  if ((e.key.toLowerCase() === 'c' || e.key === ' ' && !(!scene && frontPlot())) && camHome()) { e.preventDefault(); return; }\n  if (scene) return; const n = '123456'.indexOf(e.key);")
 rep("exitB = SR.getElementById('exit'),", "exitB = SR.getElementById('exit'), camB = SR.getElementById('camb'),")
 
+# ---------------- ✨ juice (12 Nov 2026): one small particle kit in world space — tap rings, dust under feet and wheels, farm-action bursts,
+# coin pops (+N 🪙 rising from you with gold sparks), a ring when the camera snaps back, buttons that squish. village.js uses it through W.fx.
+rep("const cam = { x: me.px, y: me.py, free: false, ex: 0, ey: 0, eT: 0 }, bubbles = [], held = new Set();",
+    "const cam = { x: me.px, y: me.py, free: false, ex: 0, ey: 0, eT: 0 }, bubbles = [], held = new Set();\n"
+    "const FX = [];   // { k: ring | puff | heart | spark, x, y, vx, vy, g (gravity), life, t (< 0 = waits), s (size), c }\n"
+    "function fxAdd(o) { if (FX.length < 260) FX.push(Object.assign({ k: 'spark', t: 0, vx: 0, vy: 0, g: 0, life: .6, s: 2, c: '#fff' }, o)); }\n"
+    "function fxBurst(x, y, n, o = {}) { for (let i = 0; i < n; i++) { const a = Math.random() * 6.283, sp = (o.sp || 40) * (.45 + Math.random() * .75);\n"
+    "  fxAdd({ ...o, x: x + (Math.random() - .5) * (o.spread || 4), y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - (o.up || 0), c: Array.isArray(o.c) ? o.c[i % o.c.length] : o.c || '#fff' }); } }\n"
+    "const fxRing = (x, y, c = '#fff') => { fxAdd({ k: 'ring', x, y, life: .5, c }); fxAdd({ k: 'ring', x, y, life: .5, t: -.12, c: '#ffd23f' }); };\n"
+    "function fxDraw(g, dt) { for (let i = FX.length - 1; i >= 0; i--) { const f = FX[i]; f.t += dt; if (f.t >= f.life) { FX.splice(i, 1); continue; } if (f.t < 0) continue;\n"
+    "  f.x += f.vx * dt; f.y += f.vy * dt; f.vy += f.g * dt; const k = f.t / f.life; g.globalAlpha = Math.min(1, (1 - k) * 1.6); g.fillStyle = f.c;\n"
+    "  if (f.k === 'ring') { g.strokeStyle = f.c; g.lineWidth = 1.5; const r = 3 + k * 10; g.beginPath(); g.ellipse(f.x, f.y, r, r * .45, 0, 0, 7); g.stroke(); }\n"
+    "  else if (f.k === 'puff') { g.beginPath(); g.arc(f.x, f.y, f.s * (1 + k * 1.2), 0, 7); g.fill(); }\n"
+    "  else if (f.k === 'heart') { const x = Math.round(f.x), y = Math.round(f.y); g.fillRect(x - 2, y - 1, 2, 2); g.fillRect(x + 1, y - 1, 2, 2); g.fillRect(x - 2, y, 5, 2); g.fillRect(x - 1, y + 2, 3, 1); g.fillRect(x, y + 3, 1, 1); }\n"
+    "  else { const s = f.s * (k < .5 ? 1 : 2 - k * 2); g.fillRect(Math.round(f.x - s / 2), Math.round(f.y - s / 2), Math.max(1, Math.ceil(s)), Math.max(1, Math.ceil(s))); } }\n"
+    "  g.globalAlpha = 1; }\n"
+    "const sfx = n => { try { if (typeof SFX !== 'undefined' && SFX[n]) SFX[n](); } catch (_) {} };\n"
+    "function coinPop(d) { const el = document.createElement('div'); el.className = 'pop'; el.style.color = d > 0 ? '#d98a00' : '#8a6a55'; el.textContent = (d > 0 ? '+' : '−') + Math.abs(d).toLocaleString() + ' 🪙'; SR.append(el);\n"
+    "  bubbles.push({ P: me, el, until: performance.now() + (d > 0 ? 1300 : 1000), pop: true }); requestAnimationFrame(() => { el.style.transform = 'translate(-50%,-180%)'; el.style.opacity = '0'; });\n"
+    "  if (d > 0) { fxBurst(me.px, me.py - 16, Math.min(16, 5 + (d / 60 | 0)), { c: ['#ffd23f', '#fff3a0', '#ffb703'], sp: 55, up: 35, g: 110, life: .75, s: 2.2, spread: 8 }); sfx('good'); } }")
+rep("\n  g.restore();\n  const tn = tint(hour, !!scene);", "\n  fxDraw(g, dt);\n  g.restore();\n  const tn = tint(hour, !!scene);")
+rep("  if (camB.hidden === cam.free) camB.hidden = !cam.free;",
+    "  if (camB.hidden === cam.free) camB.hidden = !cam.free;\n"
+    "  { const mv = Math.hypot(me.px - (frame.lx ?? me.px), me.py - (frame.ly ?? me.py)), rd = riding(me); frame.lx = me.px; frame.ly = me.py;   // dust under your feet / wheels\n"
+    "    if (mv > .05 && mv < 20 && (frame.dT = (frame.dT || 0) - dt) <= 0) { frame.dT = rd ? .07 : .26;\n"
+    "      fxAdd({ k: 'puff', x: me.px + (Math.random() - .5) * 5, y: me.py + 1, vx: (Math.random() - .5) * 8, vy: -6, life: rd ? .45 : .35, s: rd ? 1.6 : 1.1, c: scene ? 'rgba(200,180,160,.45)' : 'rgba(236,222,196,.8)' }); } }\n"
+    "  if ((frame.cT = (frame.cT || 0) - dt) <= 0) { frame.cT = .25; const c = H.coins() | 0; if (frame.c0 != null && c !== frame.c0) coinPop(c - frame.c0); frame.c0 = c; }   // every coin change pops")
+rep("  closeCard(); me.after = null; go(me, [Math.floor(wx / T), Math.floor(wy / T)]);\n}",
+    "  closeCard(); me.after = null; go(me, [Math.floor(wx / T), Math.floor(wy / T)]); fxRing(Math.floor(wx / T) * T + 8, Math.floor(wy / T) * T + 13); sfx('tick');\n}")
+rep("function camHome() { if (!cam.free) return false; cam.free = false; cam.ex = cam.ey = 0; return true; }",
+    "function camHome() { if (!cam.free) return false; cam.free = false; cam.ex = cam.ey = 0; fxRing(me.px, me.py + 2); sfx('tick'); return true; }")
+rep("doAct(p, tool, isSeed(id) ? seedOf(id) : null).then(r => { if (r.ok) { say(me, EMO[tool], 900, true);",
+    "doAct(p, tool, isSeed(id) ? seedOf(id) : null).then(r => { if (r.ok) { say(me, EMO[tool], 900, true); fxFarm(p, tool);")
+rep("function frontPlot() {",
+    "const FXT = { hoe: ['#8a5a3c', '#b98a5e', '#6b4429'], can: ['#7fd3ff', '#3f86c4', '#ffffff'], seed: ['#5fae4a', '#a8e07a'], hand: ['#ffd23f', '#ffffff', '#ff9f43', '#5fbf5a'] };\n"
+    "function fxFarm(p, tool) { const x = p.x * T + 8, y = p.y * T + 10;\n"
+    "  if (tool === 'hoe') fxBurst(x, y, 9, { k: 'puff', c: FXT.hoe, sp: 30, up: 18, g: 60, life: .45, s: 1.4, spread: 10 });\n"
+    "  else if (tool === 'can') fxBurst(x, y - 8, 12, { c: FXT.can, sp: 22, up: -10, g: 160, life: .55, s: 1.6, spread: 12 });\n"
+    "  else if (tool === 'seed') fxBurst(x, y, 7, { c: FXT.seed, sp: 30, up: 25, g: 90, life: .5, s: 1.6 });\n"
+    "  else { fxBurst(x, y - 4, 16, { c: FXT.hand, sp: 60, up: 55, g: 140, life: .7, s: 2.2, spread: 8 }); fxRing(x, y + 3); }\n"
+    "  sfx(tool === 'hand' ? 'good' : 'tick'); }\n"
+    "function frontPlot() {")
+css += ('button{transition:transform .08s}button:not(#exit):not(#camb):active{transform:scale(.93)}#exit:active,#camb:active{transform:translateX(-50%) scale(.93)}'
+        '#camb:not([hidden]){animation:cbIn .28s cubic-bezier(.3,1.6,.5,1)}@keyframes cbIn{from{transform:translateX(-50%) scale(.4);opacity:0}}\n')
+
 # ---------------- start + API ----------------
 rep("window.__cb = { DAY_MS,", "if (window.__TEST__) window.__cb = { DAY_MS,")
 API = r"""// rebuild the static world when the live lots change (stage, colours, garden size); community plots and the room you stand in are kept
@@ -580,7 +625,7 @@ return { me, held, C, R,
   talk: i => { if (NPCS[i]) talkTo(NPCS[i]); }, enterLot: id => { const L = LOTS.find(l => l.id === id); if (L && L.room) enter(L.room); },
   hasRoom: id => !!(LOTS.find(l => l.id === id) || {}).room,
   lotTop: id => { const L = LOTS.find(l => l.id === id); return !L ? 0 : hasHouse(L) && !(L.stage === 2 && L.building) ? (L.y + 3) * T - (isBig(L) ? 130 : 98) : (L.y + 1) * T - 4; },
-  get SC() { return SC; }, NPCS, F, BAG, PLOTS: () => PLOTS, rideCard, friendsCard, hud,
+  fx: { burst: (x, y, n, o) => fxBurst(x, y, n, o), add: o => fxAdd(o), ring: (x, y, c) => fxRing(x, y, c) }, get SC() { return SC; }, NPCS, F, BAG, PLOTS: () => PLOTS, rideCard, friendsCard, hud,
   get LIVE() { return LIVE && LIVEO; }, doAct, giveOrder, tagRects: () => TAGR };"""
 s = s.replace("@@API@@", API)
 

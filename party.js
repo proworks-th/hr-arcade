@@ -86,7 +86,7 @@ export function partyGame(root,api){
   root.querySelector('[data-k=go]').onclick=()=>{
     const name=root.querySelector('[data-k=name]').value.trim()||'ไม่ระบุชื่อ';
     const room=(root.querySelector('[data-k=room]').value.replace(/[^\w-]/g,'')||'office').toLowerCase();
-    store.set('name',name);store.set('partyAva',color);
+    if(!store.get('name','').trim())store.set('name',name);store.set('partyAva',color);   // the party name never renames you (13 Nov 2026)
     cleanup=join(name,color,room);
   };
 
