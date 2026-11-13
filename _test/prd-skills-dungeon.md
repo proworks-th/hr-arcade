@@ -144,11 +144,12 @@ Resolved 13 Nov: pay rule, Building/Errands, Cooking timing, checkpoints, leader
 
 - [ ] Owner playtest sign-off on B1–B10 feel (levelling pace, wave density, boss fights).
 - [x] Pay decision made (score ÷ 20, no cap, no ×2, no bricks). Live: award coins directly, not through `Prog.award`'s 2–60 clamp and GAME_PAY.
-- [ ] Daily + all-time leaderboard in `rooms/_stat`; daily checkpoint stored per player per day.
-- [ ] Added to `GAMES` in `index.html`; uses the real `Prog`, `Skills` (live), `meWho()`; best depth to `rooms/_stat`.
-- [ ] `verify/run.py` screen with `?seed=`; desktop + phone screenshots; no console errors.
-- [ ] `node _test/dungeon/test-gen.js` passes; browser smoke test (`_test/dungeon/test-play.py`) passes.
-- [ ] Esc freezes the frame (pixel-identical over 1 s) on the live hub.
+- [x] Daily + all-time leaderboard (`RANK_GAMES.dungeon`, deepest floor); daily checkpoint in `prog.dgn.cp` as {d, n}.
+- [x] Added to `GAMES` in `index.html` (branch `dungeon-life-skills`, not main); real `Prog` (`prog.dgn`), `Skills.add('combat')`; pay via `PAY_RULES.dungeon` (÷20, no ×2, no cap, no bricks).
+- [x] `verify/run.py` dungeon screen (play, clear B1, leave; checks rank = depth, pay, no bricks, saves, combat XP); desktop/phone/tablet pass. `?floor=`/`?seed=` only in test mode.
+- [x] `node _test/dungeon/test-gen.js` passes; browser smoke test (`_test/dungeon/test-play.py`) passes.
+- [x] Esc freezes the frame (pixel-identical over 1 s) in the hub.
+- [ ] Owner decides the dungeon's own material (replaces bricks), then OKs merging to main.
 
 ## 12. Next-level backlog (for the next agent to evaluate and extend)
 

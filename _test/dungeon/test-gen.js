@@ -1,5 +1,5 @@
 // node _test/dungeon/test-gen.js — builds thousands of floors and checks the rules that must never break
-global.DD = require('./data.js'); global.DE = require('./engine.js'); const DGen = require('./gen.js');
+global.DD = require('../../dungeon/data.js'); global.DE = require('../../dungeon/engine.js'); const DGen = require('../../dungeon/gen.js');
 const fails = [], stats = {}; let n = 0; const t0 = Date.now();
 for (let day = 0; day < 50; day++) for (let depth = 1; depth <= 40; depth++) {
   const seed = '2026-11-' + String(day).padStart(2, '0'), f = DGen.floor(seed, depth), g = f.g, P = DD.PURPOSE[f.purpose]; n++;

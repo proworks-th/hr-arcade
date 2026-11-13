@@ -11,8 +11,11 @@ const GAME_PAY = 2;
 // village bricks (village v2.0): only mini games give them, 1–3 a round by how well it went, max 12 a day.
 // They collect for everyone from now on; the village (hidden until release) is where they get spent.
 const BRICK_DAY = 12;
+// per-game pay exceptions: the dungeon pays score ÷ 20 with no ×GAME_PAY and no bricks (owner, 13 Nov 2026;
+// it will drop its own material later)
+const PAY_RULES = { dungeon: { pay: 1, bricks: false } };
 const bkkDay = () => new Date(Date.now() + 7 * 3600e3).toISOString().slice(0, 10);   // the office's day (Bangkok)
-const PROG_NORM = { spot: 60, run: 20, whack: 16, stack: .8, tetris: 80, stamp: 24, barista: 24, toss: 24, slack: 16, conga: 12, prism: 12 };
+const PROG_NORM = { dungeon: 20, spot: 60, run: 20, whack: 16, stack: .8, tetris: 80, stamp: 24, barista: 24, toss: 24, slack: 16, conga: 12, prism: 12 };
 // a new title every 2–3 levels; each title level also unlocks an accessory (ACC in wardrobe.js)
 const TITLES = [[1, 'เด็กฝึกงาน'], [2, 'พนักงานทดลองงาน'], [4, 'พนักงานใหม่'], [6, 'พนักงานขยัน'], [8, 'มือโปรประจำแผนก'], [10, 'พนักงานดีเด่น'], [12, 'รุ่นพี่ใจดี'],
   [14, 'หัวหน้าทีม'], [17, 'ผู้ช่วยผู้จัดการ'], [20, 'ผู้จัดการ'], [23, 'ผู้อำนวยการฝ่าย'], [26, 'ผู้อำนวยการ'], [30, 'ตำนานออฟฟิศ'], [35, 'เทพเจ้าแห่ง HR'], [40, 'ตำนานห้องพักสมอง']];
@@ -47,8 +50,8 @@ const Prog = {
   // No coin cap per round since 13 Nov 2026 (owner): coins = base × GAME_PAY × featured, base = score / PROG_NORM (min 2).
   // XP keeps the old cap (base 60 → max 190 XP a round) so levelling speed is unchanged. Bricks unchanged (1–3, BRICK_DAY).
   award(game, score, mult = 1) {
-    const raw = Math.max(2, Math.round(score / (PROG_NORM[game] || 20))), c = Math.min(60, raw), r = Prog.give(raw * GAME_PAY * mult, c * 3 + 10, game);
-    r.bricks = Prog.brick(c < 12 ? 1 : c < 25 ? 2 : 3); return r;
+    const rule = PAY_RULES[game] || {}, raw = Math.max(2, Math.round(score / (PROG_NORM[game] || 20))), c = Math.min(60, raw), r = Prog.give(raw * (rule.pay ?? GAME_PAY) * mult, c * 3 + 10, game);
+    r.noBricks = rule.bricks === false; r.bricks = r.noBricks ? 0 : Prog.brick(c < 12 ? 1 : c < 25 ? 2 : 3); return r;
   },
   // add up to n bricks within today's cap; returns how many were given (0 = cap reached)
   brick(n) {

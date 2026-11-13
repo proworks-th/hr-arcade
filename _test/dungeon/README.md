@@ -14,7 +14,7 @@ The prototype mocks `Prog`, `bkkDay`, `meWho`, `fmt`, `toast` and the hub's `api
 ## Files
 | File | Role | Needs DOM |
 |---|---|---|
-| `data.js` (`DD`) | every number: tiles, floor purposes, monsters, weapons, passives, waves, XP, pay | no |
+| `dungeon/data.js` (`DD`) | every number: tiles, floor purposes, monsters, weapons, passives, waves, XP, pay | no |
 | `engine.js` (`DE`) | seeded RNG, grid, collision (`move`, `blocked`), line of sight, flow field, `paintMap`, `fog`, `minimap`, `camera` | only the painters |
 | `gen.js` (`DGen`) | `DGen.floor(seed, depth)` → grid, rooms, start, exit, props, chests, spikes, altar, spawns | no |
 | `game.js` (`Dungeon`) | `Dungeon.mount(root, api)`: run state, weapons, waves, AI, level-ups, HUD, drawing | yes |
@@ -29,10 +29,10 @@ The prototype mocks `Prog`, `bkkDay`, `meWho`, `fmt`, `toast` and the hub's `api
 - New floor purpose: `DD.PURPOSE` + `DD.purposeFor`; the generator reads the ranges.
 - The new map (Phase 2) should reuse `engine.js` as is and get its own generator (outdoor: fields, river, forest, cave mouth).
 
-## Into the live hub (not done)
-1. Load `data.js`, `engine.js`, `gen.js`, `game.js` (and `skills.js`) as classic scripts in `index.html`, add `{ id: 'dungeon', mount: Dungeon.mount, ... }` to the game list, `PROG_NORM.dungeon`.
-2. Replace the prototype's localStorage (`dgn_codex`, `dgn_best_*`, `skills_proto`) with `Prog` fields; daily best → `rooms/_stat`.
-3. Add a `verify/run.py` screen (`?seed=` for stable screenshots); bump `?v=N`.
+## In the hub (branch `dungeon-life-skills`, 13 Nov 2026)
 
-## Owner rules to keep
-Nothing is lost on faint/leave · warnings are fixed-length and always visible · skills never gate content · skill bonuses capped · B1 stays easy · Esc freezes everything.
+The engine now lives in `/dungeon/` and skills in `/skills.js`; this folder keeps only the tests, shots and the
+prototype pages. Already wired: scripts in `index.html`, the `GAMES` entry (ranked by deepest floor, unit
+`ชั้นลึกสุด`), `PROG_NORM.dungeon = 20` and `PAY_RULES.dungeon` (no ×2, no bricks) in `office.js`,
+`RANK_GAMES.dungeon` in `online.js`, saves in `prog.dgn`, combat XP via `Skills.add`. `?floor=` and `?seed=` only
+work in test mode (`window.__TEST__`, set by `verify/testmode.js`). Verify screen: `python verify/run.py --only dungeon`.

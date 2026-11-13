@@ -1,7 +1,7 @@
 # GDD: ดันเจี้ยนใต้ตึก (the dungeon) + life skills
 
-Game design as built in the prototype (13 Nov 2026). Every number here comes from `_test/dungeon/data.js` and
-`_test/skills.js`; if they disagree, the code wins and this doc should be updated. Why we build it: `prd-skills-dungeon.md`.
+Game design as built in the prototype (13 Nov 2026). Every number here comes from `dungeon/data.js` and
+`skills.js`; if they disagree, the code wins and this doc should be updated. Why we build it: `prd-skills-dungeon.md`.
 
 ---
 

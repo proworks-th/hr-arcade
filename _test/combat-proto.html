@@ -35,6 +35,7 @@ body{font-family:Kanit,"Leelawadee UI",Tahoma,sans-serif}
 <div id="toast" class="toast"></div>
 
 <script>
+window.__TEST__ = /[?&]test=1\b/.test(location.search);
 // ---- mocks of the hub globals (index.html / office.js); same save key as skills-proto so XP shows up there ----
 const KEY = 'skills_proto';
 const dayOff = +(localStorage.getItem(KEY + '_day') || 0);
@@ -46,11 +47,11 @@ const meWho = () => Prog.get().who || 'adam';
 function toast(m) { const d = document.createElement('div'); d.textContent = m; document.getElementById('toast').appendChild(d); setTimeout(() => d.remove(), 1900); }
 </script>
 <script src="solo-games.js"></script>
-<script src="_test/skills.js"></script>
-<script src="_test/dungeon/data.js"></script>
-<script src="_test/dungeon/engine.js"></script>
-<script src="_test/dungeon/gen.js"></script>
-<script src="_test/dungeon/game.js"></script>
+<script src="skills.js"></script>
+<script src="dungeon/data.js"></script>
+<script src="dungeon/engine.js"></script>
+<script src="dungeon/gen.js"></script>
+<script src="dungeon/game.js"></script>
 <script>
 'use strict';
 const $ = s => document.querySelector(s);
@@ -92,23 +93,18 @@ function start() {
       for (const b of buttons) { const el = document.createElement('button'); el.className = 'btn' + (b.primary ? ' primary' : ''); el.textContent = b.label; el.onclick = () => { ov.remove(); started = true; b.go(); }; ov.querySelector('.row').appendChild(el); }
       root.appendChild(ov);
     },
-    end(score, extra, daily, stats) {
+    end(depth, extra, daily, stats) {
       ended = true;
-      // pay (owner, 13 Nov): coins = round(score / 20), no cap, no ×2, no bricks
-      const coins = Math.round(score / DD.NORM) * DD.GAME_PAY;
-      const r = Skills.add('combat', 10 + stats.kills + stats.floor * 5);
+      // same as the hub: the ranked number is the deepest floor; pay = round(run score ÷ 20), no ×2, no bricks (office.js PAY_RULES)
+      const coins = Math.max(2, Math.round(stats.award / DD.NORM));
       const mm = String(Math.floor(stats.secs / 60)), ss = String(stats.secs % 60).padStart(2, '0');
-      const arms = Object.entries(stats.arms).map(([k, a]) => a.evo ? DD.ARMS[k].evo.name : `${DD.ARMS[k].name} Lv ${a.lv}`).join(' · ');
       const pas = Object.entries(stats.pas).map(([k, n]) => `${DD.PASSIVES[k].name} Lv ${n}`).join(' · ') || 'ไม่มี';
       const by = Object.entries(stats.by).sort((a, b) => b[1] - a[1]).map(([k, n]) => `<tr><td>${DD.MON[k].name}</td><td>${n}</td></tr>`).join('');
       const ov = document.createElement('div'); ov.className = 'overlay';
       ov.innerHTML = `<div class="panel popin res"><h2>จบรอบ</h2><p>${extra}</p><table>
-        <tr><td>ชั้นลึกสุด</td><td>B${stats.floor}</td></tr><tr><td>สถิติวันนี้</td><td>B${stats.best}${stats.newBest ? ' ใหม่!' : ''}</td></tr>
-        <tr><td>เวลา</td><td>${mm}:${ss}</td></tr><tr><td>คะแนน</td><td>${fmt(score)}</td></tr>
-        <tr><td>เหรียญ</td><td>${coins}</td></tr>
-        <tr><td>XP การต่อสู้</td><td>${r.got ? '+' + r.got : 'ครบเพดานวันนี้'}</td></tr></table>
-        ${r.up ? `<p><b>ขึ้นขั้น ${r.up}!</b> ได้ตำแหน่ง "${Skills.DEF.combat[2][r.up - 1]}"</p>` : ''}
-        <p class="muted" style="font-size:13px">เลเวลในรอบ ${stats.lv} · อาวุธ: ${arms}<br>พลัง: ${pas}</p>
+        <tr><td>ชั้นลึกสุด</td><td>B${depth}</td></tr><tr><td>สถิติวันนี้</td><td>B${stats.best}${stats.newBest ? ' ใหม่!' : ''}</td></tr>
+        <tr><td>เวลา</td><td>${mm}:${ss}</td></tr><tr><td>คะแนน</td><td>${fmt(stats.award)}</td></tr><tr><td>เหรียญ</td><td>${coins}</td></tr></table>
+        <p class="muted" style="font-size:13px">เลเวลในรอบ ${stats.lv} · อาวุธ: ${stats.build}<br>พลัง: ${pas}</p>
         <p class="muted" style="font-size:12px">คลังอาวุธ: พบแล้ว ${Object.keys(stats.codex.found).length}/${Object.keys(DD.ARMS).length} · วิวัฒนาการแล้ว ${Object.keys(stats.codex.evo).length} · ลึกสุดตลอดกาล B${stats.codex.best}</p>
         ${by ? `<details><summary>ปราบแยกตามชนิด</summary><table>${by}</table></details>` : ''}
         <div class="row"><button class="btn primary" type="button">เล่นอีกรอบ</button></div></div>`;

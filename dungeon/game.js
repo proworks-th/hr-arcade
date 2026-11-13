@@ -9,12 +9,16 @@ const Dungeon = {
     const T = DD.TILE * DD.SCALE, PL = DD.PLAYER;
     const tall = innerHeight > innerWidth * 1.2, W = tall ? 432 : 720, H = tall ? 624 : 432;
     const { cv, ctx, at } = g2canvas(root, W, H), fxS = makeFX(), fxW = makeFX(), who = typeof meWho === 'function' ? meWho() : 'adam';
-    const q = new URLSearchParams(location.search), TEST = !!window.__TEST__ || q.has('test');
-    const day = typeof bkkDay === 'function' ? bkkDay() : new Date().toISOString().slice(0, 10), SEED = q.get('seed') || 'dgn-' + day;
+    const q = new URLSearchParams(location.search), TEST = !!window.__TEST__;   // set by verify/testmode.js with ?test=1 (Firebase → in-memory mocks)
+    const day = typeof bkkDay === 'function' ? bkkDay() : new Date().toISOString().slice(0, 10), SEED = (TEST && q.get('seed')) || 'dgn-' + day;   // ?seed= / ?floor= only in test mode (they'd break the leaderboard)
     const sk = typeof Skills !== 'undefined' ? Skills : null;
     const R = Math.random, pickR = a => a[Math.floor(R() * a.length)];
-    const store2 = { get: (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } }, set: (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} } };
-    const BEST = 'dgn_best_' + day, CP = 'dgn_cp_' + day;   // daily best, daily checkpoint (deepest boss beaten today)
+    // lasting dungeon state lives in the player's save (Prog → cloud), so it follows their account:
+    // prog.dgn = { codex, best: {d, n}, cp: {d, n} } (daily best and daily checkpoint reset with the date)
+    const dg = () => { const p = Prog.get(); p.dgn ||= {}; return p; };
+    const store2 = { get: (k, d) => { const v = (Prog.get().dgn || {})[k]; return v === undefined ? d : v; }, set: (k, v) => { const p = dg(); p.dgn[k] = v; Prog.put(p); } };
+    const daily = (k, d) => { const v = store2.get(k, null); return v && v.d === day ? v.n : d; }, setDaily = (k, n) => store2.set(k, { d: day, n });
+
 
     // ---------- art: Tiny Dungeon tiles cut once, cached as 16 px canvases ----------
     const sheet = new Image(); sheet.src = 'assets/village/kenney-dungeon.png'; const tc = {};
@@ -27,7 +31,7 @@ const Dungeon = {
     // ---------- run state ----------
     // a run: you only move and dodge; weapons (S.arms) fire by themselves; passives (S.pas) scale them;
     // gems give score (pay) and XP (level-ups). Lasting progression lives in Skills (combat tier) and the armoury (codex).
-    const CODEX = 'dgn_codex', codex = store2.get(CODEX, { found: {}, evo: {}, best: 0, runs: 0, kills: 0 });
+    const CODEX = 'codex', codex = store2.get(CODEX, null) || { found: {}, evo: {}, best: 0, runs: 0, kills: 0 };
     for (const id of DD.START_ARMS) codex.found[id] = 1;
     const perk = k => sk ? sk.bonus('combat', k) : 0;
     const S = { mode: 'intro', depth: 0, score: 0, kills: 0, by: {}, t: 0, t0: 0, big: false, god: false,
@@ -176,7 +180,7 @@ const Dungeon = {
       const pts = Math.round(m.d.pts * (1 + (S.depth - 1) * .12)); spill(m.x, m.y - 10, pts);
       fxW.burst(m.x, m.y - m.d.r, { n: m.d.boss ? 50 : 12, colors: m.kind.includes('slime') ? ['#3fd29b', '#b6f5dc', '#fff'] : ['#8a93a3', '#d9dde3', '#fff'], speed: 240, grav: 300, size: 5, shape: 'puff', life: .55 });
       if (m.d.ai === 'split') for (const k of [-1, 1]) { const x = m.x + k * 22; if (!DE.blocked(g, T, x, m.y, 12)) mons.push(mk('slime', x, m.y, true)); }
-      if (m.d.boss) { boss = null; S.bossDown = true; if (S.depth > store2.get(CP, 0)) store2.set(CP, S.depth); fxS.shake(12, .5); fxS.flash(PAL.yel, .3); for (const k of [-1, 1]) drops.push({ x: m.x + k * 40, y: m.y, t: 0 });
+      if (m.d.boss) { boss = null; S.bossDown = true; if (S.depth > daily('cp', 0)) setDaily('cp', S.depth); fxS.shake(12, .5); fxS.flash(PAL.yel, .3); for (const k of [-1, 1]) drops.push({ x: m.x + k * 40, y: m.y, t: 0 });
         bossChest = { x: m.x, y: m.y + 10 }; fxS.text(W / 2, 92, 'บอสทิ้งหีบไว้! เดินไปเปิด', { color: PAL.yel, size: 22, life: 2, rise: 6 }); }
       else if (P.hp < P.max && R() < .06) drops.push({ x: m.x, y: m.y, t: 0 });
       count(); checkDoor(); setHudSoon();
@@ -292,10 +296,15 @@ const Dungeon = {
     function quit() { if (S.mode !== 'play' && S.mode !== 'pick') return; document.querySelector('.dgn-pick')?.remove(); S.mode = 'over'; finish(`ถอยกลับขึ้นมาจาก B${S.depth}`); }
     function finish(msg) {
       // owner's rule: nothing is lost — fainting or leaving both pay out what the run earned, like any arcade game
-      const best = store2.get(BEST, 0), deep = S.depth; if (deep > best) store2.set(BEST, deep);
+      const best = daily('best', 0), deep = S.depth; if (deep > best) setDaily('best', deep);
       codex.runs++; codex.kills += S.kills; codex.best = Math.max(codex.best, deep); store2.set(CODEX, codex);
-      api.end(S.score, `${msg} · ปราบได้ ${S.kills} ตัว`, false, { floor: deep, kills: S.kills, by: S.by, arms: S.arms, pas: S.pas, lv: S.lv,
-        secs: Math.round((performance.now() - S.t0) / 1000), best: Math.max(best, deep), newBest: deep > best, codex });
+      // combat skill XP (lasting perks), then the hub's results card: the ranked number is the deepest floor,
+      // the pay comes from the run score (office.js PAY_RULES.dungeon: score ÷ 20, no ×2, no bricks)
+      const xp = sk ? sk.add('combat', 10 + S.kills + deep * 5) : null;
+      const arms = Object.entries(S.arms).map(([k, a]) => a.evo ? DD.ARMS[k].evo.name : `${DD.ARMS[k].name} Lv ${a.lv}`).join(', ');
+      api.end(deep, `${msg} · คะแนน ${fmt(S.score)} · ปราบ ${S.kills} ตัว${xp ? ` · XP การต่อสู้ ${xp.got ? '+' + xp.got : 'ครบวันนี้'}${xp.up ? ` · ขึ้นขั้น ${xp.up}!` : ''}` : ''}`, false,
+        { award: S.score, floor: deep, kills: S.kills, by: S.by, arms: S.arms, pas: S.pas, lv: S.lv, build: arms, xp,
+          secs: Math.round((performance.now() - S.t0) / 1000), best: Math.max(best, deep), newBest: deep > best, codex });
     }
 
     // ---------- input: move + dodge only (weapons fire by themselves) ----------
@@ -585,13 +594,13 @@ const Dungeon = {
     // the intro screen shows today's first floor behind the card
     (function ready() { if (!tile(0)) return setTimeout(ready, 40); build(1); S.mode = 'intro'; fog.revealAll(); })();
     setHud(); draw();
-    const best = store2.get(BEST, 0);
+    const best = daily('best', 0);
     // start floor: ?floor= for tests, else the checkpoint picked on the intro card (B1, or the floor after a boss beaten today)
     function begin(id) {
-      const start = Math.max(1, +(q.get('floor') || cpPick));
+      const start = Math.max(1, +((TEST && q.get('floor')) || cpPick));
       S.arms = { [id]: { lv: 1, t: .5 } }; S.pending = perk('lv') + Math.floor((start - 1) / DD.CHECKPOINT.every) * DD.CHECKPOINT.catchUp; build(start);
       S.mode = 'play'; S.t0 = performance.now(); if (S.pending) { S.lv += S.pending; api.after(.4, levelPick); } }
-    const cpMax = store2.get(CP, 0), cps = [1]; for (let f = DD.CHECKPOINT.every; f <= cpMax; f += DD.CHECKPOINT.every) cps.push(f + 1);
+    const cpMax = daily('cp', 0), cps = [1]; for (let f = DD.CHECKPOINT.every; f <= cpMax; f += DD.CHECKPOINT.every) cps.push(f + 1);
     // the intro card is removed before go() runs, so remember the chosen floor as soon as it changes
     let cpPick = cps[cps.length - 1]; root.addEventListener('change', e => { if (e.target.name === 'dgncp') cpPick = +e.target.value; });
     const cpHTML = cps.length > 1 ? `<div class="dgn-cp" role="radiogroup" aria-label="เริ่มที่ชั้น">${cps.map((f, i) => `<label><input type="radio" name="dgncp" value="${f}"${i === cps.length - 1 ? ' checked' : ''}>

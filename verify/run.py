@@ -81,6 +81,46 @@ def solo(game, play_ms=1200):
     return run
 
 
+def dungeon(page, base, shot):
+    """Dungeon (13 Nov 2026): play, clear a floor, leave, then check the hub's results: ranked by deepest floor,
+    pay = round(score / 20) with no x2 and no bricks, progress saved in prog.dgn, combat XP in prog.sk."""
+    page.goto(base + '/index.html?test=1')
+    page.wait_for_function('window.__app', timeout=3000)
+    page.evaluate("store.set('name', 'ทดสอบ')")
+    page.evaluate('__app.open("dungeon")')
+    page.wait_for_selector('.overlay .btn.primary', timeout=3000)
+    shot('dungeon-intro')
+    page.evaluate('__app.start()')
+    page.wait_for_function('window.__dgn && __dgn.state().mode === "play"', timeout=5000)
+    page.wait_for_timeout(1500)
+    shot('dungeon-play')
+    page.evaluate('__dgn.god(true); __dgn.toMon()')
+    page.wait_for_timeout(2500)
+    for _ in range(6):
+        if page.evaluate('__dgn.state().mode') == 'pick':
+            page.evaluate('__dgn.pick(0)'); page.wait_for_timeout(250)
+    page.evaluate('__dgn.openDoor(); __dgn.toExit()')
+    page.wait_for_function('__dgn.state().depth === 2', timeout=5000)
+    st = page.evaluate('__dgn.state()')
+    page.evaluate("document.querySelector('.dgn-pick')?.remove()")
+    page.click('.dgn-hud .q')
+    page.wait_for_selector('.overlay.res, .overlay .res', timeout=5000)
+    shot('dungeon-result')
+    res = page.evaluate("""() => { const p = Prog.get(), r = document.querySelector('.res');
+      return { score: +r.querySelector('.score').textContent.replace(/\\D/g, ''), unit: r.querySelector('.muted').textContent,
+        reward: r.querySelector('.reward b').textContent, bricks: /🧱/.test(r.querySelector('.reward').textContent),
+        codex: !!(p.dgn && p.dgn.codex && p.dgn.codex.runs), cp: p.dgn && p.dgn.cp, sk: (p.sk && p.sk.xp && p.sk.xp.combat) || 0 }; }""")
+    want = max(2, round(st['score'] / 20))
+    errs = []
+    if res['score'] != 2: errs.append(f"ranked number should be the deepest floor 2, got {res['score']}")
+    if 'ชั้นลึกสุด' not in res['unit']: errs.append('unit should read ชั้นลึกสุด')
+    if f'+{want} ' not in res['reward'] + ' ': errs.append(f"pay should be {want} (score {st['score']} / 20), got {res['reward']}")
+    if res['bricks']: errs.append('the dungeon must not show or give bricks')
+    if not res['codex']: errs.append('armoury record not saved in prog.dgn')
+    if not res['sk']: errs.append('combat skill XP not saved in prog.sk')
+    if errs: raise AssertionError('dungeon: ' + '; '.join(errs))
+
+
 def party2d(page, base, shot):
     page.goto(base + '/index.html?test=1')
     page.wait_for_function('window.__app', timeout=3000)
@@ -528,7 +568,7 @@ def village(page, base, shot):
 
 
 SCREENS = {'office': office, 'farm': farm, 'hub': hub, 'tower': tower, 'village': village, 'spot': solo('spot'), 'run': solo('run'), 'whack': solo('whack'), 'stack': solo('stack', 600),
-           'tetris': solo('tetris'), 'stamp': solo('stamp'), 'barista': solo('barista', 2500), 'toss': solo('toss'), 'slack': solo('slack', 2000), 'conga': solo('conga', 2000), 'prism': solo('prism'),
+           'tetris': solo('tetris'), 'stamp': solo('stamp'), 'barista': solo('barista', 2500), 'toss': solo('toss'), 'slack': solo('slack', 2000), 'conga': solo('conga', 2000), 'prism': solo('prism'), 'dungeon': dungeon,
            'party': party2d}
 
 

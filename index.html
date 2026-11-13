@@ -590,13 +590,18 @@ button.pk:hover{transform:translateY(-2px)}div.pk{cursor:default}.pk b{font-size
 <div id="boss" hidden></div>
 
 <script src="solo-games.js?v=14"></script>
+<script src="dungeon/data.js?v=1"></script>
+<script src="dungeon/engine.js?v=1"></script>
+<script src="dungeon/gen.js?v=1"></script>
+<script src="dungeon/game.js?v=1"></script>
 <script src="prism-core.js?v=3"></script>
 <script src="prism-levels.js?v=2"></script>
 <script src="prism-daily.js?v=1"></script>
 <script src="prism-climb.js?v=1"></script>
 <script src="prism.js?v=8"></script>
 <script src="season-art.js?v=5"></script>
-<script src="office.js?v=31"></script>
+<script src="office.js?v=32"></script>
+<script src="skills.js?v=1"></script>
 <script src="wardrobe.js?v=9"></script>
 <script src="gacha.js?v=4"></script>
 <script src="hubroom.js?v=10"></script>
@@ -652,7 +657,7 @@ $('#muteBtn').onclick=()=>{muted=!muted;store.set('muted',muted);renderMute()};
 
 /* ---------- online services (online.js, Firebase): ranking, presence, feed ---------- */
 let onlineMod=null;
-const loadRank=()=>onlineMod||(onlineMod=import('./online.js?v=32'));
+const loadRank=()=>onlineMod||(onlineMod=import('./online.js?v=33'));
 const loadOnline=loadRank;
 const PIX_AVAS=['p_office','p_woffice','p_whealth','p_tech','p_cat','p_dog'];
 const myAva=()=>{const a=store.get('partyAva','p_office');return PIX_AVAS.includes(a)?a:'p_office'};
@@ -759,6 +764,7 @@ function partyInvite(G,name){
 function featuredId(){const L=GAMES.filter(g=>!g.online&&!g.noFeat),d=thaiDay().replace(/\D/g,'');return L[(+d*2654435761>>>0)%L.length].id}
 /* ---------- first-play tutorials: 3 picture steps, shown the first time each game opens ---------- */
 const TUT={
+  dungeon:[['🕹️','WASD / ลากนิ้ว = เดิน · อาวุธโจมตีเอง'],['💨','Shift / ปุ่มหลบ = หลบ'],['💎','เก็บอัญมณี เลเวลอัป เลือกพลัง'],['🚪','ปราบครบเป้า ประตูเปิด ลงต่อ']],
   spot:[['👀','ดูภาพซ้าย-ขวา'],['👆','แตะจุดที่ต่างกัน'],['⏱','หาให้ครบก่อนหมดเวลา']],
   run:[['⎵','Space / แตะ = กระโดด'],['↓','ลูกศรลง = ก้มหลบเครื่องบิน'],['🪙','เก็บเหรียญ ไปให้ไกลที่สุด']],
   whack:[['👆','แตะงานที่โผล่ขึ้นมา'],['🙅','อย่าตีหัวหน้า!'],['🔥','ตีต่อเนื่อง = คอมโบ']],
@@ -891,7 +897,7 @@ function startGame(id){
       ov.innerHTML=`<div class="panel popin res"><h2 class="res-h">${g.emoji} ${g.title}</h2>
         <div class="score">${fmt(score)}</div><div class="muted">${g.unit||'คะแนน'}${extra?' · '+extra:''}</div>
         ${isBest?'<div class="badge">🏆 สถิติใหม่!</div>':lastSc!=null&&score>lastSc?`<div class="up">📈 ดีกว่าครั้งก่อน +${fmt(score-lastSc)}</div>`:`<div class="muted" style="margin-top:6px">สถิติของคุณ ${fmt(prev)}</div>`}
-        <div class="rankline" data-a="rk"></div><div class="reward"><b>+${rw.coins} 🪙</b>${mult>1?' <i class="feat-b">×2 เกมแนะนำ</i>':''} · <b>+${rw.xp} XP</b>${Village.on()?(rw.bricks?` · <b>+${rw.bricks} 🧱</b>`:' · <span class="muted">🧱 วันนี้ครบ 12 ก้อนแล้ว</span>'):''}<div class="xpbar big"><i style="width:${rw.ups.length?0:rw.before.xp/needXP(rw.before.lv)*100}%"></i></div>
+        <div class="rankline" data-a="rk"></div><div class="reward"><b>+${rw.coins} 🪙</b>${mult>1?' <i class="feat-b">×2 เกมแนะนำ</i>':''} · <b>+${rw.xp} XP</b>${Village.on()&&!rw.noBricks?(rw.bricks?` · <b>+${rw.bricks} 🧱</b>`:' · <span class="muted">🧱 วันนี้ครบ 12 ก้อนแล้ว</span>'):''}<div class="xpbar big"><i style="width:${rw.ups.length?0:rw.before.xp/needXP(rw.before.lv)*100}%"></i></div>
           <small>${rw.ups.length?`🎉 เลื่อนขั้นเป็น <b>Lv ${rw.after.lv} · ${Prog.title(rw.after.lv)}</b>!`:`Lv ${rw.after.lv} · ${Prog.title(rw.after.lv)} · อีก ${needXP(rw.after.lv)-rw.after.xp} XP`}</small>
           ${unlockHTML(rw)}</div>
         <div class="row"><button class="btn primary res-cta" data-a="again">${g.again||'🔁 เล่นอีกรอบ'}<span class="kbd-hint">R</span></button></div>
@@ -1483,6 +1489,7 @@ const GAMES=[
   {id:'office',title:'ออฟฟิศของฉัน',emoji:'🏠',online:true,mount:officeMount},
   {id:'farm',title:'ฟาร์มดาดฟ้า',emoji:'🌱',online:true,mount:farmMount},
   {id:'prism',title:'โรงหลอมปริซึม',emoji:'💎',img:'assets/mi/globe_blue.png',color:'#e3dcff',noFeat:true,again:'▶ ด่านต่อไป',unit:'แต้ม',desc:'พัซเซิลช่องหกเหลี่ยม ย้ายพลังสีไปช่องข้างๆ รวมให้ครบ 4 ชั้นเพื่อชาร์จคริสตัล ไม่จับเวลา คิดได้เต็มที่',time:'1–5 นาที/ด่าน',mount:prismGame},
+  {id:'dungeon',title:'ดันเจี้ยนใต้ตึก',emoji:'⚔️',img:'assets/dungeon-card.png',color:'#e8d9ff',noFeat:true,unit:'ชั้นลึกสุด',again:'⚔️ ลงอีกรอบ',desc:'ดันเจี้ยนประจำวัน แผนที่ใหม่ทุกวัน อาวุธโจมตีเอง คุณแค่เดินกับหลบ เก็บอัญมณีเลเวลอัป ปราบบอสทุก 5 ชั้น',time:'5–15 นาที',mount:(root,api)=>Dungeon.mount(root,api)},
   {id:'stack',title:'ซ้อนแฟ้มเสียดฟ้า',emoji:'📚',img:'assets/mi/books_desk.png',color:'#b8f2c9',desc:'แตะเดียวจบ ซ้อนแฟ้มให้สูงที่สุด ยิ่งเป๊ะยิ่งไปไกล',time:'1–2 นาที',unit:'ชั้น',mount:stackGame},
 ];
 let feedOpen=false;
