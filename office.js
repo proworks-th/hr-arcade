@@ -43,9 +43,11 @@ const Prog = {
     }
     return { coins, xp, ups, before, after: { lv: p.lv, xp: p.xp } };
   },
-  // GAME_PAY scales coins only (XP stays on the base so levelling speed doesn't change)
+  // GAME_PAY scales coins only (XP stays on the base so levelling speed doesn't change).
+  // No coin cap per round since 13 Nov 2026 (owner): coins = base × GAME_PAY × featured, base = score / PROG_NORM (min 2).
+  // XP keeps the old cap (base 60 → max 190 XP a round) so levelling speed is unchanged. Bricks unchanged (1–3, BRICK_DAY).
   award(game, score, mult = 1) {
-    const c = Math.max(2, Math.min(60, Math.round(score / (PROG_NORM[game] || 20)))), r = Prog.give(c * GAME_PAY * mult, c * 3 + 10, game);
+    const raw = Math.max(2, Math.round(score / (PROG_NORM[game] || 20))), c = Math.min(60, raw), r = Prog.give(raw * GAME_PAY * mult, c * 3 + 10, game);
     r.bricks = Prog.brick(c < 12 ? 1 : c < 25 ? 2 : 3); return r;
   },
   // add up to n bricks within today's cap; returns how many were given (0 = cap reached)
