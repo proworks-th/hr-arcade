@@ -529,6 +529,91 @@ button.pk:hover{transform:translateY(-2px)}div.pk{cursor:default}.pk b{font-size
 .stack-box{display:flex;justify-content:center}
 .stack-box canvas{display:block;height:min(calc(100dvh - var(--chrome)),calc((100vw - 40px) * 1.5556));aspect-ratio:360/560;border:3px solid var(--line);border-radius:14px;box-shadow:0 6px 0 var(--line);touch-action:manipulation;cursor:pointer;background:#fde7c8}
 
+/* phone controls (PRD 7.4) — touch only, set up by g2phone() in solo-games.js. The game fills the stage
+   (body.playing game mode, or the viewport), its top bar leaves the exit corner free, the playfield takes the free
+   height, controls sit in the deck at the bottom. --b = Phone.btn() (48 / 60 px), set inline. */
+html.touch .g2t{--b:48px;height:100dvh;box-sizing:border-box;display:flex;flex-direction:column;overflow:hidden;
+  padding:calc(6px + env(safe-area-inset-top)) calc(8px + env(safe-area-inset-right)) calc(10px + env(safe-area-inset-bottom)) calc(8px + env(safe-area-inset-left))}
+html.touch body.playing .g2t{height:auto;flex:1 1 0;min-height:0;padding:4px 4px 6px}
+html.touch .g2t>:not(.overlay){touch-action:none}
+html.touch .g2t>.hud{flex:none;box-sizing:border-box;min-height:48px;margin:0 0 8px 56px;padding:4px 10px;gap:2px 12px;font-size:14px;box-shadow:0 3px 0 var(--line)}
+html.touch .g2t>.hud b{font-size:17px}
+html.touch .g2t .g2tip,html.touch .g2t .run-tip,html.touch .g2t-stack>.hud>.muted{display:none}
+html.touch .g2t>.g2box,html.touch .g2t>.run-box,html.touch .g2t>.stack-box{flex:1 1 0;min-height:0;container-type:size;display:flex;align-items:center;justify-content:center}
+html.touch .g2t>.g2box canvas{box-sizing:border-box;width:min(100cqw,100cqh * var(--ar));max-height:100cqh}
+html.touch .g2t>.run-box canvas{box-sizing:border-box;width:min(100cqw,100cqh * 800 / 360);max-height:100cqh}
+html.touch .g2t>.stack-box canvas{box-sizing:border-box;height:min(100cqh,100cqw * 560 / 360);width:auto}
+.g2deck{flex:none;display:flex;align-items:flex-end;justify-content:space-between;gap:12px;padding-top:12px;user-select:none;-webkit-user-select:none}
+html.hand-l .g2deck{flex-direction:row-reverse}
+.g2deck .g2c{display:flex;gap:12px;align-items:flex-end}
+.g2deck .g2k{box-sizing:border-box;min-width:calc(var(--b) * 1.34);height:calc(var(--b) * 1.25);padding:0 8px;margin:0;font-size:calc(var(--b) * .5);line-height:1;
+  display:inline-flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;touch-action:none;-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none}
+.g2deck .g2k small{font-size:13px;font-weight:600;line-height:1.1;color:inherit;white-space:nowrap}
+.g2deck .g2k.wide{min-width:calc(var(--b) * 2.2)}
+.g2deck .g2k.on,.room-pad.ph .btn.on,.g2t-party .pt-touch .btn.on{transform:translateY(3px);box-shadow:0 1px 0 var(--line);filter:brightness(.92)}
+.g2deck .g2k:not(.primary).on,.room-pad.ph .btn:not(.primary).on,.g2t-party .pt-touch .btn:not(.primary).on{background:#fff3c4}
+.g2deck.rows{flex-direction:column;align-items:stretch}
+.g2deck .g2row{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:12px}
+html.hand-l .g2deck.rows{flex-direction:column}html.hand-l .g2deck .g2row{direction:rtl}html.hand-l .g2deck .g2row>*{direction:ltr}
+.g2deck.rows .g2k{min-width:0;width:100%;padding:0 4px}
+.g2deck .g2k.ing{font-size:calc(var(--b) * .42)}
+.g2deck .g2k .pxi{height:calc(var(--b) * .5);width:auto;vertical-align:0}
+.g2hint{flex:none;text-align:center;font-size:14px;color:var(--muted);padding-top:8px;pointer-events:none}
+.g2t.held .g2hint{color:var(--ink);font-weight:600}
+.g2ring{position:absolute;width:56px;height:56px;border:3px solid var(--line);border-radius:50%;pointer-events:none;z-index:7}
+/* conga: floating stick under the thumb */
+.g2stick{position:absolute;width:96px;height:96px;margin:-48px 0 0 -48px;border:3px solid var(--line);border-radius:50%;background:rgba(255,255,255,.35);pointer-events:none;z-index:7;display:none}
+.g2stick.on{display:block}.g2stick i{position:absolute;left:50%;top:50%;width:44px;height:44px;margin:-22px 0 0 -22px;border-radius:50%;background:var(--yel);border:3px solid var(--line)}
+/* toss: slingshot pad in the lower part of the screen */
+.toss-pad{flex:0 0 38%;position:relative;margin-top:12px;border:3px dashed #c9bda8;border-radius:16px;display:grid;place-items:center;touch-action:none;color:var(--muted);font-size:15px;overflow:hidden}
+.toss-pad.on{border-color:var(--line);color:transparent}
+.toss-pad i{position:absolute;display:none;pointer-events:none}.toss-pad.on i{display:block}
+.toss-pad .o{width:20px;height:20px;margin:-10px 0 0 -10px;border-radius:50%;background:var(--line)}
+.toss-pad .k{width:40px;height:40px;margin:-20px 0 0 -20px;border-radius:50%;background:#fff;border:3px solid var(--line)}
+.toss-pad .ln{height:4px;margin-top:-2px;background:var(--line);transform-origin:0 50%}
+/* barista / prism: deck rows under a playfield that keeps its own top */
+html.touch .g2t-barista>.g2box{align-items:flex-start}
+html.touch .g2t-prism>.g2box{align-items:flex-end}
+.prism-deck [data-k=hs]{display:block;font-size:11px;margin-top:1px}
+/* runner: the canvas sits low, near the thumbs; the duck glyph */
+html.touch .g2t-run>.run-box{align-items:flex-end}
+.g2deck .duck{font-size:.8em}
+/* stack: the canvas takes the whole height */
+html.touch .g2t-stack>.stack-box canvas{touch-action:none}
+/* whack: legend on top, the board in the lower two thirds, no key labels */
+html.touch .g2t-whack>.legend{flex:none;font-size:13px;margin:0 0 6px}
+html.touch .g2t-whack>.wgrid{flex:none;width:min(100%,62dvh);max-width:none;margin:auto auto 0;gap:12px}
+html.touch .g2t-whack .hole .key{display:none}
+.g2t-whack .hole.prs{transform:scale(.96);border-color:var(--pri)}
+/* spot: two pictures stacked, the hint button at the bottom */
+html.touch .g2t-spot>.spot-tip{flex:none;margin:0 0 6px;font-size:13px}
+html.touch .g2t-spot>.spot-wrap{flex:1 1 0;min-height:0;container-type:size;display:flex;flex-direction:column;align-items:center;gap:12px;max-width:none;width:100%}
+html.touch .g2t-spot .spot-panel{width:min(100cqw,(100cqh - 12px) / 2 * 4 / 3);flex:none}
+.spot-deck .g2k{min-width:calc(var(--b) * 2.6)}
+/* 2D party room: canvas, game bar, then walk (left) / use + jump (right) in the bottom corners */
+html.touch .g2t-party{padding-top:calc(52px + env(safe-area-inset-top))}
+html.touch body.playing .g2t-party{padding-top:56px}
+html.touch .g2t-party>.pt{flex:1 1 0;min-height:0;display:flex;flex-direction:column}
+html.touch .g2t-party>.pt>div:first-child{flex:1 1 0;min-height:0;display:flex;flex-direction:column}
+html.touch .g2t-party .pt-side{display:none}
+html.touch .g2t-party .pt-bar{order:1}html.touch .g2t-party .pt-emotes{order:2}
+html.touch .g2t-party .pt-touch{order:3;margin-top:auto;padding-top:12px}
+html.touch .g2t-party .pt-touch>div{gap:12px}
+html.touch .g2t-party .pt-touch .btn{width:calc(var(--b) * 1.34);height:calc(var(--b) * 1.25);font-size:calc(var(--b) * .5);-webkit-touch-callout:none}
+html.touch.hand-l .g2t-party .pt-touch{flex-direction:row-reverse}
+/* hub party room stage games: arrows / action in the lower corners of the screen while a game runs */
+.room-pad.ph{position:fixed;left:0;right:0;bottom:0;z-index:40;margin:0;justify-content:space-between;align-items:flex-end;gap:12px;pointer-events:none;
+  padding:0 calc(10px + env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom)) calc(10px + env(safe-area-inset-left))}
+.room-pad.ph>div{pointer-events:auto}
+html.hand-l .room-pad.ph{flex-direction:row-reverse}
+.room-pad.ph .rp-a{margin-left:auto}html.hand-l .room-pad.ph .rp-a{margin-left:0;margin-right:auto}
+.room-pad.ph .btn{min-width:calc(var(--b) * 1.34);height:calc(var(--b) * 1.25);font-size:calc(var(--b) * .5);padding:0 10px;touch-action:none;-webkit-touch-callout:none}
+.room-pad.ph .btn.wide{min-width:calc(var(--b) * 3)}
+.room-pad.ph .rp-x{display:grid;grid-template-columns:repeat(3,calc(var(--b) * 1.25));grid-template-rows:repeat(3,calc(var(--b) * 1.1));gap:12px;grid-template-areas:". u ." "l . r" ". d ."}
+.room-pad.ph .rp-x .btn{min-width:0;width:100%;height:100%;padding:0}
+.room-pad.ph [data-d=u]{grid-area:u}.room-pad.ph [data-d=l]{grid-area:l}.room-pad.ph [data-d=r]{grid-area:r}.room-pad.ph [data-d=d]{grid-area:d}
+.room:has(.room-pad.ph:not([hidden])){padding-bottom:260px}
+
 /* boss screen (fake Excel) */
 #boss{position:fixed;inset:0;z-index:1000;background:#fff;font-family:"Segoe UI",Tahoma,sans-serif;font-size:13px;color:#222;display:flex;flex-direction:column}
 #boss[hidden]{display:none}
@@ -628,7 +713,7 @@ html.touch #hub .vil-bar{flex-wrap:wrap;white-space:normal;overflow:visible}html
 <div id="rotOv" role="alert"><div><b>หมุนโทรศัพท์ตั้งขึ้น</b><span class="muted">เกมหยุดรอไว้ก่อน หมุนกลับแล้วกดเล่นต่อ</span></div></div>
 
 <script src="phone.js?v=1"></script>
-<script src="solo-games.js?v=14"></script>
+<script src="solo-games.js?v=15"></script>
 <script src="dungeon/data.js?v=2"></script>
 <script src="dungeon/engine.js?v=1"></script>
 <script src="dungeon/gen.js?v=1"></script>
@@ -637,13 +722,13 @@ html.touch #hub .vil-bar{flex-wrap:wrap;white-space:normal;overflow:visible}html
 <script src="prism-levels.js?v=2"></script>
 <script src="prism-daily.js?v=1"></script>
 <script src="prism-climb.js?v=1"></script>
-<script src="prism.js?v=8"></script>
+<script src="prism.js?v=9"></script>
 <script src="season-art.js?v=5"></script>
 <script src="office.js?v=32"></script>
 <script src="skills.js?v=1"></script>
 <script src="wardrobe.js?v=9"></script>
 <script src="gacha.js?v=4"></script>
-<script src="hubroom.js?v=10"></script>
+<script src="hubroom.js?v=11"></script>
 <script src="tower.js?v=12"></script>
 <script src="village-world.js?v=20"></script>
 <script src="village.js?v=38"></script>
@@ -1527,7 +1612,7 @@ function stackGame(root,api){
 function partyMount(root,api){
   let inst=null,dead=false;
   root.innerHTML='<div class="panel" style="margin:40px auto">⏳ กำลังโหลดโหมดออนไลน์…</div>';
-  import('./party.js?v=5').then(m=>{if(dead)return;inst=m.partyGame(root,api);
+  import('./party.js?v=6').then(m=>{if(dead)return;inst=m.partyGame(root,api);
     if(partyAutoJoin){partyAutoJoin=false;const go=root.querySelector('[data-k=go]');if(go&&myName())go.click()}})
     .catch(e=>{root.innerHTML=`<div class="panel" style="margin:40px auto">โหลดโหมดออนไลน์ไม่ได้ 😢<br><small class="muted">${e.message}</small></div>`});
   return{destroy(){dead=true;inst&&inst.destroy()}};

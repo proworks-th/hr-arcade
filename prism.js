@@ -18,7 +18,11 @@ function prismGame(root, api) {
     sel: ['#fff3bf', '#ffd673', '#e0a52a', '#fffbe8', '#ffe7a3'], lock: ['#e8e4f0', '#cdc6dc', '#a89fbe', '#f4f1f9', '#dcd6e7'] };
   root.innerHTML = `<div class="hud"><span data-k="lvw">⚡ ด่าน <b data-k="lv">1</b></span><span data-k="nm"></span><span>ตา <b data-k="mv">0</b> · เป้า <b data-k="par">0</b></span><span data-k="stars"></span><span class="muted g2tip" data-k="tip"></span></div>`;
   const { cv, ctx, at } = g2canvas(root, W, H), q = k => root.querySelector(`[data-k="${k}"]`), fx = makeFX();
-  g2pad(root, [['↩️ ย้อน', () => undo()], ['🔄 เริ่มใหม่', () => restart()], ['💡 ใบ้ <small data-k="hs"></small>', () => hint()], ['🗺️ เลือกด่าน', () => picker()]]);
+  const PAD = [['↩️ ย้อน', () => undo()], ['🔄 เริ่มใหม่', () => restart()], ['💡 ใบ้ <small data-k="hs"></small>', () => hint()], ['🗺️ เลือกด่าน', () => picker()]];
+  // phone: the same four in one row at the bottom of the screen, undo on the thumb side
+  if (g2phone(root, 'prism')) g2deck(root, { rows: [[['↩️<small>ย้อน</small>', 'ย้อน', PAD[0][1], { cls: 'ing' }], ['🔄<small>เริ่มใหม่</small>', 'เริ่มใหม่', PAD[1][1], { cls: 'ing' }],
+    ['💡<small>ใบ้ <span data-k="hs"></span></small>', 'ใบ้', PAD[2][1], { cls: 'ing' }], ['🗺️<small>เลือกด่าน</small>', 'เลือกด่าน', PAD[3][1], { cls: 'ing' }]]] }, 'prism-deck');
+  else g2pad(root, PAD);
   const prog = () => store.get('prism', { s: {} }), unlocked = () => { const s = prog().s; let n = 1; while (s[n] && n < LV.length) n++; return n; };
   // daily puzzle: same pool entry for everyone on the same Thai date
   const today = thaiDay(), dayIdx = Math.floor((Date.parse(today) - Date.parse('2026-01-01')) / 864e5);
