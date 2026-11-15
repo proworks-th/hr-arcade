@@ -117,7 +117,9 @@ const DD = {
   // each one shows a purple swirl for 0.8 s before it appears (owner: warnings stay honest)
   // playtest 13 Nov: "waves a little thin" → bigger and more often (B1 4 every 10 s · B5 8 every 8.5 s · B10 12 every 7 s)
   WAVE: { first: 6, every: d => Math.max(5, 10 - d * .3), size: d => Math.min(16, 4 + Math.floor(d * .8)), cap: 60, warn: .8, near: 6, far: 11 },
-  TARGET: n => Math.max(6, Math.round(n * 1.15)),   // kills to open the door (placed monsters × 1.15)
+  // kills to open the door: placed monsters × 1.15 (waves make up the rest). Vault floors have no waves, so their
+  // target is exactly the monsters placed there, or the door could never open (bug on live 15 Nov: B6 needed 6 of 3).
+  TARGET: (n, purpose) => purpose === 'vault' ? n : Math.max(6, Math.round(n * 1.15)),
 
   // ---------- scoring + pay ----------
   GEM: { small: 3, big: 12 },                // gem score; monsters drop gems worth about their points

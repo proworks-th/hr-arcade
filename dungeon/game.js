@@ -88,14 +88,14 @@ const Dungeon = {
       spikes = F.spikes.map(s => ({ cx: s.x, cy: s.y, x: (s.x + .5) * T, y: (s.y + 1) * T, ph: s.ph * 2.6 }));
       altar = F.altar ? { cx: F.altar.x, cy: F.altar.y, x: (F.altar.x + .5) * T, y: (F.altar.y + .9) * T, used: false } : null;
       shots = []; gems = []; drops = []; pshots = []; arcs = []; novas = []; quakes = []; swirls = []; open = false; boss = null; bossChest = null;
-      // the door: lairs open when the boss falls; other floors at a kill target (placed monsters × 1.15, waves count)
-      S.fk = 0; S.bossDown = false; S.target = DD.TARGET(F.spawns.filter(s => s.kind !== 'mimic' && !DD.MON[s.kind].boss).length); S.waveT = DD.WAVE.first;
+      // the door: lairs open when the boss falls; other floors at a kill target (DD.TARGET; vaults have no waves, so exactly what's placed)
+      S.fk = 0; S.bossDown = false; S.target = DD.TARGET(F.spawns.filter(s => s.kind !== 'mimic' && !DD.MON[s.kind].boss).length, F.purpose); S.waveT = DD.WAVE.first;
       // a weapon you haven't found yet waits in a glowing chest near the start, the first time you reach its depth
       relic = null;
       const id = Object.keys(DD.DISCOVER).find(k => !codex.found[k] && depth >= DD.DISCOVER[k]);
       if (id) for (const [ox, oy] of [[2, 0], [-2, 0], [0, 2], [0, -2], [2, 2], [-2, 2], [1, 1], [-1, 1]]) { const x = F.start.x + ox, y = F.start.y + oy;
         if (!DE.solid(g, x, y)) { relic = { id, cx: x, cy: y, x: (x + .5) * T, y: (y + .85) * T }; break; } }
-      count(); reveal(true); cam.follow(P.x, P.y - 20, 0); setHud();
+      count(); reveal(true); cam.follow(P.x, P.y - 20, 0); setHud(); checkDoor();   // a vault with nothing placed opens at once
       const sub = F.purpose === 'lair' ? `ระวัง ${DD.MON[DD.bossFor(depth)].name}!` : F.purpose === 'vault' ? 'หาแท่นบูชา เลือกพลังเพิ่ม' : relic ? 'มีหีบเรืองแสงอยู่ใกล้ๆ!' : `ปราบให้ครบ ${S.target} ตัว เพื่อเปิดประตู`;
       banner(`B${depth} · ${F.name}`, sub);
     }

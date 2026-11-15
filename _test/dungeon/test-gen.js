@@ -19,6 +19,11 @@ for (let day = 0; day < 50; day++) for (let depth = 1; depth <= 40; depth++) {
   const st = stats[f.purpose] ||= { n: 0, w: 0, h: 0, mon: 0, rooms: 0, walk: 0 };
   st.n++; st.w += f.w; st.h += f.h; st.mon += f.spawns.length; st.rooms += f.rooms.length; st.walk += d[(f.exit.y + 1) * g.w + f.exit.x];
 }
+// the door must be openable: floors without waves (vaults) can only count what's placed (bug on live 15 Nov 2026)
+for (let i = 0; i < 400; i++) for (const d of [2, 4, 6, 7, 9, 13, 17, 22]) {
+  const f = DGen.floor('door-' + i, d), placed = f.spawns.filter(s => s.kind !== 'mimic' && !DD.MON[s.kind].boss).length;
+  if (f.purpose === 'vault' && DD.TARGET(placed, f.purpose) > placed) fails.push(`door-${i} B${d} vault door can't open: needs ${DD.TARGET(placed, f.purpose)}, only ${placed} placed`);
+}
 // same seed + depth must give the same floor (the daily dungeon is the same for everyone)
 const a = DGen.floor('2026-11-13', 7), b = DGen.floor('2026-11-13', 7);
 if (Buffer.compare(Buffer.from(a.g.cells), Buffer.from(b.g.cells)) || JSON.stringify(a.spawns) !== JSON.stringify(b.spawns)) fails.push('not deterministic');
