@@ -121,7 +121,8 @@ const HubRoom = (() => {
     q('party').onclick = partyPicker;
     q('invite').onclick = invite;
     q('back').onclick = () => typeof Tower !== 'undefined' && Tower.setView('village');
-    q('pad').addEventListener('pointerdown', e => { const b = e.target.closest('[data-d]'); if (!b) return; e.preventDefault(); padPress(b.dataset.d); });
+    q('pad').addEventListener('pointerdown', e => { const b = e.target.closest('[data-d]'); if (!b) return; e.preventDefault(); b.classList.add('on'); padPress(b.dataset.d); });
+    for (const ev of ['pointerup', 'pointercancel', 'pointerout']) q('pad').addEventListener(ev, e => { const b = e.target.closest && e.target.closest('[data-d]'); b && b.classList.remove('on'); });
     addEventListener('keydown', onKey);
     document.addEventListener('visibilitychange', () => send({}, true));
   }
@@ -198,8 +199,12 @@ const HubRoom = (() => {
   function renderPad() {
     const pad = el && el.querySelector('[data-k=pad]'); if (!pad) return; const k = G.sc;
     pad.hidden = !['dance', 'tug', 'race'].includes(k); if (pad.dataset.k === k) return; pad.dataset.k = k;
-    pad.innerHTML = k === 'dance' ? '<button class="btn" data-d="l">←</button><button class="btn" data-d="u">↑</button><button class="btn" data-d="d">↓</button><button class="btn" data-d="r">→</button><button class="btn primary" data-d="sp">SPACE</button>'
-      : k === 'tug' ? '<button class="btn primary wide" data-d="tug">💪 ดึง! <small>(Space)</small></button>' : k === 'race' ? '<button class="btn primary wide" data-d="jump">⤒ กระโดด <small>(Space)</small></button>' : '';
+    const ph = typeof phoneOn === 'function' && phoneOn(), sp = ph ? '' : ' <small>(Space)</small>';
+    // phone (PRD 7.4): arrows as a cross in the lower-left corner, the action in the lower-right (html.hand-l swaps)
+    pad.classList.toggle('ph', !!ph); if (ph) phoneSize(pad);
+    pad.innerHTML = k === 'dance' ? (ph ? '<div class="rp-x"><button class="btn" data-d="u" aria-label="ขึ้น">↑</button><button class="btn" data-d="l" aria-label="ซ้าย">←</button><button class="btn" data-d="r" aria-label="ขวา">→</button><button class="btn" data-d="d" aria-label="ลง">↓</button></div><div class="rp-a"><button class="btn primary" data-d="sp">ปิดท่า</button></div>'
+        : '<button class="btn" data-d="l">←</button><button class="btn" data-d="u">↑</button><button class="btn" data-d="d">↓</button><button class="btn" data-d="r">→</button><button class="btn primary" data-d="sp">SPACE</button>')
+      : k === 'tug' ? `<div class="rp-a"><button class="btn primary wide" data-d="tug">💪 ดึง!${sp}</button></div>` : k === 'race' ? `<div class="rp-a"><button class="btn primary wide" data-d="jump">⤒ กระโดด${sp}</button></div>` : '';
   }
   function padPress(d) { if (d === 'tug') tugTap(); else if (d === 'jump') RN && (RN.jump = true); else if (d === 'sp') danceSpace(); else danceKey(d); }
   function host() {

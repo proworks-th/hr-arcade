@@ -94,8 +94,8 @@ export function partyGame(root,api){
     const R='rooms/'+room,pid=Math.random().toString(36).slice(2,10);
     const meRef=ref(db,`${R}/p/${pid}`);onDisconnect(meRef).remove();
     root.innerHTML=`<div class="pt"><div><div class="pt-stage"><canvas></canvas><div class="pt-res" data-k="res"></div></div>
-      <div class="pt-touch"><div><button class="btn" data-t="l">◀</button><button class="btn" data-t="r">▶</button></div>
-        <div><button class="btn" data-t="a">✋</button><button class="btn primary" data-t="j">⤒</button></div></div>
+      <div class="pt-touch"><div><button class="btn" data-t="l" aria-label="ซ้าย">◀</button><button class="btn" data-t="r" aria-label="ขวา">▶</button></div>
+        <div><button class="btn" data-t="a" aria-label="ใช้งาน">✋</button><button class="btn primary" data-t="j" aria-label="กระโดด">⤒</button></div></div>
       <div class="pt-bar" data-k="bar"></div><div class="pt-emotes">${EMOTES.map((e,i)=>`<button class="btn sm" data-e="${i}">${e}</button>`).join('')}</div></div>
       <aside class="pt-side"><h3>🏠 ห้อง ${room}</h3><ul data-k="plist"></ul><p class="muted pt-help">⬅️➡️ / A D เดิน · Space / W กระโดด · E ใช้งาน (กดค้าง = ทำงาน) · 1-8 อีโมจิ<br>ชวนเพื่อน: ส่งลิงก์นี้ แล้วกด "เข้าห้อง" ชื่อเดียวกัน</p></aside></div>`;
     const cv=root.querySelector('canvas'),ctx=cv.getContext('2d'),q=k=>root.querySelector(`[data-k="${k}"]`);
@@ -115,9 +115,12 @@ export function partyGame(root,api){
       const n=+e.key;if(n>=1&&n<=EMOTES.length)emote(n-1)};
     const ku=e=>{const k=KMAP[e.key];if(k)keys[k]=0};
     window.addEventListener('keydown',kd);window.addEventListener('keyup',ku);
+    // phone (PRD 7.4): walk in the lower-left corner, use / jump in the lower-right (html.hand-l swaps them),
+    // sized from Phone.btn() and re-sized live; every press shows at once
+    if(typeof phoneOn==='function'&&phoneOn()){root.classList.add('g2t','g2t-party');phoneSize(root.querySelector('.pt-touch'))}
     root.querySelectorAll('[data-t]').forEach(b=>{const k=b.dataset.t;
-      b.addEventListener('pointerdown',e=>{e.preventDefault();if(!keys[k]){if(k==='j')jumpPress=true;if(k==='a')actPress=true}keys[k]=1});
-      for(const ev of ['pointerup','pointerleave','pointercancel'])b.addEventListener(ev,()=>{keys[k]=0})});
+      b.addEventListener('pointerdown',e=>{e.preventDefault();b.classList.add('on');try{b.setPointerCapture(e.pointerId)}catch(er){}if(!keys[k]){if(k==='j')jumpPress=true;if(k==='a')actPress=true}keys[k]=1});
+      for(const ev of ['pointerup','pointerleave','pointercancel','lostpointercapture'])b.addEventListener(ev,()=>{keys[k]=0;b.classList.remove('on')})});
     root.querySelectorAll('[data-e]').forEach(b=>b.onclick=()=>emote(+b.dataset.e));
     function emote(i){me.e=EMOTES[i];me.et=now();runSfx('coin')}
 

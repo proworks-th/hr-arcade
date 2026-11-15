@@ -191,6 +191,50 @@ function domFlash(el, color = 'rgba(255,77,77,.35)') {
 }
 
 /* =================================================================
+   Phone controls (PRD 7.4), only when Phone.touch — desktop keeps the old pad under the canvas.
+   g2phone(root, kind)  full-screen portrait layout: HUD on top (clear of the exit button), playfield in the middle,
+                        controls in a deck at the bottom (CSS .g2t in index.html)
+   g2deck(root, g)      the deck: g = { l: [...], r: [...] } for the two lower corners (html.hand-l swaps them),
+                        or { rows: [[...], [...]] }. Item: [html, aria-label, onDown, { repeat: ms, up: fn, cls }]
+   Every button shows its press state on pointerdown; its size follows Phone.btn(), re-read live through Phone.on.
+================================================================= */
+const phoneOn = () => typeof Phone !== 'undefined' && Phone.touch;
+function g2phone(root, kind) { if (!phoneOn()) return false; root.classList.add('g2t'); if (kind) root.classList.add('g2t-' + kind); return true; }
+function phoneSize(el) {
+  const set = () => el.style.setProperty('--b', Phone.btn() + 'px'); set();
+  const off = Phone.on(() => { if (!el.isConnected) return off(); set(); });
+}
+function phoneBtn([html, aria, down, o = {}]) {
+  const b = document.createElement('button'); b.type = 'button'; b.className = 'btn g2k' + (o.cls ? ' ' + o.cls : ''); b.innerHTML = html;
+  if (aria) b.setAttribute('aria-label', aria);
+  let held = false, t1 = 0, t2 = 0;
+  const stop = () => { if (!held) return; held = false; b.classList.remove('on'); clearTimeout(t1); clearInterval(t2); o.up && o.up(); };
+  b.addEventListener('pointerdown', e => { e.preventDefault(); if (held) return; held = true; b.classList.add('on');
+    try { b.setPointerCapture(e.pointerId); } catch (er) {}
+    down();
+    if (o.repeat) t1 = setTimeout(() => { t2 = setInterval(() => b.isConnected ? down() : stop(), o.repeat); }, o.delay || 170); });
+  for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) b.addEventListener(ev, stop);
+  b.addEventListener('contextmenu', e => e.preventDefault());
+  return b;
+}
+function g2deck(root, g, cls = '') {
+  const deck = document.createElement('div'); deck.className = 'g2deck' + (g.rows ? ' rows' : '') + (cls ? ' ' + cls : '');
+  const add = (items, c) => { const el = document.createElement('div'); el.className = c; for (const it of items) el.appendChild(it instanceof Element ? it : phoneBtn(it)); deck.appendChild(el); return el; };
+  if (g.rows) g.rows.forEach(r => add(r, 'g2row')); else { add(g.l || [], 'g2c g2c-l'); add(g.r || [], 'g2c g2c-r'); }
+  root.appendChild(deck); phoneSize(deck); return deck;
+}
+// a quiet line at the bottom of a tap-anywhere game saying what a press does (no key names)
+function phoneHint(root, text) { const h = document.createElement('div'); h.className = 'g2hint'; h.textContent = text; root.appendChild(h); return h; }
+// a press anywhere on the game (not on the HUD, an overlay or a deck button) — the one-action games
+const freePress = e => !e.target.closest('.overlay, .g2deck, button, input, a');
+// a short ring under the finger: the press shows at once even before the game reacts
+function pressRing(root, e) {
+  const r = root.getBoundingClientRect(), s = document.createElement('i'); s.className = 'g2ring';
+  s.style.left = (e.clientX - r.left) + 'px'; s.style.top = (e.clientY - r.top) + 'px'; root.appendChild(s);
+  s.animate([{ transform: 'translate(-50%,-50%) scale(.4)', opacity: .9 }, { transform: 'translate(-50%,-50%) scale(1.3)', opacity: 0 }], { duration: 320, easing: 'ease-out' }).onfinish = () => s.remove();
+}
+
+/* =================================================================
    Printer Tetris — paper of different sizes falls into the output tray
 ================================================================= */
 function tetrisGame(root, api) {
@@ -249,7 +293,23 @@ function tetrisGame(root, api) {
   const act = f => () => { if (running && !api.paused && !flash.length) f(); };
   api.onKey(e => { const k = e.key; const map = { ArrowLeft: () => move(-1), a: () => move(-1), ArrowRight: () => move(1), d: () => move(1), ArrowUp: turn, w: turn, x: turn, ArrowDown: soft, s: soft, ' ': hard };
     if (map[k]) { e.preventDefault(); act(map[k])(); } });
-  g2pad(root, [['◀', act(() => move(-1))], ['⟳', act(turn)], ['▶', act(() => move(1))], ['▼', act(soft)], ['⤓ ทิ้ง', act(hard)]]);
+  const phone = g2phone(root, 'tetris');
+  if (!phone) g2pad(root, [['◀', act(() => move(-1))], ['⟳', act(turn)], ['▶', act(() => move(1))], ['▼', act(soft)], ['⤓ ทิ้ง', act(hard)]]);
+  else {
+    // lower-left: move (hold = repeat), lower-right: rotate / drop; swiping the playfield is the second way
+    g2deck(root, { l: [['◀', 'ย้ายซ้าย', act(() => move(-1)), { repeat: 60 }], ['▶', 'ย้ายขวา', act(() => move(1)), { repeat: 60 }]],
+      r: [['⟳', 'หมุน', act(turn)], ['⤓', 'ทิ้งลงทันที', act(hard), { cls: 'primary' }]] });
+    // drag sideways = one column per 26 px, drag down = soft drop per 26 px, a quick flick down = drop, a tap = rotate
+    let sw = null;
+    root.addEventListener('pointerdown', e => { if (!freePress(e) || e.target.closest('.hud')) return; sw = { id: e.pointerId, x: e.clientX, y: e.clientY, t: performance.now(), moved: false }; pressRing(root, e); });
+    root.addEventListener('pointermove', e => { if (!sw || e.pointerId !== sw.id) return;
+      while (e.clientX - sw.x > 26) { sw.x += 26; sw.moved = true; act(() => move(1))(); }
+      while (sw.x - e.clientX > 26) { sw.x -= 26; sw.moved = true; act(() => move(-1))(); }
+      while (e.clientY - sw.y > 26) { sw.y += 26; sw.moved = true; sw.down = (sw.down || 0) + 1; act(soft)(); } });
+    const swEnd = e => { if (!sw || e.pointerId !== sw.id) return; const dt = performance.now() - sw.t, dy = e.clientY - sw.y + (sw.down || 0) * 26;
+      if (!sw.moved && dt < 300) act(turn)(); else if (dy > 70 && dt < 260) act(hard)(); sw = null; };
+    root.addEventListener('pointerup', swEnd); root.addEventListener('pointercancel', () => { sw = null; });
+  }
   // one sheet of paper: white page, coloured header strip, ruled lines
   function cell(x, y, t, alpha = 1) {
     const s = SHAPES[t]; ctx.globalAlpha = alpha;
@@ -303,7 +363,8 @@ function tetrisGame(root, api) {
   });
   hud(); draw();
   api.intro({ how: `<p>🖨️ เครื่องพิมพ์พ่นกระดาษออกมาไม่หยุด! จัดให้เรียงเต็มแถวในถาด แถวที่เต็มจะหายไป</p>
-      <p>⌨️ <b>← →</b> ย้าย · <b>↑</b> หมุน · <b>↓</b> เร่งลง · <b>Space</b> ทิ้งลงทันที (มือถือใช้ปุ่มใต้จอ)</p>
+      ${phone ? '<p>👆 ปุ่มมุมซ้ายล่าง ย้าย · มุมขวาล่าง หมุน / ทิ้ง · หรือปัดบนจอ: ปัดข้าง ย้าย · แตะ หมุน · ปัดลงเร็วๆ ทิ้ง</p>'
+        : '<p>⌨️ <b>← →</b> ย้าย · <b>↑</b> หมุน · <b>↓</b> เร่งลง · <b>Space</b> ทิ้งลงทันที (มือถือใช้ปุ่มใต้จอ)</p>'}
       <p>⚡ ทุก 10 แถวขึ้นเลเวล กระดาษตกเร็วขึ้น · กองล้นถึงด้านบน = จบเกม</p>`,
     buttons: [{ label: '🖨️ เริ่มพิมพ์!', primary: true, go() { running = true; spawn(); } }] });
 }
@@ -342,7 +403,10 @@ function stampGame(root, api) {
     if (combo > 0 && combo % 10 === 0) { fx.text(SX, 80, `🔥 คอมโบ ${combo}!`, { color: PAL.yel, size: 30, life: 1.2 }); fx.burst(SX, 90, { n: 24, colors: CONFETTI, speed: 320, grav: 500, size: 6, shape: 'paper', life: 1 }); }
     hud();
   }
-  cv.addEventListener('pointerdown', e => { e.preventDefault(); stamp(); });
+  // phone: a press anywhere on the game stamps (one action); desktop: the canvas
+  const phone = g2phone(root, 'tap');
+  if (phone) { phoneHint(root, 'แตะตรงไหนก็ได้ = ปั๊ม'); root.addEventListener('pointerdown', e => { if (!freePress(e)) return; e.preventDefault(); pressRing(root, e); stamp(); }); }
+  else cv.addEventListener('pointerdown', e => { e.preventDefault(); stamp(); });
   api.onKey(e => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); stamp(); } });
   function doc(d) {
     const x = d.x - 50, y = BELT_Y - 118, sq = d.sq;
@@ -392,7 +456,7 @@ function stampGame(root, api) {
     draw();
   });
   hud(); draw();
-  api.intro({ how: `<p>🏢 เอกสารวิ่งมาบนสายพาน — กด <b>Space</b> หรือแตะจอ ตอนกรอบสีฟ้าอยู่ใต้ตราปั๊ม</p>
+  api.intro({ how: `<p>🏢 เอกสารวิ่งมาบนสายพาน — ${phone ? '<b>แตะตรงไหนก็ได้</b>' : 'กด <b>Space</b> หรือแตะจอ'} ตอนกรอบสีฟ้าอยู่ใต้ตราปั๊ม</p>
       <p>🎯 ตรงกลางเป๊ะ = <b>PERFECT</b> · ยิ่งคอมโบยาวคะแนนยิ่งคูณ · คอมโบครบ 10 ได้หัวใจคืน ❤️ (สูงสุด 2 ครั้ง)</p><p>⚠️ เอกสาร <b>"ร่าง"</b> ห้ามปั๊ม · ปล่อยเอกสารปกติหลุดไป = เสียหัวใจ ❤️</p>`,
     buttons: [{ label: '🔏 เริ่มปั๊ม!', primary: true, go() { running = true; } }] });
 }
@@ -444,7 +508,13 @@ function baristaGame(root, api) {
   api.onKey(e => { const n = +e.key; if (n >= 1 && n <= ING.length) { e.preventDefault(); add(ING[n - 1][0]); }
     else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); serve(null); } else if (e.key === 'Backspace' || e.key === 'Delete') { e.preventDefault(); clear(); } });
   cv.addEventListener('pointerdown', e => { const p = at(e); const i = SLOT_X.findIndex(x => Math.abs(p.x - x) < 90 && p.y < 260); if (i >= 0 && slots[i]) serve(i); });
-  g2pad(root, [...ING.map(([k, n]) => [`${pxImg(k, 22)}<small> ${n}</small>`, () => add(k)]), ['🗑️ เท', clear], ['🛎️ เสิร์ฟ', () => serve(null)]]);
+  const phone = g2phone(root, 'barista');
+  if (!phone) g2pad(root, [...ING.map(([k, n]) => [`${pxImg(k, 22)}<small> ${n}</small>`, () => add(k)]), ['🗑️ เท', clear], ['🛎️ เสิร์ฟ', () => serve(null)]]);
+  else {
+    // two rows at the bottom: four ingredients, then two more + pour away + serve (serve sits on the thumb side)
+    const ib = ([k, n]) => [`${pxImg(k, 24)}<small>${n}</small>`, n, () => add(k), { cls: 'ing' }];
+    g2deck(root, { rows: [ING.slice(0, 4).map(ib), [...ING.slice(4).map(ib), ['🗑️<small>เท</small>', 'เททิ้ง', clear, { cls: 'ing' }], ['🛎️<small>เสิร์ฟ</small>', 'เสิร์ฟ', () => serve(null), { cls: 'ing primary' }]]] });
+  }
   const person = (who, x, by, o, anim = 'idle_anim', dir = 'down') => drawChar(ctx, who, anim, dir, t, x, by, 4, o);
   function draw() {
     fx.pre(ctx);
@@ -502,7 +572,8 @@ function baristaGame(root, api) {
   });
   hud(); draw();
   api.intro({ how: `<p>☕ พักเที่ยงคิวยาว! ผสมเครื่องดื่มตามที่ลูกค้าสั่งในบับเบิล แล้วเสิร์ฟให้ทันก่อนหลอดความอดทนหมด</p>
-      <p>⌨️ ปุ่ม <b>1–6</b> ใส่วัตถุดิบ (${ING.map(([k]) => pxImg(k, 18)).join(' ')}) · <b>Enter</b> เสิร์ฟ · <b>Backspace</b> เทแก้วทิ้ง — หรือแตะปุ่มใต้จอ / แตะลูกค้า</p>
+      ${phone ? `<p>👆 แตะปุ่มวัตถุดิบด้านล่าง (${ING.map(([k]) => pxImg(k, 18)).join(' ')}) แล้วกด <b>เสิร์ฟ</b> หรือแตะลูกค้า · <b>เท</b> = เทแก้วทิ้ง</p>`
+        : `<p>⌨️ ปุ่ม <b>1–6</b> ใส่วัตถุดิบ (${ING.map(([k]) => pxImg(k, 18)).join(' ')}) · <b>Enter</b> เสิร์ฟ · <b>Backspace</b> เทแก้วทิ้ง — หรือแตะปุ่มใต้จอ / แตะลูกค้า</p>`}
       <p>⏱ เสิร์ฟถูก +3 วิ · เสิร์ฟไวจนได้ทิปเพียบ +5 วิ (รวมได้สูงสุด +40 วิ)</p>
       <p>⭐ ลูกค้าเดินหนี 3 คน หรือเวลาหมด = จบ</p>`,
     buttons: [{ label: '☕ เปิดร้าน!', primary: true, go() { running = true; spawn(); } }] });
@@ -544,6 +615,26 @@ function tossGame(root, api) {
   const release = () => { if (!drag || !ball) { drag = null; return; } const dx = START.x - drag.x, dy = START.y - drag.y, l = Math.min(150, Math.hypot(dx, dy)), a = Math.atan2(dy, dx); drag = null;
     if (l > 15) launch(Math.cos(a) * l * 5.2, Math.sin(a) * l * 5.2); };
   cv.addEventListener('pointerup', release); cv.addEventListener('pointercancel', () => { drag = null; });
+  // phone: a slingshot pad in the lower part of the screen — thumb down anywhere on it, pull back, let go.
+  // The pull (screen px x 1.25, max 150) is the same vector as dragging the ball itself.
+  const phone = g2phone(root, 'toss');
+  if (phone) {
+    const zone = document.createElement('div'); zone.className = 'g2zone toss-pad';
+    zone.innerHTML = '<span>ลากนิ้วถอยหลังแล้วปล่อย = ปา</span><i class="o"></i><i class="ln"></i><i class="k"></i>'; root.appendChild(zone);
+    const [o, ln, kn] = zone.querySelectorAll('i'); let pull = null;
+    const show = (on, x0, y0, x1, y1) => { zone.classList.toggle('on', on); if (!on) return;
+      o.style.left = x0 + 'px'; o.style.top = y0 + 'px'; kn.style.left = x1 + 'px'; kn.style.top = y1 + 'px';
+      ln.style.left = x0 + 'px'; ln.style.top = y0 + 'px'; ln.style.width = Math.hypot(x1 - x0, y1 - y0) + 'px'; ln.style.transform = `rotate(${Math.atan2(y1 - y0, x1 - x0)}rad)`; };
+    const toDrag = e => { const k = 1.25, dx = (e.clientX - pull.x) * k, dy = (e.clientY - pull.y) * k, l = Math.hypot(dx, dy), m = l > 150 ? 150 / l : 1;
+      return { x: START.x + dx * m, y: START.y + dy * m }; };
+    zone.addEventListener('pointerdown', e => { e.preventDefault(); if (!running || !ball || ball.fly) return; const r = zone.getBoundingClientRect();
+      pull = { id: e.pointerId, x: e.clientX, y: e.clientY, r }; try { zone.setPointerCapture(e.pointerId); } catch (er) {} drag = { x: START.x, y: START.y };
+      show(true, e.clientX - r.left, e.clientY - r.top, e.clientX - r.left, e.clientY - r.top); });
+    zone.addEventListener('pointermove', e => { if (!pull || e.pointerId !== pull.id) return; drag = toDrag(e); const r = pull.r;
+      show(true, pull.x - r.left, pull.y - r.top, e.clientX - r.left, e.clientY - r.top); });
+    zone.addEventListener('pointerup', e => { if (!pull || e.pointerId !== pull.id) return; drag = toDrag(e); pull = null; show(false); release(); });
+    zone.addEventListener('pointercancel', () => { pull = null; drag = null; show(false); });
+  }
   api.onKey(e => { if (e.key === 'ArrowLeft') { aim = Math.max(-1.45, aim - .05); e.preventDefault(); } else if (e.key === 'ArrowRight') { aim = Math.min(-.2, aim + .05); e.preventDefault(); }
     else if (e.key === ' ' && !e.repeat && ball && !ball.fly) { charging = true; power = 0; e.preventDefault(); } });
   const up = e => { if (e.key !== ' ' || !charging) return; charging = false; const l = 30 + power * 120; launch(Math.cos(aim) * l * 5.2, Math.sin(aim) * l * 5.2); };
@@ -600,7 +691,8 @@ function tossGame(root, api) {
   });
   hud(); draw();
   api.intro({ how: `<p>🗑️ ปากระดาษก้อนลงถังให้ได้มากที่สุดใน ${THROWS} ลูก · <b>SWISH</b> (ลงไม่โดนขอบ) ได้ลูกฟรี +1 (สูงสุด 5 ลูก)</p>
-      <p>🖱️ <b>ลากลูกบอลถอยหลัง</b> เหมือนหนังสติ๊กแล้วปล่อย · หรือ <b>← →</b> เล็ง แล้ว <b>กด Space ค้าง</b> เพื่อออกแรง</p>
+      ${phone ? '<p>👆 วางนิ้วบน<b>แผ่นด้านล่าง</b> ลากถอยหลังเหมือนหนังสติ๊กแล้วปล่อย (หรือลากที่ลูกบอลก็ได้) · ลากยาว = แรงขึ้น</p>'
+        : '<p>🖱️ <b>ลากลูกบอลถอยหลัง</b> เหมือนหนังสติ๊กแล้วปล่อย · หรือ <b>← →</b> เล็ง แล้ว <b>กด Space ค้าง</b> เพื่อออกแรง</p>'}
       <p>🌬️ ดูลมจากพัดลมด้านบนด้วย · ลงถังไม่โดนขอบ = <b>SWISH</b> +50 · ครึ่งหลังถังจะเลื่อนไปมา</p>`,
     buttons: [{ label: '🗑️ เริ่มปา!', primary: true, go() { running = true; newThrow(); } }] });
   return { destroy() { removeEventListener('keyup', up); } };
@@ -632,14 +724,17 @@ function slackGame(root, api) {
     hud();
     if (strikes >= 3 && !over) { over = true; running = false; api.after(1.4, () => api.end(Math.floor(score), `รอด ${Math.floor(time)} วิ · เฉียดฉิว ${close} ครั้ง`, false, { secs: Math.floor(time), close })); }
   }
-  const down = () => { if (running && !api.paused) holding = true; }, up = () => { holding = false; };
-  cv.addEventListener('pointerdown', e => { e.preventDefault(); down(); }); addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
+  const down = () => { if (running && !api.paused) holding = true; }, up = () => { holding = false; root.classList.remove('held'); };
+  // phone: hold anywhere on the game (one action); desktop: the canvas
+  const phone = g2phone(root, 'tap'), holdEl = phone ? root : cv;
+  if (phone) phoneHint(root, 'แตะค้างตรงไหนก็ได้ = เล่นมือถือ · ปล่อย = ทำงาน');
+  holdEl.addEventListener('pointerdown', e => { if (!freePress(e)) return; e.preventDefault(); if (phone) root.classList.add('held'); down(); }); addEventListener('pointerup', up); holdEl.addEventListener('pointercancel', up);
   // holding for seconds is the whole game: stop iOS/Android from turning the hold into select / copy / zoom,
   // and keep the finger counting as "holding" even if it slides off the canvas onto the text above
   root.classList.add('nohold');
-  cv.addEventListener('touchstart', e => { e.preventDefault(); down(); }, { passive: false });
-  cv.addEventListener('touchend', e => { e.preventDefault(); up(); }, { passive: false });
-  cv.addEventListener('touchcancel', up);
+  holdEl.addEventListener('touchstart', e => { if (!freePress(e)) return; e.preventDefault(); down(); }, { passive: false });
+  holdEl.addEventListener('touchend', e => { if (!freePress(e)) return; e.preventDefault(); up(); }, { passive: false });
+  holdEl.addEventListener('touchcancel', up);
   api.onKey(e => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); down(); } });
   const keyUp = e => { if (e.key === ' ' || e.key === 'Enter') up(); }; addEventListener('keyup', keyUp);
   function stepBoss(d) {
@@ -720,7 +815,7 @@ function slackGame(root, api) {
     draw();
   });
   hud(); draw();
-  api.intro({ how: `<p>📱 งานน่าเบื่อ… <b>กดค้าง</b> (Space หรือแตะจอ) เพื่อแอบเล่นมือถือ ยิ่งเล่นต่อเนื่องคะแนนยิ่งคูณ</p>
+  api.intro({ how: `<p>📱 งานน่าเบื่อ… <b>${phone ? 'แตะค้างตรงไหนก็ได้' : 'กดค้าง</b> (Space หรือแตะจอ)<b>'}</b> เพื่อแอบเล่นมือถือ ยิ่งเล่นต่อเนื่องคะแนนยิ่งคูณ</p>
       <p>👔 หัวหน้าเดินไปมาอยู่ด้านหลัง ถ้ามี <b>?</b> ขึ้นหัว = กำลังจะหันมา <b>ปล่อยมือให้ทัน!</b> (ปล่อยตอนเสี้ยววินาทีสุดท้าย = เฉียดฉิว +20)</p>
       <p>🗣️ <b>เพื่อนขี้ฟ้อง</b> (ป้ายแดงบนหัว) มาหลังเล่นไป ~20 วิ — มี ⚠️ เตือนที่ขอบซ้ายก่อน แล้วเดินผ่านหลังเรา · ตอนเธออยู่ใน<b>กรอบแดง</b> ห้ามเล่นมือถือ · รอดได้ +25</p>
       <p>😪 ทำงานนานเกินจนแถบความเบื่อเต็ม = เผลอหลับ · โดนจับได้ 3 ครั้ง = จบ</p>
@@ -813,10 +908,28 @@ function congaGame(root, api) {
     if (cake && cake.x === nx && cake.y === ny) { score += 30 * level; fx.text(nx * C + C / 2, ny * C - 10, `🍰 +${30 * level}`, { color: PAL.pink, size: 22 }); fx.burst(nx * C + C / 2, ny * C + C / 2, { n: 10, colors: [PAL.yel, '#fff'], speed: 200, grav: 0, size: 6, shape: 'star', life: .5 }); api.sfx('good'); cake = null; hud(); }
   }
   api.onKey(e => { const m = { ArrowLeft: [-1, 0], a: [-1, 0], ArrowRight: [1, 0], d: [1, 0], ArrowUp: [0, -1], w: [0, -1], ArrowDown: [0, 1], s: [0, 1] }[e.key]; if (m && running) { e.preventDefault(); turn(...m); } });
-  let sw = null;
-  cv.addEventListener('pointerdown', e => { sw = [e.clientX, e.clientY]; });
-  cv.addEventListener('pointerup', e => { if (!sw || !running) return; const dx = e.clientX - sw[0], dy = e.clientY - sw[1]; sw = null; if (Math.max(Math.abs(dx), Math.abs(dy)) < 20) return; Math.abs(dx) > Math.abs(dy) ? turn(Math.sign(dx), 0) : turn(0, Math.sign(dy)); });
-  g2pad(root, [['◀', () => running && turn(-1, 0)], ['▲', () => running && turn(0, -1)], ['▼', () => running && turn(0, 1)], ['▶', () => running && turn(1, 0)]]);
+  const phone = g2phone(root, 'conga');
+  if (!phone) {
+    let sw = null;
+    cv.addEventListener('pointerdown', e => { sw = [e.clientX, e.clientY]; });
+    cv.addEventListener('pointerup', e => { if (!sw || !running) return; const dx = e.clientX - sw[0], dy = e.clientY - sw[1]; sw = null; if (Math.max(Math.abs(dx), Math.abs(dy)) < 20) return; Math.abs(dx) > Math.abs(dy) ? turn(Math.sign(dx), 0) : turn(0, Math.sign(dy)); });
+    g2pad(root, [['◀', () => running && turn(-1, 0)], ['▲', () => running && turn(0, -1)], ['▼', () => running && turn(0, 1)], ['▶', () => running && turn(1, 0)]]);
+  } else {
+    // floating stick: thumb down anywhere, drag; the line turns as soon as the drag passes 18 px in a new
+    // direction (a quick swipe does the same). The stick ring appears under the thumb, nothing needs aiming at.
+    phoneHint(root, 'ปัดหรือลากนิ้วตรงไหนก็ได้ = เลี้ยว');
+    const st = document.createElement('div'); st.className = 'g2stick'; st.innerHTML = '<i></i>'; root.appendChild(st);
+    const knob = st.firstChild; let sk = null;
+    root.addEventListener('pointerdown', e => { if (!freePress(e) || e.target.closest('.hud')) return; e.preventDefault(); const r = root.getBoundingClientRect();
+      sk = { id: e.pointerId, x: e.clientX, y: e.clientY, last: '' }; st.style.left = (e.clientX - r.left) + 'px'; st.style.top = (e.clientY - r.top) + 'px'; st.classList.add('on'); knob.style.transform = ''; });
+    root.addEventListener('pointermove', e => { if (!sk || e.pointerId !== sk.id) return; let dx = e.clientX - sk.x, dy = e.clientY - sk.y; const l = Math.hypot(dx, dy);
+      knob.style.transform = `translate(${dx * Math.min(1, 34 / (l || 1))}px,${dy * Math.min(1, 34 / (l || 1))}px)`;
+      if (l < 18 || !running) return; const d = Math.abs(dx) > Math.abs(dy) ? [Math.sign(dx), 0] : [0, Math.sign(dy)], k = d.join();
+      if (k !== sk.last) { sk.last = k; turn(...d); }
+      if (l > 60) { sk.x = e.clientX - dx * 60 / l; sk.y = e.clientY - dy * 60 / l; st.style.left = (parseFloat(st.style.left) + dx - dx * 60 / l) + 'px'; st.style.top = (parseFloat(st.style.top) + dy - dy * 60 / l) + 'px'; } });
+    const skEnd = e => { if (!sk || e.pointerId !== sk.id) return; sk = null; st.classList.remove('on'); };
+    root.addEventListener('pointerup', skEnd); root.addEventListener('pointercancel', skEnd);
+  }
   const dname = (dx, dy) => dx > 0 ? 'right' : dx < 0 ? 'left' : dy < 0 ? 'up' : 'down';
   function draw() {
     fx.pre(ctx);
@@ -836,7 +949,7 @@ function congaGame(root, api) {
       list.push({ y: s.py + (s.y - s.py) * a + 1 + .01, draw: () => drawChar(ctx, s.who || who, over ? 'idle_anim' : 'run', mdx || mdy ? dname(mdx, mdy) : 'right', t + i * .1, x, y, 2,
         { rot: over ? (i % 2 ? .5 : -.5) : 0, sx: 1 + (s.pop || 0) * .3, sy: 1 - (s.pop || 0) * .25 }) }); });
     list.sort((p, q2) => p.y - q2.y).forEach(o => o.draw());
-    if (running && !go && clearing <= 0) { rrect(ctx, W / 2 - 150, H - 70, 300, 40, 12, 'rgba(255,255,255,.92)', PAL.ink); txt(ctx, 'กดลูกศร / ปัดจอ เพื่อออกเดิน', W / 2, H - 50, 16, PAL.ink, 'center', 700); }
+    if (running && !go && clearing <= 0) { rrect(ctx, W / 2 - 150, H - 70, 300, 40, 12, 'rgba(255,255,255,.92)', PAL.ink); txt(ctx, phone ? 'ปัดนิ้วเพื่อออกเดิน' : 'กดลูกศร / ปัดจอ เพื่อออกเดิน', W / 2, H - 50, 16, PAL.ink, 'center', 700); }
     fx.post(ctx, W, H);
   }
   api.loop(dt => {
@@ -849,7 +962,90 @@ function congaGame(root, api) {
   });
   hud(); draw();
   api.intro({ how: `<p>🍱 เที่ยงแล้ว! เดินไปชวนเพื่อนที่ยกมือ 🙋 มาต่อแถว ครบจำนวนแล้ว <b>ประตูโรงอาหารด้านบนจะเปิด</b> — พาขบวนเดินออกไปเพื่อผ่านด่าน</p>
-      <p>⌨️ ลูกศร / WASD · มือถือ: ปัดจอหรือใช้ปุ่มใต้จอ · 🍰 เค้กโผล่มาแป๊บเดียว เก็บได้คะแนนพิเศษ</p>
+      <p>${phone ? '👆 ปัดหรือลากนิ้วตรงไหนก็ได้ไปทางที่จะเลี้ยว' : '⌨️ ลูกศร / WASD · มือถือ: ปัดจอหรือใช้ปุ่มใต้จอ'} · 🍰 เค้กโผล่มาแป๊บเดียว เก็บได้คะแนนพิเศษ</p>
       <p>⚠️ ชนโต๊ะ ผนัง หรือชนขบวนตัวเอง = จบ · ด่านยิ่งสูง เฟอร์นิเจอร์ยิ่งเยอะ เดินยิ่งเร็ว</p>`,
     buttons: [{ label: '🍱 ไปกินข้าว!', primary: true, go() { running = true; startLevel(); } }] });
 }
+
+/* =================================================================
+   Phone controls for the hub's own four games (spot, run, whack, stack live in index.html).
+   Their code stays as it is: on touch this wraps their mount — portrait layout, the PRD 7.4 controls on top of
+   the game's own inputs (synthetic pointer events on its canvas), touch-only texts. Desktop is not touched.
+================================================================= */
+const HUB_TOUCH_HOW = {
+  run: `<p>🏃 วิ่งไปตอกบัตรให้ทัน! <b>กระโดด</b>ข้ามลัง เก้าอี้ล้อเลื่อน เพื่อนที่วิ่งสวน · <b>ก้ม</b>หลบเครื่องบินกระดาษ</p>
+    <p>👆 <b>แตะตรงไหนก็ได้</b> = กระโดด (แตะซ้ำกลางอากาศ = 2 ชั้น) · <b>ปัดลง</b> หรือกดปุ่มก้มมุมล่างค้าง = ก้ม</p>
+    <p>เหรียญ +10 คะแนน · เพชร +10 เหรียญ · ❤️ 3 ดวง ชนครบ = จบ</p><p>👇 เลือกตัวละครแล้วออกวิ่งเลย</p>`,
+  stack: `<p>📦 แฟ้มเลื่อนไปมา — <b>แตะตรงไหนก็ได้</b> เพื่อวางลงบนกอง</p>
+    <p>✂️ ส่วนที่ล้นจะถูกตัดทิ้ง แฟ้มเลยแคบลงเรื่อยๆ</p><p>✨ วาง <b>เป๊ะ</b> ติดกัน 3 ครั้ง แฟ้มจะกว้างขึ้น</p><p>🚀 ซ้อนสูงพอ… อาจทะลุหลังคาไปถึงอวกาศ</p>`,
+};
+const HUB_TOUCH_TUT = {
+  run: [['👆', 'แตะ = กระโดด'], ['👇', 'ปัดลง / ปุ่มก้ม = ก้มหลบ'], ['🪙', 'เก็บเหรียญ ไปให้ไกลที่สุด']],
+  stack: [['📦', 'แฟ้มเลื่อนไปมา'], ['👆', 'แตะตรงไหนก็ได้ = วาง'], ['🎯', 'วางให้ตรง กองไม่เล็กลง']],
+  tetris: [['◀ ▶', 'ปุ่มซ้ายล่าง ย้าย'], ['⟳', 'ขวาล่าง หมุน / ทิ้ง'], ['▬', 'เต็มแถว = หายไป']],
+  stamp: [['📄', 'เอกสารเลื่อนมาบนสายพาน'], ['👆', 'แตะตรงไหนก็ได้ = ปั๊ม'], ['🎯', 'ปั๊มตรงกรอบ = PERFECT']],
+  barista: [['🧾', 'ดูออเดอร์ในบับเบิล'], ['👆', 'แตะวัตถุดิบตามสูตร'], ['🛎️', 'กดเสิร์ฟ']],
+  toss: [['👆', 'ลากแผ่นด้านล่างถอยหลัง'], ['🌬️', 'ดูลมจากพัดลม'], ['🗑️', 'ปล่อยให้ลงถัง']],
+  slack: [['✋', 'แตะค้าง = แอบเล่นมือถือ'], ['👀', 'หัวหน้าหันมา ปล่อยทันที!'], ['😴', 'ไม่เล่นเลยจะง่วงหลับ']],
+  conga: [['👆', 'ปัดนิ้ว = เลี้ยวขบวน'], ['🧑‍🤝‍🧑', 'เก็บเพื่อนต่อแถว'], ['🚪', 'ครบแล้วพาออกประตู']],
+};
+// fire the game's own canvas listener at a point of the canvas (fx, fy = 0..1)
+function canvasPress(cv, type, fx, fy, id) {
+  const r = cv.getBoundingClientRect();
+  cv.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, pointerId: id || 1, pointerType: 'touch', isPrimary: true, clientX: r.left + r.width * fx, clientY: r.top + r.height * fy }));
+}
+const HUB_TOUCH = {
+  // tap anywhere = jump, the lower-left button (or a swipe down) = duck, a jump button in the other corner too
+  run(root) {
+    g2phone(root, 'run'); const cv = root.querySelector('.run-box canvas');
+    let duckHeld = 0, sw = null;
+    const jumpDown = () => canvasPress(cv, 'pointerdown', .9, .5);
+    const duckDown = () => canvasPress(cv, 'pointerdown', .02, .5);
+    // the game lets go of both jump and duck on any pointerup: keep ducking while the duck button is still held
+    const relift = () => { if (duckHeld > 0) requestAnimationFrame(() => duckHeld > 0 && duckDown()); };
+    addEventListener('pointerup', relift);
+    g2deck(root, { l: [['<span class="duck">▼</span><small>ก้ม</small>', 'ก้ม', () => { duckHeld++; duckDown(); }, { up: () => { duckHeld = Math.max(0, duckHeld - 1); }, cls: 'wide' }]],
+      r: [['⤒<small>กระโดด</small>', 'กระโดด', jumpDown, { cls: 'wide primary' }]] });
+    phoneHint(root, 'แตะตรงไหนก็ได้ = กระโดด · ปัดลง = ก้ม');
+    root.addEventListener('pointerdown', e => { if (!e.isTrusted || !freePress(e)) return; e.preventDefault(); e.stopPropagation(); pressRing(root, e);
+      sw = { id: e.pointerId, y: e.clientY, duck: false }; jumpDown(); }, true);
+    root.addEventListener('pointermove', e => { if (sw && e.pointerId === sw.id && !sw.duck && e.clientY - sw.y > 28) { sw.duck = true; duckDown(); } });
+    root.addEventListener('pointerup', e => { if (sw && e.pointerId === sw.id) sw = null; });
+    return () => removeEventListener('pointerup', relift);
+  },
+  // tap anywhere = drop the binder
+  stack(root) {
+    g2phone(root, 'stack'); const cv = root.querySelector('.stack-box canvas');
+    root.addEventListener('pointerdown', e => { if (!e.isTrusted || !freePress(e)) return; e.preventDefault(); pressRing(root, e); if (e.target !== cv) canvasPress(cv, 'pointerdown', .5, .5); });
+  },
+  // the board sits in the lower two thirds; a press shows on the hole at once; no key labels
+  whack(root) {
+    g2phone(root, 'whack'); const grid = root.querySelector('.wgrid');
+    const off = e => { const h = e.target.closest && e.target.closest('.hole'); h && h.classList.remove('prs'); };
+    grid.addEventListener('pointerdown', e => { const h = e.target.closest('.hole'); if (h) h.classList.add('prs'); });
+    for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) grid.addEventListener(ev, off);
+    grid.addEventListener('pointerout', off);
+  },
+  // the hint button moves from the top bar to the bottom of the screen
+  spot(root) {
+    g2phone(root, 'spot'); const hint = root.querySelector('[data-k=hint]');
+    if (hint) { hint.classList.remove('sm'); hint.classList.add('g2k'); hint.setAttribute('aria-label', 'ใบ้ (เสียเวลา 10 วินาที)');
+      hint.innerHTML = '💡<small>ใบ้ −10 วิ</small>';
+      hint.addEventListener('pointerdown', () => { hint.classList.add('on'); }); for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) hint.addEventListener(ev, () => hint.classList.remove('on'));
+      const d = g2deck(root, { l: [], r: [hint] }); d.classList.add('spot-deck'); }
+  },
+};
+addEventListener('DOMContentLoaded', () => {
+  if (!phoneOn()) return;
+  if (typeof TUT === 'object') Object.assign(TUT, HUB_TOUCH_TUT);
+  if (typeof GAMES === 'undefined') return;
+  for (const g of GAMES) {
+    const fix = HUB_TOUCH[g.id]; if (!fix || !g.mount) continue;
+    const mount = g.mount;
+    g.mount = (root, api) => {
+      const how = HUB_TOUCH_HOW[g.id], a = how ? Object.create(api, { intro: { value: o => api.intro({ ...o, how }) } }) : api;
+      const inst = mount(root, a) || {}, undo = fix(root);
+      return { ...inst, destroy() { inst.destroy && inst.destroy(); undo && undo(); } };
+    };
+  }
+});
