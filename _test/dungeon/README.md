@@ -36,3 +36,15 @@ prototype pages. Already wired: scripts in `index.html`, the `GAMES` entry (rank
 `ชั้นลึกสุด`), `PROG_NORM.dungeon = 20` and `PAY_RULES.dungeon` (no ×2, no bricks) in `office.js`,
 `RANK_GAMES.dungeon` in `online.js`, saves in `prog.dgn`, combat XP via `Skills.add`. `?floor=` and `?seed=` only
 work in test mode (`window.__TEST__`, set by `verify/testmode.js`). Verify screen: `python verify/run.py --only dungeon`.
+
+## Pitfalls (bugs we shipped, so they don't come back)
+
+- **A door that can't open** (live 15 Nov 2026, B6 vault). The door target assumed waves top up the kills, but vault
+  floors spawn no waves, so 3 placed monsters against a target of 6 left the run stuck. Rule: any floor's target
+  must be reachable from what that floor can actually spawn. If you add a purpose without waves, or change
+  `DD.TARGET`, `DD.WAVE` or the generator's monster counts, extend the door check in `test-gen.js` to cover it.
+- **Test mode on live.** `?floor=` / `?seed=` must stay behind `window.__TEST__` (set only by `verify/testmode.js`),
+  never a URL check, or anyone can skip floors and fake the deepest-floor leaderboard.
+- **Cache.** Bump `?v=N` on every changed `dungeon/*.js` in `index.html`; Pages caches about 10 minutes.
+- **A fix isn't done until** the floor that broke is replayed with its own seed in test mode
+  (`index.html?test=1&seed=dgn-YYYY-MM-DD&floor=N`) and the matching rule is added to `test-gen.js`.
