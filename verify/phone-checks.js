@@ -22,10 +22,14 @@
     const zone = H * 0.6, MIN = 48;
     let ctl = [...document.querySelectorAll('button, a[href], [role=button], input, select')].filter(el => vis(el) && !el.disabled)
       .map(el => ({ name: label(el), r: el.getBoundingClientRect() }));
-    // canvas-drawn controls (dungeon): __dgn.controls() -> [{ name, x, y, w, h }] in CSS px of the viewport
+    // canvas-drawn controls (dungeon): __dgn.controls() -> { stick, dodge, menu: { x, y, w, h } | null, ... } in viewport
+    // CSS px (other keys such as view / safe / canvas / stick.zone are not controls); a DOM button reported there
+    // (the menu) is counted once
     if (window.__dgn && typeof __dgn.controls === 'function') { try {
-      for (const c of __dgn.controls() || []) { const x = c.x ?? c.left, y = c.y ?? c.top, w = c.w ?? c.width, h = c.h ?? c.height;
-        ctl.push({ name: `canvas "${c.name || c.id || '?'}"`, r: { left: x, top: y, right: x + w, bottom: y + h, width: w, height: h } }); }
+      const C = __dgn.controls() || {}, same = (a, b) => Math.abs(a.left - b.left) < 1 && Math.abs(a.top - b.top) < 1 && Math.abs(a.width - b.width) < 1;
+      for (const k of ['stick', 'dodge', 'menu']) { const c = C[k]; if (!c) continue;
+        const r = { left: c.x, top: c.y, right: c.x + c.w, bottom: c.y + c.h, width: c.w, height: c.h };
+        ctl = ctl.filter(o => !same(o.r, r)); ctl.push({ name: `canvas "${k}"`, r }); }
     } catch (e) { out.push(`__dgn.controls() threw: ${e.message}`); } }
     let menu = 0;
     for (const { name, r } of ctl) {

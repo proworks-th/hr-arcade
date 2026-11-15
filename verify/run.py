@@ -138,6 +138,7 @@ def dungeon(page, base, shot):
     page.wait_for_function('__dgn.state().depth === 2', timeout=5000)
     st = page.evaluate('__dgn.state()')
     page.evaluate("document.querySelector('.dgn-pick')?.remove()")
+    if page.query_selector('.dgn-menu'): page.click('.dgn-menu')  # touch: the leave button lives in the เมนู sheet
     page.click('.dgn-hud .q')
     page.wait_for_selector('.overlay.res, .overlay .res', timeout=5000)
     shot('dungeon-result')

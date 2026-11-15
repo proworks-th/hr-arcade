@@ -72,9 +72,9 @@ On `iphone11` and `narrow` only. Warnings today; they become failures once the p
 - (a) No key names on touch (WASD, Shift, Esc, Space, ลูกศร, "กด 1–6"-style hints) in a running game or the village.
   HTML text only; text drawn on a canvas is not seen.
 - (b) Visible controls in a running game are at least 48 px and inside the bottom 40% of the screen, except an exit
-  button inside the top-left 56×56 px and one optional menu button top-right. Canvas-drawn controls: a game can
-  expose `window.__dgn.controls()` → `[{ name, x, y, w, h }]` in viewport CSS px; the dungeon is checked through it
-  once it exists.
+  button inside the top-left 56×56 px and one optional menu button top-right. Canvas-drawn controls: the dungeon
+  exposes `window.__dgn.controls()` → `{ stick, dodge, menu }`, each `{ x, y, w, h }` in viewport CSS px (or null);
+  those are checked instead of the canvas.
 - (c) Zoom blocked: `html` or `body` has `touch-action: manipulation` or `none`.
 - (d) No text under 12 px.
 - (e) No sideways scroll at 390 px.
