@@ -946,7 +946,7 @@ function giveOrder(id, n) { if (!LIVEO || !H.orderTx) return contribute('me', n)
 // ---- HUD + hot bar (top row of the backpack) + plot tip ----
 const hotEl = SR.getElementById('hotwrap'), toolsEl = SR.getElementById('tools'), selEl = SR.getElementById('selname'), hudEl = SR.getElementById('farmhud'), tipEl = SR.getElementById('ptip');
 function hud() { hudEl.innerHTML = `🪙 <b>${F.coins.toLocaleString()}</b> · 💗 น้ำใจ <b>${F.kind}</b> · 🌾 ไร่ชุมชน <b>${growingN()}/${COMM().length}</b>`;
-  toolsEl.innerHTML = BAG.slice(0, HOT).map((x, i) => slotHTML(BAG, i, 'h').replace('class="slot', `class="slot${F.sel === i ? ' on' : ''}`).replace('</button>', `<span class="k">${i + 1}</span></button>`)).join('')
+  toolsEl.innerHTML = BAG.slice(0, HOT).map((x, i) => slotHTML(BAG, i, 'h').replace('class="slot', `class="slot${F.sel === i ? ' on' : ''}`).replace('</button>', typeof Phone !== 'undefined' && Phone.touch ? '</button>' : `<span class="k">${i + 1}</span></button>`)).join('')   // no key numbers on touch (PRD phone-first 7.3)
     + '<button class="slot bagb" data-a="bag" aria-label="กระเป๋า">🎒</button>';
   const s = BAG[F.sel]; selEl.textContent = s ? itemName(s.id) + (s.n > 1 ? ' ×' + s.n : '') : '✋ มือเปล่า'; }
 toolsEl.onclick = e => { const b = e.target.closest('button'); if (!b) return; if (b.dataset.a === 'bag') return card.dataset.k === 'bag' && card.style.display === 'block' ? closeCard() : bagCard(); F.sel = +b.dataset.i; hud(); };
