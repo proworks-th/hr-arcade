@@ -127,10 +127,12 @@ const DE = (() => {
     return { c, add(list) { for (const i of list) { const v = g.cells[i]; if (v === VOID) continue; x2.fillStyle = v === FLOOR ? (g.block[i] ? '#8b7a6b' : '#d8c8b0') : '#5b4c66'; x2.fillRect(i % g.w, (i / g.w) | 0, 1, 1); } } };
   }
   // camera: follows a point, stops at the map edge, snaps to whole art pixels (×3) so tiles never shimmer
-  function camera(W, H, mw, mh) {
+  // center: a map smaller than the view sits in the middle instead of the top-left (phones see more of the map)
+  function camera(W, H, mw, mh, center) {
+    const fit = (p, v, m) => center && m < v ? (m - v) / 2 : Math.max(0, Math.min(m - v, p - v / 2));
     const cam = { x: 0, y: 0, W, H,
       follow(px, py, dt, snap = 3) {
-        const tx = Math.max(0, Math.min(mw - W, px - W / 2)), ty = Math.max(0, Math.min(mh - H, py - H / 2));
+        const tx = fit(px, W, mw), ty = fit(py, H, mh);
         const k = dt ? 1 - Math.exp(-dt * 10) : 1; cam.fx = (cam.fx ?? tx) + (tx - (cam.fx ?? tx)) * k; cam.fy = (cam.fy ?? ty) + (ty - (cam.fy ?? ty)) * k;
         cam.x = Math.round(cam.fx / snap) * snap; cam.y = Math.round(cam.fy / snap) * snap; },
       sees: (x, y, m = 64) => x > cam.x - m && x < cam.x + W + m && y > cam.y - m && y < cam.y + H + m };

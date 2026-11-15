@@ -19,6 +19,7 @@ The prototype mocks `Prog`, `bkkDay`, `meWho`, `fmt`, `toast` and the hub's `api
 | `gen.js` (`DGen`) | `DGen.floor(seed, depth)` → grid, rooms, start, exit, props, chests, spikes, altar, spawns | no |
 | `game.js` (`Dungeon`) | `Dungeon.mount(root, api)`: run state, weapons, waves, AI, level-ups, HUD, drawing | yes |
 | `test-gen.js` | `node _test/dungeon/test-gen.js`: 2,000 floors, invariants, stats table | no |
+| `test-phone.py` | `python3 _test/dungeon/test-phone.py [--quick]`: phone controls at 414×896 / 390×844 in every hand + size setting, and desktop (thumb zone, sizes, gaps, edge markers, stick halves, menu, cards in the lower half, no key names on touch) | — |
 | `test-play.py` | Playwright smoke test (desktop + phone): weapons kill, level-up, door, relic, boss chest, perf, no errors | — |
 | `../skills.js` (`Skills`) | life skills: XP, tiers, daily cap, titles, capped bonuses (`Skills.bonus('combat','hp')`) | no |
 
@@ -52,3 +53,15 @@ work in test mode (`window.__TEST__`, set by `verify/testmode.js`). Verify scree
 - **Cache.** Bump `?v=N` on every changed `dungeon/*.js` in `index.html`; Pages caches about 10 minutes.
 - **A fix isn't done until** the floor that broke is replayed with its own seed in test mode
   (`index.html?test=1&seed=dgn-YYYY-MM-DD&floor=N`) and the matching rule is added to `test-gen.js`.
+
+## Phone layout (pf-dungeon, 15 Nov 2026)
+
+On `Phone.touch` the canvas fills the hub's game-mode stage at 1 logical px = 1 CSS px, and the world is drawn at
+zoom `Z` so at least 15.5 tiles show across (7+ each side of the player). Every screen position lives in `L`
+(computed in `layout()`, re-run on resize, orientation and `Phone.on`). Desktop keeps the fixed 720×432 view (Z = 1).
+- Keep the top-left 56×56 clear: it is the hub's exit button (`#gmExit`).
+- Map and leave are in the menu (`.dgn-menu` → `.dgn-sheet`; the leave button is still `.dgn-hud .q`, but only
+  visible once the menu is open). The game is paused while the menu or the map from it is open.
+- Any new warned attack must also get an edge marker: add it to `drawMarkers()` (owner rule: warnings are honest).
+- Test hooks: `__dgn.controls()` (stick / dodge / menu rects in viewport px, view in tiles), `__dgn.swirlOff()`
+  (a spawn warning outside the view), `__dgn.markers()` (markers drawn last frame), `__dgn.menu()`.
