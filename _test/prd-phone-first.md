@@ -179,7 +179,7 @@ Per game (first pass; the owner confirms each on the iPhone 11):
 | สายด่วนถล่มโต๊ะ         | Tap the targets (the board sits in the lower two thirds)                      |
 | บาริสต้าพักเที่ยง        | Ingredient buttons in two rows at the bottom; the order card at the top         |
 | ปากระดาษลงถัง          | Drag back and release from the lower half                                     |
-| จับผิดภาพ              | Tap the picture; the hint and give-up buttons at the bottom                    |
+| จับผิดภาพ              | Tap the picture; the hint button at the bottom (leaving is the exit button)    |
 | โรงหลอมปริซึม          | Tap the cells; the undo and restart buttons at the bottom                       |
 | Party room games     | Their one or two buttons in the lower corners                                 |
 
