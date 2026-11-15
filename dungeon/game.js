@@ -7,7 +7,12 @@
 const Dungeon = {
   mount(root, api) {
     const T = DD.TILE * DD.SCALE, PL = DD.PLAYER;
-    const tall = innerHeight > innerWidth * 1.2, W = tall ? 432 : 720, H = tall ? 624 : 432;
+    // phones (Phone.touch): the canvas fills its container at 1 logical px = 1 CSS px and the world is drawn at zoom Z,
+    // so a portrait screen still shows 7+ tiles each side of the player; desktop keeps the fixed 720×432 view (Z = 1)
+    const PH = typeof Phone !== 'undefined' ? Phone : { touch: matchMedia('(pointer:coarse)').matches, left: () => false, scale: () => 1, btn: () => 48, on: () => () => {} };
+    const TOUCH = PH.touch;
+    const tall = innerHeight > innerWidth * 1.2;
+    let W = tall ? 432 : 720, H = tall ? 624 : 432, Z = 1, VW = W, VH = H, dpr = Math.min(2, devicePixelRatio || 1);
     const { cv, ctx, at } = g2canvas(root, W, H), fxS = makeFX(), fxW = makeFX(), who = typeof meWho === 'function' ? meWho() : 'adam';
     const q = new URLSearchParams(location.search), TEST = !!window.__TEST__;   // set by verify/testmode.js with ?test=1 (Firebase → in-memory mocks)
     const day = typeof bkkDay === 'function' ? bkkDay() : new Date().toISOString().slice(0, 10), SEED = (TEST && q.get('seed')) || 'dgn-' + day;   // ?seed= / ?floor= only in test mode (they'd break the leaderboard)
@@ -51,7 +56,7 @@ const Dungeon = {
       const o = { kind: A.kind, tile: A.tile, name: A.name }; for (const k of ['dmg', 'cd', 'reach', 'n', 'r', 'on', 'off', 'pierce']) if (A[k]) o[k] = A[k][a.lv - 1]; return o; };
 
     // ---------- HUD (DOM above the canvas, rebuilt only when something changes) ----------
-    const hud = document.createElement('div'); hud.className = 'hud dgn-hud'; root.prepend(hud);
+    const hud = document.createElement('div'); hud.className = TOUCH ? 'dgn-hud dgn-t' : 'hud dgn-hud'; root.prepend(hud);
     const css = document.createElement('style'); css.textContent = `.dgn-hud{display:flex;flex-wrap:wrap;align-items:center;gap:4px 14px}.dgn-hud .bl{display:flex;gap:3px;flex-wrap:wrap}
       .dgn-hud .ic{position:relative;width:26px;height:26px}.dgn-hud .ic img{width:26px;height:26px;image-rendering:pixelated}.dgn-hud .ic b{position:absolute;right:-3px;bottom:-4px;font-size:10px;line-height:1;background:#2b2140;color:#fff;border-radius:6px;padding:1px 3px}
       .dgn-hud .ic.evo b{background:#ff9f1c}.dgn-hud .row2{flex-basis:100%;display:flex;gap:12px;flex-wrap:wrap}.dgn-hud .sp{flex:1}.dgn-hud .q{min-height:44px;font:inherit;font-weight:600;border:2px solid #2b2140;border-radius:10px;background:#fff;padding:0 10px;cursor:pointer}
@@ -59,10 +64,25 @@ const Dungeon = {
       .dgn-pick button.card:hover,.dgn-pick button.card:focus-visible{background:#ffe9a8}.dgn-pick .card img{width:48px;height:48px;image-rendering:pixelated;flex:none}.dgn-pick .card .tx{display:flex;flex-direction:column;align-items:center;gap:3px;text-align:center}
       .dgn-pick .card b{font-size:15px}.dgn-pick .card small{font-size:12px;color:#6b5f7a;line-height:1.35}.dgn-pick .card i{font-style:normal;font-size:11px;color:#8a7f99}.dgn-pick .card.evo{background:#fff3d6;border-color:#c77d0a}
       .dgn-pick .tools{display:flex;justify-content:center;gap:8px;margin-top:10px}.dgn-pick .tools button{min-height:44px;font:inherit;font-weight:600;border:2px solid #2b2140;border-radius:10px;background:#fff;padding:0 14px;cursor:pointer}
-      @media (max-width:520px){.dgn-pick .cards{grid-template-columns:1fr}.dgn-pick button.card{flex-direction:row;min-height:64px;text-align:left;gap:10px}.dgn-pick .card .tx{align-items:flex-start;text-align:left}}`;
+      @media (max-width:520px){.dgn-pick .cards{grid-template-columns:1fr}.dgn-pick button.card{flex-direction:row;min-height:64px;text-align:left;gap:10px}.dgn-pick .card .tx{align-items:flex-start;text-align:left}}
+      .game-dungeon.dgn-touch{position:relative;overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none}
+      .dgn-touch .g2box{position:absolute;inset:0}.dgn-touch .g2box canvas{width:100%;height:100%;aspect-ratio:auto;border:0;border-radius:0;box-shadow:none;background:#0c0812}
+      .dgn-t{position:absolute;inset:0;z-index:5;pointer-events:none}.dgn-t>*{pointer-events:auto}
+      .dgn-t .dgn-menu{position:absolute;padding:0;font:inherit;font-size:15px;font-weight:700;color:#fff;background:rgba(27,20,32,.78);border:2px solid rgba(255,255,255,.7);border-radius:12px;cursor:pointer;touch-action:manipulation}
+      .dgn-t .dgn-menu.on{background:#ffd23f;color:#2b2140;border-color:#2b2140}
+      .dgn-sheet{position:fixed;inset:0;z-index:40;background:rgba(12,8,20,.55);display:flex;flex-direction:column;justify-content:flex-end;
+        padding:16px calc(16px + env(safe-area-inset-right)) calc(16px + env(safe-area-inset-bottom)) calc(16px + env(safe-area-inset-left))}
+      .dgn-sheet[hidden]{display:none}.dgn-sheet .pn{background:#fff;border:3px solid #2b2140;border-radius:18px;padding:14px;display:flex;flex-direction:column;gap:12px;width:100%;max-width:460px;margin:0 auto}
+      .dgn-sheet .pn b{text-align:center;font-size:16px;color:#2b2140}
+      .dgn-sheet button{min-height:var(--b,48px);font:inherit;font-size:17px;font-weight:700;color:#2b2140;background:#fff;border:2px solid #2b2140;border-radius:12px;cursor:pointer;touch-action:manipulation}
+      .dgn-sheet button.go{background:#ffd23f}.dgn-sheet button.on{background:#ffe9a8}.dgn-sheet button.go.on{background:#f0c020}
+      .dgn-pick.dgn-low{place-items:end center;padding-bottom:calc(12px + env(safe-area-inset-bottom))}.dgn-low .panel{padding:14px 14px 16px}.dgn-low h2{margin:0}.dgn-low p.muted{margin:2px 0 0}
+      .dgn-low .cards{gap:12px;margin-top:10px}.dgn-low button.card{min-height:calc(60px * var(--s,1));padding:8px 10px}.dgn-low .tools{margin-top:12px}.dgn-low .tools button{min-height:var(--b,48px)}
+      .dgn-low button.card.on{background:#ffe9a8}.dgn-low .tools button.on{background:#ffe9a8}`;
     root.appendChild(css);
     const icon = (src, lv, title, evo) => `<span class="ic${evo ? ' evo' : ''}" title="${title}"><img alt="${title}" src="${src}"><b>${evo ? 'EVO' : lv}</b></span>`;
     function setHud() {
+      if (TOUCH) { paintHud(); return; }
       const hearts = Array.from({ length: P.max }, (_, i) => `<span style="opacity:${i < P.hp ? 1 : .25}">${pxImg('heart', 18)}</span>`).join('');
       const arms = Object.entries(S.arms).map(([id, a]) => { const A = DD.ARMS[id]; return icon(tileURL(a.evo ? A.evo.tile : A.tile), a.lv, a.evo ? A.evo.name : `${A.name} Lv ${a.lv}`, a.evo); }).join('');
       const pas = Object.entries(S.pas).map(([id, n]) => icon(tileURL(DD.PASSIVES[id].icon), n, `${DD.PASSIVES[id].name} Lv ${n}`)).join('');
@@ -76,7 +96,7 @@ const Dungeon = {
     function build(depth) {
       S.depth = depth; F = DGen.floor(SEED, depth); g = F.g; flow = DE.flow(g);
       mapC = DE.paintMap(g, F.theme, tile, DE.rng(SEED + '/paint/' + depth)); fog = DE.fog(g); mm = DE.minimap(g);
-      cam = DE.camera(W, H, g.w * T, g.h * T);
+      cam = DE.camera(VW, VH, g.w * T, g.h * T, TOUCH);
       P.x = (F.start.x + .5) * T; P.y = (F.start.y + .8) * T; P.inv = 1.2; lastCell = '';
       const sc = DD.scale(depth);
       mons = F.spawns.map(s => { const d = DD.MON[s.kind], hp = d.boss ? Math.round(d.hp + depth * DD.BOSS_HP) : Math.round(d.hp * sc.hp);
@@ -181,7 +201,7 @@ const Dungeon = {
       fxW.burst(m.x, m.y - m.d.r, { n: m.d.boss ? 50 : 12, colors: m.kind.includes('slime') ? ['#3fd29b', '#b6f5dc', '#fff'] : ['#8a93a3', '#d9dde3', '#fff'], speed: 240, grav: 300, size: 5, shape: 'puff', life: .55 });
       if (m.d.ai === 'split') for (const k of [-1, 1]) { const x = m.x + k * 22; if (!DE.blocked(g, T, x, m.y, 12)) mons.push(mk('slime', x, m.y, true)); }
       if (m.d.boss) { boss = null; S.bossDown = true; if (S.depth > daily('cp', 0)) setDaily('cp', S.depth); fxS.shake(12, .5); fxS.flash(PAL.yel, .3); for (const k of [-1, 1]) drops.push({ x: m.x + k * 40, y: m.y, t: 0 });
-        bossChest = { x: m.x, y: m.y + 10 }; fxS.text(W / 2, 92, 'บอสทิ้งหีบไว้! เดินไปเปิด', { color: PAL.yel, size: 22, life: 2, rise: 6 }); }
+        bossChest = { x: m.x, y: m.y + 10 }; fxS.text(W / 2, L.msgY, 'บอสทิ้งหีบไว้! เดินไปเปิด', { color: PAL.yel, size: 22, life: 2, rise: 6 }); }
       else if (P.hp < P.max && R() < .06) drops.push({ x: m.x, y: m.y, t: 0 });
       count(); checkDoor(); setHudSoon();
     }
@@ -217,8 +237,8 @@ const Dungeon = {
     }
     function clearFloor() {
       open = true; swirls = []; const b = DD.CLEAR(S.depth); S.score += b; api.sfx('level');
-      fxS.text(W / 2, 92, `เคลียร์ชั้น B${S.depth}! +${b}`, { color: PAL.green, size: 24, life: 1.6, rise: 6 });
-      fxS.text(W / 2, 120, 'ประตูเปิดแล้ว ตามลูกศรไปได้เลย', { color: '#fff', size: 15, life: 1.6, rise: 6 });
+      fxS.text(W / 2, L.msgY, `เคลียร์ชั้น B${S.depth}! +${b}`, { color: PAL.green, size: 24, life: 1.6, rise: 6 });
+      fxS.text(W / 2, L.msgY + 28, 'ประตูเปิดแล้ว ตามลูกศรไปได้เลย', { color: '#fff', size: 15, life: 1.6, rise: 6 });
       mm.add(fog.reveal(F.exit.x, F.exit.y + 1, 2)); setHud();
     }
 
@@ -247,13 +267,14 @@ const Dungeon = {
       return o;
     }
     const evoReady = () => Object.entries(S.arms).find(([id, a]) => !a.evo && a.lv >= 5 && S.pas[DD.ARMS[id].pair]);
+    const num = i => TOUCH ? '' : `${i + 1}. `, pickSub = TOUCH ? 'แตะการ์ดเพื่อเลือก 1 อย่าง' : 'เลือก 1 อย่าง · กด 1 2 3';
     function card(o, i) {
-      if (o.t === 'gold') return `<button class="card" type="button" data-i="${i}"><img alt="" src="${pxaURL('coin')}"><span class="tx"><b>${i + 1}. ถุงทอง</b><small>คะแนน +${o.v} และฟื้นหัวใจ 1 ดวง</small><i>ทุกอย่างเต็มแล้ว</i></span></button>`;
-      if (o.t === 'evo') { const A = DD.ARMS[o.id]; return `<button class="card evo" type="button" data-i="${i}"><img alt="" src="${tileURL(A.evo.tile)}"><span class="tx"><b>${i + 1}. ${A.evo.name}</b><small>${A.evo.desc}</small><i>วิวัฒนาการจาก${A.name} + ${DD.PASSIVES[A.pair].name}</i></span></button>`; }
+      if (o.t === 'gold') return `<button class="card" type="button" data-i="${i}"><img alt="" src="${pxaURL('coin')}"><span class="tx"><b>${num(i)}ถุงทอง</b><small>คะแนน +${o.v} และฟื้นหัวใจ 1 ดวง</small><i>ทุกอย่างเต็มแล้ว</i></span></button>`;
+      if (o.t === 'evo') { const A = DD.ARMS[o.id]; return `<button class="card evo" type="button" data-i="${i}"><img alt="" src="${tileURL(A.evo.tile)}"><span class="tx"><b>${num(i)}${A.evo.name}</b><small>${A.evo.desc}</small><i>วิวัฒนาการจาก${A.name} + ${DD.PASSIVES[A.pair].name}</i></span></button>`; }
       if (o.t === 'arm') { const A = DD.ARMS[o.id], a = S.arms[o.id], nx = a ? a.lv + 1 : 1;
-        return `<button class="card" type="button" data-i="${i}"><img alt="" src="${tileURL(A.tile)}"><span class="tx"><b>${i + 1}. ${A.name}${a ? ` Lv ${nx}` : ' (ใหม่!)'}</b><small>${a ? lvText(o.id, nx) : A.desc}</small><i>อาวุธ · คู่กับ${DD.PASSIVES[A.pair].name}${nx === 5 ? ' → ' + A.evo.name : ''}</i></span></button>`; }
+        return `<button class="card" type="button" data-i="${i}"><img alt="" src="${tileURL(A.tile)}"><span class="tx"><b>${num(i)}${A.name}${a ? ` Lv ${nx}` : ' (ใหม่!)'}</b><small>${a ? lvText(o.id, nx) : A.desc}</small><i>อาวุธ · คู่กับ${DD.PASSIVES[A.pair].name}${nx === 5 ? ' → ' + A.evo.name : ''}</i></span></button>`; }
       const Pv = DD.PASSIVES[o.id], n = (S.pas[o.id] || 0) + 1;
-      return `<button class="card" type="button" data-i="${i}"><img alt="" src="${tileURL(Pv.icon)}"><span class="tx"><b>${i + 1}. ${Pv.name} Lv ${n}</b><small>${Pv.desc}</small><i>พลังติดตัว${n === 1 ? ' (ใหม่!)' : ''}</i></span></button>`;
+      return `<button class="card" type="button" data-i="${i}"><img alt="" src="${tileURL(Pv.icon)}"><span class="tx"><b>${num(i)}${Pv.name} Lv ${n}</b><small>${Pv.desc}</small><i>พลังติดตัว${n === 1 ? ' (ใหม่!)' : ''}</i></span></button>`;
     }
     // what the next level changes, in plain numbers
     function lvText(id, nx) { const A = DD.ARMS[id], k = nx - 1, ch = [];
@@ -261,18 +282,18 @@ const Dungeon = {
       return ch.join(' · ') || 'เก่งขึ้นเล็กน้อย'; }
     function apply(o) {
       if (o.t === 'gold') { S.score += o.v; heal(1); }
-      else if (o.t === 'evo') { S.arms[o.id].evo = true; codex.evo[o.id] = 1; store2.set(CODEX, codex); fxS.flash(PAL.yel, .3); fxS.text(W / 2, 92, `วิวัฒนาการ: ${DD.ARMS[o.id].evo.name}!`, { color: PAL.yel, size: 24, life: 2, rise: 6 }); }
+      else if (o.t === 'evo') { S.arms[o.id].evo = true; codex.evo[o.id] = 1; store2.set(CODEX, codex); fxS.flash(PAL.yel, .3); fxS.text(W / 2, L.msgY, `วิวัฒนาการ: ${DD.ARMS[o.id].evo.name}!`, { color: PAL.yel, size: 24, life: 2, rise: 6 }); }
       else if (o.t === 'arm') { const a = S.arms[o.id]; if (a) a.lv++; else S.arms[o.id] = { lv: 1, t: .2 }; }
       else { S.pas[o.id] = (S.pas[o.id] || 0) + 1; if (o.id === 'heart') { P.max++; heal(1); } }
       setHud();
     }
     function chooser(title, sub, opts, done) {
       S.mode = 'pick'; keys.clear(); stick = null;
-      const ov = document.createElement('div'); ov.className = 'overlay dgn-pick';
+      const ov = document.createElement('div'); ov.className = TOUCH ? 'overlay dgn-pick dgn-low' : 'overlay dgn-pick';
       const render = () => { ov.innerHTML = `<div class="panel popin"><h2>${title}</h2><p class="muted">${sub}</p><div class="cards">${opts.map(card).join('')}</div>
-        ${S.rerolls > 0 && opts[0].t !== 'evo' ? `<div class="tools"><button class="rr" type="button">สุ่มใหม่ (เหลือ ${S.rerolls}) · R</button></div>` : ''}</div>`;
-        ov.querySelectorAll('.card').forEach(b => b.onclick = () => choose(+b.dataset.i)); ov.querySelector('.rr')?.addEventListener('click', reroll);
-        setTimeout(() => ov.querySelector('.card')?.focus(), 30); };
+        ${S.rerolls > 0 && opts[0].t !== 'evo' ? `<div class="tools"><button class="rr" type="button">สุ่มใหม่ (เหลือ ${S.rerolls})${TOUCH ? '' : ' · R'}</button></div>` : ''}</div>`;
+        ov.querySelectorAll('.card').forEach(b => { b.onclick = () => choose(+b.dataset.i); press(b); }); const rr = ov.querySelector('.rr'); if (rr) { rr.addEventListener('click', reroll); press(rr); }
+        if (!TOUCH) setTimeout(() => ov.querySelector('.card')?.focus(), 30); };
       const choose = i => { const o = opts[i]; if (!o) return; ov.remove(); S.onPick = S.onReroll = null; apply(o); S.mode = 'play'; P.inv = Math.max(P.inv, .6); api.sfx('level'); done && done(); };
       const reroll = () => { if (S.rerolls <= 0) return; S.rerolls--; opts = draw3(); render(); };
       S.onPick = choose; S.onReroll = reroll; render(); root.appendChild(ov);
@@ -281,19 +302,19 @@ const Dungeon = {
       while (out.length < 3 && pool2.length) { const tot = pool2.reduce((a, o) => a + o.w, 0); let t = R() * tot, k = 0; for (; k < pool2.length - 1; k++) if ((t -= pool2[k].w) < 0) break; out.push(pool2.splice(k, 1)[0]); }
       return out.length ? out : [{ t: 'gold', v: 50 * S.depth }]; }
     function levelPick() { if (S.mode !== 'play' || !S.pending) return; S.pending--;
-      chooser(`เลเวลอัป! Lv ${S.lv - S.pending}`, 'เลือก 1 อย่าง · กด 1 2 3', draw3(), () => { if (S.pending) api.after(.15, levelPick); }); }
+      chooser(`เลเวลอัป! Lv ${S.lv - S.pending}`, pickSub, draw3(), () => { if (S.pending) api.after(.15, levelPick); }); }
     // boss chest and vault altar: an evolution if one is ready, otherwise pick 1 of 3
     function chestReward(title) { const e = evoReady();
-      if (e) chooser(title, 'อาวุธพร้อมวิวัฒนาการแล้ว!', [{ t: 'evo', id: e[0] }]); else chooser(title, 'เลือก 1 อย่าง · กด 1 2 3', draw3()); }
+      if (e) chooser(title, 'อาวุธพร้อมวิวัฒนาการแล้ว!', [{ t: 'evo', id: e[0] }]); else chooser(title, pickSub, draw3()); }
     function takeRelic() {
       const id = relic.id, A = DD.ARMS[id]; relic = null; codex.found[id] = 1; store2.set(CODEX, codex); api.sfx('level'); fxS.flash(PAL.yel, .25);
-      fxS.text(W / 2, 92, `ค้นพบ ${A.name}! ปลดล็อกถาวร`, { color: PAL.yel, size: 24, life: 2.2, rise: 6 });
-      if (Object.keys(S.arms).length < PL.slots) apply({ t: 'arm', id }); else fxS.text(W / 2, 122, 'ช่องอาวุธเต็ม · จะสุ่มเจอตอนเลเวลอัป', { color: '#fff', size: 15, life: 2, rise: 6 });
+      fxS.text(W / 2, L.msgY, `ค้นพบ ${A.name}! ปลดล็อกถาวร`, { color: PAL.yel, size: 24, life: 2.2, rise: 6 });
+      if (Object.keys(S.arms).length < PL.slots) apply({ t: 'arm', id }); else fxS.text(W / 2, L.msgY + 30, 'ช่องอาวุธเต็ม · จะสุ่มเจอตอนเลเวลอัป', { color: '#fff', size: 15, life: 2, rise: 6 });
     }
 
     // ---------- ending ----------
     function die() { S.mode = 'over'; fxS.text(W / 2, H / 2, 'หมดแรง! พักก่อนนะ', { color: PAL.red, size: 30, life: 1.4 }); api.after(1.4, () => finish(`หมดแรงที่ B${S.depth}`)); }
-    function quit() { if (S.mode !== 'play' && S.mode !== 'pick') return; document.querySelector('.dgn-pick')?.remove(); S.mode = 'over'; finish(`ถอยกลับขึ้นมาจาก B${S.depth}`); }
+    function quit() { if (S.mode !== 'play' && S.mode !== 'pick' && S.mode !== 'menu') return; document.querySelector('.dgn-pick')?.remove(); if (menuSheet) menuSheet.hidden = true; S.big = false; S.mode = 'over'; finish(`ถอยกลับขึ้นมาจาก B${S.depth}`); }
     function finish(msg) {
       // owner's rule: nothing is lost — fainting or leaving both pay out what the run earned, like any arcade game
       const best = daily('best', 0), deep = S.depth; if (deep > best) setDaily('best', deep);
@@ -317,22 +338,168 @@ const Dungeon = {
     });
     const onUp = e => keys.delete(e.key.toLowerCase()), onBlur = () => { keys.clear(); stick = null; };
     addEventListener('keyup', onUp); addEventListener('blur', onBlur);
-    const gone = new MutationObserver(() => { if (!root.isConnected) { removeEventListener('keyup', onUp); removeEventListener('blur', onBlur); gone.disconnect(); if (window.__dgn && window.__dgn.root === root) delete window.__dgn; } });
+    const gone = new MutationObserver(() => { if (!root.isConnected) { removeEventListener('keyup', onUp); removeEventListener('blur', onBlur); unTouch(); gone.disconnect(); if (window.__dgn && window.__dgn.root === root) delete window.__dgn; } });
     gone.observe(document.body, { childList: true, subtree: true });
-    const coarse = matchMedia('(pointer:coarse)').matches;
     const mmRect = () => { const s = mmScale(); return { x: W - g.w * s - 10, y: 16, w: g.w * s, h: g.h * s }; };
-    // phone: the stick anywhere on the left 60% (or anywhere off the buttons), one big dodge button under the right thumb
-    const BTN = { dash: { x: W - 70, y: H - (tall ? 100 : 72), r: 46 } };
+    // desktop (mouse): drag anywhere = stick, click the minimap to enlarge it. Touch devices use the layout below.
     cv.addEventListener('pointerdown', e => {
-      const p = at(e); e.preventDefault(); if (!g) return;
+      e.preventDefault(); if (!g) return;
+      if (TOUCH) return touchDown(e);
+      const p = at(e);
       const r2 = mmRect(); if (S.big || (p.x >= r2.x && p.y <= r2.y + r2.h + 4)) { S.big = !S.big; return; }
-      if (Math.hypot(p.x - BTN.dash.x, p.y - BTN.dash.y) < BTN.dash.r + 10 && coarse) { dash(); return; }
       stick = { id: e.pointerId, x0: p.x, y0: p.y, x: p.x, y: p.y }; cv.setPointerCapture(e.pointerId);
     });
-    cv.addEventListener('pointermove', e => { if (stick && e.pointerId === stick.id) { const p = at(e); stick.x = p.x; stick.y = p.y; } });
+    cv.addEventListener('pointermove', e => { if (!stick || e.pointerId !== stick.id) return; const p = TOUCH ? at2(e) : at(e); stick.x = p.x; stick.y = p.y;
+      // floating stick: the base follows a thumb that slides past the rim, so turning around never needs a re-press
+      if (TOUCH) { const dx = p.x - stick.x0, dy = p.y - stick.y0, d = Math.hypot(dx, dy), R2 = L.home.r; if (d > R2) { stick.x0 = p.x - dx / d * R2; stick.y0 = p.y - dy / d * R2; } } });
     const endStick = e => { if (stick && e.pointerId === stick.id) stick = null; };
     cv.addEventListener('pointerup', endStick); cv.addEventListener('pointercancel', endStick);
-    g2pad(root, coarse ? [['แผนที่', () => { S.big = !S.big; }]] : [['หลบ', dash], ['แผนที่', () => { S.big = !S.big; }]]);
+    if (!TOUCH) g2pad(root, [['หลบ', dash], ['แผนที่', () => { S.big = !S.big; }]]);
+
+    // ---------- touch layout (portrait first): read PRD _test/prd-phone-first.md 7.3 / 7.4 before changing ----------
+    // L holds every screen position in canvas px (= CSS px on touch). The hub's own exit button owns the top-left
+    // 56×56 inside the safe area, so the HUD starts right of it; the menu (map, leave) is top right; the stick
+    // (left half) and dodge (lower right) swap sides with Phone.left(); nothing sits under the home bar.
+    const L = { msgY: 92, sl: 0, st: 0, sr: 0, sb: 0, sc: 1, btn: 48, left: false, hudX: 0, hudR: 0, hudH: 0, xpY: 0, bossY: 0,
+      edge: { l: 28, t: 28, r: W - 28, b: H - 28 }, dodge: { x: 0, y: 0, r: 0 }, home: { x: 0, y: 0, r: 40 }, menu: { x: 0, y: 0, s: 48 }, row: { x: 0, w: 0, b: 0 } };
+    const at2 = e => { const r = cv.getBoundingClientRect(); return { x: (e.clientX - r.left) * W / r.width, y: (e.clientY - r.top) * H / r.height }; };
+    let menuBtn = null, menuSheet = null, safeProbe = null, hudC = null, rowC = null, rowH = 0, dodgeT = 0, menuShown = null;
+    function press(el) { const on = () => el.classList.add('on'), off = () => el.classList.remove('on');
+      el.addEventListener('pointerdown', on); for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) el.addEventListener(ev, off); }
+    function touchDown(e) {
+      const p = at2(e);
+      if (S.big) { S.big = false; if (S.mode === 'menu') resume(); return; }
+      if (S.mode !== 'play') return;
+      const d = L.dodge; if (Math.hypot(p.x - d.x, p.y - d.y) < d.r + 12) { dash(); dodgeT = .16; return; }
+      if (stick || (p.x < W / 2) === L.left) return;   // one stick, on its own half only
+      stick = { id: e.pointerId, x0: p.x, y0: p.y, x: p.x, y: p.y }; cv.setPointerCapture(e.pointerId);
+    }
+    function openMenu() { if (S.mode !== 'play') return; S.mode = 'menu'; stick = null; keys.clear(); menuSheet.hidden = false; }
+    function resume() { menuSheet.hidden = true; S.big = false; if (S.mode !== 'menu') return; S.mode = 'play'; P.inv = Math.max(P.inv, .4); if (S.pending) api.after(.1, levelPick); }
+    if (TOUCH) {
+      root.classList.add('dgn-touch');
+      menuBtn = document.createElement('button'); menuBtn.type = 'button'; menuBtn.className = 'dgn-menu'; menuBtn.textContent = 'เมนู'; menuBtn.setAttribute('aria-label', 'เมนู: แผนที่ และออกจากดันเจี้ยน');
+      menuBtn.onclick = openMenu; press(menuBtn);
+      menuSheet = document.createElement('div'); menuSheet.className = 'dgn-sheet'; menuSheet.hidden = true;
+      menuSheet.innerHTML = '<div class="pn" role="dialog" aria-label="เมนู"><b>พักเกมอยู่</b><button type="button" class="go">เล่นต่อ</button><button type="button" class="mp">ดูแผนที่</button><button type="button" class="q">ออกจากดันเจี้ยน</button></div>';
+      menuSheet.querySelectorAll('button').forEach(press);
+      menuSheet.querySelector('.go').onclick = resume; menuSheet.querySelector('.mp').onclick = () => { menuSheet.hidden = true; S.big = true; };
+      menuSheet.querySelector('.q').onclick = () => quit(); menuSheet.addEventListener('pointerdown', e => { if (e.target === menuSheet) resume(); });
+      hud.append(menuBtn, menuSheet);
+      safeProbe = document.createElement('div');
+      safeProbe.style.cssText = 'position:fixed;left:0;top:0;width:0;height:0;visibility:hidden;pointer-events:none;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)';
+      root.appendChild(safeProbe);
+    }
+    function layout() {
+      if (!TOUCH || !root.isConnected) return;
+      const par = root.parentElement, cs = getComputedStyle(par), vh = visualViewport ? visualViewport.height : innerHeight;
+      const r0 = root.getBoundingClientRect(), fixed = cs.position === 'fixed' || cs.position === 'absolute';
+      // the hub's game mode makes the parent fill the viewport; until then use the room below the page header
+      // (hub game mode: #stage is fixed full-screen with safe-area padding and .game is flex:1, so take the root's own box)
+      if (fixed && root.style.height) root.style.height = '';
+      const h = Math.round(Math.max(320, fixed ? root.getBoundingClientRect().height : vh - (r0.top + scrollY) - 8));
+      const w = Math.round(root.clientWidth || r0.width), nd = Math.min(2, devicePixelRatio || 1);
+      if (!fixed && root.style.height !== h + 'px') root.style.height = h + 'px';
+      if (w !== W || h !== H || nd !== dpr || cv.width !== Math.round(w * nd)) { W = w; H = h; dpr = nd; cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.imageSmoothingEnabled = false;
+      // zoom out until 7+ tiles show each side of the player (15.5 across), never in past the desktop view
+      Z = Math.min(1, W / (15.5 * T), H / (9 * T)); VW = W / Z; VH = H / Z;
+      const ps = getComputedStyle(safeProbe), rr = cv.getBoundingClientRect();
+      L.sl = Math.max(0, parseFloat(ps.paddingLeft) - rr.left); L.st = Math.max(0, parseFloat(ps.paddingTop) - rr.top);
+      L.sr = Math.max(0, parseFloat(ps.paddingRight) - (innerWidth - rr.right)); L.sb = Math.max(0, parseFloat(ps.paddingBottom) - (vh - rr.bottom));
+      L.sc = PH.scale(); L.btn = PH.btn(); L.left = PH.left();
+      root.style.setProperty('--s', L.sc); root.style.setProperty('--b', L.btn + 'px');
+      const m = L.menu; m.s = L.btn; m.x = W - L.sr - 8 - m.s; m.y = L.st + Math.max(4, (56 - m.s) / 2);
+      Object.assign(menuBtn.style, { left: m.x + 'px', top: m.y + 'px', width: m.s + 'px', height: m.s + 'px' });
+      L.hudX = L.sl + 56 + 10; L.hudR = m.x - 10; L.hudH = L.st + 58; L.xpY = L.st + 62; L.bossY = L.st + 96;
+      const d = L.dodge; d.r = Math.round(Math.max(L.btn / 2, 44 * L.sc)); d.x = L.left ? L.sl + 20 + d.r : W - L.sr - 20 - d.r; d.y = H - L.sb - 24 - d.r;
+      const hm = L.home; hm.r = Math.round(46 * L.sc); hm.x = L.left ? W - L.sr - 24 - hm.r : L.sl + 24 + hm.r; hm.y = H - L.sb - 10 - 2 * 32 - 14 - hm.r;
+      const rw = L.row; rw.b = H - L.sb - 10; rw.x = L.left ? d.x + d.r + 12 : L.sl + 12; rw.w = L.left ? W - L.sr - 12 - rw.x : d.x - d.r - 12 - rw.x;
+      L.edge.l = L.sl + 22; L.edge.r = W - L.sr - 22; L.edge.t = L.st + 124; L.edge.b = H - L.sb - 22; L.msgY = L.st + 150;
+      if (g) { cam = DE.camera(VW, VH, g.w * T, g.h * T, true); cam.follow(P.x, P.y - 20, 0); }
+      lgW = -1; paintHud(); draw();
+    }
+    let relay = 0; const relayout = () => { if (!relay) relay = requestAnimationFrame(() => { relay = 0; layout(); }); };
+    let ro = null, offPhone = null;
+    if (TOUCH) { addEventListener('resize', relayout); addEventListener('orientationchange', relayout); if (window.visualViewport) visualViewport.addEventListener('resize', relayout);
+      if (window.ResizeObserver) { ro = new ResizeObserver(relayout); ro.observe(root.parentElement || root); } offPhone = PH.on(relayout);
+      if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => paintHud()); }
+    const unTouch = () => { removeEventListener('resize', relayout); removeEventListener('orientationchange', relayout); if (window.visualViewport) visualViewport.removeEventListener('resize', relayout);
+      if (ro) ro.disconnect(); if (offPhone) offPhone(); };
+    // the HUD is painted once per change into two small canvases and blitted each frame (no per-frame text work)
+    const mkC = (c, w, h) => { c ||= document.createElement('canvas'); const cw = Math.max(1, Math.round(w * dpr)), ch = Math.max(1, Math.round(h * dpr));
+      if (c.width !== cw || c.height !== ch) { c.width = cw; c.height = ch; } const x = c.getContext('2d'); x.setTransform(1, 0, 0, 1, 0, 0); x.clearRect(0, 0, cw, ch); x.setTransform(dpr, 0, 0, dpr, 0, 0); x.imageSmoothingEnabled = false; return [c, x]; };
+    function paintHud() {
+      if (!TOUCH) return;
+      const vis = S.mode === 'play' || S.mode === 'menu' || S.mode === 'pick' || S.mode === 'trans'; if (menuBtn && menuShown !== vis) { menuShown = vis; menuBtn.hidden = !vis; }
+      if (!W || !g) return;
+      // top band: hearts + score, then floor · level · door goal
+      const [c, x] = mkC(hudC, W, L.hudH); hudC = c; const x0 = L.hudX, avail = L.hudR - x0, y1 = L.st + 18, y2 = L.st + 42;
+      const goal = open ? 'ประตูเปิดแล้ว' : F.purpose === 'lair' ? 'ปราบบอส' : `ปราบ ${Math.min(S.fk, S.target)}/${S.target}`;
+      x.font = '700 15px Kanit, sans-serif'; const wB = x.measureText(`B${S.depth}`).width, wL = x.measureText(`Lv ${S.lv}`).width, wG = x.measureText(goal).width;
+      const row2 = wB + wL + wG + 28, many = P.max * 16 > avail * .6, hw = many ? 16 + 44 : P.max * 16;
+      x.font = '600 13px Kanit, sans-serif'; const sc = `คะแนน ${fmt(S.score)}`, wS = x.measureText(sc).width, showS = hw + 12 + wS <= avail;
+      const bw = Math.min(avail, Math.max(row2, hw + (showS ? 12 + wS : 0))) + 16;
+      rrect(x, x0 - 8, L.st + 4, bw, 50, 10, 'rgba(12,8,20,.62)');
+      const hp = pxa('heart');
+      if (many) { drawPixAt(x, hp, x0 + 7, y1 + 7, 2); txt(x, `${P.hp}/${P.max}`, x0 + 18, y1, 15, '#fff', 'left', 700); }
+      else for (let i = 0; i < P.max; i++) drawPixAt(x, hp, x0 + 7 + i * 16, y1 + 7, 2, { alpha: i < P.hp ? 1 : .25 });
+      if (showS) txt(x, sc, x0 + hw + 12, y1, 13, 'rgba(255,255,255,.85)', 'left', 600);
+      let gx = x0; txt(x, `B${S.depth}`, gx, y2, 15, PAL.yel, 'left', 700); gx += wB + 14;
+      txt(x, `Lv ${S.lv}`, gx, y2, 15, '#fff', 'left', 700); gx += wL + 14; txt(x, goal, gx, y2, 15, open ? '#3fd29b' : '#fff', 'left', 700);
+      // weapon + passive row above the bottom edge, beside the dodge button
+      const ic = 30, gap = 4, A = Object.entries(S.arms), Pz = Object.entries(S.pas), one = (A.length + Pz.length) * (ic + gap) + 8 <= L.row.w;
+      rowH = A.length + Pz.length ? (one || !Pz.length || !A.length ? ic : ic * 2 + gap) : 0;
+      const [rc, rx] = mkC(rowC, Math.max(1, L.row.w), Math.max(1, rowH)); rowC = rc;
+      const cell = (tid, lab, evo, cx, cy) => { rrect(rx, cx, cy, ic, ic, 7, evo ? 'rgba(199,125,10,.85)' : 'rgba(12,8,20,.62)'); const t2 = tile(tid); if (t2) rx.drawImage(t2, cx + 3, cy + 2, 24, 24);
+        rx.font = '700 10px Kanit, sans-serif'; const lw = rx.measureText(lab).width + 6; rrect(rx, cx + ic - lw + 2, cy + ic - 11, lw, 12, 5, evo ? '#ff9f1c' : '#2b2140'); txt(rx, lab, cx + ic - lw / 2 + 2, cy + ic - 5, 10, '#fff', 'center', 700); };
+      let cx = 0; const yA = rowH - ic, yP = one ? yA : 0;
+      for (const [id, a] of A) { const D = DD.ARMS[id]; cell(a.evo ? D.evo.tile : D.tile, a.evo ? 'EVO' : String(a.lv), a.evo, cx, yA); cx += ic + gap; }
+      if (!one) cx = 0; else cx += 8;
+      for (const [id, n] of Pz) { cell(DD.PASSIVES[id].icon, String(n), false, cx, yP); cx += ic + gap; }
+    }
+    // an edge marker for each warning the player can't see: spawn swirls (with the time left) and wind-ups (owner rule: warnings are honest)
+    let ex = 0, ey = 0, ea = 0, mkN = 0;
+    function edgeAt(sx, sy, pad) { const E = L.edge, l = E.l + pad, t = E.t + pad, r = E.r - pad, b = E.b - pad, cx = (l + r) / 2, cy = (t + b) / 2;
+      ea = Math.atan2(sy - cy, sx - cx); const c = Math.cos(ea), n = Math.sin(ea), k = Math.min(c ? (r - cx) / Math.abs(c) : 1e9, n ? (b - cy) / Math.abs(n) : 1e9); ex = cx + c * k; ey = cy + n * k; }
+    const inView = (sx, sy) => sx > L.edge.l + 2 && sx < L.edge.r - 2 && sy > L.edge.t + 2 && sy < L.edge.b - 2;
+    function marker(wx, wy, col, k) {
+      const sx = (wx - cam.x) * Z, sy = (wy - cam.y) * Z; if (inView(sx, sy)) return; mkN++;
+      edgeAt(sx, sy, 14); ctx.save(); ctx.translate(ex, ey);
+      ctx.fillStyle = 'rgba(12,8,20,.8)'; ctx.beginPath(); ctx.arc(0, 0, 15, 0, 6.284); ctx.fill();
+      ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.stroke();
+      if (k >= 0) { ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(0, 0, 11, -1.5708, -1.5708 + 6.2832 * k); ctx.stroke(); }
+      ctx.fillStyle = col; ctx.globalAlpha = k >= 0 ? 1 : .6 + Math.sin(S.t * 14) * .4; ctx.beginPath(); ctx.arc(0, 0, k >= 0 ? 4 : 6, 0, 6.284); ctx.fill(); ctx.globalAlpha = 1;
+      ctx.rotate(ea); ctx.beginPath(); ctx.moveTo(25, 0); ctx.lineTo(16, -7); ctx.lineTo(16, 7); ctx.closePath(); ctx.fill(); ctx.restore();
+    }
+    function drawMarkers() {
+      mkN = 0; if (S.mode !== 'play' && S.mode !== 'menu') return;
+      for (let i = 0; i < swirls.length; i++) { const w = swirls[i]; marker(w.x, w.y - 6, '#a05aff', w.t / DD.WAVE.warn); }
+      for (let i = 0; i < mons.length; i++) { const m = mons[i]; if (m.state === 'aim' || m.state === 'wind') marker(m.x, m.y - m.d.r, '#ff4d6d', -1); }
+    }
+    function touchUI() {
+      if (hudC) ctx.drawImage(hudC, 0, 0, W, L.hudH);
+      // XP bar under the HUD band
+      const need = DD.XP.need(S.lv), k = Math.min(1, S.xp / need), xw = L.hudR - L.hudX + 8;
+      ctx.fillStyle = 'rgba(12,8,20,.75)'; ctx.fillRect(L.hudX - 8, L.xpY, xw, 7); ctx.fillStyle = '#4cc3ff'; ctx.fillRect(L.hudX - 7, L.xpY + 1, (xw - 2) * k, 5);
+      if (rowC && rowH) ctx.drawImage(rowC, L.row.x, L.row.b - rowH, Math.max(1, L.row.w), rowH);
+      if (S.mode !== 'play') return;
+      // stick: drawn under the thumb; a faint ring shows where it lives until the first few seconds have passed
+      const hm = L.home, R2 = hm.r;
+      if (stick) { const dx = stick.x - stick.x0, dy = stick.y - stick.y0, d = Math.hypot(dx, dy), q = d > R2 ? R2 / d : 1;
+        ctx.fillStyle = 'rgba(12,8,20,.35)'; ctx.beginPath(); ctx.arc(stick.x0, stick.y0, R2, 0, 6.284); ctx.fill();
+        ctx.strokeStyle = 'rgba(255,255,255,.8)'; ctx.lineWidth = 3; ctx.stroke();
+        ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(stick.x0 + dx * q, stick.y0 + dy * q, 20 * L.sc, 0, 6.284); ctx.fill(); }
+      else { ctx.strokeStyle = 'rgba(255,255,255,.28)'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(hm.x, hm.y, R2, 0, 6.284); ctx.stroke();
+        ctx.fillStyle = 'rgba(255,255,255,.22)'; ctx.beginPath(); ctx.arc(hm.x, hm.y, 20 * L.sc, 0, 6.284); ctx.fill();
+        if (S.t < 8) txt(ctx, 'วางนิ้วแล้วลากเพื่อเดิน', L.left ? W - L.sr - 14 : L.sl + 14, hm.y - R2 - 14, 13, 'rgba(255,255,255,.85)', L.left ? 'right' : 'left', 600); }
+      // dodge: lights up the moment it's pressed, then shows its cooldown
+      const d = L.dodge, s = st(), on = dodgeT > 0;
+      ctx.fillStyle = on ? PAL.yel : 'rgba(43,33,64,.72)'; ctx.beginPath(); ctx.arc(d.x, d.y, on ? d.r + 3 : d.r, 0, 6.284); ctx.fill();
+      ctx.strokeStyle = on ? '#2b2140' : '#fff'; ctx.lineWidth = 3; ctx.stroke();
+      if (P.dashCd > 0 && !on) { ctx.fillStyle = 'rgba(12,8,20,.55)'; ctx.beginPath(); ctx.moveTo(d.x, d.y); ctx.arc(d.x, d.y, d.r - 2, -1.5708, -1.5708 + 6.2832 * (P.dashCd / s.dashCd)); ctx.fill(); }
+      txt(ctx, 'หลบ', d.x, d.y + 1, Math.round(18 * L.sc), on ? '#2b2140' : '#fff', 'center', 800);
+    }
 
     // ---------- simulation ----------
     const dname = (x, y) => Math.abs(x) > Math.abs(y) ? (x > 0 ? 'right' : 'left') : (y < 0 ? 'up' : 'down');
@@ -343,7 +510,7 @@ const Dungeon = {
       let mx = 0, my = 0;
       if (keys.has('a') || keys.has('arrowleft')) mx--; if (keys.has('d') || keys.has('arrowright')) mx++;
       if (keys.has('w') || keys.has('arrowup')) my--; if (keys.has('s') || keys.has('arrowdown')) my++;
-      if (stick) { const sx = stick.x - stick.x0, sy = stick.y - stick.y0, d = Math.hypot(sx, sy); if (d > 8) { mx = sx / Math.max(d, 40); my = sy / Math.max(d, 40); } }
+      if (stick) { const sx = stick.x - stick.x0, sy = stick.y - stick.y0, d = Math.hypot(sx, sy), R2 = TOUCH ? L.home.r : 40; if (d > (TOUCH ? 8 * L.sc : 8)) { mx = sx / Math.max(d, R2); my = sy / Math.max(d, R2); } }
       const ml = Math.hypot(mx, my); P.moving = ml > .1;
       if (P.moving) { mx /= Math.max(1, ml); my /= Math.max(1, ml); const n = Math.hypot(mx, my); P.ax = mx / n; P.ay = my / n; P.dir = dname(mx, my); }
       const sp = P.dash > 0 ? PL.dash.sp : PL.sp * st().speed;
@@ -401,7 +568,7 @@ const Dungeon = {
           hurt(m.d.dmg + DD.scale(S.depth).dmg, m.x, m.y); if (ai === 'pack' || ai === 'mimic') { m.state = 'back'; m.st = .5; } }
       }
       // keep monsters from piling onto one spot (only awake, nearby ones)
-      const near = mons.filter(m => m.state !== 'sleep' && m.state !== 'disguised' && Math.abs(m.x - P.x) < W && Math.abs(m.y - P.y) < H);
+      const near = mons.filter(m => m.state !== 'sleep' && m.state !== 'disguised' && Math.abs(m.x - P.x) < VW && Math.abs(m.y - P.y) < VH);
       for (let i = 0; i < near.length; i++) for (let j = i + 1; j < near.length; j++) { const a = near[i], b = near[j], dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy), min = (a.d.r + b.d.r) * .8;
         if (d > 0 && d < min) { const p = (min - d) / 2 / d; if (!a.d.boss) DE.move(g, T, a, -dx * p, -dy * p, 10); if (!b.d.boss) DE.move(g, T, b, dx * p, dy * p, 10); } }
       // shots
@@ -459,16 +626,14 @@ const Dungeon = {
       fxS.pre(ctx); ctx.imageSmoothingEnabled = false;
       ctx.fillStyle = '#0c0812'; ctx.fillRect(0, 0, W, H);
       if (!g) { fxS.post(ctx, W, H); return; }
-      ctx.drawImage(mapC, cam.x / DD.SCALE, cam.y / DD.SCALE, W / DD.SCALE, H / DD.SCALE, 0, 0, W, H);
-      ctx.save(); ctx.translate(-cam.x, -cam.y); fxW.pre(ctx);
+      blit(mapC, cam.x / DD.SCALE, cam.y / DD.SCALE, VW / DD.SCALE, VH / DD.SCALE, DD.SCALE * Z);
+      ctx.save(); if (Z !== 1) ctx.scale(Z, Z); ctx.translate(-cam.x, -cam.y); fxW.pre(ctx);
       // floor layer: door, spikes, telegraphs
       dk(open ? DD.T.arch : DD.T.door, (F.exit.x + .5) * T, (F.exit.y + 1) * T);
       if (open) { txt(ctx, 'ลงต่อ', (F.exit.x + .5) * T, (F.exit.y + 1) * T + 18 + Math.abs(Math.sin(S.t * 5)) * 4, 14, PAL.yel, 'center', 800); }
       for (const s of spikes) if (cam.sees(s.x, s.y)) { dk(DD.T.spikes, s.x, s.y, DD.SCALE, { alpha: s.up ? 1 : s.warn ? (Math.floor(S.t * 12) % 2 ? .9 : .45) : .4 });
         if (s.up) { ctx.fillStyle = 'rgba(255,255,255,.35)'; ctx.fillRect(s.x - T / 2 + 6, s.y - T + 6, T - 12, T - 12); } }
-      for (const w of swirls) if (cam.sees(w.x, w.y)) { const k = 1 - w.t / DD.WAVE.warn; ctx.save(); ctx.translate(w.x, w.y - 6); ctx.rotate(S.t * 6);
-        ctx.strokeStyle = `rgba(160,90,255,${.35 + k * .55})`; ctx.lineWidth = 3; for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.arc(0, 0, 8 + k * 12, i * 2.09, i * 2.09 + 1.3); ctx.stroke(); }
-        ctx.fillStyle = `rgba(160,90,255,${.15 + k * .25})`; ctx.beginPath(); ctx.ellipse(0, 0, 14 + k * 10, 8 + k * 5, 0, 0, 7); ctx.fill(); ctx.restore(); }
+      for (const w of swirls) if (cam.sees(w.x, w.y)) drawSwirl(w);
       for (const n of novas) { ctx.strokeStyle = `rgba(120,200,255,${.8 * (1 - n.t / (n.dur + .15))})`; ctx.lineWidth = 6; ctx.beginPath(); ctx.ellipse(P.x, P.y - 14, n.r, n.r * .75, 0, 0, 7); ctx.stroke(); }
       for (const qk of quakes) { const k = Math.min(1, qk.t / .12); ctx.fillStyle = `rgba(199,125,10,${.35 * (1 - qk.t / .5)})`; ctx.beginPath(); ctx.ellipse(qk.x, qk.y, qk.r * k, qk.r * k * .7, 0, 0, 7); ctx.fill();
         ctx.strokeStyle = `rgba(255,210,63,${.8 * (1 - qk.t / .5)})`; ctx.lineWidth = 3; ctx.stroke(); }
@@ -504,22 +669,37 @@ const Dungeon = {
       for (const o of shots) { if (o.kind === 'knife') { ctx.save(); ctx.translate(o.x, o.y); ctx.rotate(o.a + Math.PI / 2); dk(103, 0, 10, 2.2); ctx.restore(); } else drawPixAt(ctx, pxa(o.kind === 'fire' ? 'd_fire' : 'd_orb'), o.x, o.y + 8, 3); }
       fxW.post(ctx, g.w * T, g.h * T); ctx.restore();
       // fog, torchlight, then the screen layer
-      ctx.imageSmoothingEnabled = true; ctx.drawImage(fog.c, cam.x / T, cam.y / T, W / T, H / T, 0, 0, W, H); ctx.imageSmoothingEnabled = false;
-      const sx = P.x - cam.x, sy = P.y - 24 - cam.y, lg = ctx.createRadialGradient(sx, sy, 90, sx, sy, Math.max(W, H) * .75);
-      lg.addColorStop(0, 'rgba(12,8,20,0)'); lg.addColorStop(1, `rgba(12,8,20,${Math.min(.62, .25 + S.depth * .03)})`); ctx.fillStyle = lg; ctx.fillRect(0, 0, W, H);
-      if (!S.big) { drawPointer(); drawBossBar(); } drawMinimap();
-      if (coarse && S.mode === 'play' && !S.big) touchUI();
-      drawXP();
-      if (stick) { ctx.globalAlpha = .5; ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(stick.x0, stick.y0, 40, 0, 7); ctx.stroke(); ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(stick.x, stick.y, 16, 0, 7); ctx.fill(); ctx.globalAlpha = 1; }
-      if (!S.big) txt(ctx, 'Art: Kenney Tiny Dungeon (CC0) · ตัวละคร LimeZu', 8, H - 10, 11, 'rgba(255,255,255,.7)', 'left', 400);
+      ctx.imageSmoothingEnabled = true; blit(fog.c, cam.x / T, cam.y / T, VW / T, VH / T, T * Z); ctx.imageSmoothingEnabled = false;
+      // a spawn warning inside unexplored fog is still shown (it would otherwise be hidden under the fog)
+      let fogged = false; for (let i = 0; i < swirls.length; i++) { const w = swirls[i]; if (!fog.seen[Math.floor(w.y / T) * g.w + Math.floor(w.x / T)] && cam.sees(w.x, w.y)) { fogged = true; break; } }
+      if (fogged) { ctx.save(); if (Z !== 1) ctx.scale(Z, Z); ctx.translate(-cam.x, -cam.y);
+        for (let i = 0; i < swirls.length; i++) { const w = swirls[i]; if (!fog.seen[Math.floor(w.y / T) * g.w + Math.floor(w.x / T)] && cam.sees(w.x, w.y)) drawSwirl(w); } ctx.restore(); }
+      // torchlight: one cached gradient around the origin, moved to the player
+      if (lgW !== W || lgH !== H || lgZ !== Z || lgD !== S.depth) { lgW = W; lgH = H; lgZ = Z; lgD = S.depth; lg = ctx.createRadialGradient(0, 0, 90 * Z, 0, 0, Math.max(W, H) * .75);
+        lg.addColorStop(0, 'rgba(12,8,20,0)'); lg.addColorStop(1, `rgba(12,8,20,${Math.min(.62, .25 + S.depth * .03)})`); }
+      const sx = (P.x - cam.x) * Z, sy = (P.y - 24 - cam.y) * Z; ctx.translate(sx, sy); ctx.fillStyle = lg; ctx.fillRect(-sx, -sy, W, H); ctx.translate(-sx, -sy);
+      if (!S.big) { drawPointer(); drawMarkers(); drawBossBar(); }
+      if (!TOUCH) {
+        drawMinimap(); drawXP();
+        if (stick) { ctx.globalAlpha = .5; ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(stick.x0, stick.y0, 40, 0, 7); ctx.stroke(); ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(stick.x, stick.y, 16, 0, 7); ctx.fill(); ctx.globalAlpha = 1; }
+        if (!S.big) txt(ctx, 'Art: Kenney Tiny Dungeon (CC0) · ตัวละคร LimeZu', 8, H - 10, 11, 'rgba(255,255,255,.7)', 'left', 400);
+      } else if (S.big) { drawMinimap();
+        txt(ctx, 'แตะที่ไหนก็ได้เพื่อกลับไปเล่น', W / 2, H - L.sb - 40, 14, '#fff', 'center', 600);
+        txt(ctx, 'Art: Kenney Tiny Dungeon (CC0) · ตัวละคร LimeZu', W / 2, H - L.sb - 16, 11, 'rgba(255,255,255,.7)', 'center', 400); }
+      else if (S.mode === 'intro') txt(ctx, 'Art: Kenney Tiny Dungeon (CC0) · ตัวละคร LimeZu', W / 2, H - L.sb - 16, 11, 'rgba(255,255,255,.7)', 'center', 400);
+      else touchUI();
       fxS.post(ctx, W, H);
     }
-    function touchUI() {
-      const d = BTN.dash, s = st();
-      ctx.save(); ctx.globalAlpha = .62; ctx.fillStyle = '#2b2140'; ctx.beginPath(); ctx.arc(d.x, d.y, d.r, 0, 7); ctx.fill(); ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; ctx.stroke(); ctx.globalAlpha = 1;
-      if (P.dashCd > 0) { ctx.fillStyle = 'rgba(12,8,20,.55)'; ctx.beginPath(); ctx.moveTo(d.x, d.y); ctx.arc(d.x, d.y, d.r - 2, -Math.PI / 2, -Math.PI / 2 + 6.283 * (P.dashCd / s.dashCd)); ctx.fill(); }
-      txt(ctx, 'หลบ', d.x, d.y + 1, 18, '#fff', 'center', 800); ctx.restore();
+    let lg = null, lgW = -1, lgH = 0, lgZ = 0, lgD = 0;
+    // draw part of an offscreen canvas (map, fog) at k screen px per source px, clipped to the image: a camera that
+    // centres a small map asks for pixels outside it, which some Safari versions refuse to draw at all
+    function blit(img, sx, sy, sw, sh, k) {
+      const x0 = Math.max(0, sx), y0 = Math.max(0, sy), x1 = Math.min(img.width, sx + sw), y1 = Math.min(img.height, sy + sh); if (x1 <= x0 || y1 <= y0) return;
+      ctx.drawImage(img, x0, y0, x1 - x0, y1 - y0, (x0 - sx) * k, (y0 - sy) * k, (x1 - x0) * k, (y1 - y0) * k);
     }
+    function drawSwirl(w) { const k = 1 - w.t / DD.WAVE.warn; ctx.save(); ctx.translate(w.x, w.y - 6); ctx.rotate(S.t * 6);
+      ctx.strokeStyle = `rgba(160,90,255,${.35 + k * .55})`; ctx.lineWidth = 3; for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.arc(0, 0, 8 + k * 12, i * 2.09, i * 2.09 + 1.3); ctx.stroke(); }
+      ctx.fillStyle = `rgba(160,90,255,${.15 + k * .25})`; ctx.beginPath(); ctx.ellipse(0, 0, 14 + k * 10, 8 + k * 5, 0, 0, 7); ctx.fill(); ctx.restore(); }
     // XP bar across the top, Vampire-Survivors style
     function drawXP() {
       const need = DD.XP.need(S.lv), k = Math.min(1, S.xp / need);
@@ -553,15 +733,14 @@ const Dungeon = {
       if (open) { tx = (F.exit.x + .5) * T; ty = (F.exit.y + 1) * T; }
       else if (relic) { tx = relic.x; ty = relic.y; col = PAL.yel; }
       else if (bossChest) { tx = bossChest.x; ty = bossChest.y; col = PAL.yel; }
-      if (tx === null) return; const sx = tx - cam.x, sy = ty - cam.y; if (sx > 30 && sx < W - 30 && sy > 30 && sy < H - 30) return;
-      // where the ray from the screen centre meets a box inset 28 px from the edges
-      const cx = W / 2, cy = H / 2, a = Math.atan2(sy - cy, sx - cx), c = Math.cos(a), n = Math.sin(a);
-      const t = Math.min(c ? (W / 2 - 28) / Math.abs(c) : 1e9, n ? (H / 2 - 28) / Math.abs(n) : 1e9), px = cx + c * t, py = cy + n * t;
-      ctx.save(); ctx.translate(px, py); ctx.rotate(a); ctx.fillStyle = col; ctx.strokeStyle = '#2b2140'; ctx.lineWidth = 3; ctx.globalAlpha = .7 + Math.sin(S.t * 6) * .3;
+      if (tx === null) return; const sx = (tx - cam.x) * Z, sy = (ty - cam.y) * Z; if (inView(sx, sy)) return;
+      // where the ray from the view centre meets the edge box (desktop: inset 28 px from the canvas edges)
+      edgeAt(sx, sy, 0);
+      ctx.save(); ctx.translate(ex, ey); ctx.rotate(ea); ctx.fillStyle = col; ctx.strokeStyle = '#2b2140'; ctx.lineWidth = 3; ctx.globalAlpha = .7 + Math.sin(S.t * 6) * .3;
       ctx.beginPath(); ctx.moveTo(16, 0); ctx.lineTo(-10, -12); ctx.lineTo(-4, 0); ctx.lineTo(-10, 12); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore();
     }
     function drawMinimap() {
-      const big = S.big, s = big ? Math.max(3, Math.floor(Math.min((W - 40) / g.w, (H - 80) / g.h))) : mmScale(), w = g.w * s, h = g.h * s;
+      const big = S.big, s = big ? Math.max(TOUCH ? 2 : 3, Math.floor(TOUCH ? Math.min((W - L.sl - L.sr - 24) / g.w, (H - L.st - L.sb - 220) / g.h) : Math.min((W - 40) / g.w, (H - 80) / g.h))) : mmScale(), w = g.w * s, h = g.h * s;
       const x = big ? (W - w) / 2 : W - w - 10, y = big ? (H - h) / 2 : 18;
       if (big) { ctx.fillStyle = 'rgba(12,8,20,.72)'; ctx.fillRect(0, 0, W, H); }
       rrect(ctx, x - 5, y - 5, w + 10, h + 10, 8, big ? '#1b1420' : 'rgba(12,8,20,.6)', 'rgba(255,255,255,.35)');
@@ -574,10 +753,11 @@ const Dungeon = {
       if (big) { txt(ctx, `B${S.depth} · ${F.name} · ${F.w}×${F.h} ช่อง · สำรวจแล้ว ${Math.round(fog.seen.reduce((a, v, i) => a + (v && g.cells[i] === 1 ? 1 : 0), 0) / Math.max(1, g.cells.reduce((a, v) => a + (v === 1), 0)) * 100)}%`, W / 2, y - 18, 14, '#fff', 'center', 600);
         // legend under the map
         const items = [['#ffd23f', 'คุณ'], ['#3fd29b', 'ประตู (เปิด)'], ['#c77d0a', 'ประตู (ปิด)'], ['#4cc3ff', 'แท่นบูชา'], ['#ff4d6d', 'มอนสเตอร์']], ly = y + h + 18;
-        let lx = W / 2 - items.length * 92 / 2; for (const [c, t] of items) { ctx.fillStyle = c; ctx.fillRect(lx, ly - 4, 8, 8); txt(ctx, t, lx + 13, ly, 12, '#fff', 'left', 400); lx += 92; } }
+        const per = W < items.length * 92 + 20 ? 3 : items.length, cw = per < items.length ? Math.floor((W - L.sl - L.sr - 24) / per) : 92, lx0 = W / 2 - per * cw / 2;
+        items.forEach(([c, t], i) => { const lx = lx0 + (i % per) * cw, ly2 = ly + Math.floor(i / per) * 20; ctx.fillStyle = c; ctx.fillRect(lx, ly2 - 4, 8, 8); txt(ctx, t, lx + 13, ly2, 12, '#fff', 'left', 400); }); }
     }
     function drawBossBar() {
-      if (!boss) return; const w = Math.min(420, W - 40), x = (W - w) / 2, y = H - 46;
+      if (!boss) return; const w = Math.min(420, W - 40), x = (W - w) / 2, y = TOUCH ? L.bossY : H - 46;
       txt(ctx, boss.d.name, W / 2, y - 12, 15, '#fff', 'center', 800);
       rrect(ctx, x, y, w, 14, 6, '#2b2140', '#fff'); ctx.fillStyle = PAL.red; ctx.fillRect(x + 2, y + 2, (w - 4) * Math.max(0, boss.hp / boss.max), 10);
     }
@@ -586,17 +766,18 @@ const Dungeon = {
     const perf = { n: 0, ms: 0, max: 0 };
     api.loop(dt => {
       const t0 = TEST ? performance.now() : 0;
-      const d = fxS.step(dt); fxW.step(dt);
+      const d = fxS.step(dt); fxW.step(dt); if (dodgeT > 0) dodgeT -= dt;
       if (S.mode === 'play' && d) step(d);
       else if (S.mode === 'trans') { trans -= dt; if (trans <= 0) { S.mode = 'play'; build(S.depth + 1); } }
       if (hudSoon > 0 && (hudSoon -= dt) <= 0) setHud();
+      if (TOUCH && menuShown !== (S.mode === 'play' || S.mode === 'menu' || S.mode === 'pick' || S.mode === 'trans')) paintHud();
       if (g) cam.follow(P.x, P.y - 20, dt);
       draw();
       if (TEST && S.mode === 'play') { const ms = performance.now() - t0; perf.n++; perf.ms += ms; perf.max = Math.max(perf.max, ms); }
     });
     // the intro screen shows today's first floor behind the card
     (function ready() { if (!tile(0)) return setTimeout(ready, 40); build(1); S.mode = 'intro'; fog.revealAll(); })();
-    setHud(); draw();
+    layout(); setHud(); draw();
     const best = daily('best', 0);
     // start floor: ?floor= for tests, else the checkpoint picked on the intro card (B1, or the floor after a boss beaten today)
     function begin(id) {
@@ -617,13 +798,14 @@ const Dungeon = {
     api.intro({ how: `<p><b>ดันเจี้ยนประจำวัน ${day}</b> · แผนที่ใหม่ทุกวัน ทุกคนได้ดันเจี้ยนเดียวกัน${best ? ` · สถิติวันนี้ของคุณ <b>B${best}</b>` : ''}</p>
       <p><b>คุณแค่เดินกับหลบ อาวุธโจมตีเอง</b> · เก็บอัญมณีเพื่อเลเวลอัป แล้วเลือกอาวุธหรือพลังเพิ่ม (มีได้อย่างละ 4) · อาวุธ Lv 5 + พลังคู่ของมัน = วิวัฒนาการจากหีบบอส</p>
       <p>ปราบให้ครบเป้าเพื่อเปิดประตู มอนสเตอร์จะโผล่ออกมาเป็นระลอก (มีวงม่วงเตือนก่อนเสมอ) · ทุก 5 ชั้นมีบอส · ชั้นหลังบอสเป็นห้องสมบัติ</p>
-      <p>คอม: WASD / ลูกศร เดิน · Shift หรือ Space = หลบ · M = แผนที่ · ตอนเลือก: 1 2 3 · R = สุ่มใหม่<br>มือถือ: ลากนิ้วตรงไหนก็ได้เพื่อเดิน · ปุ่ม "หลบ" มุมขวาล่าง · แตะแผนที่มุมขวาบนเพื่อขยาย</p>
+      <p>${TOUCH ? `วางนิ้วที่ครึ่ง${L.left ? 'ขวา' : 'ซ้าย'}ของจอแล้วลากเพื่อเดิน · ปุ่ม "หลบ" มุม${L.left ? 'ซ้าย' : 'ขวา'}ล่าง · ปุ่ม "เมนู" มุมขวาบน มีแผนที่และปุ่มออก · ตอนเลือกพลัง แตะการ์ดที่ต้องการ`
+        : 'WASD / ลูกศร เดิน · Shift หรือ Space = หลบ · M = แผนที่ · ตอนเลือก: 1 2 3 · R = สุ่มใหม่'}</p>
       ${cpHTML ? `<p><b>จุดเช็กพอยต์วันนี้</b> · ปราบบอสแล้ว เริ่มชั้นถัดไปได้ (ได้เลเวลชดเชย)</p>${cpHTML}` : ''}
       <p class="muted">คลังอาวุธ: พบแล้ว ${found}/${Object.keys(DD.ARMS).length} อาวุธ · วิวัฒนาการแล้ว ${Object.keys(codex.evo).length} · ลึกสุด B${codex.best} · เล่นมาแล้ว ${codex.runs} รอบ${perk('pick') ? '' : ' · ถึงขั้นการต่อสู้ 1 จะเลือกอาวุธเริ่มต้นได้'}</p>`,
       buttons: startArms.map((id, i) => ({ label: startArms.length > 1 ? `เริ่มด้วย${DD.ARMS[id].name}` : 'ลงดันเจี้ยน', primary: i === 0, go() { begin(id); } })) });
 
     if (TEST) window.__dgn = { root,
-      state: () => ({ mode: S.mode, depth: S.depth, purpose: F && F.purpose, size: F && [F.w, F.h], hp: P.hp, max: P.max, left, open, mons: mons.length, score: S.score, lv: S.lv, xp: S.xp, arms: S.arms, pas: S.pas, fk: S.fk, target: S.target, swirls: swirls.length, relic: !!relic, bossChest: !!bossChest, boss: !!boss, x: P.x, y: P.y }),
+      state: () => ({ mode: S.mode, depth: S.depth, purpose: F && F.purpose, size: F && [F.w, F.h], hp: P.hp, max: P.max, left, open, mons: mons.length, score: S.score, lv: S.lv, xp: S.xp, arms: S.arms, pas: S.pas, fk: S.fk, target: S.target, swirls: swirls.length, relic: !!relic, bossChest: !!bossChest, boss: !!boss, x: P.x, y: P.y, dash: P.dash > 0 || P.dashCd > 0 }),
       god(on = true) { S.god = on; }, killAll() { for (const m of [...mons]) if (m.state !== 'disguised') kill(m); },
       toExit() { P.x = (F.exit.x + .5) * T; P.y = (F.exit.y + 1.4) * T; }, toBoss() { const b = mons.find(m => m.d.boss); if (b) { P.x = b.x; P.y = b.y + T * 3; } },
       nearest() { let b = null, bd = 1e9; for (const m of mons) { if (m.state === 'disguised') continue; const d = Math.hypot(m.x - P.x, m.y - P.y); if (d < bd) { bd = d; b = m; } } return b ? { dx: b.x - P.x, dy: b.y - P.y, d: bd, kind: b.kind } : null; },
@@ -634,6 +816,19 @@ const Dungeon = {
       chests: () => chests.map(c => ({ cx: c.cx, cy: c.cy })), toCell(cx, cy) { if (DE.solid(g, cx, cy) || g.block[cy * g.w + cx]) return false; P.x = (cx + .5) * T; P.y = (cy + .9) * T; return true; },
       give(id, lv = 1, evo) { if (DD.ARMS[id]) S.arms[id] = { lv, t: .2, evo }; else S.pas[id] = lv; setHud(); }, wave() { wave(); },
       toAltar() { if (altar) { P.x = altar.x; P.y = altar.y + T * .5; } }, pick: i => S.onPick?.(i), hurt: n => { P.inv = 0; hurt(n, P.x + 1, P.y); },
+      // touch layout in CSS px relative to the viewport: stick = its resting ring (zone = where a thumb-down starts it),
+      // dodge, menu; view = tiles visible across / down at the current zoom
+      controls() { const r = cv.getBoundingClientRect(), k = r.width / W, R = (x, y, w, h) => ({ x: r.left + x * k, y: r.top + y * k, w: w * k, h: h * k });
+        const hm = L.home, d = L.dodge, mb = menuBtn && !menuBtn.hidden ? menuBtn.getBoundingClientRect() : null;
+        return { touch: TOUCH, stick: TOUCH ? { ...R(hm.x - hm.r, hm.y - hm.r, hm.r * 2, hm.r * 2), zone: R(L.left ? W / 2 : 0, 0, W / 2, H) } : null,
+          dodge: TOUCH ? R(d.x - d.r, d.y - d.r, d.r * 2, d.r * 2) : null, menu: mb ? { x: mb.left, y: mb.top, w: mb.width, h: mb.height } : null,
+          view: { across: +(VW / T).toFixed(2), down: +(VH / T).toFixed(2), zoom: +Z.toFixed(3) }, safe: { l: L.sl, t: L.st, r: L.sr, b: L.sb }, canvas: { x: r.left, y: r.top, w: r.width, h: r.height } }; },
+      // a spawn warning dx, dy tiles from the player (for the edge-marker check); markers() = how many were drawn last frame
+      swirl(dx, dy) { const [cx, cy] = cellOf(P.x, P.y), x = cx + dx, y = cy + dy; if (DE.solid(g, x, y)) return false; swirls.push({ kind: 'slime', x: (x + .5) * T, y: (y + .8) * T, t: DD.WAVE.warn }); return true; },
+      swirlOff() { for (let r = 4; r < 30; r++) for (let dy = -r; dy <= r; dy++) for (const dx of [-r, r]) { const [cx, cy] = cellOf(P.x, P.y), x = cx + dx, y = cy + dy;
+        if (DE.solid(g, x, y) || flow.dist(x, y) < 0) continue; const wx = (x + .5) * T, wy = (y + .8) * T; if (inView((wx - cam.x) * Z, (wy - 6 - cam.y) * Z)) continue;
+        swirls.push({ kind: 'slime', x: wx, y: wy, t: DD.WAVE.warn }); return { dx, dy }; } return null; },
+      markers: () => mkN, menu() { openMenu(); }, cam: () => ({ x: cam.x, y: cam.y, w: VW, h: VH }),
     };
   },
 };
