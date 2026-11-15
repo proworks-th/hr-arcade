@@ -1,12 +1,12 @@
 """Visual verify harness for HR Arcade.
 
-Serves the site locally, opens every screen at three viewports in headless Chromium (test mode ?test=1, so
+Serves the site locally, opens every screen at four viewports (phone first: iPhone 11, then 390 px narrow) in headless Chromium (test mode ?test=1, so
 Firebase runs on in-memory mocks), runs the objective checks in verify/checks.js, and saves screenshots plus
 report.json to verify/out/. Exit code 1 when any check fails.
 
     python verify/run.py                 # everything
     python verify/run.py --only hub,run  # some screens
-    python verify/run.py --vp desktop    # one viewport
+    python verify/run.py --vp iphone11   # one viewport (iphone11, narrow, desktop, tablet; mobile = narrow)
 See VERIFY.md for what each check means and the taste rubric.
 """
 import argparse, functools, http.server, io, json, pathlib, socketserver, sys, threading, time
@@ -16,11 +16,36 @@ from playwright.sync_api import sync_playwright
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 OUT = ROOT / 'verify' / 'out'
 CHECKS = (ROOT / 'verify' / 'checks.js').read_text(encoding='utf-8')
-VIEWPORTS = {  # office PCs are the primary target
+PHONE_CHECKS = (ROOT / 'verify' / 'phone-checks.js').read_text(encoding='utf-8')
+VIEWPORTS = {  # phone first (PRD phone-first 7.1): the iPhone 11 is the reference device and runs first
+    'iphone11': dict(viewport={'width': 414, 'height': 896}, is_mobile=True, has_touch=True, device_scale_factor=2),
+    'narrow': dict(viewport={'width': 390, 'height': 844}, is_mobile=True, has_touch=True, device_scale_factor=2),
     'desktop': dict(viewport={'width': 1366, 'height': 768}),
-    'mobile': dict(viewport={'width': 390, 'height': 844}, is_mobile=True, has_touch=True, device_scale_factor=2),
     'tablet': dict(viewport={'width': 768, 'height': 1024}, has_touch=True),
 }
+VP_ALIAS = {'mobile': 'narrow'}  # old name for the 390x844 case
+PHONE_VPS = ('iphone11', 'narrow')
+# phone checks (keys on touch, thumb-zone controls, zoom, 12 px text, 390 px scroll) are warnings until the
+# phone-first game work lands; flip this to make every phone finding a failure
+PHONE_STRICT = False
+FPS_WARN, FPS_THROTTLE, FPS_MS = 55, 4, 5000  # simulated: CPU slowed 4x, warn (never fail) under 55 fps
+FPS_JS = """ms => new Promise(done => { const dts = []; let last = 0; const t0 = performance.now();
+  const tick = now => { if (last) dts.push(now - last); last = now;
+    if (now - t0 < ms) return requestAnimationFrame(tick);
+    const avg = dts.reduce((a, b) => a + b, 0) / Math.max(1, dts.length);
+    done({ fps: Math.round(10000 / avg) / 10, worst: Math.round(Math.max(0, ...dts) * 10) / 10, frames: dts.length }); };
+  requestAnimationFrame(tick); })"""
+
+
+def measure_fps(page):
+    """Average fps and worst frame (ms) over 5 s of requestAnimationFrame with the CPU slowed 4x."""
+    cdp = page.context.new_cdp_session(page)
+    cdp.send('Emulation.setCPUThrottlingRate', {'rate': FPS_THROTTLE})
+    try:
+        return page.evaluate(FPS_JS, FPS_MS)
+    finally:
+        cdp.send('Emulation.setCPUThrottlingRate', {'rate': 1})
+        cdp.detach()
 # any of these in a request URL while in test mode = a real backend was hit -> fail
 REAL_BACKENDS = ('firebasedatabase.app', 'firebaseio.com', 'gstatic.com/firebasejs', 'identitytoolkit')
 # console errors we accept, with the reason
@@ -77,7 +102,7 @@ def solo(game, play_ms=1200):
         page.evaluate('__app.start()')
         page.wait_for_function("__app.state().started", timeout=3000)
         page.wait_for_timeout(play_ms)
-        shot(f'{game}-play')
+        shot(f'{game}-play', running=True)
     return run
 
 
@@ -93,7 +118,8 @@ def dungeon(page, base, shot):
     page.evaluate('__app.start()')
     page.wait_for_function('window.__dgn && __dgn.state().mode === "play"', timeout=5000)
     page.wait_for_timeout(1500)
-    shot('dungeon-play')
+    page.evaluate('__dgn.god(true)')  # the 5 s frame-rate sample must not end the run (fainting leaves play mode)
+    shot('dungeon-play', running=True)
     # floor chests must open by walking up to them with any build (15 Nov 2026: only a sword/axe swing opened them)
     page.evaluate("__dgn.god(true); const a = __dgn.state().arms; for (const k in a) delete a[k]; __dgn.give('dagger', 1)")
     for c in page.evaluate('__dgn.chests()'):
@@ -588,7 +614,10 @@ def main():
     ap.add_argument('--vp', default='')
     a = ap.parse_args()
     screens = [s for s in SCREENS if not a.only or s in a.only.split(',')]
-    vps = [v for v in VIEWPORTS if not a.vp or v in a.vp.split(',')]
+    want = {VP_ALIAS.get(v, v) for v in a.vp.split(',') if v}
+    if want - set(VIEWPORTS):
+        sys.exit(f"unknown viewport {', '.join(sorted(want - set(VIEWPORTS)))}; use {', '.join(VIEWPORTS)} (mobile = narrow)")
+    vps = [v for v in VIEWPORTS if not want or v in want]
     OUT.mkdir(parents=True, exist_ok=True)
     httpd, base = serve()
     report, failed = [], 0
@@ -619,19 +648,29 @@ def main():
                     r.continue_()
                 page.route('**/*', route)
 
-                findings = {'fail': [], 'warn': []}
+                findings = {'fail': [], 'warn': [], 'phone': [], 'fps': []}
 
-                def shot(label, page=page, vp=vp, shots=shots, findings=findings, name=name):
+                def shot(label, running=False, page=page, vp=vp, shots=shots, findings=findings, name=name):
                     # measure only after entrance animations (e.g. dialog pop-in scale) have settled
                     page.wait_for_function("document.getAnimations().every(a => a.playState !== 'running' || a.effect.getTiming().iterations === Infinity)", timeout=3000)
                     res = page.evaluate(CHECKS, VIEWPORTS[vp].get('has_touch', False))
                     findings['fail'] += [f'[{label}] {x}' for x in res['fail']]
                     findings['warn'] += [f'[{label}] {x}' for x in res['warn']]
+                    if vp in PHONE_VPS:
+                        ph = page.evaluate(PHONE_CHECKS, {'running': running, 'keys': running or label.startswith('village'),
+                                                          'narrow': VIEWPORTS[vp]['viewport']['width'] <= 390})
+                        findings['phone'] += [f'[{label}] {x}' for x in ph]
+                        findings['fail' if PHONE_STRICT else 'warn'] += [f'[{label}] phone: {x}' for x in ph]
                     f = OUT / f'{label}@{vp}.png'
                     # full-page capture resizes the emulated viewport and drops touch emulation for later checks,
                     # so only the hub (its first shot) is captured full length
                     page.screenshot(path=str(f), full_page=(label == 'hub'))
                     shots.append({'label': label, 'file': f.name, 'height': res['height']})
+                    if running:  # frame rate while the game runs (after the screenshot, so the shot shows early play)
+                        fr = measure_fps(page)
+                        findings['fps'].append({'label': label, **fr})
+                        if fr['fps'] < FPS_WARN:
+                            findings['warn'].append(f"[{label}] {fr['fps']} fps < {FPS_WARN} (worst frame {fr['worst']} ms, CPU {FPS_THROTTLE}x slower, simulated)")
 
                 t0 = time.time()
                 try:
@@ -644,12 +683,19 @@ def main():
                 ok = not findings['fail']
                 failed += not ok
                 report.append({'screen': name, 'viewport': vp, 'ok': ok, 'secs': round(time.time() - t0, 1), **findings, 'shots': shots})
-                print(f"{'PASS' if ok else 'FAIL'}  {name:8} {vp:7} {len(findings['fail'])} fail, {len(findings['warn'])} warn")
+                fps = ''.join(f", {f['fps']} fps worst {f['worst']} ms" for f in findings['fps'])
+                ph = f", {len(findings['phone'])} phone" if vp in PHONE_VPS else ''
+                print(f"{'PASS' if ok else 'FAIL'}  {name:8} {vp:8} {len(findings['fail'])} fail, {len(findings['warn'])} warn{ph}{fps}")
                 for x in findings['fail'][:8]: print('      -', x)
                 ctx.close()
         browser.close()
     httpd.shutdown()
     (OUT / 'report.json').write_text(json.dumps(report, ensure_ascii=False, indent=1), encoding='utf-8')
+    fr = [(r['screen'], r['viewport'], f) for r in report for f in r['fps']]
+    if fr:
+        print(f'\nframe rate (CPU {FPS_THROTTLE}x slower, {FPS_MS // 1000} s, simulated; warn under {FPS_WARN}):')
+        for sc, vp, f in fr:
+            print(f"  {f['label']:14} {vp:8} {f['fps']:6.1f} fps  worst {f['worst']:6.1f} ms{'  < ' + str(FPS_WARN) if f['fps'] < FPS_WARN else ''}")
     print(f'\n{len(report) - failed}/{len(report)} passed · screenshots + report.json in {OUT}')
     sys.exit(1 if failed else 0)
 
