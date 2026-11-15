@@ -816,7 +816,17 @@ const TUT={
   conga:[['← ↑ → ↓','เลี้ยวขบวน'],['🧑‍🤝‍🧑','เก็บเพื่อนต่อแถว'],['🚪','ครบแล้วพาออกประตู']],
   prism:[['👆','แตะกองพลัง'],['⬡','แตะช่องข้างๆ สีบนตรงกัน'],['⚡','ครบ 4 ชั้นสีเดียว = ชาร์จ']],
 };
-function tutHTML(id){const T=TUT[id];if(!T)return'';
+// touch wording for the first-visit hints: no key names on phones (PRD phone-first 7.3); rows not listed use TUT
+const TUT_TOUCH={
+  dungeon:[['👆','วางนิ้วซีกซ้ายแล้วลาก = เดิน · อาวุธโจมตีเอง'],['💨','ปุ่มหลบมุมขวาล่าง = หลบ'],TUT.dungeon[2],TUT.dungeon[3]],
+  run:[['👆','แตะจอ = กระโดด'],['👇','ปัดลง = ก้มหลบเครื่องบิน'],TUT.run[2]],
+  stack:[TUT.stack[0],['👆','แตะจอ = วาง'],TUT.stack[2]],
+  tetris:[['◀ ▶','ปุ่มซ้ายล่าง = ย้ายกระดาษ'],['⟳','ปุ่มขวาล่าง = หมุน / ทิ้ง'],TUT.tetris[2]],
+  stamp:[TUT.stamp[0],['👆','แตะจอ = ปั๊ม'],TUT.stamp[2]],
+  barista:[TUT.barista[0],['👆','แตะวัตถุดิบตามสูตร'],['✅','กดปุ่มเสิร์ฟ']],
+  conga:[['👆','ปัดนิ้ว = เลี้ยวขบวน'],TUT.conga[1],TUT.conga[2]],
+};
+function tutHTML(id){const T=(Phone.touch&&TUT_TOUCH[id])||TUT[id];if(!T)return'';
   return`<div class="tut">${T.map(([k,t],i)=>`<div class="tut-step" style="animation-delay:${i*.25}s"><span class="tut-k${k.length>2?' wide':''}">${k}</span><small>${i+1}. ${t}</small></div>`).join('<span class="tut-arrow">→</span>')}</div>`}
 /* ---------- first visit: pick a character + nickname (rankings, rooms and chat need a name) ---------- */
 function onboarding(){
