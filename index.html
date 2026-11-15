@@ -571,6 +571,41 @@ button.pk:hover{transform:translateY(-2px)}div.pk{cursor:default}.pk b{font-size
 .news ul{list-style:none;margin:0;padding:8px 12px;background:#fff8ec;border-radius:12px}
 .news li{display:flex;gap:8px;margin:5px 0;font-size:15px;line-height:1.45}.news li .e{font-family:var(--emoji);flex:none}
 #newsBtn{position:relative}#newsBtn.dot::after{content:'';position:absolute;top:2px;right:2px;width:10px;height:10px;border-radius:50%;background:var(--bad);border:2px solid #fff}
+
+/* ---------- phone first (PRD _test/prd-phone-first.md, 15 Nov 2026) ---------- */
+/* no zoom, no selection, no long-press menu anywhere; typing still selects */
+html{touch-action:manipulation;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+body{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;overscroll-behavior:none}
+input,textarea,[contenteditable]{-webkit-user-select:text;user-select:text;-webkit-touch-callout:default}
+img,canvas{-webkit-touch-callout:none;-webkit-user-drag:none}
+html.touch #bossBtn{display:none}
+header.top{padding-left:max(10px,env(safe-area-inset-left));padding-right:max(10px,env(safe-area-inset-right))}
+#toast{bottom:max(16px,calc(env(safe-area-inset-bottom) + 12px))}
+/* game mode: on touch, a running game owns the whole screen; one exit button replaces the header */
+html.touch body.playing{overflow:hidden;position:fixed;inset:0}
+html.touch body.playing header.top{display:none}
+html.touch body.playing #stage{position:fixed;inset:0;width:100vw;height:100vh;height:100dvh;margin:0;max-width:none;overflow:hidden;z-index:40;background:var(--bg,#fff8ec);
+  padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);box-sizing:border-box;display:flex;flex-direction:column}
+html.touch body.playing #stage>.game{flex:1;min-height:0}
+#gmExit{display:none}
+html.touch body.playing #gmExit{display:flex;position:fixed;z-index:45;left:calc(4px + env(safe-area-inset-left));top:calc(4px + env(safe-area-inset-top));width:48px;height:48px;
+  align-items:center;justify-content:center;padding:0;border-radius:12px;font-size:15px;font-weight:700}
+#rotOv{position:fixed;inset:0;z-index:200;display:none;align-items:center;justify-content:center;text-align:center;background:var(--bg,#fff8ec);padding:24px}
+html.touch body.playing.landscape #rotOv{display:flex}
+#rotOv b{display:block;font-size:20px;margin-bottom:6px}
+/* the village's play button sits first in the village bar on phones; the lock line wraps to its own row */
+.vil-play{min-height:52px;padding:0 26px;font-size:17px;order:-1}
+html.touch #hub .vil-bar{flex-wrap:wrap;white-space:normal;overflow:visible}html.touch #hub .vil-bar>.muted{flex:1 1 100%;white-space:normal;font-size:12px;line-height:1.35}
+/* settings */
+.sets .grp{margin:14px 0 4px;text-align:left}.sets .grp>b{display:block;margin-bottom:6px}
+.sets .seg2{display:flex;gap:8px}.sets .seg2 button{flex:1;min-height:48px;font:inherit;font-weight:600;border:3px solid var(--line);border-radius:12px;background:#fff;color:var(--ink)}
+.sets .seg2 button.on{background:var(--yel)}
+.sets .pv{position:relative;height:150px;margin:14px 0 4px;border:3px solid var(--line);border-radius:14px;background:#3a2f45;overflow:hidden}
+.sets .pv i{position:absolute;bottom:14px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-style:normal;font-size:13px;color:#fff}
+.sets .pv .stk{width:var(--s1);height:var(--s1);border:3px solid #ffffff99;background:#ffffff22}
+.sets .pv .stk::after{content:"";width:40%;height:40%;border-radius:50%;background:#ffffffcc}
+.sets .pv .ddg{width:var(--s2);height:var(--s2);background:#ff6fa8;border:3px solid #fff;font-weight:700}
+.sets .pv small{position:absolute;top:8px;left:0;right:0;color:#ffffffaa;font-size:12px}
 </style>
 </head>
 <body>
@@ -581,6 +616,7 @@ button.pk:hover{transform:translateY(-2px)}div.pk{cursor:default}.pk b{font-size
   <button class="btn icon" id="newsBtn" title="มีอะไรใหม่" aria-label="มีอะไรใหม่">📰</button>
   <button class="btn icon" id="helpBtn" title="วิธีเล่น" aria-label="วิธีเล่น">❓</button>
   <button class="btn icon" id="muteBtn" title="เปิด/ปิดเสียง" aria-label="เปิด/ปิดเสียง">🔊</button>
+  <button class="btn icon" id="setBtn" title="ตั้งค่า" aria-label="ตั้งค่า">⚙️</button>
   <!-- boss key lives in the sticky header so it never covers game content -->
   <button class="btn" id="bossBtn" title="หัวหน้ามา! (Esc)" aria-label="หนีหัวหน้า (Esc)">🙈<span class="lbl"> หัวหน้ามา! <kbd>Esc</kbd></span></button>
 </header>
@@ -588,6 +624,8 @@ button.pk:hover{transform:translateY(-2px)}div.pk{cursor:default}.pk b{font-size
 <main id="stage" hidden></main>
 <div id="toast"></div>
 <div id="boss" hidden></div>
+<button class="btn" id="gmExit" type="button" aria-label="ออกจากเกม">ออก</button>
+<div id="rotOv" role="alert"><div><b>หมุนโทรศัพท์ตั้งขึ้น</b><span class="muted">เกมหยุดรอไว้ก่อน หมุนกลับแล้วกดเล่นต่อ</span></div></div>
 
 <script src="phone.js?v=1"></script>
 <script src="solo-games.js?v=14"></script>
@@ -607,8 +645,8 @@ button.pk:hover{transform:translateY(-2px)}div.pk{cursor:default}.pk b{font-size
 <script src="gacha.js?v=4"></script>
 <script src="hubroom.js?v=10"></script>
 <script src="tower.js?v=12"></script>
-<script src="village-world.js?v=19"></script>
-<script src="village.js?v=37"></script>
+<script src="village-world.js?v=20"></script>
+<script src="village.js?v=38"></script>
 <script src="farm.js?v=13"></script>
 <script src="cloud.js?v=11"></script>
 <script src="news.js?v=20"></script>
@@ -867,7 +905,7 @@ function startGame(id){
   const g=GAMES.find(x=>x.id===id);Stats.hit('s',id);
   presence(id);
   stopGame();
-  hub.hidden=true;stage.hidden=false;$('#homeBtn').hidden=false;stage.innerHTML='';window.scrollTo(0,0);
+  hub.hidden=true;stage.hidden=false;$('#homeBtn').hidden=false;stage.innerHTML='';window.scrollTo(0,0);document.body.classList.add('playing');orient();
   const root=document.createElement('div');root.className='game game-'+id;stage.appendChild(root);
   const mine=new Set();
   const cur={g,root,mine,ended:false,started:false,keyFn:null,daily:false};
@@ -951,16 +989,36 @@ function flyCoins(x,y,to,n){
     c.animate([{transform:'translate(0,0) scale(.6)',opacity:0},{transform:`translate(${sx}px,-30px) scale(1.1)`,opacity:1,offset:.25},{transform:`translate(${dx}px,${dy}px) scale(.7)`,opacity:.9}],
       {duration:650+i*70,easing:'cubic-bezier(.5,0,.7,1)'}).onfinish=()=>{c.remove();to.classList.remove('bump');void to.offsetWidth;to.classList.add('bump')}}
 }
-function goHome(){stopGame();stage.hidden=true;stage.innerHTML='';hub.hidden=false;$('#homeBtn').hidden=true;renderHub()}
+function goHome(){stopGame();document.body.classList.remove('playing');stage.hidden=true;stage.innerHTML='';hub.hidden=false;$('#homeBtn').hidden=true;renderHub()}
 $('#homeBtn').onclick=goHome;
+$('#gmExit').onclick=goHome;
+$('#setBtn').onclick=openSettings;
+// portrait only on phones (owner, 15 Nov 2026): turning sideways pauses the game behind a "turn it upright" card
+function orient(){const l=Phone.touch&&innerWidth>innerHeight&&innerHeight<560;document.body.classList.toggle('landscape',l);if(l&&document.body.classList.contains('playing'))showPause()}
+addEventListener('resize',orient);addEventListener('orientationchange',()=>setTimeout(orient,120));
+// ตั้งค่า: hand side and button size for touch controls (phone.js keeps them; the cloud save carries every hra_ key)
+function openSettings(){
+  const ov=document.createElement('div');ov.className='overlay';ov.id='setOv';
+  const draw=()=>{const s=Phone.get(),k=Phone.scale(),L=s.hand==='l';
+    ov.innerHTML=`<div class="panel popin sets"><h2>ตั้งค่า</h2>
+      <div class="grp"><b>มือที่ใช้กดปุ่ม</b><div class="seg2"><button type="button" data-k="hand" data-v="r" class="${L?'':'on'}">มือขวา</button><button type="button" data-k="hand" data-v="l" class="${L?'on':''}">มือซ้าย</button></div></div>
+      <div class="grp"><b>ขนาดปุ่มในเกม</b><div class="seg2"><button type="button" data-k="size" data-v="n" class="${k>1?'':'on'}">ปกติ</button><button type="button" data-k="size" data-v="l" class="${k>1?'on':''}">ใหญ่</button></div></div>
+      <div class="pv" style="--s1:${Math.round(84*k)}px;--s2:${Math.round(64*k)}px"><small>ตัวอย่างปุ่มในดันเจี้ยน</small>
+        <i class="stk" style="${L?'right':'left'}:16px"></i><i class="ddg" style="${L?'left':'right'}:16px">หลบ</i></div>
+      <p class="muted" style="font-size:13px">ใช้กับทุกเกมบนมือถือ ปุ่มกดอยู่ช่วงล่างของจอเสมอ</p>
+      <div class="row"><button class="btn primary" type="button" data-x>เสร็จแล้ว</button></div></div>`;
+    ov.querySelectorAll('[data-k]').forEach(b=>b.onclick=()=>{Phone.set(b.dataset.k,b.dataset.v);draw()});
+    ov.querySelector('[data-x]').onclick=()=>ov.remove()};
+  draw();ov.addEventListener('click',e=>{if(e.target===ov)ov.remove()});document.body.appendChild(ov);
+}
 
 function showPause(){
   if(!current||!current.started||current.ended||$('#pauseOv'))return;
   paused=true;
   const ov=document.createElement('div');ov.className='overlay';ov.id='pauseOv';
-  ov.innerHTML=`<div class="panel popin"><div class="big">⏸️</div><h2>พักเกมไว้ก่อน</h2><p class="muted">รอดตัวไปอีกรอบ 😮‍💨</p><div class="row"><button class="btn primary">▶ เล่นต่อ</button><button class="btn">🏠 หน้าหลัก</button></div></div>`;
-  const [go,home]=ov.querySelectorAll('button');
-  go.onclick=()=>{ov.remove();paused=false};home.onclick=goHome;
+  ov.innerHTML=`<div class="panel popin"><div class="big">⏸️</div><h2>พักเกมไว้ก่อน</h2><p class="muted">รอดตัวไปอีกรอบ 😮‍💨</p><div class="row"><button class="btn primary">▶ เล่นต่อ</button><button class="btn">🏠 หน้าหลัก</button></div>${Phone.touch?'<div class="row"><button class="btn sm" type="button">ตั้งค่าปุ่ม</button></div>':''}</div>`;
+  const [go,home,set]=ov.querySelectorAll('button');
+  go.onclick=()=>{if(document.body.classList.contains('landscape'))return;ov.remove();paused=false};home.onclick=goHome;if(set)set.onclick=openSettings;
   document.body.appendChild(ov);
 }
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&!bossOn)showPause()});
