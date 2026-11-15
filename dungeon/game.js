@@ -419,6 +419,9 @@ const Dungeon = {
         if (d < 18 && o.t > .2) { gems.splice(i, 1); S.score += o.v; gainXP(o.v >= DD.GEM.big ? DD.XP.big : DD.XP.small); if (S.gemTick == null || S.t - S.gemTick > .05) { S.gemTick = S.t; api.sfx('tick'); } setHudSoon(); } }
       for (let i = drops.length - 1; i >= 0; i--) { const o = drops[i]; o.t += dt; if (Math.hypot(o.x - P.x, o.y - P.y) < 30 && P.hp < P.max) { drops.splice(i, 1); heal(1); } }
       if (altar && !altar.used && Math.hypot(altar.x - P.x, altar.y + 6 - P.y) < T * .95) { altar.used = true; chestReward('แท่นบูชาโบราณ'); }
+      // floor chests open when you walk up to them (any side). Before 15 Nov only a sword/axe swing opened them, so a
+      // dagger/staff/wand build could never open one.
+      for (const c of [...chests]) if (Math.abs(c.x - P.x) < T * 1.25 && Math.abs((c.y - 20) - (P.y - 22)) < T * 1.25) openChest(c);
       if (bossChest && Math.hypot(bossChest.x - P.x, bossChest.y - P.y) < T * .8) { bossChest = null; api.sfx('level'); chestReward('หีบของบอส'); }
       if (relic && Math.hypot(relic.x - P.x, relic.y - P.y) < T * .8) takeRelic();
       // the door
@@ -628,6 +631,7 @@ const Dungeon = {
       awakeAll() { for (const m of mons) if (m.state === 'sleep') wake(m); },
       toMon() { const n = mons.find(m => m.state !== 'disguised'); if (n) { P.x = n.x; P.y = n.y + 50; P.ax = 0; P.ay = -1; } return !!n; },
       openDoor() { S.fk = S.target; S.bossDown = true; checkDoor(); }, xp(n) { gainXP(n); }, toChest() { const c = bossChest || relic; if (c) { P.x = c.x; P.y = c.y; } },
+      chests: () => chests.map(c => ({ cx: c.cx, cy: c.cy })), toCell(cx, cy) { if (DE.solid(g, cx, cy) || g.block[cy * g.w + cx]) return false; P.x = (cx + .5) * T; P.y = (cy + .9) * T; return true; },
       give(id, lv = 1, evo) { if (DD.ARMS[id]) S.arms[id] = { lv, t: .2, evo }; else S.pas[id] = lv; setHud(); }, wave() { wave(); },
       toAltar() { if (altar) { P.x = altar.x; P.y = altar.y + T * .5; } }, pick: i => S.onPick?.(i), hurt: n => { P.inv = 0; hurt(n, P.x + 1, P.y); },
     };

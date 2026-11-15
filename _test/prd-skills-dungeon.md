@@ -119,7 +119,8 @@ Out of scope for now: co-op combat, paid anything, Building and Errands skills (
 | 13 Nov | 7 skills confirmed (Building, Errands dropped); Cooking in Phase 2 | |
 | 13 Nov | **Mini games: no coin cap per round** (live on main, b15ced8); XP keeps its cap (max 190/round); bricks unchanged | owner: "no cap", after seeing the exploit-risk trade-off |
 | 15 Nov | **Dungeon live on main** (ad6e56d); material still to come, no bricks meanwhile | owner: "will add the material later", then "proceed" |
-| 15 Nov | **Bug: vault doors could never open** (owner stuck at B6). Vaults have no waves but the target was placed × 1.15, min 6. Fix: vault target = monsters placed; an empty vault opens at once; test-gen checks every vault door (d296937, not yet pushed) | owner: "could nt continue to B7" |
+| 15 Nov | **Bug: vault doors could never open** (owner stuck at B6). Vaults have no waves but the target was placed × 1.15, min 6. Fix: vault target = monsters placed; an empty vault opens at once; test-gen checks every vault door (d296937) | owner: "could nt continue to B7" |
+| 15 Nov | **Bug: floor chests couldn't be opened** without a sword/axe (only a swing opened them; the chest blocks its tile). Fix: walk up to a chest from any side to open it; verify opens every B1 chest with a dagger build | owner: "the chest could nt oprned" |
 
 ## 9. Open questions (for the owner / next agent)
 

@@ -43,6 +43,10 @@ work in test mode (`window.__TEST__`, set by `verify/testmode.js`). Verify scree
   floors spawn no waves, so 3 placed monsters against a target of 6 left the run stuck. Rule: any floor's target
   must be reachable from what that floor can actually spawn. If you add a purpose without waves, or change
   `DD.TARGET`, `DD.WAVE` or the generator's monster counts, extend the door check in `test-gen.js` to cover it.
+- **A chest you can't open** (live 15 Nov 2026). Floor chests only opened when a sword/axe swing reached them, and
+  they block their tile, so a dagger/staff/wand build could never open one. Now walking up to a chest from any side
+  opens it (swings still work). Rule: anything the player must interact with has to work with every build, by
+  walking to it; the `verify/run.py` dungeon screen opens each B1 chest with a dagger-only build.
 - **Test mode on live.** `?floor=` / `?seed=` must stay behind `window.__TEST__` (set only by `verify/testmode.js`),
   never a URL check, or anyone can skip floors and fake the deepest-floor leaderboard.
 - **Cache.** Bump `?v=N` on every changed `dungeon/*.js` in `index.html`; Pages caches about 10 minutes.

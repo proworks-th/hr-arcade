@@ -94,6 +94,15 @@ def dungeon(page, base, shot):
     page.wait_for_function('window.__dgn && __dgn.state().mode === "play"', timeout=5000)
     page.wait_for_timeout(1500)
     shot('dungeon-play')
+    # floor chests must open by walking up to them with any build (15 Nov 2026: only a sword/axe swing opened them)
+    page.evaluate("__dgn.god(true); const a = __dgn.state().arms; for (const k in a) delete a[k]; __dgn.give('dagger', 1)")
+    for c in page.evaluate('__dgn.chests()'):
+        n0 = len(page.evaluate('__dgn.chests()'))
+        if any(page.evaluate(f"__dgn.toCell({c['cx'] + dx}, {c['cy'] + dy})") for dx, dy in ((0, 1), (-1, 0), (1, 0), (0, -1))):
+            page.wait_for_timeout(400)
+            if page.evaluate('__dgn.state().mode') == 'pick': page.evaluate('__dgn.pick(0)')
+            if len(page.evaluate('__dgn.chests()')) >= n0: raise AssertionError(f"dungeon: chest at {c} didn't open with a dagger build")
+    page.evaluate("__dgn.give('sword', 1)")
     page.evaluate('__dgn.god(true); __dgn.toMon()')
     page.wait_for_timeout(2500)
     for _ in range(6):
