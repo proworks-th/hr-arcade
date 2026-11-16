@@ -140,6 +140,7 @@ function makeFX() {
     text(x, y, s, o = {}) { T.push({ x, y, s, c: o.color || PAL.pink, size: o.size || 26, t: 0, life: o.life || .9, rise: o.rise ?? 44 }); },
     shake(a = 6, t = .25) { shA = Math.max(shT > 0 ? shA : 0, a); shT = Math.max(shT, t); },
     hitstop(t = .06) { stop = Math.max(stop, t); },
+    busy: () => P.length > 0 || T.length > 0 || shT > 0 || flT > 0 || stop > 0,   // anything still on screen (games that skip still frames)
     flash(c = '#fff', t = .18) { flC = c; flT = flMax = t; },
     step(dt) {
       shT = Math.max(0, shT - dt); flT = Math.max(0, flT - dt);
@@ -164,7 +165,7 @@ function makeFX() {
         ctx.font = `800 ${t.size}px Kanit, sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         ctx.lineJoin = 'round'; ctx.lineWidth = Math.max(4, t.size / 5); ctx.strokeStyle = PAL.ink; ctx.strokeText(t.s, 0, 0); ctx.fillStyle = t.c; ctx.fillText(t.s, 0, 0); ctx.restore();
       }
-      if (flT > 0) { ctx.globalAlpha = flT / flMax * .55; ctx.fillStyle = flC; ctx.fillRect(-20, -20, W + 40, H + 40); ctx.globalAlpha = 1; }
+      if (flT > 0) { ctx.globalAlpha = flT / flMax * .55; ctx.fillStyle = flC; ctx.fillRect(-20 - W, -20 - H, 3 * W + 40, 3 * H + 40); ctx.globalAlpha = 1; }
       ctx.restore();
     },
   };
@@ -250,7 +251,7 @@ function tetrisGame(root, api) {
   };
   root.innerHTML = `<div class="hud"><span>🖨️ คะแนน <b data-k="sc">0</b></span><span>📄 แถว <b data-k="ln">0</b></span><span>⚡ เลเวล <b data-k="lv">1</b></span>
     <span class="muted g2tip">← → ย้าย · ↑ หมุน · ↓ เร่ง · Space ทิ้งลงทันที</span></div>`;
-  const { ctx } = g2canvas(root, W, H), q = k => root.querySelector(`[data-k="${k}"]`), fx = makeFX();
+  const { cv, ctx } = g2canvas(root, W, H), q = k => root.querySelector(`[data-k="${k}"]`), fx = makeFX();
   const grid = Array.from({ length: ROWS }, () => Array(COLS).fill(null));
   let bag = [], cur = null, next = null, score = 0, lines = 0, level = 1, fall = 0, lock = 0, running = false, over = false, flash = [], flashT = 0, trail = null, nextPop = 0;
   const draw7 = () => { if (!bag.length) bag = Object.keys(SHAPES).sort(() => rnd() - .5); return bag.pop(); };
@@ -310,6 +311,19 @@ function tetrisGame(root, api) {
       if (!sw.moved && dt < 300) act(turn)(); else if (dy > 70 && dt < 260) act(hard)(); sw = null; };
     root.addEventListener('pointerup', swEnd); root.addEventListener('pointercancel', () => { sw = null; });
   }
+  /* Phone held upright (pv): the canvas is the whole play area at one logical px = one CSS px (the room art stays on
+     whole pixels, 3 per sprite pixel). The next piece moves to a strip on top, so the tray gets the full width and is
+     drawn as big as the height allows. Rules, speed and controls are the same. */
+  const tbox = cv.parentNode, SH = 64; let pv = false, VW = W, VH = H, sb = 1, bx0 = 0, by0 = 0, dprT = 1, ro = null;
+  if (phone) { const r = tbox.getBoundingClientRect(); pv = r.height > r.width; }
+  function fit() {
+    const r = tbox.getBoundingClientRect(), bw = Math.floor(r.width), bh = Math.floor(r.height); if (bw < 100 || bh < 100) return;
+    dprT = Math.min(3, devicePixelRatio || 1); VW = bw - 6; VH = bh - 6;
+    const fw = COLS * C + 12, fh = ROWS * C + 12;
+    sb = Math.min((VW - 8) / fw, (VH - SH - 8) / fh); bx0 = (VW - fw * sb) / 2; by0 = SH + 4 + Math.max(0, (VH - SH - 8 - fh * sb) / 2);
+    cv.width = Math.round(VW * dprT); cv.height = Math.round(VH * dprT); cv.style.width = bw + 'px'; cv.style.height = bh + 'px';
+  }
+  if (pv) { fit(); if (window.ResizeObserver) { ro = new ResizeObserver(fit); ro.observe(tbox); } }
   // one sheet of paper: white page, coloured header strip, ruled lines
   function cell(x, y, t, alpha = 1) {
     const s = SHAPES[t]; ctx.globalAlpha = alpha;
@@ -320,10 +334,26 @@ function tetrisGame(root, api) {
     ctx.fillStyle = 'rgba(255,255,255,.6)'; ctx.fillRect(x + 3, y + 8, 2, C - 11);
     ctx.globalAlpha = 1;
   }
+  // the next piece at cell size s, centred on (cx, cy)
+  function nextPiece(cx, cy, s0) {
+    const m = SHAPES[next].m, n = m.length, s = s0 * (1 + nextPop * .25), ox = cx - n * s / 2, oy = cy - n * s / 2;
+    m.forEach((r, j) => r.forEach((v, i) => { if (v) { ctx.save(); ctx.translate(ox + i * s, oy + j * s); ctx.scale(s / C, s / C); cell(0, 0, next); ctx.restore(); } }));
+  }
   function draw() {
+    if (pv) {   // room and next-piece strip in CSS px, then the tray scaled by sb
+      ctx.setTransform(dprT, 0, 0, dprT, 0, 0);
+      officeBG(ctx, VW, VH, VH - 46, { wall: 'wall_mint' });
+      const x = bx0 + 2;
+      rrect(ctx, x, 6, 96, SH - 10, 10, '#fff', PAL.ink); if (next) nextPiece(x + 48, 6 + (SH - 10) / 2, 13);
+      txt(ctx, 'ชิ้นต่อไป', x + 108, 22, 14, PAL.ink, 'left', 700); if (next) txt(ctx, SHAPES[next].n, x + 108, 44, 13, PAL.muted, 'left');
+      const rx = VW - bx0 - 2; txt(ctx, 'เคลียร์ 4 แถวพร้อมกัน', rx, 22, 12, PAL.ink, 'right'); txt(ctx, '= 800 × เลเวล', rx, 42, 12, PAL.pink, 'right', 700);
+      ctx.save(); ctx.translate(bx0, by0); ctx.scale(sb, sb);
+    }
     fx.pre(ctx);
-    officeBG(ctx, W, H, H - 46, { wall: 'wall_mint', windows: [['window_small', 340, 170, 3]] });
-    drawPixAt(ctx, 'plant_small', 372, H - 40, 3);
+    if (!pv) {
+      officeBG(ctx, W, H, H - 46, { wall: 'wall_mint', windows: [['window_small', 340, 170, 3]] });
+      drawPixAt(ctx, 'plant_small', 372, H - 40, 3);
+    }
     // printer body around the tray
     ctx.fillStyle = PAL.ink; ctx.fillRect(BX - 6, BY - 6, COLS * C + 12, ROWS * C + 12);
     ctx.fillStyle = '#d9dde3'; ctx.fillRect(BX - 4, BY - 4, COLS * C + 8, ROWS * C + 8);
@@ -337,6 +367,7 @@ function tetrisGame(root, api) {
       cur.m.forEach((r, j) => r.forEach((v, i) => { if (v && gy + j >= 0) cell(BX + (cur.x + i) * C, BY + (gy + j) * C, cur.t, .22); }));
       cur.m.forEach((r, j) => r.forEach((v, i) => { if (v && cur.y + j >= 0) cell(BX + (cur.x + i) * C, BY + (cur.y + j) * C, cur.t); }));
     }
+    if (pv) { fx.post(ctx, COLS * C + 12, ROWS * C + 12); ctx.restore(); return; }
     const px = COLS * C + 16;
     txt(ctx, 'ชิ้นต่อไป', px + 60, 24, 15, PAL.ink, 'center', 700);
     rrect(ctx, px, 40, 120, 100, 10, '#fff', PAL.ink);
@@ -367,6 +398,7 @@ function tetrisGame(root, api) {
         : '<p>⌨️ <b>← →</b> ย้าย · <b>↑</b> หมุน · <b>↓</b> เร่งลง · <b>Space</b> ทิ้งลงทันที (มือถือใช้ปุ่มใต้จอ)</p>'}
       <p>⚡ ทุก 10 แถวขึ้นเลเวล กระดาษตกเร็วขึ้น · กองล้นถึงด้านบน = จบเกม</p>`,
     buttons: [{ label: '🖨️ เริ่มพิมพ์!', primary: true, go() { running = true; spawn(); } }] });
+  return { destroy() { ro && ro.disconnect(); } };
 }
 
 /* =================================================================
@@ -968,17 +1000,10 @@ function congaGame(root, api) {
 }
 
 /* =================================================================
-   Phone controls for the hub's own four games (spot, run, whack, stack live in index.html).
-   Their code stays as it is: on touch this wraps their mount — portrait layout, the PRD 7.4 controls on top of
-   the game's own inputs (synthetic pointer events on its canvas), touch-only texts. Desktop is not touched.
+   Phone extras for the hub's own games in index.html. Run, stack and spot build their phone layouts themselves;
+   whack is still wrapped here: on touch its mount gets the portrait layout and a press state on the holes.
+   Also the touch wording of the "how to play" cards (TUT). Desktop is not touched.
 ================================================================= */
-const HUB_TOUCH_HOW = {
-  run: `<p>🏃 วิ่งไปตอกบัตรให้ทัน! <b>กระโดด</b>ข้ามลัง เก้าอี้ล้อเลื่อน เพื่อนที่วิ่งสวน · <b>ก้ม</b>หลบเครื่องบินกระดาษ</p>
-    <p>👆 <b>แตะตรงไหนก็ได้</b> = กระโดด (แตะซ้ำกลางอากาศ = 2 ชั้น) · <b>ปัดลง</b> หรือกดปุ่มก้มมุมล่างค้าง = ก้ม</p>
-    <p>เหรียญ +10 คะแนน · เพชร +10 เหรียญ · ❤️ 3 ดวง ชนครบ = จบ</p><p>👇 เลือกตัวละครแล้วออกวิ่งเลย</p>`,
-  stack: `<p>📦 แฟ้มเลื่อนไปมา — <b>แตะตรงไหนก็ได้</b> เพื่อวางลงบนกอง</p>
-    <p>✂️ ส่วนที่ล้นจะถูกตัดทิ้ง แฟ้มเลยแคบลงเรื่อยๆ</p><p>✨ วาง <b>เป๊ะ</b> ติดกัน 3 ครั้ง แฟ้มจะกว้างขึ้น</p><p>🚀 ซ้อนสูงพอ… อาจทะลุหลังคาไปถึงอวกาศ</p>`,
-};
 const HUB_TOUCH_TUT = {
   run: [['👆', 'แตะ = กระโดด'], ['👇', 'ปัดลง / ปุ่มก้ม = ก้มหลบ'], ['🪙', 'เก็บเหรียญ ไปให้ไกลที่สุด']],
   stack: [['📦', 'แฟ้มเลื่อนไปมา'], ['👆', 'แตะตรงไหนก็ได้ = วาง'], ['🎯', 'วางให้ตรง กองไม่เล็กลง']],
@@ -989,35 +1014,7 @@ const HUB_TOUCH_TUT = {
   slack: [['✋', 'แตะค้าง = แอบเล่นมือถือ'], ['👀', 'หัวหน้าหันมา ปล่อยทันที!'], ['😴', 'ไม่เล่นเลยจะง่วงหลับ']],
   conga: [['👆', 'ปัดนิ้ว = เลี้ยวขบวน'], ['🧑‍🤝‍🧑', 'เก็บเพื่อนต่อแถว'], ['🚪', 'ครบแล้วพาออกประตู']],
 };
-// fire the game's own canvas listener at a point of the canvas (fx, fy = 0..1)
-function canvasPress(cv, type, fx, fy, id) {
-  const r = cv.getBoundingClientRect();
-  cv.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, pointerId: id || 1, pointerType: 'touch', isPrimary: true, clientX: r.left + r.width * fx, clientY: r.top + r.height * fy }));
-}
 const HUB_TOUCH = {
-  // tap anywhere = jump, the lower-left button (or a swipe down) = duck, a jump button in the other corner too
-  run(root) {
-    g2phone(root, 'run'); const cv = root.querySelector('.run-box canvas');
-    let duckHeld = 0, sw = null;
-    const jumpDown = () => canvasPress(cv, 'pointerdown', .9, .5);
-    const duckDown = () => canvasPress(cv, 'pointerdown', .02, .5);
-    // the game lets go of both jump and duck on any pointerup: keep ducking while the duck button is still held
-    const relift = () => { if (duckHeld > 0) requestAnimationFrame(() => duckHeld > 0 && duckDown()); };
-    addEventListener('pointerup', relift);
-    g2deck(root, { l: [['<span class="duck">▼</span><small>ก้ม</small>', 'ก้ม', () => { duckHeld++; duckDown(); }, { up: () => { duckHeld = Math.max(0, duckHeld - 1); }, cls: 'wide' }]],
-      r: [['⤒<small>กระโดด</small>', 'กระโดด', jumpDown, { cls: 'wide primary' }]] });
-    phoneHint(root, 'แตะตรงไหนก็ได้ = กระโดด · ปัดลง = ก้ม');
-    root.addEventListener('pointerdown', e => { if (!e.isTrusted || !freePress(e)) return; e.preventDefault(); e.stopPropagation(); pressRing(root, e);
-      sw = { id: e.pointerId, y: e.clientY, duck: false }; jumpDown(); }, true);
-    root.addEventListener('pointermove', e => { if (sw && e.pointerId === sw.id && !sw.duck && e.clientY - sw.y > 28) { sw.duck = true; duckDown(); } });
-    root.addEventListener('pointerup', e => { if (sw && e.pointerId === sw.id) sw = null; });
-    return () => removeEventListener('pointerup', relift);
-  },
-  // tap anywhere = drop the binder
-  stack(root) {
-    g2phone(root, 'stack'); const cv = root.querySelector('.stack-box canvas');
-    root.addEventListener('pointerdown', e => { if (!e.isTrusted || !freePress(e)) return; e.preventDefault(); pressRing(root, e); if (e.target !== cv) canvasPress(cv, 'pointerdown', .5, .5); });
-  },
   // the board sits in the lower two thirds; a press shows on the hole at once; no key labels
   whack(root) {
     g2phone(root, 'whack'); const grid = root.querySelector('.wgrid');
@@ -1025,14 +1022,6 @@ const HUB_TOUCH = {
     grid.addEventListener('pointerdown', e => { const h = e.target.closest('.hole'); if (h) h.classList.add('prs'); });
     for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) grid.addEventListener(ev, off);
     grid.addEventListener('pointerout', off);
-  },
-  // the hint button moves from the top bar to the bottom of the screen
-  spot(root) {
-    g2phone(root, 'spot'); const hint = root.querySelector('[data-k=hint]');
-    if (hint) { hint.classList.remove('sm'); hint.classList.add('g2k'); hint.setAttribute('aria-label', 'ใบ้ (เสียเวลา 10 วินาที)');
-      hint.innerHTML = '💡<small>ใบ้ −10 วิ</small>';
-      hint.addEventListener('pointerdown', () => { hint.classList.add('on'); }); for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) hint.addEventListener(ev, () => hint.classList.remove('on'));
-      const d = g2deck(root, { l: [], r: [hint] }); d.classList.add('spot-deck'); }
   },
 };
 addEventListener('DOMContentLoaded', () => {
@@ -1043,8 +1032,7 @@ addEventListener('DOMContentLoaded', () => {
     const fix = HUB_TOUCH[g.id]; if (!fix || !g.mount) continue;
     const mount = g.mount;
     g.mount = (root, api) => {
-      const how = HUB_TOUCH_HOW[g.id], a = how ? Object.create(api, { intro: { value: o => api.intro({ ...o, how }) } }) : api;
-      const inst = mount(root, a) || {}, undo = fix(root);
+      const inst = mount(root, api) || {}, undo = fix(root);
       return { ...inst, destroy() { inst.destroy && inst.destroy(); undo && undo(); } };
     };
   }

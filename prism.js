@@ -8,7 +8,9 @@
 'use strict';
 function prismGame(root, api) {
   const PC = window.PrismCore, LV = window.PRISM_LEVELS, DAY = window.PRISM_DAILY || [], CAP = PC.CAP;
-  const W = 760, H = 470, TOP = 66;
+  // W × H: the logical canvas. Desktop and landscape: a fixed 760 × 470 scaled by CSS (as always). Phone portrait (pv):
+  // the canvas is the play area itself, one logical px = one CSS px, so the board zooms to fill it (fit() below)
+  let W = 760, H = 470; const TOP = 66;
   // board seen at a tilt (SY squashes y), layer thickness TH × chip radius, flight time per chip
   const SY = .74, TH = .27, FLY = .32;
   // candy palette per energy colour: [top, side, dark edge, top highlight, side highlight]
@@ -17,12 +19,23 @@ function prismGame(root, api) {
   const PLATE = { n: ['#ffffff', '#dde7f5', '#b8c8e2', '#ffffff', '#eef3fb'], hov: ['#f6f1ff', '#e0d9f4', '#bfb4e0', '#ffffff', '#eee8fb'],
     sel: ['#fff3bf', '#ffd673', '#e0a52a', '#fffbe8', '#ffe7a3'], lock: ['#e8e4f0', '#cdc6dc', '#a89fbe', '#f4f1f9', '#dcd6e7'] };
   root.innerHTML = `<div class="hud"><span data-k="lvw">⚡ ด่าน <b data-k="lv">1</b></span><span data-k="nm"></span><span>ตา <b data-k="mv">0</b> · เป้า <b data-k="par">0</b></span><span data-k="stars"></span><span class="muted g2tip" data-k="tip"></span></div>`;
-  const { cv, ctx, at } = g2canvas(root, W, H), q = k => root.querySelector(`[data-k="${k}"]`), fx = makeFX();
+  const { cv, ctx, at: at0 } = g2canvas(root, W, H), q = k => root.querySelector(`[data-k="${k}"]`), fx = makeFX();
+  let dprC = Math.min(2, devicePixelRatio || 1), pv = false, dirty = true;
   const PAD = [['↩️ ย้อน', () => undo()], ['🔄 เริ่มใหม่', () => restart()], ['💡 ใบ้ <small data-k="hs"></small>', () => hint()], ['🗺️ เลือกด่าน', () => picker()]];
   // phone: the same four in one row at the bottom of the screen, undo on the thumb side
   if (g2phone(root, 'prism')) g2deck(root, { rows: [[['↩️<small>ย้อน</small>', 'ย้อน', PAD[0][1], { cls: 'ing' }], ['🔄<small>เริ่มใหม่</small>', 'เริ่มใหม่', PAD[1][1], { cls: 'ing' }],
     ['💡<small>ใบ้ <span data-k="hs"></span></small>', 'ใบ้', PAD[2][1], { cls: 'ing' }], ['🗺️<small>เลือกด่าน</small>', 'เลือกด่าน', PAD[3][1], { cls: 'ing' }]]] }, 'prism-deck');
   else g2pad(root, PAD);
+  // phone held upright: size the canvas to its box at the real pixel ratio (crisp text and edges), re-fit on resize
+  const box = cv.parentNode;
+  function fit() {
+    const r = box.getBoundingClientRect(), bw = Math.floor(r.width), bh = Math.floor(r.height); if (bw < 200 || bh < 200) return;
+    dprC = Math.min(3, devicePixelRatio || 1); W = bw - 6; H = bh - 6;   // 3 px sticker border on each side
+    cv.width = Math.round(W * dprC); cv.height = Math.round(H * dprC); cv.style.width = bw + 'px'; cv.style.height = bh + 'px'; cv.style.setProperty('--ar', bw / bh);
+    ctx.setTransform(dprC, 0, 0, dprC, 0, 0); paintBg(); sprites.clear(); if (geo) layout(); dirty = true;
+  }
+  if (phoneOn() && root.classList.contains('g2t')) { const r = box.getBoundingClientRect(); pv = r.height > r.width; }
+  const at = e => { if (!pv) return at0(e); const r = cv.getBoundingClientRect(); return { x: (e.clientX - r.left - 3) * W / (r.width - 6), y: (e.clientY - r.top - 3) * H / (r.height - 6) }; };
   const prog = () => store.get('prism', { s: {} }), unlocked = () => { const s = prog().s; let n = 1; while (s[n] && n < LV.length) n++; return n; };
   // daily puzzle: same pool entry for everyone on the same Thai date
   const today = thaiDay(), dayIdx = Math.floor((Date.parse(today) - Date.parse('2026-01-01')) / 864e5);
@@ -66,14 +79,18 @@ function prismGame(root, api) {
   function layout() {
     // flat-top hexes (same axial neighbours, just drawn turned) on a tilted board
     const xs = [], ys = []; for (const [qq, r] of geo.pos) { xs.push(1.5 * qq); ys.push(Math.sqrt(3) * (r + qq / 2) * SY); }
-    const right = geo.nRes ? 140 : 0, bw = W - 60 - right, bh = H - TOP - 64, stackH = CAP * .76 * TH + .1;
+    const rh = 76 + geo.resCap * 34 * TH, gap = 18, stackH = CAP * .76 * TH + .1;
+    // portrait: the board takes the full width, the reservoirs sit in one row under it
+    const right = pv ? 0 : geo.nRes ? 140 : 0, under = pv && geo.nRes ? rh + 16 : 0;
+    const bw = pv ? W - 20 : W - 60 - right, bh = pv ? H - TOP - 10 - under : H - TOP - 64;
     const spanX = Math.max(...xs) - Math.min(...xs) + 2, spanY = Math.max(...ys) - Math.min(...ys) + 1.8 * SY + stackH;
-    R = Math.min(66, bw / spanX, bh / spanY);
-    const ox = 30 + bw / 2 - (Math.max(...xs) + Math.min(...xs)) / 2 * R, oy = TOP + 16 + bh / 2 - ((Math.max(...ys) + Math.min(...ys)) / 2 - stackH / 2) * R;
+    R = Math.min(pv ? 88 : 66, bw / spanX, bh / spanY);
+    const ox = (pv ? 10 : 30) + bw / 2 - (Math.max(...xs) + Math.min(...xs)) / 2 * R, oy = TOP + (pv ? 4 : 16) + bh / 2 - ((Math.max(...ys) + Math.min(...ys)) / 2 - stackH / 2) * R;
     P = xs.map((x, i) => ({ x: ox + x * R, y: oy + ys[i] * R }));
     order = P.map((_, i) => i).sort((a, b) => P[a].y - P[b].y || P[a].x - P[b].x);
-    resBox = []; const rh = 76 + geo.resCap * 34 * TH, gap = 18, tot = geo.nRes * rh + (geo.nRes - 1) * gap;
-    for (let i = 0; i < geo.nRes; i++) resBox.push({ x: W - 126, y: TOP + 16 + (H - TOP - 40 - tot) / 2 + i * (rh + gap), w: 104, h: rh });
+    resBox = []; const tot = geo.nRes * rh + (geo.nRes - 1) * gap, totW = geo.nRes * 104 + (geo.nRes - 1) * gap;
+    for (let i = 0; i < geo.nRes; i++) resBox.push(pv ? { x: (W - totW) / 2 + i * (104 + gap), y: H - 10 - rh, w: 104, h: rh }
+      : { x: W - 126, y: TOP + 16 + (H - TOP - 40 - tot) / 2 + i * (rh + gap), w: 104, h: rh });
   }
   function startLevel(n, resume = true) {
     lv = n; def = n === dayKey ? dailyDef : typeof n === 'string' && n[0] === 'c' ? { name: '🗼 หอคอยไม่รู้จบ', tip: 'ทำให้ได้ในเป้า + ส่วนเผื่อ ไม่งั้นเสีย ❤️ · ใบ้ = เสีย ❤️', ...climbDef(+n.slice(1)) } : LV[n - 1]; ({ geo, st: st0 } = PC.load(def)); layout();
@@ -82,7 +99,7 @@ function prismGame(root, api) {
     const N = st.s.length; liftV = Array(N).fill(0); bounce = Array(N).fill(0); pop = Array.from({ length: N }, (_, i) => -i * .045); orbs = []; rings = []; locksOff = [];
     const cur = store.get('prism_cur', null);
     if (resume && cur && cur.lv === n && Array.isArray(cur.p)) for (const [a, b] of cur.p) { if (PC.why(geo, st, a, b)) break; commit(a, b, true); }
-    disp = PC.clone(st); shown = { ...lit }; playing = true; hud(); think();
+    disp = PC.clone(st); shown = { ...lit }; playing = true; dirty = true; hud(); think();
   }
   function commit(a, b, quiet) {
     const r = PC.apply(geo, st, a, b);
@@ -96,6 +113,7 @@ function prismGame(root, api) {
   const starsFor = mv => { const p = def.par, s = mv <= p ? 3 : mv <= p + Math.max(1, Math.ceil(p / 4)) ? 2 : 1; return hintUsed ? Math.min(2, s) : s; };
   const dailyScore = mv => Math.max(100, 1000 - Math.max(0, mv - def.par) * 40 - (hintUsed ? 300 : 0));
   function hud() {
+    dirty = true;
     if (isClimb()) { const c = climb(), f = +lv.slice(1), al = allowOf(f, def.par);
       q('lvw').innerHTML = `🗼 ชั้น <b>${f}</b>`; q('nm').textContent = '❤️'.repeat(c.hp) + '🖤'.repeat(3 - c.hp);
       q('mv').textContent = path.length; q('par').textContent = al ? `${def.par} (+${al})` : def.par;
@@ -232,37 +250,60 @@ function prismGame(root, api) {
 
   /* ---------- drawing ---------- */
   // candy look: thick rounded hex slabs with no outlines, light 3D plates, board seen at a tilt and drawn back to front
-  const bg = document.createElement('canvas'); bg.width = W * 2; bg.height = H * 2;
-  (() => {
-    const g = bg.getContext('2d'); g.scale(2, 2);
+  const bg = document.createElement('canvas');
+  function paintBg() {
+    const k = pv ? dprC : 2; bg.width = Math.round(W * k); bg.height = Math.round(H * k);
+    const g = bg.getContext('2d'); g.scale(k, k);
     const gr = g.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, '#f5f2ff'); gr.addColorStop(1, '#e5effb'); g.fillStyle = gr; g.fillRect(0, 0, W, H);
     for (const [x, y, r, c] of [[90, 90, 170, 'rgba(255,196,228,.35)'], [W - 90, H - 70, 220, 'rgba(170,225,255,.4)'], [W * .45, H * .6, 280, 'rgba(255,255,255,.75)']]) {
       const rg = g.createRadialGradient(x, y, 0, x, y, r); rg.addColorStop(0, c); rg.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = rg; g.fillRect(0, 0, W, H);
     }
-  })();
+  }
+  paintBg();
+  /* Sprite cache (speed): a resting slab, chip or shadowed card looks the same every frame, so it is painted once into a
+     small canvas at the screen's pixel ratio and then only copied. Before, every chip was ~8 rounded-hex fills and two
+     gradients per frame, and every card a blurred shadow: the slowest game on the phone. */
+  const sprites = new Map();
+  function sprite(key, l, t, w, h, paint) {
+    let s = sprites.get(key); if (s) return s;
+    if (sprites.size > 500) sprites.clear();
+    const c = document.createElement('canvas'); c.width = Math.max(1, Math.ceil(w * dprC)); c.height = Math.max(1, Math.ceil(h * dprC));
+    const g = c.getContext('2d'); g.scale(dprC, dprC); g.translate(-l, -t); paint(g);
+    s = { c, l, t, w: c.width / dprC, h: c.height / dprC }; sprites.set(key, s); return s;
+  }
+  // copy a sprite with its origin at (x, y), snapped to whole device pixels so it stays sharp
+  const blit = (s, x, y) => ctx.drawImage(s.c, Math.round((x + s.l) * dprC) / dprC, Math.round((y + s.t) * dprC) / dprC, s.w, s.h);
   function hexPath(x, y, r, sy = 1, flat = false) {
     ctx.beginPath(); for (let k = 0; k < 6; k++) { const a = Math.PI / 3 * k + (flat ? 0 : Math.PI / 6); const px = x + Math.cos(a) * r, py = y + Math.sin(a) * r * sy; k ? ctx.lineTo(px, py) : ctx.moveTo(px, py); } ctx.closePath();
   }
   // flat-top hexagon with rounded corners, squashed vertically by sy
-  function rhex(x, y, r, sy) {
+  function rhexOn(g, x, y, r, sy) {
     const v = []; for (let k = 0; k < 6; k++) { const a = Math.PI / 3 * k; v.push([x + Math.cos(a) * r, y + Math.sin(a) * r * sy]); }
     const rad = r * .22, m = (p, q) => [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2], s = m(v[5], v[0]);
-    ctx.beginPath(); ctx.moveTo(s[0], s[1]);
-    for (let k = 0; k < 6; k++) { const p = v[k], n = m(p, v[(k + 1) % 6]); ctx.arcTo(p[0], p[1], n[0], n[1], rad); }
-    ctx.closePath();
+    g.beginPath(); g.moveTo(s[0], s[1]);
+    for (let k = 0; k < 6; k++) { const p = v[k], n = m(p, v[(k + 1) % 6]); g.arcTo(p[0], p[1], n[0], n[1], rad); }
+    g.closePath();
   }
+  const rhex = (x, y, r, sy) => rhexOn(ctx, x, y, r, sy);
   // a thick rounded slab: y = centre of its top face, th = thickness. col = [top, side, dark, highlight, side highlight]
-  function slab(x, y, r, th, col, o = {}) {
+  function slabOn(c, x, y, r, th, col, o = {}) {
     const sy = SY * Math.max(.05, Math.abs(o.flip ?? 1)), [top, side, dark, hi, shi] = col;
-    if (o.shadow) { rhex(x + r * .04, y + th + r * .12, r * 1.02, sy); ctx.fillStyle = 'rgba(80,70,140,.13)'; ctx.fill(); }
-    const g = ctx.createLinearGradient(x - r, 0, x + r, 0); g.addColorStop(0, dark); g.addColorStop(.3, side); g.addColorStop(.5, shi); g.addColorStop(.72, side); g.addColorStop(1, dark);
-    rhex(x, y + th, r, sy); ctx.fillStyle = dark; ctx.fill();
-    ctx.fillStyle = g; for (let d = th - 1.4; d > 0; d -= 1.4) { rhex(x, y + d, r, sy); ctx.fill(); }
-    const tg = ctx.createLinearGradient(x - r * .5, y - r * sy, x + r * .4, y + r * sy); tg.addColorStop(0, hi); tg.addColorStop(.6, top); tg.addColorStop(1, top);
-    rhex(x, y, r, sy); ctx.fillStyle = tg; ctx.fill(); ctx.lineWidth = 1.5; ctx.strokeStyle = 'rgba(255,255,255,.6)'; ctx.stroke();
+    if (o.shadow) { rhexOn(c, x + r * .04, y + th + r * .12, r * 1.02, sy); c.fillStyle = 'rgba(80,70,140,.13)'; c.fill(); }
+    const g = c.createLinearGradient(x - r, 0, x + r, 0); g.addColorStop(0, dark); g.addColorStop(.3, side); g.addColorStop(.5, shi); g.addColorStop(.72, side); g.addColorStop(1, dark);
+    rhexOn(c, x, y + th, r, sy); c.fillStyle = dark; c.fill();
+    c.fillStyle = g; for (let d = th - 1.4; d > 0; d -= 1.4) { rhexOn(c, x, y + d, r, sy); c.fill(); }
+    const tg = c.createLinearGradient(x - r * .5, y - r * sy, x + r * .4, y + r * sy); tg.addColorStop(0, hi); tg.addColorStop(.6, top); tg.addColorStop(1, top);
+    rhexOn(c, x, y, r, sy); c.fillStyle = tg; c.fill(); c.lineWidth = 1.5; c.strokeStyle = 'rgba(255,255,255,.6)'; c.stroke();
   }
-  function sym(kind, x, y, s, fill = '#fff', stroke = null) {
-    ctx.beginPath();
+  // a resting slab comes from the cache; a turning one (flip) is drawn live
+  const slabBox = (r, th) => [-r - 3, -r * SY - 3, 2 * r + 6, th + r * .12 + r * 1.02 * SY + r * SY + 6];
+  function slab(x, y, r, th, col, o = {}) {
+    if ((o.flip ?? 1) !== 1) return slabOn(ctx, x, y, r, th, col, o);
+    const rr = Math.round(r * 8) / 8, tt = Math.round(th * 8) / 8;
+    blit(sprite('s' + col[0] + col[2] + rr + '|' + tt + (o.shadow ? 's' : ''), ...slabBox(rr, tt), g => slabOn(g, 0, 0, rr, tt, col, o)), x, y);
+  }
+  function sym(kind, x, y, s, fill = '#fff', stroke = null, g = ctx) {
+    const ctx = g; ctx.beginPath();
     if (kind === 'circle') ctx.arc(x, y, s, 0, 7);
     else if (kind === 'tri') { ctx.moveTo(x, y - s); ctx.lineTo(x + s, y + s * .8); ctx.lineTo(x - s, y + s * .8); ctx.closePath(); }
     else if (kind === 'square') ctx.rect(x - s * .8, y - s * .8, s * 1.6, s * 1.6);
@@ -272,6 +313,13 @@ function prismGame(root, api) {
   }
   // one energy layer; flip (1 → −1) squashes the slab as it turns over in flight. A faint symbol keeps colours tellable apart.
   function chip(c, x, y, cr, alpha = 1, glow = 0, flip = 1) {
+    if (flip === 1 && !glow) {   // resting chip: slab + symbol from the cache
+      const rr = Math.round(cr * 8) / 8, th = rr * TH;
+      ctx.globalAlpha = alpha;
+      blit(sprite('c' + c + rr, ...slabBox(rr, th), g => { slabOn(g, 0, 0, rr, th, CANDY[c]);
+        if (rr > 16) { g.globalAlpha = .55; g.save(); g.scale(1, SY); sym(PC.COLORS[c].sym, 0, 0, rr * .2, '#fff', null, g); g.restore(); } }), x, y);
+      ctx.globalAlpha = 1; return;
+    }
     ctx.globalAlpha = alpha; slab(x, y, cr, cr * TH, CANDY[c], { flip });
     const f = Math.abs(flip);
     if (glow > 0) { ctx.globalAlpha = alpha * glow * .7; rhex(x, y, cr, SY * f); ctx.fillStyle = '#fff'; ctx.fill(); }
@@ -290,11 +338,16 @@ function prismGame(root, api) {
     if (on) { ctx.beginPath(); ctx.moveTo(x, y - s * 1.3); ctx.lineTo(x - s * .4, y - s * .2); ctx.lineTo(x, y + s * 1.3); ctx.fillStyle = 'rgba(255,255,255,.5)'; ctx.fill(); }
     else sym(PC.COLORS[c].sym, x, y - s * .1, 3.5, '#cfd3e6');
   }
+  // a white rounded card with its soft drop shadow (cached: blurred shadows are slow to draw)
+  const card = (w, h, r, fill, blur, oy, a) => sprite('k' + w + 'x' + h + fill, -blur - 2, -blur - 2, w + 2 * blur + 4, h + 2 * blur + oy + 4, g => {
+    g.shadowColor = `rgba(80,70,140,${a})`; g.shadowBlur = blur; g.shadowOffsetY = oy; rrect(g, 0, 0, w, h, r, fill); });
   const crystalCols = () => Object.keys(totals);
+  // crystal spacing: 36 px, tighter when a portrait screen can't fit the whole meter
+  const crSp = n => pv ? Math.max(24, Math.min(36, (W - 16 - 128) / Math.max(1, n))) : 36;
   function crystalPos(c, k) {
-    const cols = crystalCols(), n = cols.reduce((a, x) => a + totals[x] / CAP, 0); let idx = 0;
+    const cols = crystalCols(), n = cols.reduce((a, x) => a + totals[x] / CAP, 0), sp = crSp(n); let idx = 0;
     for (const x of cols) { if (x === c) { idx += k; break; } idx += totals[x] / CAP; }
-    return { x: W / 2 - n * 18 + 18 + 30 + idx * 36, y: 33 };
+    return { x: W / 2 - n * sp / 2 + sp / 2 + 30 + idx * sp, y: 33 };
   }
   const ease = k => k < .5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
   function glowRing(x, y, r, color, dash) {
@@ -323,8 +376,7 @@ function prismGame(root, api) {
     const b = resBox[j], i = geo.nBoard + j, isSel = i === sel, legal = sel >= 0 && !PC.why(geo, st, sel, i), hov = i === hover && playing;
     const wob = bounce[i] < 0 ? Math.sin(t * 40) * -bounce[i] * 4 : 0, pp = Math.max(0, Math.min(1, pop[i])), cx = b.x + b.w / 2, base = b.y + b.h - 30;
     ctx.save(); ctx.globalAlpha = pp; ctx.translate(wob, (1 - pp) * 20);
-    ctx.save(); ctx.shadowColor = 'rgba(80,70,140,.2)'; ctx.shadowBlur = 18; ctx.shadowOffsetY = 6;
-    rrect(ctx, b.x, b.y, b.w, b.h, 22, isSel ? '#fff7d9' : hov ? '#f8f4ff' : 'rgba(255,255,255,.9)'); ctx.restore();
+    blit(card(b.w, b.h, 22, isSel ? '#fff7d9' : hov ? '#f8f4ff' : 'rgba(255,255,255,.9)', 18, 6, .2), b.x, b.y);
     txt(ctx, 'ที่พัก', cx, b.y + 15, 13, '#9a93b8', 'center', 700);
     slab(cx, base, 42, 7, isSel ? PLATE.sel : PLATE.n);
     if (legal) { ctx.save(); ctx.setLineDash([9, 7]); ctx.lineDashOffset = -t * 30; ctx.lineWidth = 3; ctx.strokeStyle = '#2fc985'; ctx.beginPath(); ctx.roundRect(b.x + 5, b.y + 5, b.w - 10, b.h - 10, 18); ctx.stroke(); ctx.restore(); }
@@ -339,8 +391,8 @@ function prismGame(root, api) {
     ctx.drawImage(bg, 0, 0, W, H);
     if (!def) { fx.post(ctx, W, H); return; }
     // crystal meter: one crystal per 4 units of a colour; orbs from charges fly into it
-    const cols = crystalCols(), nCr = cols.reduce((a, c) => a + totals[c] / CAP, 0), mx = W / 2 - nCr * 18 - 64;
-    ctx.save(); ctx.shadowColor = 'rgba(80,70,140,.18)'; ctx.shadowBlur = 14; ctx.shadowOffsetY = 4; rrect(ctx, mx, 10, nCr * 36 + 128, 44, 22, '#ffffff'); ctx.restore();
+    const cols = crystalCols(), nCr = cols.reduce((a, c) => a + totals[c] / CAP, 0), sp = crSp(nCr), mx = W / 2 - nCr * sp / 2 - 64;
+    blit(card(Math.round(nCr * sp + 128), 44, 22, '#ffffff', 14, 4, .18), mx, 10);
     txt(ctx, isDaily() ? '📅 คริสตัล' : 'คริสตัล', mx + 42, 32, 14, '#9a93b8', 'center', 700);
     for (const c of cols) for (let k = 0; k < totals[c] / CAP; k++) { const cp = crystalPos(c, k); crystal(cp.x, cp.y - 1, c, k < (shown[c] || 0), litPulse[c + k] || 0); }
     for (const i of order) tile(i, P[i]);
@@ -362,7 +414,8 @@ function prismGame(root, api) {
       chip(step.c, x, y, ch.from.cr + (ch.to.cr - ch.from.cr) * e, 1, 0, Math.cos(e * Math.PI));
     }
     const banner = msg ? [msg.s, '#ffffff', '#4a3f6b'] : plan && plan.res === null && !won && !step && !steps.length ? ['ทางตันแล้ว 😅 กด ↩️ ย้อน หรือ 🔄 เริ่มใหม่', '#ffe6ee', '#d23a6a'] : null;
-    if (banner) { ctx.save(); ctx.shadowColor = 'rgba(80,70,140,.2)'; ctx.shadowBlur = 14; ctx.shadowOffsetY = 4; rrect(ctx, W / 2 - 250, H - 50, 500, 38, 19, banner[1]); ctx.restore(); txt(ctx, banner[0], W / 2, H - 31, 16, banner[2], 'center', 700); }
+    // the banner: along the bottom (desktop), just under the crystal meter on a portrait phone (the reservoirs own the bottom)
+    if (banner) { const bw = Math.min(500, W - 16), by = pv ? TOP : H - 50; blit(card(bw, 38, 19, banner[1], 14, 4, .2), W / 2 - bw / 2, by); txt(ctx, banner[0], W / 2, by + 19, 16, banner[2], 'center', 700); }
     fx.post(ctx, W, H);
   }
   // advance the current step; display state changes at the moment each thing visibly happens
@@ -407,8 +460,21 @@ function prismGame(root, api) {
       if (step && update(step, d)) { step = null; if (!steps.length) { disp = PC.clone(st); if (PC.done(st) && !won) api.after(.35, () => { if (!won) win(); }); } }
     }
     if (!step && !steps.length && !orbs.length && st) shown = { ...lit };
-    draw();
+    // a still board is not redrawn (most of a puzzle is thinking time); anything moving or any input redraws
+    if (dirty || moving()) { dirty = false; draw(); }
   });
+  const banner0 = () => plan && plan.res === null;
+  let lastBan = null;
+  function moving() {
+    const ban = banner0(); if (ban !== lastBan) { lastBan = ban; return true; }
+    if (!def || step || steps.length || orbs.length || rings.length || locksOff.length || msg || sel >= 0 || hintMv || fx.busy()) return true;
+    for (let i = 0; i < liftV.length; i++) if (pop[i] < 1 || bounce[i] || liftV[i] > .002) return true;
+    for (const k in litPulse) if (litPulse[k] > 0) return true;
+    return false;
+  }
+  for (const ev of ['pointerdown', 'pointerup', 'pointermove']) cv.addEventListener(ev, () => { dirty = true; });
+  if (document.fonts) document.fonts.ready.then(() => { dirty = true; });
+  if (pv) { fit(); if (window.ResizeObserver) { const ro = new ResizeObserver(() => fit()); ro.observe(box); var unRO = () => ro.disconnect(); } }
 
   const un = unlocked(), next = Math.min(un, LV.length), cur = store.get('prism_cur', null), dr = dayRec();
   const cc = climb(), clKey = 'c' + cc.f;
@@ -437,5 +503,5 @@ function prismGame(root, api) {
       <p>📅 <b>ด่านประจำวัน</b> เหมือนกันทั้งออฟฟิศ ใช้ตาน้อยที่สุดได้อันดับ · ด่าน 13 ขึ้นไปคือด่านโหด</p>
       <p>⏳ ไม่จับเวลา · ↩️ ย้อนได้ไม่จำกัด · ทำได้ใน<b>เป้าจำนวนตา</b> = ⭐⭐⭐ · ใช้คำใบ้ได้สูงสุด ⭐⭐</p>`, buttons: btns });
   if (window.__TEST__) window.__prism = { tap, hint, undo, restart, startLevel, dayKey, get st() { return st; }, get geo() { return geo; }, get plan() { return plan; }, get hintMv() { return hintMv; }, get busy() { return !!step || steps.length > 0 || orbs.length > 0; }, get won() { return won; } };
-  return { destroy() { worker && worker.terminate(); } };
+  return { destroy() { worker && worker.terminate(); typeof unRO === 'function' && unRO(); } };
 }

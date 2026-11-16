@@ -574,7 +574,7 @@ html.hand-l .g2deck.rows{flex-direction:column}html.hand-l .g2deck .g2row{direct
 /* barista / prism: deck rows under a playfield that keeps its own top */
 html.touch .g2t-barista>.g2box{align-items:flex-start}
 html.touch .g2t-prism>.g2box{align-items:flex-end}
-.prism-deck [data-k=hs]{display:block;font-size:11px;margin-top:1px}
+.prism-deck [data-k=hs]{display:block;font-size:12px;margin-top:1px}
 /* runner: the canvas sits low, near the thumbs; the duck glyph */
 html.touch .g2t-run>.run-box{align-items:flex-end}
 .g2deck .duck{font-size:.8em}
@@ -590,6 +590,11 @@ html.touch .g2t-spot>.spot-tip{flex:none;margin:0 0 6px;font-size:13px}
 html.touch .g2t-spot>.spot-wrap{flex:1 1 0;min-height:0;container-type:size;display:flex;flex-direction:column;align-items:center;gap:12px;max-width:none;width:100%}
 html.touch .g2t-spot .spot-panel{width:min(100cqw,(100cqh - 12px) / 2 * 4 / 3);flex:none}
 .spot-deck .g2k{min-width:calc(var(--b) * 2.6)}
+/* spot held upright: panel size and the wall offset --o come from fit() in spotGame; sprites stay sharp */
+html.touch .g2t-spot.spot-pv .spot-panel{aspect-ratio:auto;box-sizing:border-box}
+html.touch .g2t-spot.spot-pv .spot-panel>*{translate:0 var(--o,0)}
+html.touch .g2t-spot.spot-pv .spot-panel .wallband{top:calc(var(--o,0) * -1);height:calc(30cqw + var(--o,0)) !important}
+html.touch .g2t-spot.spot-pv .spot-panel .sp,html.touch .g2t-spot.spot-pv .spot-panel .floorbg{image-rendering:pixelated}
 /* 2D party room: canvas, game bar, then walk (left) / use + jump (right) in the bottom corners */
 html.touch .g2t-party{padding-top:calc(52px + env(safe-area-inset-top))}
 html.touch body.playing .g2t-party{padding-top:56px}
@@ -1316,13 +1321,31 @@ function spotGame(root,api){
     <div class="spot-tip">สองภาพต่างกันตรงไหน? แตะภาพไหนก็ได้ · แตะผิดเสีย 4 วินาที</div>
     <div class="spot-wrap"><div class="spot-panel"></div><div class="spot-panel"></div></div>`;
   const q=k=>root.querySelector(`[data-k="${k}"]`),panels=[...root.querySelectorAll('.spot-panel')];
-  let mode='daily',level=0,score=0,time=0,maxT=1,diffs=[],running=false,done=false,streak=0;
+  let mode='daily',level=0,score=0,time=0,maxT=1,diffs=[],running=false,done=false,streak=0,scene=null;
+  /* Phone (PRD 7.4): the hint button moves from the top bar to the bottom of the screen. Held upright (pv), the two
+     pictures fill the play area: as wide as fits with each sprite pixel on whole device pixels, and taller than 4:3 —
+     the extra height becomes more wall on top (everything moves down by --o) and more floor below. */
+  const phone=typeof g2phone==='function'&&g2phone(root,'spot'),wrap=root.querySelector('.spot-wrap');
+  let pv=false,off=0,ro=null;
+  if(phone){const hint=q('hint');hint.classList.remove('sm');hint.classList.add('g2k');hint.setAttribute('aria-label','ใบ้ (เสียเวลา 10 วินาที)');
+    hint.innerHTML='💡<small>ใบ้ −10 วิ</small>';
+    hint.addEventListener('pointerdown',()=>hint.classList.add('on'));for(const ev of ['pointerup','pointercancel','pointerleave'])hint.addEventListener(ev,()=>hint.classList.remove('on'));
+    g2deck(root,{l:[],r:[hint]}).classList.add('spot-deck');
+    const r=wrap.getBoundingClientRect();pv=r.height>r.width}
+  function fit(){
+    const r=wrap.getBoundingClientRect(),dp=window.devicePixelRatio||1;if(r.width<100||r.height<100)return;
+    // panel content width: up to the wrap width (+ the stage's 4 px side padding), and both pictures at least 4:3 tall
+    const max=Math.min(r.width+8-6,((r.height-12)/2-6)/.75),n=Math.floor(max*SPX/100*dp),snap=n/dp/SPX*100;
+    const pw=snap>=max*.92?snap:max,ph=(r.height-12)/2-6;off=Math.max(0,(ph/pw*100-75)*.5);
+    for(const p of panels){p.style.width=(pw+6)+'px';p.style.height=(ph+6)+'px';p.style.setProperty('--o',off+'cqw');if(scene)p.style.backgroundColor=WALL_COL[scene.wall]}
+  }
+  if(pv){root.classList.add('spot-pv');fit();if(window.ResizeObserver){ro=new ResizeObserver(fit);ro.observe(wrap)}}
   function hud(){q('lv').textContent=level;q('left').textContent=diffs.filter(d=>!d.found).length;q('t').textContent=Math.ceil(time);
     q('sc').textContent=fmt(score);q('bar').style.width=(time/maxT*100)+'%';q('tm').classList.toggle('low',time<10)}
   function startLevel(){
     level++;
     const r=mulberry32(mode==='daily'?(+todayKey)*97+level*7919:Math.floor(rnd()*1e9));
-    const scene=buildScene(r,level);
+    scene=buildScene(r,level);if(pv)fit();
     diffs=makeDiffs(r,scene.items,Math.min(4+level,8),level);
     panels.forEach((p,s)=>{renderPanel(p,scene,diffs,s);p.animate([{opacity:0,transform:'scale(.96)'},{opacity:1,transform:'none'}],{duration:300,easing:'ease-out'})});
     maxT=Math.max(45,85-level*6);time=maxT;done=false;running=true;streak=0;hud();
@@ -1331,7 +1354,7 @@ function spotGame(root,api){
     m.style.left=d.cx+'cqw';m.style.top=d.cy+'cqw';m.style.width=m.style.height=d.rad*2+'cqw';p.appendChild(m);if(cls)setTimeout(()=>m.remove(),1800)}}
   panels.forEach(p=>p.addEventListener('pointerdown',e=>{
     if(!running||done||api.paused)return;
-    const R=p.getBoundingClientRect(),u=100/R.width,x=(e.clientX-R.left)*u,y=(e.clientY-R.top)*u;
+    const R=p.getBoundingClientRect(),u=100/R.width,x=(e.clientX-R.left)*u,y=(e.clientY-R.top)*u-off;
     let best=null,bd=1e9;for(const d of diffs){const dd=Math.hypot(d.cx-x,d.cy-y);if(dd<d.rad&&dd<bd){best=d;bd=dd}}
     if(best){if(best.found)return;best.found=true;ring(best);streak++;const pts=100+level*20+(streak>1?streak*10:0);score+=pts;runSfx('coin');const tb=Math.max(0,Math.min(3,maxT-time));time+=tb;
       for(const pp of panels){const R2=pp.getBoundingClientRect(),k=R2.width/100;domBurst(pp,best.cx*k,best.cy*k,{n:12,dist:50})}
@@ -1352,6 +1375,7 @@ function spotGame(root,api){
       <p>⏱ ผ่านด่านเร็ว = โบนัสเวลา · เจอติดๆ กัน = โบนัสคอมโบ · แตะผิด <b>−4 วินาที</b></p><p>💡 ติดจริงๆ กดใบ้ได้ (−10 วินาที)</p>
       <p>📅 <b>ด่านประจำวัน</b>: วันนี้ทุกคนได้ภาพชุดเดียวกัน มาวัดกันว่าใครตาไว!</p>`,
     buttons:[{label:'📅 ด่านประจำวัน',primary:true,go(){mode='daily';startLevel()}},{label:'🎲 สุ่มด่าน',go(){mode='rand';startLevel()}}]});
+  return{destroy(){ro&&ro.disconnect()}};
 }
 
 /* =================================================================
@@ -1381,6 +1405,20 @@ function runnerGame(root,api){
   const q=k=>root.querySelector(`[data-k="${k}"]`),cv=root.querySelector('canvas'),ctx=cv.getContext('2d'),fx=makeFX();
   const W=800,H=360,GY=300,PX=110,G=2600;
   const dpr=Math.min(2,window.devicePixelRatio||1);cv.width=W*dpr;cv.height=H*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);
+  /* Phone held upright (pv): the same world drawn ~1.6x bigger, the wall carried up to the top of the play area and a
+     deeper floor. The view starts just behind the runner; obstacles that a desktop screen would already show but the
+     narrower phone view can't yet get a marker on the right edge at their height, so the warning time is the same. */
+  const phone=typeof g2phone==='function'&&g2phone(root,'run'),rbox=root.querySelector('.run-box');
+  let pv=false,vs=1,dprR=dpr,VW=W,vTop=0,camX=0;const FD=120;
+  if(phone){const r=rbox.getBoundingClientRect();pv=r.height>r.width}
+  function fit(){
+    const r=rbox.getBoundingClientRect(),bw=Math.floor(r.width),bh=Math.floor(r.height);if(bw<100||bh<100)return;
+    dprR=Math.min(3,window.devicePixelRatio||1);const cw=bw-6,ch=bh-6;  // inside the 3 px border
+    // scale: ~1.6x the plain fit, snapped so one sprite pixel at the runner's scale (3) is a whole number of device pixels
+    vs=Math.max(1,Math.round(1.6*cw/W*3*dprR))/(3*dprR);
+    VW=cw/vs;vTop=Math.round(GY+FD-ch/vs);camX=PX+24-14;band=null;
+    cv.width=Math.round(cw*dprR);cv.height=Math.round(ch*dprR);cv.style.width=bw+'px';cv.style.height=bh+'px';
+  }
   let who=store.get('runWho','adam');if(!MI_PEOPLE.includes(who))who='adam';
   const p={y:GY,vy:0,jumps:0,duck:false,held:false,inv:0,sq:0};
   let speed=380,dist=0,coins=0,hp=3,obs=[],items=[],nextObs=700,nextDecor=300,anim=0,running=false,over=false,lastQuip=0,dustT=0;
@@ -1409,9 +1447,45 @@ function runnerGame(root,api){
     if(d.who)return drawChar(ctx,o.who,'run','left',anim,cx,by+6,d.k);
     if(d.spin){ctx.save();ctx.translate(cx,by-h/2);ctx.rotate(o.rot);drawPixAt(ctx,d.n,0,h/2,d.k);ctx.restore();return}
     drawPixAt(ctx,d.px?pxa(d.px):d.n,cx,by,d.k,{flip:d.flip,sy:d.px?1+Math.sin(anim*10)*.06:1})}
+  const RUN_UP=[['board_calendar',60,-110],['window_slide',300,-110],['world_map',560,-110],['pic_forest',800,-110],['pic_cat',180,-290],['pic_long',430,-290],['shelf_plant',690,-290],['pic_fish',920,-290]];
+  // phone: the wall above the desktop scene: two more rows of frames, a ceiling with pendant lamps. It repeats every 1000
+  // px of the slower wall parallax, so it is painted once into a tile (at device pixels) and only copied per frame.
+  let band=null;
+  function paintUpper(g,u0,w){  // the wall from u0 to u0+w in wall coordinates (u = x + wall scroll), y from vTop to 0
+    const rowB=Math.round((vTop+110-170)/2);  // the upper row sits halfway between the lamps and the first row
+    g.fillStyle=wallBase('wall_mint');g.fillRect(u0,vTop,w,-vTop);
+    for(const [n,x,cy] of RUN_UP){const im=pix(n);for(const t of [-1000,0,1000])drawPixAt(g,n,x-100+t,(cy<-200?rowB:cy)+(im.naturalHeight||0)*1.5,3)}
+    g.fillStyle=PAL.paper;g.fillRect(u0,vTop,w,18);g.fillStyle=PAL.ink;g.fillRect(u0,vTop+18,w,3);
+    for(let i=-1;i<5;i++){const lx=i*250+10;g.fillStyle=PAL.ink;g.fillRect(lx-1,vTop+21,3,54);g.fillRect(lx-18,vTop+72,36,18);g.fillStyle=PAL.yel;g.fillRect(lx-15,vTop+75,30,12)}
+    g.fillStyle='rgba(255,249,238,.42)';g.fillRect(u0,vTop,w,-vTop);
+  }
+  function upperWall(){
+    const k=vs*dprR,ws=dist*.3;
+    if(!band&&RUN_UP.every(([n])=>pix(n).complete&&pix(n).naturalWidth)&&pix('wall_mint').complete){
+      const c=document.createElement('canvas');c.width=Math.ceil(1000*k);c.height=Math.ceil(-vTop*k);const g=c.getContext('2d');
+      g.setTransform(k,0,0,k,0,-vTop*k);g.save();g.beginPath();g.rect(0,vTop,1000,-vTop);g.clip();paintUpper(g,0,1000);g.restore();band=c}
+    if(!band){ctx.save();ctx.translate(-ws,0);paintUpper(ctx,camX+ws-4,VW+8);ctx.restore();return}
+    const u=camX+ws,start=camX-(((u%1000)+1000)%1000);
+    ctx.imageSmoothingEnabled=false;
+    for(let x=start;x<camX+VW;x+=1000)ctx.drawImage(band,Math.round(x*k)/k,vTop,band.width/k,band.height/k);
+  }
+  // phone: an obstacle that is already on a desktop screen but not yet in the phone view shows on the right edge
+  function markers(){
+    const ex=camX+VW,u=vs*dprR;
+    for(const o of obs){if(o.x<=ex-8||o.x>=W)continue;
+      const d=o.d,[w,h]=obsSize(d),sw=w/d.k,sh=d.who?32:h/d.k,y=Math.max(vTop+60,Math.min(GY+FD-36,GY+d.yb-h/2));
+      const mw=46,mx=ex-mw-8,kk=Math.max(1,Math.floor(34/Math.max(sw,sh)*u))/u;
+      rrect(ctx,mx,y-mw/2,mw,mw,10,'rgba(255,255,255,.94)',PAL.ink);
+      ctx.fillStyle=PAL.ink;ctx.beginPath();ctx.moveTo(mx-12,y);ctx.lineTo(mx-3,y-8);ctx.lineTo(mx-3,y+8);ctx.closePath();ctx.fill();
+      const by=y+sh*kk/2;
+      if(d.who)drawChar(ctx,o.who,'run','left',anim,mx+mw/2,y+13*kk,kk);
+      else drawPixAt(ctx,d.px?pxa(d.px):d.n,mx+mw/2,by,kk,{flip:d.flip})}
+  }
   function draw(){
+    if(pv){const k=vs*dprR;ctx.setTransform(k,0,0,k,-camX*k,-vTop*k)}
     fx.pre(ctx);
-    officeBG(ctx,W,H,GY,{wall:'wall_mint',floor:'floor_wood',scroll:dist,wallScroll:dist*.3,
+    if(pv)upperWall();
+    officeBG(ctx,W,pv?GY+FD:H,GY,{wall:'wall_mint',floor:'floor_wood',scroll:dist,wallScroll:dist*.3,
       windows:[['window_big',120,60,3],['pic_sunset',380,96,3],['window_grey',620,62,3],['noticeboard',860,100,3]]});
     for(const it of items)if(it.k==='decor')drawPixAt(ctx,it.n,it.x,GY+2,3,{alpha:.95});
     if(speed>600){ctx.fillStyle='rgba(255,255,255,.5)';for(let i=0;i<6;i++){const y=60+((i*53+Math.floor(anim*40)*7)%220);ctx.fillRect(((W-(anim*900+i*170)%W)+W)%W,y,40+i*8,2)}}
@@ -1425,6 +1499,7 @@ function runnerGame(root,api){
       else if(p.duck)drawChar(ctx,who,'sit','right',0,cx,p.y,3,{frame:0,sx:1.15,sy:.78});
       else drawChar(ctx,who,'run','right',anim*speed/380,cx,p.y,3,{sx:1+sq*.2,sy:1-sq*.2});
     }
+    if(pv)markers();
     fx.post(ctx,W,H);
   }
   function hitTest(a,o){const [w,h]=obsSize(o.d),mx=w*.16,my=h*.12,b={x:o.x+mx,y:GY+o.d.yb-h+my,w:w-2*mx,h:h-2*my};
@@ -1458,21 +1533,36 @@ function runnerGame(root,api){
     }else if(over){p.vy+=G*dt;p.y=Math.min(H+120,p.y+p.vy*dt)}
     draw();
   });
-  cv.addEventListener('pointerdown',e=>{e.preventDefault();const R=cv.getBoundingClientRect();
-    if(e.clientX-R.left<R.width*.35)p.duck=true;else jump()});
-  const up=()=>{p.duck=false;release()};
-  window.addEventListener('pointerup',up);
+  let up=()=>{p.duck=false;release()},ro=null;
+  if(!phone){
+    cv.addEventListener('pointerdown',e=>{e.preventDefault();const R=cv.getBoundingClientRect();
+      if(e.clientX-R.left<R.width*.35)p.duck=true;else jump()});
+    window.addEventListener('pointerup',up);
+  }else{
+    // PRD 7.4: tap anywhere = jump (hold = higher), swipe down = duck, plus big jump / duck buttons in the bottom corners.
+    // Each pointer lets go of only what it started, so the duck thumb can stay down while the other thumb jumps.
+    let ducks=0,sw=null;const duck=n=>{ducks=Math.max(0,ducks+n);p.duck=ducks>0};
+    g2deck(root,{l:[['<span class="duck">▼</span><small>ก้ม</small>','ก้ม',()=>duck(1),{up:()=>duck(-1),cls:'wide'}]],
+      r:[['⤒<small>กระโดด</small>','กระโดด',jump,{up:release,cls:'wide primary'}]]});
+    phoneHint(root,'แตะตรงไหนก็ได้ = กระโดด · ปัดลง = ก้ม');
+    root.addEventListener('pointerdown',e=>{if(!freePress(e)||sw)return;e.preventDefault();pressRing(root,e);sw={id:e.pointerId,y:e.clientY,duck:false};jump()});
+    root.addEventListener('pointermove',e=>{if(sw&&e.pointerId===sw.id&&!sw.duck&&e.clientY-sw.y>28){sw.duck=true;duck(1)}});
+    up=e=>{if(!sw||e.pointerId!==sw.id)return;release();if(sw.duck)duck(-1);sw=null};
+    window.addEventListener('pointerup',up);window.addEventListener('pointercancel',up);
+    if(pv){fit();if(window.ResizeObserver){ro=new ResizeObserver(fit);ro.observe(rbox)}}
+  }
   const keyUp=e=>{if([' ','ArrowUp','w','W'].includes(e.key))release();if(['ArrowDown','s','S'].includes(e.key))p.duck=false};
   window.addEventListener('keyup',keyUp);
   api.onKey(e=>{if([' ','ArrowUp','w','W'].includes(e.key)){e.preventDefault();if(!e.repeat)jump()}
     else if(['ArrowDown','s','S'].includes(e.key)){e.preventDefault();p.duck=true}});
   hud();draw();
   api.intro({how:`<p>🏃 วิ่งไปตอกบัตรให้ทัน! <b>กระโดด</b>ข้ามลัง เก้าอี้ล้อเลื่อน เพื่อนที่วิ่งสวน · <b>ก้ม</b>หลบเครื่องบินกระดาษ</p>
-      <p>👆 แตะฝั่ง <b>ขวา</b> / Space = กระโดด (กดซ้ำกลางอากาศ = 2 ชั้น) · แตะฝั่ง <b>ซ้าย</b>ค้าง / ↓ = ก้ม</p>
+      ${phone?'<p>👆 <b>แตะตรงไหนก็ได้</b> = กระโดด (แตะซ้ำกลางอากาศ = 2 ชั้น) · <b>ปัดลง</b> หรือกดปุ่มก้มมุมล่างค้าง = ก้ม</p>'
+        :'<p>👆 แตะฝั่ง <b>ขวา</b> / Space = กระโดด (กดซ้ำกลางอากาศ = 2 ชั้น) · แตะฝั่ง <b>ซ้าย</b>ค้าง / ↓ = ก้ม</p>'}${pv?'<p>◀ กรอบที่ขอบขวา = ของที่กำลังมา</p>':''}
       <p>${pxImg('coin',18)} เหรียญ +10 คะแนน · ${pxImg('gem',18)} +10 เหรียญ · ❤️ 3 ดวง ชนครบ = จบ</p><p>👇 เลือกตัวละครแล้วออกวิ่งเลย</p>`,
     buttons:MI_PEOPLE.map(c=>({label:`<img class="pxi" src="${MDIR}${c}_right.png" height="44" alt="${c}" style="display:block">`,primary:c===who,
       go(){who=c;store.set('runWho',c);running=true}}))});
-  return{destroy(){window.removeEventListener('pointerup',up);window.removeEventListener('keyup',keyUp)}};
+  return{destroy(){window.removeEventListener('pointerup',up);window.removeEventListener('pointercancel',up);window.removeEventListener('keyup',keyUp);ro&&ro.disconnect()}};
 }
 
 /* =================================================================
@@ -1536,6 +1626,19 @@ function stackGame(root,api){
   const q=k=>root.querySelector(`[data-k="${k}"]`),cv=root.querySelector('canvas'),ctx=cv.getContext('2d'),fx=makeFX();
   const W=360,H=560,BH=26,BASE_Y=H-70,ROOM=14;
   const dpr=Math.min(2,window.devicePixelRatio||1);cv.width=W*dpr;cv.height=H*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);
+  /* Phone held upright (pv): the canvas is the whole play area at one logical px = one CSS px, so the art lands on
+     whole pixels (3 CSS px per sprite pixel). The 360-wide tower stays in the middle (same speeds); the sky and the office
+     wall carry on to the sides and up to the top, and the camera keeps a few more floors in view. */
+  const phone=typeof g2phone==='function'&&g2phone(root,'stack'),sbox=root.querySelector('.stack-box');
+  let pv=false,ox=0,oy=0,VW=W,VH=H,sk=1,dprS=dpr,extra=0;
+  if(phone){const r=sbox.getBoundingClientRect();pv=r.height>r.width}
+  function fit(){
+    const r=sbox.getBoundingClientRect(),bw=Math.floor(r.width),bh=Math.floor(r.height);if(bw<100||bh<100)return;
+    dprS=Math.min(3,window.devicePixelRatio||1);const cw=bw-6,ch=bh-6;
+    // whole-number zoom (2x on a tablet), as long as at least 80% of the scene's height still shows; under 360 px wide: fit
+    sk=cw<W?cw/W:Math.max(1,Math.floor(Math.min(cw/W,ch/(H*.8))));VW=cw/sk;VH=ch/sk;ox=Math.floor((VW-W)/2);oy=Math.floor(VH-H);extra=Math.trunc(oy/BH/2);
+    cv.width=Math.round(cw*dprS);cv.height=Math.round(ch*dprS);cv.style.width=bw+'px';cv.style.height=bh+'px';
+  }
   const LAB=['รายงาน','ใบเสนอราคา','สัญญา','บันทึกประชุม','งบประมาณ','แผนงาน','ใบแจ้งหนี้','โปรเจกต์','สรุปยอดขาย','คู่มือ','นโยบาย','ใบสั่งซื้อ'];
   const COL=['#3a86ff','#ff5c8a','#21c07a','#ff9f1c','#8338ec','#00b4d8','#ffd23f','#e23030'];
   const DECO=[[17,'cloud',70],[22,'cloud',270],[26,'plane',110],[31,'cloud',90],[36,'plane',250],[42,'moon',280],[48,'spark',80],[56,'rocket',260],[70,'ufo',120],[90,'spark',220]];
@@ -1560,18 +1663,19 @@ function stackGame(root,api){
       ctx.fillText(b.lab,b.x+b.w/2,y+BH/2,lw-6)}
     ctx.globalAlpha=1}
   function draw(){
+    if(pv){const k=sk*dprS;ctx.setTransform(k,0,0,k,ox*k,oy*k)}
     fx.pre(ctx);
-    const c=bg();ctx.fillStyle=`rgb(${c})`;ctx.fillRect(-20,-20,W+40,H+40);
-    if(cam>30*BH){ctx.fillStyle='rgba(255,255,255,.8)';for(let i=0;i<40;i++){const sx=(i*97)%W,sy=((i*53+cam*.3)%H);ctx.fillRect(sx,sy,2,2)}}
+    const c=bg();ctx.fillStyle=`rgb(${c})`;ctx.fillRect(-20-ox,-20-oy,VW+40,VH+40);
+    if(cam>30*BH){ctx.fillStyle='rgba(255,255,255,.8)';for(let i=0;i<(pv?70:40);i++){const sx=(i*97)%VW-ox,sy=((i*53+cam*.3)%VH)-oy;ctx.fillRect(sx,sy,2,2)}}
     // the office the stack starts in: a wall with windows up to floor ROOM, then open sky
     const wallTop=yOf(ROOM),fy=yOf(0)+BH;
-    if(wallTop<H){ctx.fillStyle=WALL_COL.wall_grey;ctx.fillRect(0,Math.max(-20,wallTop),W,fy-wallTop);
-      ctx.fillStyle=PAL.ink;ctx.fillRect(0,wallTop-4,W,4);
-      [['window_big',70,5],['window_big',290,5],['pic_land',180,9],['window_grey',70,10],['window_grey',290,10]].forEach(([n,x,lv])=>{const y=yOf(lv);if(y>-80&&y<H+40)drawPixAt(ctx,n,x,y,3)});
+    if(wallTop<H){ctx.fillStyle=WALL_COL.wall_grey;ctx.fillRect(-ox,Math.max(-20-oy,wallTop),W+2*ox,fy-wallTop);
+      ctx.fillStyle=PAL.ink;ctx.fillRect(-ox,wallTop-4,W+2*ox,4);
+      [['window_big',70,5],['window_big',290,5],['pic_land',180,9],['window_grey',70,10],['window_grey',290,10]].forEach(([n,x,lv])=>{const y=yOf(lv);if(y>-80-oy&&y<H+40)drawPixAt(ctx,n,x,y,3)});
       drawPixAt(ctx,'plant_pot',30,fy,3);drawPixAt(ctx,'shelf_white',330,fy,3)}
-    for(const [lv,e,x] of DECO){const y=yOf(lv);if(y<-40||y>H+40)continue;drawPixAt(ctx,pxa(e),x+Math.sin(t+lv)*6,y,e==='cloud'?4:3)}
-    if(fy<H){const ft=pix('floor_wood');if(ft.complete&&ft.naturalWidth){ctx.imageSmoothingEnabled=false;for(let yy=fy,r=0;yy<H;yy+=48,r++)for(let x=-(r*48)%144;x<W;x+=144)ctx.drawImage(ft,x,yy,144,48)}}
-    for(let i=0;i<stack.length;i++){const y=yOf(i);if(y>H||y<-BH)continue;folder(stack[i],y)}
+    for(const [lv,e,x] of DECO){const y=yOf(lv);if(y<-40-oy||y>H+40)continue;drawPixAt(ctx,pxa(e),x+Math.sin(t+lv)*6,y,e==='cloud'?4:3)}
+    if(fy<H){const ft=pix('floor_wood');if(ft.complete&&ft.naturalWidth){ctx.imageSmoothingEnabled=false;for(let yy=fy,r=0;yy<H;yy+=48,r++)for(let x=-(r*48)%144-144*Math.ceil(ox/144);x<W+ox;x+=144)ctx.drawImage(ft,x,yy,144,48)}}
+    for(let i=0;i<stack.length;i++){const y=yOf(i);if(y>H||y<-BH-oy)continue;folder(stack[i],y)}
     {const top=stack[stack.length-1],cx=top.x+top.w/2,by=yOf(stack.length-1)-Math.sin(hop*Math.PI)*18;
       if(over)drawChar(ctx,who,'idle_anim','down',t,cx,by,2,{rot:.8});
       else drawChar(ctx,who,hop>0?'run':'idle_anim','down',t,cx,by,2,{sx:1-hop*.1,sy:1+hop*.12})}
@@ -1597,19 +1701,24 @@ function stackGame(root,api){
     const fl=stack.length-1;if(fl%10===0){fx.text(W/2,H/2-60,`🏢 ชั้น ${fl}!`,{color:PAL.pink,size:34,life:1.3});fx.burst(W/2,H/2-60,{n:28,colors:CONFETTI,speed:320,grav:500,size:6,shape:'paper',life:1})}
     newBlock();hud();
   }
-  cv.addEventListener('pointerdown',e=>{e.preventDefault();drop()});
+  let ro=null;
+  // phone (PRD 7.4): a press anywhere drops the binder, with a ring under the finger at once
+  if(phone){root.addEventListener('pointerdown',e=>{if(!freePress(e))return;e.preventDefault();pressRing(root,e);drop()});
+    if(pv){fit();if(window.ResizeObserver){ro=new ResizeObserver(fit);ro.observe(sbox)}}}
+  else cv.addEventListener('pointerdown',e=>{e.preventDefault();drop()});
   api.onKey(e=>{if(e.key===' '||e.key==='Enter'||e.key==='ArrowDown'){e.preventDefault();drop()}});
   api.loop(dt=>{
     const d=fx.step(dt);t+=dt;
     if(running&&!over&&d){cur.x+=cur.dir*cur.sp*d;if(cur.dir>0&&cur.x>W-cur.w*.5)cur.dir=-1;else if(cur.dir<0&&cur.x<-cur.w*.5)cur.dir=1}
-    const target=Math.max(0,(stack.length-13)*BH);cam+=(target-cam)*Math.min(1,dt*6);
+    const target=Math.max(0,(stack.length-13-extra)*BH);cam+=(target-cam)*Math.min(1,dt*6);
     for(const o of debris){o.vy+=1000*dt;o.y+=o.vy*dt;o.rot+=o.vr*dt}
     debris=debris.filter(o=>o.y<H+120);hop=Math.max(0,hop-dt*3);draw();
   });
   draw();hud();
-  api.intro({how:`<p>📦 แฟ้มเลื่อนไปมา — <b>แตะจอ</b> หรือกด <b>Space</b> เพื่อวางลงบนกอง</p>
+  api.intro({how:`<p>📦 แฟ้มเลื่อนไปมา — ${phone?'<b>แตะตรงไหนก็ได้</b>':'<b>แตะจอ</b> หรือกด <b>Space</b>'} เพื่อวางลงบนกอง</p>
       <p>✂️ ส่วนที่ล้นจะถูกตัดทิ้ง แฟ้มเลยแคบลงเรื่อยๆ</p><p>✨ วาง <b>เป๊ะ</b> ติดกัน 3 ครั้ง แฟ้มจะกว้างขึ้น</p><p>🚀 ซ้อนสูงพอ… อาจทะลุหลังคาไปถึงอวกาศ</p>`,
     buttons:[{label:'📚 เริ่มซ้อน!',primary:true,go(){running=true}}]});
+  return{destroy(){ro&&ro.disconnect()}};
 }
 
 /* ---------- registry & hub ---------- */
