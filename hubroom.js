@@ -134,7 +134,7 @@ const HubRoom = (() => {
   }
   function sayIt(m) {
     m = String(m || '').trim(); if (!m || !O) return;
-    if (!myName()) { toast('✏️ ตั้งชื่อเล่นก่อนนะ แล้วค่อยคุย'); document.getElementById('nameIn')?.focus(); return; }
+    if (!myName()) { toast('✏️ ตั้งชื่อเล่นก่อนนะ แล้วค่อยคุย'); if (typeof openSettings === 'function') openSettings('name'); return; }
     O.chat(m, myName(), myWho()); typeof Stats !== 'undefined' && Stats.open('chat');
   }
   function invite() {

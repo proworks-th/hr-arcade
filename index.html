@@ -721,6 +721,11 @@ html.touch body.playing.landscape #rotOv{display:flex}
 .vil-play{min-height:52px;padding:0 26px;font-size:17px;order:-1}
 html.touch #hub .vil-bar{flex-wrap:wrap;white-space:normal;overflow:visible}html.touch #hub .vil-bar>.muted{flex:1 1 100%;white-space:normal;font-size:12px;line-height:1.35}
 /* settings */
+.sets{max-height:calc(100dvh - 32px);overflow:auto;text-align:left}.sets h2{text-align:center}
+.sets .grp{padding:12px 0;border-top:2px dashed var(--line)}.sets .grp:first-of-type{border-top:0}
+.sets .grp>small.muted{display:block;margin:8px 0 4px}.sets .acct p{margin:4px 0 8px}.sets .acct .row{justify-content:flex-start}
+.sets .grp.hl{animation:popin .5s}
+.me-name{font:inherit;font-weight:800;font-size:17px;background:none;border:0;padding:0;min-height:44px;display:block;color:var(--ink);cursor:pointer;text-align:left;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sets .grp{margin:14px 0 4px;text-align:left}.sets .grp>b{display:block;margin-bottom:6px}
 .sets .seg2{display:flex;gap:8px}.sets .seg2 button{flex:1;min-height:48px;font:inherit;font-weight:600;border:3px solid var(--line);border-radius:12px;background:#fff;color:var(--ink)}
 .sets .seg2 button.on{background:var(--yel)}
@@ -739,8 +744,6 @@ html.touch #hub .vil-bar{flex-wrap:wrap;white-space:normal;overflow:visible}html
   <button class="btn icon" id="rankBtn" title="อันดับ" aria-label="อันดับ">🏆</button>
   <button class="btn icon" id="newsBtn" title="มีอะไรใหม่" aria-label="มีอะไรใหม่">📰</button>
   <button class="btn icon" id="helpBtn" title="วิธีเล่น" aria-label="วิธีเล่น">❓</button>
-  <button class="btn icon" id="muteBtn" title="เปิด/ปิดเสียง" aria-label="เปิด/ปิดเสียง">🔊</button>
-  <button class="btn icon" id="setBtn" title="ตั้งค่า" aria-label="ตั้งค่า">⚙️</button>
   <!-- boss key lives in the sticky header so it never covers game content -->
   <button class="btn" id="bossBtn" title="หัวหน้ามา! (Esc)" aria-label="หนีหัวหน้า (Esc)">🙈<span class="lbl"> หัวหน้ามา! <kbd>Esc</kbd></span></button>
 </header>
@@ -767,12 +770,12 @@ html.touch #hub .vil-bar{flex-wrap:wrap;white-space:normal;overflow:visible}html
 <script src="skills.js?v=1"></script>
 <script src="wardrobe.js?v=9"></script>
 <script src="gacha.js?v=4"></script>
-<script src="hubroom.js?v=11"></script>
+<script src="hubroom.js?v=12"></script>
 <script src="tower.js?v=12"></script>
-<script src="village-world.js?v=20"></script>
+<script src="village-world.js?v=21"></script>
 <script src="village.js?v=38"></script>
 <script src="farm.js?v=13"></script>
-<script src="cloud.js?v=12"></script>
+<script src="cloud.js?v=13"></script>
 <script src="news.js?v=20"></script>
 <script>
 'use strict';
@@ -815,8 +818,7 @@ const SFX={
   level(){[523,659,784,1047].forEach((f,i)=>setTimeout(()=>beep(f,.11),i*80))},
   over(){[523,392,330,262].forEach((f,i)=>setTimeout(()=>beep(f,.18,'triangle',.07),i*140))},
 };
-function renderMute(){$('#muteBtn').textContent=muted?'🔇':'🔊'}
-$('#muteBtn').onclick=()=>{muted=!muted;store.set('muted',muted);renderMute()};
+function renderMute(){}   // sound on/off lives in ตั้งค่า (16 Nov 2026)
 
 /* ---------- online services (online.js, Firebase): ranking, presence, feed ---------- */
 let onlineMod=null;
@@ -1140,31 +1142,64 @@ function flyCoins(x,y,to,n){
 function goHome(){stopGame();document.body.classList.remove('playing');stage.hidden=true;stage.innerHTML='';hub.hidden=false;$('#homeBtn').hidden=true;renderHub()}
 $('#homeBtn').onclick=goHome;
 $('#gmExit').onclick=goHome;
-$('#setBtn').onclick=openSettings;
 // portrait only on phones (owner, 15 Nov 2026): turning sideways pauses the game behind a "turn it upright" card
 function orient(){const l=Phone.touch&&innerWidth>innerHeight&&innerHeight<560;document.body.classList.toggle('landscape',l);if(l&&document.body.classList.contains('playing'))showPause()}
 addEventListener('resize',orient);addEventListener('orientationchange',()=>setTimeout(orient,120));
-// ตั้งค่า: hand side and button size for touch controls (phone.js keeps them; the cloud save carries every hra_ key)
-function openSettings(){
+// ตั้งค่า (16 Nov 2026): every setting in one sheet, opened from ⚙️ on the village map and the pause screen.
+// Sections: บัญชี (Google save, cloud.js), ชื่อเล่น (rename), เสียง, ปุ่มบนมือถือ (phone.js). The old header 🔊/⚙️ and card ☁️/name field are gone.
+function openSettings(focus){
+  document.getElementById('setOv')?.remove();
   const ov=document.createElement('div');ov.className='overlay';ov.id='setOv';
-  const draw=()=>{const s=Phone.get(),k=Phone.scale(),L=s.hand==='l';
-    ov.innerHTML=`<div class="panel popin sets"><h2>ตั้งค่า</h2>
-      <div class="grp"><b>มือที่ใช้กดปุ่ม</b><div class="seg2"><button type="button" data-k="hand" data-v="r" class="${L?'':'on'}">มือขวา</button><button type="button" data-k="hand" data-v="l" class="${L?'on':''}">มือซ้าย</button></div></div>
-      <div class="grp"><b>ขนาดปุ่มในเกม</b><div class="seg2"><button type="button" data-k="size" data-v="n" class="${k>1?'':'on'}">ปกติ</button><button type="button" data-k="size" data-v="l" class="${k>1?'on':''}">ใหญ่</button></div></div>
+  ov.innerHTML=`<div class="panel popin sets"><h2>ตั้งค่า</h2>
+    <section class="grp" data-s="acct"><b>บัญชีและเซฟ</b><div class="acct"></div></section>
+    <section class="grp" data-s="name"><b>ชื่อเล่น</b><span class="name-row"><input id="nameIn" maxlength="20" placeholder="ตั้งชื่อเล่น" aria-label="ชื่อเล่น"><button class="btn sm" id="nameSave" type="button" hidden>บันทึก</button></span><small class="muted name-note" id="nameNote" hidden></small></section>
+    <section class="grp" data-s="sound"><b>เสียง</b><div class="seg2"><button type="button" data-m="0">เปิด</button><button type="button" data-m="1">ปิด</button></div></section>
+    <section class="grp" data-s="ctl"></section>
+    <div class="row"><button class="btn primary" type="button" data-x>เสร็จแล้ว</button></div></div>`;
+  const close=()=>ov.remove(),box=ov;
+  Cloud.fill(ov.querySelector('.acct'),close);
+  // name
+  // name (13 Nov 2026): typing no longer renames on every key; a change needs บันทึก (save), and a rename needs a second tap (ยืนยัน).
+  // A rename moves the house, likes and office points to the new name (online.js renameRecords) and refuses a taken name.
+  const ni=box.querySelector('#nameIn'),nb=box.querySelector('#nameSave'),nn=box.querySelector('#nameNote');ni.value=store.get('name','');let nArm=false,nBusy=false;
+  const nDirty=()=>{const v=ni.value.trim(),o=store.get('name','').trim();nb.hidden=!v||v===o;nArm=false;nb.textContent='บันทึก';nn.hidden=true};
+  async function saveName(){
+    const v=ni.value.trim(),o=store.get('name','').trim();if(!v||v===o||nBusy)return;
+    const done=()=>{store.set('name',v);nb.hidden=true;nn.hidden=true;nArm=false;presence();Prog.sync();if(!hub.hidden)renderHub();if(typeof Farm!=='undefined'&&Farm.pub)Farm.pub();toast(o?'เปลี่ยนชื่อแล้ว · บ้าน ไลก์ และแต้มออฟฟิศย้ายมาด้วย':'ตั้งชื่อแล้ว')};
+    if(!o)return done();
+    if(!nArm){nArm=true;nb.textContent='ยืนยัน';nn.textContent=`เปลี่ยนจาก "${o}" เป็น "${v}" · บ้าน ไลก์ และแต้มออฟฟิศจะย้ายตามไป`;nn.hidden=false;return}
+    nBusy=true;nb.disabled=true;window.__renaming=true;
+    try{const R=await loadOnline(),r=await R.renameRecords(o,v);
+      if(r.taken){nn.textContent=`ชื่อ "${v}" มีคนใช้แล้ว ลองชื่ออื่นนะ`;nArm=false;nb.textContent='บันทึก'}
+      else if(r.offline||!r.ok){nn.textContent='เปลี่ยนชื่อไม่ได้ตอนนี้ (เน็ตหลุด?) ลองใหม่อีกครั้ง';nArm=false;nb.textContent='บันทึก'}
+      else done();
+    }catch(e){nn.textContent='เปลี่ยนชื่อไม่ได้ตอนนี้ (เน็ตหลุด?) ลองใหม่อีกครั้ง';nArm=false;nb.textContent='บันทึก'}
+    finally{nBusy=false;nb.disabled=false;window.__renaming=false}
+  }
+  ni.oninput=nDirty;ni.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();saveName()}else if(e.key==='Escape'){ni.value=store.get('name','');nDirty()}};nb.onclick=saveName;
+
+  // sound
+  const snd=()=>ov.querySelectorAll('[data-m]').forEach(b=>b.classList.toggle('on',(b.dataset.m==='1')===muted));
+  ov.querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{muted=b.dataset.m==='1';store.set('muted',muted);renderMute();snd()});snd();
+  // phone controls (only this part redraws when changed, so a half-typed name is kept)
+  const ctl=ov.querySelector('[data-s=ctl]'),drawCtl=()=>{const s=Phone.get(),k=Phone.scale(),L=s.hand==='l';
+    ctl.innerHTML=`<b>ปุ่มบนมือถือ</b><small class="muted">มือที่ใช้กดปุ่ม</small><div class="seg2"><button type="button" data-k="hand" data-v="r" class="${L?'':'on'}">มือขวา</button><button type="button" data-k="hand" data-v="l" class="${L?'on':''}">มือซ้าย</button></div>
+      <small class="muted">ขนาดปุ่มในเกม</small><div class="seg2"><button type="button" data-k="size" data-v="n" class="${k>1?'':'on'}">ปกติ</button><button type="button" data-k="size" data-v="l" class="${k>1?'on':''}">ใหญ่</button></div>
       <div class="pv" style="--s1:${Math.round(84*k)}px;--s2:${Math.round(64*k)}px"><small>ตัวอย่างปุ่มในดันเจี้ยน</small>
-        <i class="stk" style="${L?'right':'left'}:16px"></i><i class="ddg" style="${L?'left':'right'}:16px">หลบ</i></div>
-      <p class="muted" style="font-size:13px">ใช้กับทุกเกมบนมือถือ ปุ่มกดอยู่ช่วงล่างของจอเสมอ</p>
-      <div class="row"><button class="btn primary" type="button" data-x>เสร็จแล้ว</button></div></div>`;
-    ov.querySelectorAll('[data-k]').forEach(b=>b.onclick=()=>{Phone.set(b.dataset.k,b.dataset.v);draw()});
-    ov.querySelector('[data-x]').onclick=()=>ov.remove()};
-  draw();ov.addEventListener('click',e=>{if(e.target===ov)ov.remove()});document.body.appendChild(ov);
+        <i class="stk" style="${L?'right':'left'}:16px"></i><i class="ddg" style="${L?'left':'right'}:16px">หลบ</i></div>`;
+    ctl.querySelectorAll('[data-k]').forEach(b=>b.onclick=()=>{Phone.set(b.dataset.k,b.dataset.v);drawCtl()})};
+  drawCtl();
+  ov.querySelector('[data-x]').onclick=close;ov.addEventListener('click',e=>{if(e.target===ov)close()});
+  document.body.appendChild(ov);
+  const f=focus&&ov.querySelector(`[data-s="${focus}"]`);
+  if(f){f.scrollIntoView({block:'center'});f.classList.add('hl');if(focus==='name')setTimeout(()=>ni.focus(),80)}
 }
 
 function showPause(){
   if(!current||!current.started||current.ended||$('#pauseOv'))return;
   paused=true;
   const ov=document.createElement('div');ov.className='overlay';ov.id='pauseOv';
-  ov.innerHTML=`<div class="panel popin"><div class="big">⏸️</div><h2>พักเกมไว้ก่อน</h2><p class="muted">รอดตัวไปอีกรอบ 😮‍💨</p><div class="row"><button class="btn primary">▶ เล่นต่อ</button><button class="btn">🏠 หน้าหลัก</button></div>${Phone.touch?'<div class="row"><button class="btn sm" type="button">ตั้งค่าปุ่ม</button></div>':''}</div>`;
+  ov.innerHTML=`<div class="panel popin"><div class="big">⏸️</div><h2>พักเกมไว้ก่อน</h2><p class="muted">รอดตัวไปอีกรอบ 😮‍💨</p><div class="row"><button class="btn primary">▶ เล่นต่อ</button><button class="btn">🏠 หน้าหลัก</button></div><div class="row"><button class="btn sm" type="button">ตั้งค่า</button></div></div>`;
   const [go,home,set]=ov.querySelectorAll('button');
   go.onclick=()=>{if(document.body.classList.contains('landscape'))return;ov.remove();paused=false};home.onclick=goHome;if(set)set.onclick=openSettings;
   document.body.appendChild(ov);
@@ -1852,13 +1887,12 @@ function renderHub(){
   const solo=GAMES.filter(g=>!g.online),P=Prog.get(),mOpen=store.get('mOpen',false),arc=Village.on();   // arc: the solo games live in 🕹️ ตึกเกม in the village
   hub.innerHTML=`<section class="me">
       <button class="me-ava" id="avaBtn" type="button" title="แต่งตัว" aria-label="แต่งตัว"><canvas id="avaCv" width="40" height="64"></canvas></button>
-      <div class="me-main"><span class="name-row"><input id="nameIn" maxlength="20" placeholder="ตั้งชื่อเล่นก่อนเล่น ✏️" aria-label="ชื่อเล่น"><button class="btn sm" id="nameSave" type="button" hidden>บันทึก</button></span><small class="muted name-note" id="nameNote" hidden></small>
+      <div class="me-main">${store.get('name','').trim()?`<button class="me-name" id="nameBtn" type="button" title="เปลี่ยนชื่อในตั้งค่า">${esc(store.get('name',''))}</button>`:`<button class="btn sm primary" id="nameBtn" type="button">ตั้งชื่อเล่นก่อนเล่น</button>`}
         <div class="me-lv"><b>Lv ${P.lv}</b> ${Prog.title(P.lv)}${Gacha.eq()?` <i class="bdg">${badgeTxt(Gacha.eq())}</i>`:''} <span class="xpbar"><i style="width:${P.xp/needXP(P.lv)*100}%"></i></span>${nextHint(P.lv)}</div></div>
       <nav class="me-nav" aria-label="ของฉัน">
         <button class="gacha-btn${Gacha.freeToday()?' free':''}" id="gachaBtn" type="button" aria-label="กาชา">🎰<span class="bl">กาชา</span></button>
         <button id="officeBtn" type="button" aria-label="ห้องฉัน">🏠<span class="bl">ห้องฉัน</span></button>
         <button class="farm-btn" id="farmBtn" type="button" aria-label="ฟาร์ม">🌱<span class="bl">ฟาร์ม</span><i class="farm-n" data-k="farmN" hidden></i></button>
-        <button class="cloud-btn${Cloud.nudge()?' dot':''}" id="cloudBtn" type="button" aria-label="เซฟ" title="${Cloud.title()}">☁️<span class="bl">เซฟ</span></button>
       </nav>
       <span class="me-coins">🪙 ${fmt(P.coins)}</span>
     </section>
@@ -1873,24 +1907,7 @@ function renderHub(){
     <section class="awards"><h3>🏆 รางวัลออฟฟิศ <small>ประกาศผลทุกวันจันทร์</small><button class="linkbtn" id="awShare" type="button" hidden>📋 อวดในไลน์</button></h3><div class="aw-grid" data-k="aw"></div></section>
     <section class="feedbox"><h3>ความเคลื่อนไหว <button class="linkbtn" id="feedMore">${feedOpen?'ย่อ':'ดูทั้งหมด'}</button></h3><ul class="feed" data-k="feed"></ul></section>
     <p class="credits">🎨 <a href="https://limezu.itch.io/moderninteriors" target="_blank" rel="noopener">LimeZu Modern Interiors</a> (ฟรี ไม่แสวงหากำไร) · เสียง 3D และหมู่บ้าน: <a href="https://kenney.nl" target="_blank" rel="noopener">Kenney</a> (CC0, Tiny Town / Tiny Farm) · <a href="https://2dpig.itch.io/pixel-office" target="_blank" rel="noopener">2dPig</a> (CC0)</p>`;
-  // name (13 Nov 2026): typing no longer renames on every key; a change needs บันทึก (save), and a rename needs a second tap (ยืนยัน).
-  // A rename moves the house, likes and office points to the new name (online.js renameRecords) and refuses a taken name.
-  const ni=$('#nameIn'),nb=$('#nameSave'),nn=$('#nameNote');ni.value=store.get('name','');let nArm=false,nBusy=false;
-  const nDirty=()=>{const v=ni.value.trim(),o=store.get('name','').trim();nb.hidden=!v||v===o;nArm=false;nb.textContent='บันทึก';nn.hidden=true};
-  async function saveName(){
-    const v=ni.value.trim(),o=store.get('name','').trim();if(!v||v===o||nBusy)return;
-    const done=()=>{store.set('name',v);nb.hidden=true;nn.hidden=true;nArm=false;presence();Prog.sync();if(typeof Farm!=='undefined'&&Farm.pub)Farm.pub();toast(o?'เปลี่ยนชื่อแล้ว · บ้าน ไลก์ และแต้มออฟฟิศย้ายมาด้วย':'ตั้งชื่อแล้ว')};
-    if(!o)return done();
-    if(!nArm){nArm=true;nb.textContent='ยืนยัน';nn.textContent=`เปลี่ยนจาก "${o}" เป็น "${v}" · บ้าน ไลก์ และแต้มออฟฟิศจะย้ายตามไป`;nn.hidden=false;return}
-    nBusy=true;nb.disabled=true;window.__renaming=true;
-    try{const R=await loadOnline(),r=await R.renameRecords(o,v);
-      if(r.taken){nn.textContent=`ชื่อ "${v}" มีคนใช้แล้ว ลองชื่ออื่นนะ`;nArm=false;nb.textContent='บันทึก'}
-      else if(r.offline||!r.ok){nn.textContent='เปลี่ยนชื่อไม่ได้ตอนนี้ (เน็ตหลุด?) ลองใหม่อีกครั้ง';nArm=false;nb.textContent='บันทึก'}
-      else done();
-    }catch(e){nn.textContent='เปลี่ยนชื่อไม่ได้ตอนนี้ (เน็ตหลุด?) ลองใหม่อีกครั้ง';nArm=false;nb.textContent='บันทึก'}
-    finally{nBusy=false;nb.disabled=false;window.__renaming=false}
-  }
-  ni.oninput=nDirty;ni.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();saveName()}else if(e.key==='Escape'){ni.value=store.get('name','');nDirty()}};nb.onclick=saveName;
+  $('#nameBtn').onclick=()=>openSettings('name');
 
   $('#avaBtn').onclick=()=>Wardrobe.open();
   drawAva($('#avaCv'));
@@ -1899,7 +1916,6 @@ function renderHub(){
   $('#officeBtn').onclick=()=>startGame('office');
   $('#farmBtn').onclick=()=>startGame('farm');farmBadge();
   $('#gachaBtn').onclick=()=>Gacha.open();
-  $('#cloudBtn').onclick=()=>Cloud.open();
   Awards.mount(hub.querySelector('[data-k=aw]'));
   if(arc)$('#arcGo').onclick=()=>goArcade();else $('#playFeat').onclick=()=>startGame(featuredId());
   if(window.pendingFly){const n=window.pendingFly;window.pendingFly=0;requestAnimationFrame(()=>flyCoins(innerWidth/2,innerHeight*.45,hub.querySelector('.me-coins'),n))}

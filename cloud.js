@@ -86,7 +86,7 @@ const Cloud = {
   },
   nudge: () => !Cloud.signed() && Prog.get().lv >= 2,
   title: () => Cloud.signed() ? 'เซฟอยู่กับบัญชี Google' : 'เซฟด้วยบัญชี Google',
-  paint() { const b = document.getElementById('cloudBtn'); if (!b) return; b.classList.toggle('dot', Cloud.nudge()); b.title = Cloud.title(); },
+  paint() { const b = document.getElementById('cloudBtn'); if (b) { b.classList.toggle('dot', Cloud.nudge()); b.title = Cloud.title(); } window.dispatchEvent(new Event('hra-setdot')); },
   sheet(title, noClose) {
     const ov = document.createElement('div'); ov.className = 'overlay cloud-ov';
     ov.innerHTML = `<div class="panel popin cloud"><h2>${title}</h2><div data-k="body"><p class="muted">กำลังเช็ก…</p></div>
@@ -96,9 +96,10 @@ const Cloud = {
     document.body.appendChild(ov);
     return { ov, B, close };
   },
-  open() {
-    Stats.open('cloud');
-    const A = Cloud.acct, { B, close } = Cloud.sheet('☁️ เซฟของคุณ');
+  open() { Stats.open('cloud'); const { B, close } = Cloud.sheet('☁️ เซฟของคุณ'); Cloud.fill(B, close); },
+  // the account box (Google sign-in, PIN load, sign-out): its own sheet, or the บัญชี section of ตั้งค่า (16 Nov 2026)
+  fill(B, close) {
+    const A = Cloud.acct;
     if (!Cloud.signed()) {
       B.innerHTML = `<p>เข้าด้วยบัญชี Google แล้วตัวละครจะเซฟไว้กับบัญชีให้อัตโนมัติ เปิดเครื่องไหนก็ได้ตัวเดิม</p>
         ${Cloud.inApp() ? `<p class="cloud-warn">เปิดจากไลน์อยู่ ล็อกอิน Google ในไลน์ไม่ได้ กด ⋮ มุมขวาบน แล้วเลือก “เปิดในเบราว์เซอร์” ก่อน</p>
@@ -137,7 +138,7 @@ const Cloud = {
   // bring a save from the earlier nickname + PIN version onto this device; signing in with Google afterwards keeps it
   oldSave() {
     const nm = myName();
-    if (!nm) { toast('ตั้งชื่อเล่นให้ตรงกับที่เคยตั้ง PIN ไว้ก่อน'); const i = document.getElementById('nameIn'); if (i) i.focus(); return; }
+    if (!nm) { toast('ตั้งชื่อเล่นให้ตรงกับที่เคยตั้ง PIN ไว้ก่อน'); if (typeof openSettings === 'function') openSettings('name'); return; }
     const { B } = Cloud.sheet('☁️ โหลดเซฟเก่า (PIN)');
     const when = t => t ? new Date(t).toLocaleString('th-TH', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
     loadOnline().then(O => { const k = O.nameKey(nm);

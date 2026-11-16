@@ -10,7 +10,7 @@ with sync_playwright() as p:
     page.on('pageerror', lambda e: errs.append(str(e)))
     page.goto(base + '/index.html?test=1'); page.wait_for_function('window.__app', timeout=5000)
     # an existing player "จจ" (signed in, uid u1) with an older house that has no uid yet, plus another player "taken"
-    page.evaluate("""async () => { store.set('name', 'จจ'); document.querySelector('#nameIn').value = 'จจ'; Cloud.acct = { uid: 'u1' };
+    page.evaluate("""async () => { store.set('name', 'จจ'); Cloud.acct = { uid: 'u1' };
       const M = await import('/verify/mocks/firebase-database.js');
       await M.set(M.ref(null, 'rooms/_vil/lots/3'), { k: 'จจ', n: 'จจ', stage: 2, end: 1, who: 'alex', g: 10, t: 1 });
       await M.set(M.ref(null, 'rooms/_prof/จจ'), { n: 'จจ', lv: 29 });
@@ -21,7 +21,9 @@ with sync_playwright() as p:
     db = lambda path: page.evaluate(f"(async () => {{ const M = await import('/verify/mocks/firebase-database.js'); return (await M.get(M.ref(null, '{path}'))).val(); }})()")
     res['1_adopted_uid'] = (db('rooms/_vil/lots/3') or {}).get('u')
     page.click('[data-view=hub]') if page.locator('[data-view=hub]').count() else None; page.wait_for_timeout(300)
-    ni, nb, nn = page.locator('#nameIn'), page.locator('#nameSave'), page.locator('#nameNote')
+    # since 16 Nov 2026 the name field lives in ตั้งค่า (opened from ⚙️ on the village map)
+    page.evaluate("openSettings('name')"); page.wait_for_timeout(300)
+    ni, nb, nn = page.locator('#setOv #nameIn'), page.locator('#setOv #nameSave'), page.locator('#setOv #nameNote')
     # typing alone must not rename
     ni.fill('taken'); page.wait_for_timeout(1000)
     res['2_typing_no_rename'] = page.evaluate("store.get('name')")
