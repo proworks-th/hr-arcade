@@ -20,6 +20,49 @@ function g2canvas(root, W, H) {
   const at = e => { const r = cv.getBoundingClientRect(); return { x: (e.clientX - r.left) * W / r.width, y: (e.clientY - r.top) * H / r.height }; };
   return { cv, ctx, at };
 }
+// g2canvas, plus a portrait layout on phones held upright (PRD 7.3): there the canvas fills the play area between
+// the top bar and the thumb deck at 1 unit = 1 CSS px (backing store at devicePixelRatio), and the game lays out a
+// portrait scene for L.W x L.H. Everywhere else it is the fixed W x H scene, unchanged. L.fn() runs after every
+// change (rotation, resize, the hand setting); L.k is the whole-number pixel-art scale (3 on a 414 px phone).
+function g2view(root, W, H) {
+  const g = g2canvas(root, W, H), { cv, ctx } = g, dpr = Math.min(2, devicePixelRatio || 1);
+  const L = { portrait: false, W, H, k: 3, left: false, fn: null };
+  const tall = () => phoneOn() && innerHeight > innerWidth;
+  function apply(fromObserver) {
+    if (!root.isConnected && L.fn) return stop();
+    const p = tall();
+    if (!fromObserver) root.classList.toggle('g2p', p);   // the class only from window events: no ResizeObserver loop
+    else if (p !== root.classList.contains('g2p')) return;
+    const w = p ? cv.clientWidth : W, h = p ? cv.clientHeight : H, left = phoneOn() && Phone.left();
+    if (!w || !h || (p === L.portrait && w === L.W && h === L.H && left === L.left)) return;
+    Object.assign(L, { portrait: p, W: w, H: h, left, k: Math.max(2, Math.min(4, Math.round(w / 135))) });
+    cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.imageSmoothingEnabled = false;
+    L.fn && L.fn();
+  }
+  const onWin = () => apply(false), ro = typeof ResizeObserver === 'function' ? new ResizeObserver(() => apply(true)) : null;
+  addEventListener('resize', onWin); addEventListener('orientationchange', onWin); ro && ro.observe(cv);
+  const offPhone = phoneOn() ? Phone.on(onWin) : null;
+  function stop() { removeEventListener('resize', onWin); removeEventListener('orientationchange', onWin); ro && ro.disconnect(); offPhone && offPhone(); }
+  apply(false);
+  // pointer position in canvas units for either layout
+  const at = e => { const r = cv.getBoundingClientRect();
+    return L.portrait ? { x: e.clientX - r.left - cv.clientLeft, y: e.clientY - r.top - cv.clientTop } : { x: (e.clientX - r.left) * W / r.width, y: (e.clientY - r.top) * H / r.height }; };
+  return { cv, ctx, at, L, stop };
+}
+// a cached static layer (portrait scenes): paint(g) draws the room once into an offscreen canvas at device resolution;
+// it is repainted after reset() (new layout) and until the named sprites have loaded
+function g2layer(L, names, paint) {
+  const c = document.createElement('canvas'), g = c.getContext('2d'); let ok = false;
+  const ready = () => { for (const n of names) { const im = pix(n); if (!im.complete || !im.naturalWidth) return false; } return true; };
+  return {
+    reset() { ok = false; },
+    draw(ctx) {
+      if (!ok) { const dpr = Math.min(2, devicePixelRatio || 1); c.width = Math.round(L.W * dpr); c.height = Math.round(L.H * dpr);
+        g.setTransform(dpr, 0, 0, dpr, 0, 0); g.imageSmoothingEnabled = false; ok = ready(); paint(g); }
+      ctx.drawImage(c, 0, 0, L.W, L.H);
+    },
+  };
+}
 function g2pad(root, buttons) {
   const bar = document.createElement('div'); bar.className = 'g2pad';
   for (const [label, fn] of buttons) { const b = document.createElement('button'); b.className = 'btn'; b.innerHTML = label;
@@ -408,18 +451,34 @@ function stampGame(root, api) {
   const W = 720, H = 360, SX = 360, BELT_Y = 230;
   const DOCS = ['รายงาน', 'ใบเสนอราคา', 'บันทึกประชุม', 'สัญญา', 'แผนงาน', 'ใบแจ้งหนี้', 'โปรเจกต์', 'งบประมาณ'];
   root.innerHTML = `<div class="hud"><span data-k="hp"></span><span>⭐ <b data-k="sc">0</b></span><span data-k="cb" class="muted"></span><span class="muted g2tip">Space / แตะจอ = ปั๊ม</span></div>`;
-  const { cv, ctx } = g2canvas(root, W, H), q = k => root.querySelector(`[data-k="${k}"]`), fx = makeFX();
+  const { cv, ctx, L } = g2view(root, W, H), q = k => root.querySelector(`[data-k="${k}"]`), fx = makeFX();
   let healed = 0, docs = [], speed = 150, gap = 0, made = 0, lives = 3, score = 0, combo = 0, maxc = 0, perfect = 0, running = false, over = false, press = 0, beltOff = 0;
+  // where the pop-up texts go: the landscape scene's numbers, or the portrait ones from layout()
+  const LAND = { x: SX, lab: 125, miss: 130, heal: 175, combo: 80, comboB: 90 };
+  let V = LAND, P = null;
+  // portrait: documents come down a belt from the top; progress d.x (same units, speeds and windows as landscape)
+  // maps to y = TY + (d.x - SX) * f, so the target sits just above the thumb deck and a document shows for the same
+  // stretch of progress as in the wide scene
+  const py = x => P.TY + (x - SX) * P.f;
+  const bg = g2layer(L, ['wall_yellow', 'floor_dwood', 'plant_pot', 'desk_drawer', 'box_wood', 'cabinet_wood'], paintBG);
+  function layout() {
+    if (!L.portrait) { P = null; V = LAND; return; }
+    const cx = Math.round(L.W / 2), TY = Math.round(L.H - Math.max(64, L.H * .11)), f = (TY + 26) / 410, bw = Math.round(100 * f + 30);
+    P = { cx, TY, f, bw, bl: cx - (bw >> 1), wallY: 30 * L.k, side: L.left ? -1 : 1 };
+    V = { x: cx, lab: TY - 100 * f, miss: TY - 100 * f, heal: TY - 62 * f, combo: TY - 190 * f, comboB: TY - 180 * f };
+    bg.reset();
+  }
+  L.fn = layout; layout();
   function hud() { q('hp').textContent = '❤️'.repeat(lives) + '🖤'.repeat(3 - lives); q('sc').textContent = fmt(score); q('cb').textContent = combo >= 3 ? `🔥 คอมโบ ${combo}` : ''; }
   function spawn() { made++; const draft = made > 8 && rnd() < .2; docs.push({ x: -80, name: pick(rnd, DOCS), draft, stamped: false, done: false, mark: '', sq: 0 }); }
   function lose(msg) {
-    lives--; combo = 0; api.sfx('bad'); fx.text(SX, 130, msg, { color: PAL.red, size: 22, life: 1.1 }); fx.shake(8, .3); fx.flash(PAL.red, .25); hud();
+    lives--; combo = 0; api.sfx('bad'); fx.text(V.x, V.miss, msg, { color: PAL.red, size: 22, life: 1.1 }); fx.shake(8, .3); fx.flash(PAL.red, .25); hud();
     if (lives <= 0 && !over) { over = true; running = false; api.after(.8, () => api.end(score, `Perfect ${perfect} · คอมโบ ${maxc}`, false, { perfect, combo: maxc, docs: made })); }
   }
   function stamp() {
     if (!running || api.paused || press > 0) return; press = .18; api.sfx('stamp');
     let best = null, bd = 1e9; for (const d of docs) { if (d.stamped) continue; const dd = Math.abs(d.x - SX); if (dd < bd) { bd = dd; best = d; } }
-    if (!best || bd > 60) { combo = 0; fx.text(SX, 130, 'ปั๊มพลาด!', { color: '#d9d2e6', size: 22 }); fx.shake(2, .1); hud(); return; }
+    if (!best || bd > 60) { combo = 0; fx.text(V.x, V.miss, 'ปั๊มพลาด!', { color: '#d9d2e6', size: 22 }); fx.shake(2, .1); hud(); return; }
     best.stamped = true; best.sq = 1;
     if (best.draft) { best.mark = 'void'; return lose('❌ เอกสารร่าง ห้ามปั๊ม!'); }
     const [label, pts] = bd < 10 ? ['PERFECT', 30] : bd < 26 ? ['GOOD', 20] : ['OK', 10];
@@ -427,17 +486,20 @@ function stampGame(root, api) {
     combo++; maxc = Math.max(maxc, combo);
     score += Math.round(pts * (1 + Math.floor(combo / 10) * .5)); best.mark = 'ok';
     // ink splatter where the stamp hit, harder feedback the closer it was
-    fx.burst(best.x, BELT_Y - 29, { n: label === 'PERFECT' ? 16 : 9, colors: [PAL.red, '#ff6b6b', '#b3203a'], speed: 200, grav: 300, size: 4, life: .45 });
-    if (label === 'PERFECT') { fx.shake(7, .18); fx.hitstop(.07); fx.burst(best.x, BELT_Y - 60, { n: 10, colors: [PAL.yel, '#fff'], speed: 260, grav: 0, size: 7, shape: 'star', life: .5 }); api.sfx('good'); }
+    const hx = P ? P.cx : best.x, hy = P ? py(best.x) : BELT_Y - 29, sy = P ? hy - 31 * P.f : BELT_Y - 60;
+    fx.burst(hx, hy, { n: label === 'PERFECT' ? 16 : 9, colors: [PAL.red, '#ff6b6b', '#b3203a'], speed: 200, grav: 300, size: 4, life: .45 });
+    if (label === 'PERFECT') { fx.shake(7, .18); fx.hitstop(.07); fx.burst(hx, sy, { n: 10, colors: [PAL.yel, '#fff'], speed: 260, grav: 0, size: 7, shape: 'star', life: .5 }); api.sfx('good'); }
     else fx.shake(label === 'GOOD' ? 4 : 2, .12);
-    fx.text(SX, 125, label, { color: label === 'PERFECT' ? PAL.pink : label === 'GOOD' ? PAL.orange : PAL.green, size: label === 'PERFECT' ? 34 : 26 });
-    if (combo > 0 && combo % 10 === 0 && lives < 3 && healed < 2) { lives++; healed++; fx.text(SX, 175, '❤️ +1 ชีวิต', { color: PAL.pink, size: 24, life: 1.2 }); }   // a long streak buys a life back
-    if (combo > 0 && combo % 10 === 0) { fx.text(SX, 80, `🔥 คอมโบ ${combo}!`, { color: PAL.yel, size: 30, life: 1.2 }); fx.burst(SX, 90, { n: 24, colors: CONFETTI, speed: 320, grav: 500, size: 6, shape: 'paper', life: 1 }); }
+    fx.text(V.x, V.lab, label, { color: label === 'PERFECT' ? PAL.pink : label === 'GOOD' ? PAL.orange : PAL.green, size: label === 'PERFECT' ? 34 : 26 });
+    if (combo > 0 && combo % 10 === 0 && lives < 3 && healed < 2) { lives++; healed++; fx.text(V.x, V.heal, '❤️ +1 ชีวิต', { color: PAL.pink, size: 24, life: 1.2 }); }   // a long streak buys a life back
+    if (combo > 0 && combo % 10 === 0) { fx.text(V.x, V.combo, `🔥 คอมโบ ${combo}!`, { color: PAL.yel, size: 30, life: 1.2 }); fx.burst(V.x, V.comboB, { n: 24, colors: CONFETTI, speed: 320, grav: 500, size: 6, shape: 'paper', life: 1 }); }
     hud();
   }
-  // phone: a press anywhere on the game stamps (one action); desktop: the canvas
+  // phone: a press anywhere on the game stamps (one action); desktop: the canvas. In portrait the hint is the thumb deck.
   const phone = g2phone(root, 'tap');
-  if (phone) { phoneHint(root, 'แตะตรงไหนก็ได้ = ปั๊ม'); root.addEventListener('pointerdown', e => { if (!freePress(e)) return; e.preventDefault(); pressRing(root, e); stamp(); }); }
+  if (phone) { const pad = phoneHint(root, 'แตะตรงไหนก็ได้ = ปั๊ม'); let padT = 0;
+    root.addEventListener('pointerdown', e => { if (!freePress(e)) return; e.preventDefault(); pressRing(root, e);
+      pad.classList.add('on'); clearTimeout(padT); padT = setTimeout(() => pad.classList.remove('on'), 140); stamp(); }); }
   else cv.addEventListener('pointerdown', e => { e.preventDefault(); stamp(); });
   api.onKey(e => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); stamp(); } });
   function doc(d) {
@@ -454,6 +516,7 @@ function stampGame(root, api) {
     ctx.restore();
   }
   function draw() {
+    if (P) return drawP();
     fx.pre(ctx);
     officeBG(ctx, W, H, BELT_Y + 42, { wall: 'wall_yellow', floor: 'floor_dwood', windows: [['window_big', 112, 28, 3], ['window_grey', 612, 34, 3]] });
     drawPixAt(ctx, 'plant_pot', 672, BELT_Y - 2, 3); drawPixAt(ctx, 'board_calendar', SX + 180, 100, 3);
@@ -475,20 +538,72 @@ function stampGame(root, api) {
     txt(ctx, `ความเร็วสายพาน ${Math.round(speed)}`, 12, H - 14, 12, '#fff3e0', 'left');
     fx.post(ctx, W, H);
   }
+  // ---- portrait scene (phone held upright): the room seen from above, the belt runs top to bottom
+  function paintBG(g) {
+    const { W: w, H: h, k } = L, { bl, bw, wallY } = P;
+    officeBG(g, w, h, wallY, { wall: 'wall_yellow', floor: 'floor_dwood', k });
+    // side decor, clear of the target band and the belt
+    const lx = bl >> 1, rx = bl + bw + ((w - bl - bw) >> 1);
+    const low = P.TY - Math.round(26 * P.f) - 24;
+    drawPixAt(g, 'cabinet_wood', lx, wallY + 40 * k, k); drawPixAt(g, 'plant_pot', lx, low, k);
+    drawPixAt(g, 'desk_drawer', rx, wallY + 32 * k, k); drawPixAt(g, 'box_wood', rx, low, k);
+    // the belt: an ink frame, the dark surface and rollers down both edges, coming out of a hatch in the wall
+    g.fillStyle = PAL.ink; g.fillRect(bl - 4, 0, bw + 8, h);
+    g.fillStyle = '#4a4458'; g.fillRect(bl, 0, bw, h);
+    g.fillStyle = '#8a93a3'; for (let y = 20; y < h; y += 80) { g.fillRect(bl - 10, y, 6, 16); g.fillRect(bl + bw + 4, y, 6, 16); }
+    g.fillStyle = PAL.ink; g.fillRect(bl - 14, 0, bw + 28, Math.round(wallY * .55));
+    g.fillStyle = '#2f2a3c'; g.fillRect(bl - 4, 0, bw + 8, Math.round(wallY * .55) - 6);
+  }
+  function docP(d, y) {
+    const { cx, f } = P, sq = d.sq;
+    ctx.save(); ctx.translate(cx, y); ctx.scale(f * (1 + sq * .08), f * (1 - sq * .12)); ctx.rotate(Math.sin(d.x / 60) * .03);
+    // local units: the stamp box (52 x 32) is centred on (0, 0); a PERFECT press is exactly that box inside the band
+    ctx.fillStyle = 'rgba(43,33,64,.18)'; ctx.fillRect(-44, -84, 100, 116);
+    rrect(ctx, -50, -90, 100, 116, 4, d.draft ? '#e9e4ef' : PAL.paper, PAL.ink);
+    txt(ctx, d.name, 0, -74, 13, PAL.ink);
+    ctx.fillStyle = 'rgba(43,33,64,.2)'; for (let i = 0; i < 4; i++) ctx.fillRect(-38, -60 + i * 10, 76 - (i % 2) * 18, 3);
+    if (d.draft) { txt(ctx, 'ร่าง', 0, -8, 18, PAL.red, 'center', 800); txt(ctx, 'ห้ามปั๊ม', 0, 10, 11, PAL.red); }
+    else { ctx.setLineDash([4, 3]); ctx.strokeStyle = PAL.blue; ctx.lineWidth = 2; ctx.strokeRect(-26, -16, 52, 32); ctx.setLineDash([]); }
+    if (d.mark === 'ok') { ctx.save(); ctx.rotate(-.2); ctx.strokeStyle = PAL.red; ctx.lineWidth = 3; ctx.strokeRect(-36, -14, 72, 28); txt(ctx, 'APPROVED', 0, 1, 13, PAL.red, 'center', 800); ctx.restore(); }
+    if (d.mark === 'void') { ctx.strokeStyle = PAL.red; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(-40, -80); ctx.lineTo(40, 16); ctx.moveTo(40, -80); ctx.lineTo(-40, 16); ctx.stroke(); }
+    ctx.restore();
+  }
+  function drawP() {
+    const { cx, TY, f, bw, bl, side } = P, h = L.H, step = Math.round(40 * f);
+    fx.pre(ctx);
+    bg.draw(ctx);
+    // treads: slats across the belt, moving down with it
+    ctx.fillStyle = '#6b6478'; for (let y = -step + Math.round(beltOff * f) % step; y < h; y += step) ctx.fillRect(bl + 6, y, bw - 12, 4);
+    // target band: the stamp box fits inside it with 10 units to spare on each side (= the PERFECT window)
+    const band = Math.round(26 * f);
+    ctx.fillStyle = 'rgba(255,92,138,.16)'; ctx.fillRect(bl, TY - band, bw, band * 2);
+    ctx.fillStyle = 'rgba(255,92,138,.7)'; ctx.fillRect(bl, TY - band - 1, bw, 3); ctx.fillRect(bl, TY + band - 1, bw, 3);
+    for (const d of docs) { const y = py(d.x); if (y > -40 * f && y < h + 100 * f) docP(d, y); }
+    // the stamp swings in from the side over the band and squashes when it lands
+    const k = press > 0 ? 1 - Math.abs(press - .09) / .09 : 0, rest = cx + side * (bw / 2 + 46), hx = Math.round(rest + (cx - rest) * k);
+    ctx.fillStyle = '#8d5a3b'; ctx.fillRect(side > 0 ? hx : 0, TY - 6, side > 0 ? L.W - hx : hx, 12);
+    ctx.save(); ctx.translate(hx, TY); const s = f * .9 * (1 - k * .1); ctx.scale(s, s);
+    ctx.fillStyle = 'rgba(43,33,64,.25)'; ctx.fillRect(-36, -18, 80, 44);
+    rrect(ctx, -40, -24, 80, 44, 8, PAL.red, PAL.ink); rrect(ctx, -32, -16, 64, 28, 4, null, '#fff');
+    txt(ctx, 'APPROVED', 0, -2, 11, '#fff', 'center', 800); ctx.restore();
+    txt(ctx, `สายพาน ${Math.round(speed)}`, bl >> 1, h - 12, 12, PAL.ink, 'center');
+    fx.post(ctx, L.W, h);
+  }
   api.loop(dt => {
     const d = fx.step(dt);
     if (running && d) {
       speed = Math.min(520, 150 + made * 7); gap -= d * speed; beltOff += d * speed;
       if (gap <= 0) { spawn(); gap = 170 + rnd() * 140; }
       for (const o of docs) { o.x += speed * d; if (!o.done && o.x > SX + 60) { o.done = true; if (!o.stamped && !o.draft) lose('⏰ หลุดไปไม่ได้ปั๊ม!'); } }
-      docs = docs.filter(o => o.x < W + 80);
+      for (let i = docs.length - 1; i >= 0; i--) if (docs[i].x >= W + 80) docs.splice(i, 1);
     }
     for (const o of docs) o.sq = Math.max(0, o.sq - dt * 5);
     press = Math.max(0, press - dt);
     draw();
   });
   hud(); draw();
-  api.intro({ how: `<p>🏢 เอกสารวิ่งมาบนสายพาน — ${phone ? '<b>แตะตรงไหนก็ได้</b>' : 'กด <b>Space</b> หรือแตะจอ'} ตอนกรอบสีฟ้าอยู่ใต้ตราปั๊ม</p>
+  if (window.__TEST__) window.__stamp = { SX, get: () => ({ docs, score, lives, perfect, made, P }) };
+  api.intro({ how: `<p>🏢 เอกสารวิ่งมาบนสายพาน — ${phone ? '<b>แตะตรงไหนก็ได้</b>' : 'กด <b>Space</b> หรือแตะจอ'} ตอนกรอบสีฟ้าอยู่${P ? 'ในแถบสีชมพู' : 'ใต้ตราปั๊ม'}</p>
       <p>🎯 ตรงกลางเป๊ะ = <b>PERFECT</b> · ยิ่งคอมโบยาวคะแนนยิ่งคูณ · คอมโบครบ 10 ได้หัวใจคืน ❤️ (สูงสุด 2 ครั้ง)</p><p>⚠️ เอกสาร <b>"ร่าง"</b> ห้ามปั๊ม · ปล่อยเอกสารปกติหลุดไป = เสียหัวใจ ❤️</p>`,
     buttons: [{ label: '🔏 เริ่มปั๊ม!', primary: true, go() { running = true; } }] });
 }
@@ -615,37 +730,66 @@ function baristaGame(root, api) {
    Paper Toss — flick a paper ball into the bin, mind the fan
 ================================================================= */
 function tossGame(root, api) {
-  const W = 720, H = 420, G = 900, FLOOR = 372, THROWS = 10, R = 11, START = { x: 100, y: 300 };
+  const W = 720, H = 420, G = 900, THROWS = 10, R = 11, START = { x: 100, y: 300 };
+  let FLOOR = 372;
   root.innerHTML = `<div class="hud"><span>🗑️ ลงถัง <b data-k="mk">0</b>/<b data-k="th">0</b></span><span>เหลือ <b data-k="left">10</b> ลูก</span><span>⭐ <b data-k="sc">0</b></span><span data-k="st" class="muted"></span><span class="muted g2tip">ลากลูกบอลถอยหลังแล้วปล่อย · หรือ ←→ เล็ง + กด Space ค้างเพื่อออกแรง</span></div>`;
-  const { cv, ctx, at } = g2canvas(root, W, H), q = k => root.querySelector(`[data-k="${k}"]`), fx = makeFX();
+  const { cv, ctx, at, L } = g2view(root, W, H), q = k => root.querySelector(`[data-k="${k}"]`), fx = makeFX();
   let ball = null, drag = null, wind = 0, throws = 0, made = 0, score = 0, streak = 0, running = false, over = false, binX = 520, aim = -.9, power = 0, charging = false, t = 0, rimHit = false; let bonusT = 0;
   let fanA = 0, binSq = 0, throwSq = 0, trail = [], streaks = [];
-  const BIN_K = 6, BIN_W = 9 * BIN_K, BIN_H = 13 * BIN_K, who = pick(rnd, MI_PEOPLE);
+  const BIN_K = 6, who = pick(rnd, MI_PEOPLE);
+  let BIN_W = 9 * BIN_K, BIN_H = 13 * BIN_K;
+  // layout: the wide scene's numbers, or the portrait room from layout(). Physics always runs in world units with the
+  // same gravity, wind and pull; VS = screen px per world unit (1 in the wide scene).
+  let P = null, VS = 1, WW = W, BIN_B = FLOOR, binBase = 520, binA = 90, LF = 5.2, PULL = 1.25, stY0 = 90, stYR = 230;
+  const shelf = { x0: 0, x1: 0 };
+  const bg = g2layer(L, ['wall_beige', 'floor_wood', 'window_big', 'bookshelf', 'desk_drawer', 'plant_pot'], paintBG);
+  // portrait (phone held upright): the bin sits on a wall shelf in the upper third, the fan blows from a side and you
+  // pull the shot back from the bottom, so the arc uses the full height. The bin is 1.5x wider there: a high lob is
+  // a smaller target than the wide scene's flat throw, and this keeps the target the same size in pull space
+  function layout() {
+    if (!L.portrait) { P = null; VS = 1; WW = W; FLOOR = 372; START.x = 100; START.y = 300; BIN_W = 54; BIN_H = 78; BIN_B = FLOOR;
+      binBase = 520; binA = 90; LF = 5.2; PULL = 1.25; stY0 = 90; stYR = 230; }
+    else {
+      VS = Math.min(L.W / 300, L.H / 480); WW = L.W / VS; const HW = L.H / VS, m = L.left ? -1 : 1, kb = Math.round(9 * VS);
+      BIN_W = 9 * kb / VS; BIN_H = 13 * kb / VS;
+      FLOOR = HW - 18; START.x = WW / 2 - 63 * m; START.y = FLOOR - 72; BIN_B = Math.max(40, START.y - 210) + BIN_H;
+      binBase = WW / 2 + 63 * m; binA = Math.max(0, Math.min(90, WW / 2 - 63 - BIN_W / 2 - 8));
+      shelf.x0 = Math.max(4, binBase - binA - BIN_W / 2 - 12); shelf.x1 = Math.min(WW - 4, binBase + binA + BIN_W / 2 + 12); aim = m > 0 ? -1.25 : 1.25 - Math.PI;
+      LF = 6.2; PULL = 1.4; stY0 = BIN_B - BIN_H - 40; stYR = START.y - stY0;
+      P = { m, kb, kball: Math.round(3 * VS) };
+    }
+    if (throws < 5) binX = binBase;
+    // a ball waiting in the fork moves to the new start; one in flight keeps flying (physics is in world units)
+    if (ball && !ball.fly) { ball.x = START.x; ball.y = START.y; }
+    drag = null; bg.reset();
+  }
+  L.fn = layout;
   function newThrow() { wind = throws < 2 ? 0 : (rnd() * 2 - 1) * Math.min(1, .3 + throws * .1); ball = { x: START.x, y: START.y, vx: 0, vy: 0, fly: false, rot: 0 }; rimHit = false; trail = []; }
   function hud() { q('mk').textContent = made; q('th').textContent = throws; q('left') && (q('left').textContent = THROWS + bonusT - throws); q('sc').textContent = fmt(score); q('st').textContent = streak >= 2 ? `🔥 ติดกัน ${streak}` : ''; }
   function launch(vx, vy) { if (!running || !ball || ball.fly || api.paused) return; ball.vx = vx; ball.vy = vy; ball.fly = true; throws++; throwSq = 1; api.sfx('tick'); hud(); }
+  const S = v => v * VS;
   function result(ok, swish) {
-    const top = FLOOR - BIN_H;
+    const top = BIN_B - BIN_H;
     if (ok) {
       made++; streak++; const p = 100 + (swish ? 50 : 0) + (streak - 1) * 25; score += p; binSq = 1;
-      fx.burst(binX, top, { n: swish ? 30 : 18, colors: CONFETTI, speed: 320, grav: 600, size: 6, shape: 'paper', life: 1, dir: -Math.PI / 2, spread: 1.6 });
-      if (swish && bonusT < 5) { bonusT++; fx.text(binX, top - 64, '🎁 ลูกฟรี +1', { color: PAL.green, size: 22, life: 1.2 }); }
-      if (swish) { fx.flash(PAL.yel, .22); fx.hitstop(.08); fx.shake(7, .25); fx.burst(binX, top - 10, { n: 10, colors: [PAL.yel, '#fff'], speed: 240, grav: 0, size: 8, shape: 'star', life: .6 }); }
+      fx.burst(S(binX), S(top), { n: swish ? 30 : 18, colors: CONFETTI, speed: 320, grav: 600, size: 6, shape: 'paper', life: 1, dir: -Math.PI / 2, spread: 1.6 });
+      if (swish && bonusT < 5) { bonusT++; fx.text(S(binX), S(top) - 64, '🎁 ลูกฟรี +1', { color: PAL.green, size: 22, life: 1.2 }); }
+      if (swish) { fx.flash(PAL.yel, .22); fx.hitstop(.08); fx.shake(7, .25); fx.burst(S(binX), S(top) - 10, { n: 10, colors: [PAL.yel, '#fff'], speed: 240, grav: 0, size: 8, shape: 'star', life: .6 }); }
       else fx.shake(4, .15);
-      fx.text(binX, top - 30, swish ? `SWISH! +${p}` : `ลงถัง +${p}`, { color: swish ? PAL.yel : PAL.green, size: swish ? 32 : 26, life: 1.1 });
-      if (streak >= 3) fx.text(W / 2, 110, `🔥 ติดกัน ${streak}!`, { color: PAL.orange, size: 24, life: 1.1 });
+      fx.text(S(binX), S(top) - 30, swish ? `SWISH! +${p}` : `ลงถัง +${p}`, { color: swish ? PAL.yel : PAL.green, size: swish ? 32 : 26, life: 1.1 });
+      if (streak >= 3) fx.text(P ? L.W / 2 : W / 2, P ? L.H * .55 : 110, `🔥 ติดกัน ${streak}!`, { color: PAL.orange, size: 24, life: 1.1 });
       api.sfx(swish ? 'level' : 'good');
     } else {
-      streak = 0; fx.text(ball.x < 0 || ball.x > W ? W / 2 : ball.x, FLOOR - 40, 'พลาด!', { color: '#d9d2e6', size: 24 }); api.sfx('bad'); fx.shake(3, .12);
-      if (ball.y >= FLOOR - R - 2) fx.burst(ball.x, FLOOR, { n: 8, colors: ['#fffdf6', '#d9dde3'], speed: 140, grav: 500, size: 4, life: .4, spread: Math.PI, dir: -Math.PI / 2 });
+      streak = 0; fx.text(S(ball.x < 0 || ball.x > WW ? WW / 2 : ball.x), S(FLOOR) - 40, 'พลาด!', { color: '#d9d2e6', size: 24 }); api.sfx('bad'); fx.shake(3, .12);
+      if (ball.y >= FLOOR - R - 2) fx.burst(S(ball.x), S(FLOOR), { n: 8, colors: ['#fffdf6', '#d9dde3'], speed: 140, grav: 500, size: 4, life: .4, spread: Math.PI, dir: -Math.PI / 2 });
     }
     hud(); ball = null;
     if (throws >= THROWS + bonusT) { over = true; running = false; api.after(1.2, () => api.end(score, `ลงถัง ${made}/${throws}`, false, { made })); } else api.after(.9, newThrow);
   }
-  cv.addEventListener('pointerdown', e => { if (!ball || ball.fly) return; const p = at(e); if (Math.hypot(p.x - ball.x, p.y - ball.y) < 60) { drag = p; cv.setPointerCapture(e.pointerId); } });
+  cv.addEventListener('pointerdown', e => { if (P || !ball || ball.fly) return; const p = at(e); if (Math.hypot(p.x - ball.x, p.y - ball.y) < 60) { drag = p; cv.setPointerCapture(e.pointerId); } });
   cv.addEventListener('pointermove', e => { if (drag) drag = at(e); });
   const release = () => { if (!drag || !ball) { drag = null; return; } const dx = START.x - drag.x, dy = START.y - drag.y, l = Math.min(150, Math.hypot(dx, dy)), a = Math.atan2(dy, dx); drag = null;
-    if (l > 15) launch(Math.cos(a) * l * 5.2, Math.sin(a) * l * 5.2); };
+    if (l > 15) launch(Math.cos(a) * l * LF, Math.sin(a) * l * LF); };
   cv.addEventListener('pointerup', release); cv.addEventListener('pointercancel', () => { drag = null; });
   // phone: a slingshot pad in the lower part of the screen — thumb down anywhere on it, pull back, let go.
   // The pull (screen px x 1.25, max 150) is the same vector as dragging the ball itself.
@@ -657,21 +801,29 @@ function tossGame(root, api) {
     const show = (on, x0, y0, x1, y1) => { zone.classList.toggle('on', on); if (!on) return;
       o.style.left = x0 + 'px'; o.style.top = y0 + 'px'; kn.style.left = x1 + 'px'; kn.style.top = y1 + 'px';
       ln.style.left = x0 + 'px'; ln.style.top = y0 + 'px'; ln.style.width = Math.hypot(x1 - x0, y1 - y0) + 'px'; ln.style.transform = `rotate(${Math.atan2(y1 - y0, x1 - x0)}rad)`; };
-    const toDrag = e => { const k = 1.25, dx = (e.clientX - pull.x) * k, dy = (e.clientY - pull.y) * k, l = Math.hypot(dx, dy), m = l > 150 ? 150 / l : 1;
+    const toDrag = e => { const k = PULL, dx = (e.clientX - pull.x) * k, dy = (e.clientY - pull.y) * k, l = Math.hypot(dx, dy), m = l > 150 ? 150 / l : 1;
       return { x: START.x + dx * m, y: START.y + dy * m }; };
-    zone.addEventListener('pointerdown', e => { e.preventDefault(); if (!running || !ball || ball.fly) return; const r = zone.getBoundingClientRect();
+    const grab = e => { e.preventDefault(); if (!running || !ball || ball.fly) return;
+      if (pull && pull.id !== e.pointerId && zone.hasPointerCapture && zone.hasPointerCapture(pull.id)) return;   // a second finger; a lost pull starts over
+      const r = zone.getBoundingClientRect();
       pull = { id: e.pointerId, x: e.clientX, y: e.clientY, r }; try { zone.setPointerCapture(e.pointerId); } catch (er) {} drag = { x: START.x, y: START.y };
-      show(true, e.clientX - r.left, e.clientY - r.top, e.clientX - r.left, e.clientY - r.top); });
+      show(true, e.clientX - r.left, e.clientY - r.top, e.clientX - r.left, e.clientY - r.top); };
+    zone.addEventListener('pointerdown', grab);
+    // portrait: the thumb can also start anywhere in the lower half of the screen (the pad is the deck below the room)
+    root.addEventListener('pointerdown', e => { if (!P || e.target.closest('.toss-pad') || !freePress(e)) return;
+      const r = root.getBoundingClientRect(); if (e.clientY > r.top + r.height * .5) grab(e); });
     zone.addEventListener('pointermove', e => { if (!pull || e.pointerId !== pull.id) return; drag = toDrag(e); const r = pull.r;
       show(true, pull.x - r.left, pull.y - r.top, e.clientX - r.left, e.clientY - r.top); });
     zone.addEventListener('pointerup', e => { if (!pull || e.pointerId !== pull.id) return; drag = toDrag(e); pull = null; show(false); release(); });
     zone.addEventListener('pointercancel', () => { pull = null; drag = null; show(false); });
+    zone.addEventListener('lostpointercapture', e => { if (pull && e.pointerId === pull.id) { pull = null; drag = null; show(false); } });
   }
   api.onKey(e => { if (e.key === 'ArrowLeft') { aim = Math.max(-1.45, aim - .05); e.preventDefault(); } else if (e.key === 'ArrowRight') { aim = Math.min(-.2, aim + .05); e.preventDefault(); }
     else if (e.key === ' ' && !e.repeat && ball && !ball.fly) { charging = true; power = 0; e.preventDefault(); } });
-  const up = e => { if (e.key !== ' ' || !charging) return; charging = false; const l = 30 + power * 120; launch(Math.cos(aim) * l * 5.2, Math.sin(aim) * l * 5.2); };
+  const up = e => { if (e.key !== ' ' || !charging) return; charging = false; const l = 30 + power * 120; launch(Math.cos(aim) * l * LF, Math.sin(aim) * l * LF); };
   addEventListener('keyup', up);
   function draw() {
+    if (P) return drawP();
     fx.pre(ctx);
     officeBG(ctx, W, H, FLOOR, { wall: 'wall_beige', windows: [['window_big', 285, 40, 4]] });
     drawPixAt(ctx, 'bookshelf', 672, FLOOR, 3); drawPixAt(ctx, 'plant_pot', 210, FLOOR, 3); drawPixAt(ctx, 'board_calendar', 560, 150, 3);
@@ -699,33 +851,89 @@ function tossGame(root, api) {
     if (ball) { const j = charging ? (rnd() - .5) * power * 4 : 0; drawPixAt(ctx, pxa('ball'), ball.x + j, ball.y + 10.5, 3, { rot: ball.rot }); }
     fx.post(ctx, W, H);
   }
+  // ---- portrait scene
+  function paintBG(g) {
+    const w = L.W, h = L.H, k = L.k, m = P.m, fy = Math.round(S(FLOOR)), side = m > 0 ? .25 : .75;
+    officeBG(g, w, h, fy, { wall: 'wall_beige', k, windows: [['window_big', Math.round(w * side) + 100, Math.round(h * .08), k]] });
+    drawPixAt(g, 'bookshelf', m > 0 ? w - 4 - 16 * k : 4 + 16 * k, fy, k);
+    drawPixAt(g, 'plant_pot', Math.round(w / 2 + 10 * m), fy, k);
+    drawPixAt(g, 'desk_drawer', Math.round(S(START.x)), fy, k);
+    // the wall shelf the bin slides along, on two brackets
+    const x0 = Math.round(S(Math.min(shelf.x0, shelf.x1))), x1 = Math.round(S(Math.max(shelf.x0, shelf.x1))), y0 = Math.round(S(BIN_B));
+    g.fillStyle = PAL.ink; g.fillRect(x0 + 10, y0, 6, 22); g.fillRect(x1 - 16, y0, 6, 22);
+    rrect(g, x0, y0, x1 - x0, Math.round(S(8)) + 2, 2, '#a2784b', PAL.ink);
+    // the slingshot fork on the desk, under the ball
+    const sx = Math.round(S(START.x)), sy = Math.round(S(START.y)), dt = fy - 21 * k;
+    g.fillStyle = PAL.ink; g.fillRect(sx - 2, sy + 22, 4, dt - sy - 22); g.fillRect(sx - 16, sy + 20, 32, 4); g.fillRect(sx - 16, sy + 4, 4, 18); g.fillRect(sx + 12, sy + 4, 4, 18);
+  }
+  function drawP() {
+    const w = L.W, h = L.H, k = L.k, { m, kb, kball } = P;
+    fx.pre(ctx);
+    bg.draw(ctx);
+    ctx.fillStyle = 'rgba(58,134,255,.28)'; for (const st of streaks) ctx.fillRect(Math.round(S(st.x)), Math.round(S(st.y)), Math.round(S(st.l)), 2);
+    drawPixAt(ctx, 'bin', Math.round(S(binX)), Math.round(S(BIN_B)), kb, { sx: 1 + binSq * .15, sy: 1 - binSq * .15 });
+    // the fan sits on the side the wind comes from, on a wall bracket
+    const fl = wind >= 0, fx0 = fl ? 34 : w - 34, fyy = Math.round(S(BIN_B - BIN_H)) - 40;
+    ctx.fillStyle = PAL.ink; ctx.fillRect(fl ? 0 : fx0, fyy - 3, fl ? fx0 : w - fx0, 6);
+    ctx.save(); ctx.translate(fx0, fyy); ctx.beginPath(); ctx.arc(0, 0, 22, 0, 7); ctx.fillStyle = '#fff'; ctx.fill(); ctx.lineWidth = 3; ctx.strokeStyle = PAL.ink; ctx.stroke();
+    ctx.rotate(fanA); ctx.fillStyle = '#4cc3ff'; for (let i = 0; i < 3; i++) { ctx.rotate(Math.PI * 2 / 3); ctx.beginPath(); ctx.ellipse(0, -10, 6, 10, 0, 0, 7); ctx.fill(); }
+    ctx.fillStyle = PAL.ink; ctx.beginPath(); ctx.arc(0, 0, 4, 0, 7); ctx.fill(); ctx.restore();
+    const wl = Math.round(Math.abs(wind) * 5);
+    txt(ctx, wind === 0 ? 'ลม: นิ่ง' : `ลม: ${wind > 0 ? '→'.repeat(wl || 1) : '←'.repeat(wl || 1)}`, fl ? fx0 + 30 : fx0 - 30, fyy, 16, PAL.blue, fl ? 'left' : 'right', 700);
+    drawChar(ctx, who, 'idle_anim', m > 0 ? 'right' : 'left', t, Math.round(S(START.x - 46 * m)), Math.round(S(FLOOR)), k, { sx: 1 + throwSq * .12, sy: 1 - throwSq * .1 });
+    // aim guide, and the ball pulled back in the fork with the band while you aim
+    let bx = ball ? ball.x : 0, by = ball ? ball.y : 0;
+    if (ball && !ball.fly) {
+      let vx, vy; if (drag) { const dx = START.x - drag.x, dy = START.y - drag.y, l = Math.min(150, Math.hypot(dx, dy)), a = Math.atan2(dy, dx); vx = Math.cos(a) * l * LF; vy = Math.sin(a) * l * LF;
+        const q = l > 0 ? l * .22 / Math.hypot(dx, dy) : 0; bx = START.x - dx * q; by = START.y - dy * q; }
+      else { const l = 30 + (charging ? power : .5) * 120; vx = Math.cos(aim) * l * LF; vy = Math.sin(aim) * l * LF; }
+      ctx.fillStyle = 'rgba(43,33,64,.35)'; let x = START.x, y = START.y, wx = vx, wy = vy;
+      for (let i = 0; i < 9; i++) { for (let j = 0; j < 4; j++) { wx += wind * 220 * .02; wy += G * .02; x += wx * .02; y += wy * .02; } ctx.fillRect(Math.round(S(x)) - 4, Math.round(S(y)) - 4, 8, 8); }
+      if (drag) { const sx = Math.round(S(START.x)), sy = Math.round(S(START.y)) + 6; ctx.strokeStyle = '#b3203a'; ctx.lineWidth = 3; ctx.beginPath();
+        ctx.moveTo(sx - 14, sy); ctx.lineTo(S(bx), S(by)); ctx.lineTo(sx + 14, sy); ctx.stroke(); }
+    }
+    for (let i = 0; i < trail.length; i++) { const p = trail[i]; ctx.globalAlpha = i / trail.length * .4; ctx.fillStyle = '#fff'; ctx.fillRect(Math.round(S(p.x)) - 5, Math.round(S(p.y)) - 5, 10, 10); } ctx.globalAlpha = 1;
+    if (ball) drawPixAt(ctx, pxa('ball'), Math.round(S(bx)), Math.round(S(by) + 3.5 * kball), kball, { rot: ball.rot });
+    // the streak lives here instead of the top bar, which must stay one line
+    if (streak >= 2) txt(ctx, `🔥 ติดกัน ${streak}`, m > 0 ? w - 12 : 12, 22, 16, PAL.orange, m > 0 ? 'right' : 'left', 800);
+    fx.post(ctx, w, h);
+  }
+  // the bin's sides and the shelf under it are solid in the portrait room (a lob from below bounces off)
+  function solid(x, y, w, h) {
+    const cx = Math.max(x, Math.min(ball.x, x + w)), cy = Math.max(y, Math.min(ball.y, y + h)), dx = ball.x - cx, dy = ball.y - cy, dd = dx * dx + dy * dy;
+    if (dd >= R * R) return false; const d = Math.sqrt(dd), nx = d ? dx / d : 0, ny = d ? dy / d : 1;
+    ball.x = cx + nx * R; ball.y = cy + ny * R; const dot = ball.vx * nx + ball.vy * ny; if (dot < 0) { ball.vx -= 1.4 * dot * nx; ball.vy -= 1.4 * dot * ny; }
+    rimHit = true; return true;
+  }
   api.loop(dt => {
     const d = fx.step(dt); t += dt;
     fanA += dt * (1 + Math.abs(wind) * 18) * Math.sign(wind || 1); binSq = Math.max(0, binSq - dt * 4); throwSq = Math.max(0, throwSq - dt * 5);
-    if (Math.abs(wind) > .05 && rnd() < Math.abs(wind) * dt * 30) streaks.push({ x: wind > 0 ? -60 : W, y: 90 + rnd() * 230, l: 30 + rnd() * 50 });
-    for (const s of streaks) s.x += wind * 420 * dt; streaks = streaks.filter(s => s.x > -80 && s.x < W + 10);
-    if (running && throws >= 5) binX = 520 + Math.sin(t * .9) * 90;   // the bin starts moving halfway through
+    if (Math.abs(wind) > .05 && rnd() < Math.abs(wind) * dt * 30) streaks.push({ x: wind > 0 ? -60 : WW, y: stY0 + rnd() * stYR, l: 30 + rnd() * 50 });
+    for (const s of streaks) s.x += wind * 420 * dt; for (let i = streaks.length - 1; i >= 0; i--) if (!(streaks[i].x > -80 && streaks[i].x < WW + 10)) streaks.splice(i, 1);
+    if (running && throws >= 5) binX = binBase + Math.sin(t * .9) * binA;   // the bin starts moving halfway through
     if (charging) power = Math.min(1, power + dt * .8);
     if (ball && ball.fly && d) {
       trail.push({ x: ball.x, y: ball.y }); if (trail.length > 8) trail.shift(); ball.rot += ball.vx * d / R;
       for (let k = 0; k < 4; k++) {
         const s = d / 4, py = ball.y;
         ball.vx += wind * 220 * s; ball.vy += G * s; ball.x += ball.vx * s; ball.y += ball.vy * s;
-        const bx = binX - BIN_W / 2, top = FLOOR - BIN_H;
+        const bx = binX - BIN_W / 2, top = BIN_B - BIN_H;
         for (const rx of [bx, bx + BIN_W]) { const dx = ball.x - rx, dy = ball.y - top, dd = Math.hypot(dx, dy);
           if (dd < R + 3) { rimHit = true; const nx = dx / dd, ny = dy / dd, dot = ball.vx * nx + ball.vy * ny; if (dot < 0) { ball.vx -= 1.6 * dot * nx; ball.vy -= 1.6 * dot * ny; } ball.x = rx + nx * (R + 3); ball.y = top + ny * (R + 3);
             api.sfx('tick'); fx.burst(rx, top, { n: 5, colors: [PAL.yel, '#fff'], speed: 160, grav: 0, size: 4, life: .25 }); fx.shake(2, .08); } }
         if (py < top && ball.y >= top && ball.vy > 0 && ball.x > bx + 4 && ball.x < bx + BIN_W - 4) { result(true, !rimHit); break; }
-        if (ball.y > FLOOR - R || ball.x > W + 40 || ball.x < -40) { result(false); break; }
+        if (P) { solid(bx, top + R + 2, BIN_W, BIN_H - R - 2); solid(Math.min(shelf.x0, shelf.x1), BIN_B, Math.abs(shelf.x1 - shelf.x0), 8); }
+        if (ball.y > FLOOR - R || ball.x > WW + 40 || ball.x < -40) { result(false); break; }
       }
     }
     draw();
   });
-  hud(); draw();
+  layout(); hud(); draw();
+  if (window.__TEST__) window.__toss = { get: () => ({ START, binX, BIN_B, BIN_W, BIN_H, wind, WW, FLOOR, VS, PULL, LF, made, throws, score, fly: !!(ball && ball.fly) }) };
   api.intro({ how: `<p>🗑️ ปากระดาษก้อนลงถังให้ได้มากที่สุดใน ${THROWS} ลูก · <b>SWISH</b> (ลงไม่โดนขอบ) ได้ลูกฟรี +1 (สูงสุด 5 ลูก)</p>
       ${phone ? '<p>👆 วางนิ้วบน<b>แผ่นด้านล่าง</b> ลากถอยหลังเหมือนหนังสติ๊กแล้วปล่อย (หรือลากที่ลูกบอลก็ได้) · ลากยาว = แรงขึ้น</p>'
         : '<p>🖱️ <b>ลากลูกบอลถอยหลัง</b> เหมือนหนังสติ๊กแล้วปล่อย · หรือ <b>← →</b> เล็ง แล้ว <b>กด Space ค้าง</b> เพื่อออกแรง</p>'}
-      <p>🌬️ ดูลมจากพัดลมด้านบนด้วย · ลงถังไม่โดนขอบ = <b>SWISH</b> +50 · ครึ่งหลังถังจะเลื่อนไปมา</p>`,
+      <p>🌬️ ดูลมจากพัดลม${P ? 'ด้านข้าง' : 'ด้านบน'}ด้วย · ลงถังไม่โดนขอบ = <b>SWISH</b> +50 · ครึ่งหลังถังจะเลื่อนไปมา</p>`,
     buttons: [{ label: '🗑️ เริ่มปา!', primary: true, go() { running = true; newThrow(); } }] });
   return { destroy() { removeEventListener('keyup', up); } };
 }
@@ -737,13 +945,29 @@ function slackGame(root, api) {
   const W = 720, H = 400, BOSS_Y = 236, ME_X = 360;
   root.innerHTML = `<div class="hud"><span data-k="hp"></span><span>⭐ <b data-k="sc">0</b></span><span>⏱ <b data-k="t">0</b> วิ</span><span data-k="mul" class="muted"></span>
     <span class="muted g2tip">กด Space / แตะจอค้าง = แอบเล่นมือถือ · ปล่อย = ทำงาน</span></div>`;
-  const { cv, ctx } = g2canvas(root, W, H), q = k => root.querySelector(`[data-k="${k}"]`), fx = makeFX();
+  const { cv, ctx, L } = g2view(root, W, H), q = k => root.querySelector(`[data-k="${k}"]`), fx = makeFX();
   let who = store.get('runWho', 'amelia'); if (!MI_PEOPLE.includes(who) || who === 'bob') who = 'amelia';
   let holding = false, slack = false, streak = 0, score = 0, strikes = 0, time = 0, level = 1, bored = 0, doze = 0, close = 0, running = false, over = false, t = 0, scold = 0, likeT = 0;
   // the boss patrols the back of the room; 'warn' is the fair tell before 'look'
   const boss = { x: 140, dir: 1, st: 'walk', t: 2.5, fake: false };
   // the snitch coworker (from level 2): a ⚠️ warning first, then she crosses behind you; phone out inside the red zone = reported
   const mate = { x: -60, on: false, cool: 6, warn: 0, met: false, passed: false, who: ['alex', 'amelia', 'adam'].find(c => c !== who) }, ZONE = 60;
+  // portrait (phone held upright): the boss walks along the back wall at the top, the snitch crosses the middle,
+  // you sit at your desk in the lower half. Every rule runs in the wide scene's units (boss.x, mate.x, ME_X and ZONE),
+  // only the drawing maps them, so the timings, the tell and the snitch's danger window are exactly the same.
+  let P = null;
+  const bg = g2layer(L, ['wall_mint', 'floor_herring', 'window_big', 'noticeboard', 'plant_pot', 'shop_shelf', 'pc_desk', 'desk_pair'], paintBG);
+  function layout() {
+    if (!L.portrait) { P = null; return; }
+    const w = L.W, h = L.H, k = L.k, cx = Math.round(w / 2), floorY = Math.round(h * .3), meFeet = h - 4;
+    P = { cx, k, floorY, bossFeet: floorY + 6 * k, mateFeet: meFeet - 64 * k + 4 * k, meFeet, deskY: meFeet - 29 * k,
+      sb: (cx - 44) / 270, sm: (cx + 34) / 400, bubX: cx + 20 * k, bubY: meFeet - 58 * k };
+    bg.reset();
+  }
+  L.fn = layout; layout();
+  const BX = x => P ? Math.round(P.cx + (x - 360) * P.sb) : x, MX = x => P ? Math.round(P.cx + (x - ME_X) * P.sm) : x;
+  const bossTxtX = () => P ? Math.max(90, Math.min(L.W - 90, BX(boss.x))) : boss.x;
+  const meX = () => P ? P.cx : ME_X, meTxtY = y => P ? P.meFeet - 74 * P.k + (y - 200) : y;
   const lookDur = () => 1.1 + rnd() * (1 + level * .25), warnDur = () => Math.max(.28, .8 - level * .06), speed = () => 60 + level * 14;
   function hud() { q('hp').textContent = '❤️'.repeat(3 - strikes) + '🖤'.repeat(strikes); q('sc').textContent = fmt(Math.floor(score)); q('t').textContent = Math.floor(time);
     const m = mult(); q('mul').textContent = slack && m > 1 ? `📱 x${m}` : bored > 70 ? '😪 ง่วงแล้ว…' : ''; }
@@ -751,8 +975,8 @@ function slackGame(root, api) {
   function caught(by) {
     strikes++; slack = false; streak = 0; bored = 0; doze = 0; scold = 1.4; boss.st = 'pause'; boss.t = 1.6; api.sfx('bad');
     fx.shake(10, .4); fx.flash(PAL.red, .3); fx.hitstop(.12);
-    fx.text(boss.x, BOSS_Y - 120, by === 'mate' ? 'ฟ้องหัวหน้า!' : 'เห็นนะ!!', { color: PAL.red, size: 34, life: 1.2 });
-    fx.burst(ME_X, 250, { n: 14, colors: [PAL.red, '#fff'], speed: 260, grav: 300, size: 6, life: .5 });
+    fx.text(bossTxtX(), P ? P.bossFeet - 40 * P.k : BOSS_Y - 120, by === 'mate' ? 'ฟ้องหัวหน้า!' : 'เห็นนะ!!', { color: PAL.red, size: 34, life: 1.2 });
+    fx.burst(meX(), P ? P.meFeet - 50 * P.k : 250, { n: 14, colors: [PAL.red, '#fff'], speed: 260, grav: 300, size: 6, life: .5 });
     hud();
     if (strikes >= 3 && !over) { over = true; running = false; api.after(1.4, () => api.end(Math.floor(score), `รอด ${Math.floor(time)} วิ · เฉียดฉิว ${close} ครั้ง`, false, { secs: Math.floor(time), close })); }
   }
@@ -776,11 +1000,12 @@ function slackGame(root, api) {
       if (boss.t <= 0) { if (rnd() < .65) { boss.st = 'warn'; boss.t = warnDur(); boss.fake = rnd() < Math.min(.4, .1 + level * .05); api.sfx('tick'); } else { boss.st = 'pause'; boss.t = .5 + rnd(); } }
     } else if (boss.st === 'pause') { if (boss.t <= 0) { boss.st = 'walk'; boss.t = 1 + rnd() * 2.5; } }
     else if (boss.st === 'warn') {
-      if (boss.t <= 0) { if (boss.fake) { boss.st = 'walk'; boss.t = .8 + rnd() * 2; boss.dir = rnd() < .5 ? 1 : -1; fx.text(boss.x, BOSS_Y - 110, 'หลอก!', { color: PAL.muted, size: 18 }); }
+      if (boss.t <= 0) { if (boss.fake) { boss.st = 'walk'; boss.t = .8 + rnd() * 2; boss.dir = rnd() < .5 ? 1 : -1; fx.text(bossTxtX(), P ? P.bossFeet - 37 * P.k : BOSS_Y - 110, 'หลอก!', { color: PAL.muted, size: 18 }); }
         else { boss.st = 'look'; boss.t = lookDur(); } }
     } else if (boss.st === 'look') { if (boss.t <= 0) { boss.st = 'walk'; boss.t = 1 + rnd() * 2.5; boss.dir = rnd() < .5 ? 1 : -1; } }
   }
   function draw() {
+    if (P) return drawP();
     fx.pre(ctx);
     officeBG(ctx, W, H, 270, { wall: 'wall_mint', floor: 'floor_herring', windows: [['window_big', 110, 40, 3], ['noticeboard', 360, 70, 3], ['window_big', 610, 40, 3]] });
     drawPixAt(ctx, 'plant_pot', 40, 270, 3); drawPixAt(ctx, 'shop_shelf', 680, 270, 3);
@@ -820,6 +1045,58 @@ function slackGame(root, api) {
     if (boss.st === 'look') { ctx.fillStyle = `rgba(226,48,48,${.12 + Math.sin(t * 12) * .06})`; ctx.fillRect(0, 0, W, 10); ctx.fillRect(0, H - 10, W, 10); ctx.fillRect(0, 0, 10, H); ctx.fillRect(W - 10, 0, 10, H); }
     fx.post(ctx, W, H);
   }
+  // ---- portrait scene
+  function paintBG(g) {
+    const { W: w, H: h } = L, { k, floorY, cx, deskY } = P;
+    officeBG(g, w, h, floorY, { wall: 'wall_mint', floor: 'floor_herring', k, windows: [['window_big', Math.round(w * .2) + 100, 10, k], ['window_big', Math.round(w * .8) + 100, 10, k]] });
+    drawPixAt(g, 'noticeboard', cx, floorY - 34 * k + 13 * k, k);
+    drawPixAt(g, 'plant_pot', 12 + 7 * k, floorY + 2 * k, k); drawPixAt(g, 'shop_shelf', w - 4 - 16 * k, floorY + 2 * k, k);
+    const midY = Math.round((floorY + P.mateFeet - 30 * k) / 2 + 12 * k);
+    drawPixAt(g, 'desk_pair', Math.round(w * .2), midY, k); drawPixAt(g, 'desk_pair', Math.round(w * .8), midY, k);
+    drawPixAt(g, 'pc_desk', cx, deskY, k + 1);
+  }
+  function drawP() {
+    const { W: w, H: h } = L, { k, cx, bossFeet, mateFeet, meFeet, bubX, bubY } = P, kb = k + 1;
+    fx.pre(ctx);
+    bg.draw(ctx);
+    // boss along the back wall: the same tell as the wide scene (turns to face you and back, a '?' over the head)
+    const bx = BX(boss.x);
+    const dirB = boss.st === 'look' || scold > 0 ? 'down' : boss.st === 'warn' ? (Math.floor(t * 14) % 2 ? 'down' : boss.dir > 0 ? 'right' : 'left') : boss.dir > 0 ? 'right' : 'left';
+    drawChar(ctx, 'bob', boss.st === 'walk' ? 'run' : 'idle_anim', dirB, boss.st === 'walk' ? t * .55 : t, bx, bossFeet, kb, { sx: scold > 0 ? 1.1 : 1, sy: scold > 0 ? 1.1 : 1 });
+    if (boss.st === 'warn') txt(ctx, '?', bx + 7 * kb, bossFeet - 33 * kb, 30, PAL.orange, 'center', 800);
+    if (boss.st === 'look') txt(ctx, '👀', bx, bossFeet - 34 * kb, 22);
+    // snitch: the warning on the left edge at her height, then her walk with a name tag and the red zone behind your desk
+    const my = mateFeet - 12 * k;
+    if (mate.warn > 0) { const a = .55 + .45 * Math.sin(t * 14);
+      ctx.save(); ctx.globalAlpha = a; ctx.fillStyle = PAL.red; ctx.beginPath(); ctx.moveTo(6, my - 20); ctx.lineTo(36, my); ctx.lineTo(6, my + 20); ctx.closePath(); ctx.fill(); ctx.restore();
+      rrect(ctx, 42, my - 18, 196, 36, 10, '#fff', PAL.red); txt(ctx, '⚠️ เพื่อนขี้ฟ้องกำลังเดินมา!', 140, my + 1, 15, PAL.red, 'center', 800); }
+    if (mate.on) {
+      const near = Math.abs(mate.x - ME_X) < 260, inZ = Math.abs(mate.x - ME_X) < ZONE, zx = MX(ME_X - ZONE), zw = MX(ME_X + ZONE) - zx, zy = mateFeet - 26 * k;
+      if (near) { ctx.fillStyle = `rgba(226,48,48,${inZ ? .28 + Math.sin(t * 16) * .08 : .14})`; ctx.fillRect(zx, zy, zw, 28 * k);
+        ctx.strokeStyle = PAL.red; ctx.lineWidth = 2; ctx.setLineDash([6, 4]); ctx.strokeRect(zx, zy, zw, 28 * k); ctx.setLineDash([]);
+        txt(ctx, inZ ? '📵 ห้ามเล่นมือถือ!' : '📵 เขตขี้ฟ้อง', cx, zy - 10, 14, PAL.red, 'center', 800); }
+      const mx = MX(mate.x);
+      drawChar(ctx, mate.who, 'run', 'right', t * .8, mx, mateFeet, k);
+      const ty = mateFeet - 26 * k - 34;
+      rrect(ctx, mx - 42, ty - 11, 84, 22, 8, PAL.red); txt(ctx, '🗣️ ขี้ฟ้อง', mx, ty, 13, '#fff', 'center', 800);
+      if (near && slack) { const tx = Math.max(4, Math.min(w - 122, mx + 20)); rrect(ctx, tx, ty - 50, 118, 28, 10, '#fff', PAL.ink); txt(ctx, 'เดี๋ยวฟ้องหัวหน้า!', tx + 59, ty - 36, 13, PAL.red, 'center', 700); }
+    }
+    // me at my desk: back to the camera while working, turned around with the phone while slacking
+    const sleepy = doze > 0, km = k + 2;
+    if (slack && !sleepy) drawChar(ctx, who, 'phone', 'down', t, cx, meFeet, km, { sy: 1 + Math.sin(t * 6) * .01 });
+    else drawChar(ctx, who, 'idle_anim', sleepy ? 'down' : 'up', t, cx, meFeet, km, { rot: sleepy ? Math.sin(t * 3) * .12 : 0 });
+    if (sleepy) txt(ctx, 'Zzz', cx + 16 * k, meFeet - 50 * k - Math.sin(t * 3) * 6, 24, PAL.blue, 'center', 800);
+    if (slack) {
+      rrect(ctx, bubX, bubY, 66, 100, 10, PAL.ink); rrect(ctx, bubX + 5, bubY + 6, 56, 86, 6, '#bfe9ff');
+      for (let i = 0; i < 4; i++) { const y = bubY + 10 + ((i * 24 + t * 50) % 86); if (y < bubY + 86) drawPixAt(ctx, pxa(i % 2 ? 'heart' : 'spark'), bubX + 20 + (i % 3) * 14, y + 8, 2); }
+    }
+    // boredom meter, bottom left beside the desk
+    const mw = Math.min(150, cx - 18 * k - 20);
+    rrect(ctx, 12, h - 26, mw, 14, 6, '#fff', PAL.ink); rrect(ctx, 13, h - 25, (mw - 2) * bored / 100, 12, 5, bored > 70 ? PAL.red : PAL.blue);
+    txt(ctx, 'ความเบื่อ', 12 + mw / 2, h - 38, 13, PAL.ink, 'center', 700);
+    if (boss.st === 'look') { ctx.fillStyle = `rgba(226,48,48,${.12 + Math.sin(t * 12) * .06})`; ctx.fillRect(0, 0, w, 10); ctx.fillRect(0, h - 10, w, 10); ctx.fillRect(0, 0, 10, h); ctx.fillRect(w - 10, 0, 10, h); }
+    fx.post(ctx, w, h);
+  }
   api.loop(dt => {
     const d = fx.step(dt); t += dt; scold = Math.max(0, scold - dt);
     if (running && d) {
@@ -828,25 +1105,28 @@ function slackGame(root, api) {
       // the snitch walks across from level 3; slacking while she passes behind you = reported
       if (level >= 2) {
         if (!mate.on && mate.warn <= 0 && (mate.cool -= d) <= 0) { mate.warn = 1.8; api.sfx('tick');
-          if (!mate.met) { mate.met = true; fx.text(W / 2, 140, '🗣️ เพื่อนขี้ฟ้องมาแล้ว — ตอนเธอเดินผ่านหลังเรา ห้ามเล่นมือถือ!', { color: PAL.red, size: 18, life: 2.6 }); } }
+          if (!mate.met) { mate.met = true;
+            if (P) { fx.text(P.cx, P.floorY + 30, '🗣️ เพื่อนขี้ฟ้องมาแล้ว', { color: PAL.red, size: 18, life: 2.6 }); fx.text(P.cx, P.floorY + 56, 'ตอนเธอเดินผ่านหลังเรา ห้ามเล่นมือถือ!', { color: PAL.red, size: 15, life: 2.6 }); }
+            else fx.text(W / 2, 140, '🗣️ เพื่อนขี้ฟ้องมาแล้ว — ตอนเธอเดินผ่านหลังเรา ห้ามเล่นมือถือ!', { color: PAL.red, size: 18, life: 2.6 }); } }
         if (mate.warn > 0 && (mate.warn -= d) <= 0) { mate.on = true; mate.x = -40; mate.passed = false; }
         if (mate.on) { mate.x += 120 * d;
           if (slack && Math.abs(mate.x - ME_X) < ZONE && scold <= 0) { mate.on = false; mate.cool = 9 + rnd() * 7; caught('mate'); }
-          else if (!mate.passed && mate.x > ME_X + ZONE) { mate.passed = true; score += 25; fx.text(ME_X, 190, '😇 รอดจากขี้ฟ้อง +25', { color: PAL.green, size: 22 }); api.sfx('good'); }
+          else if (!mate.passed && mate.x > ME_X + ZONE) { mate.passed = true; score += 25; fx.text(meX(), meTxtY(190), '😇 รอดจากขี้ฟ้อง +25', { color: PAL.green, size: 22 }); api.sfx('good'); }
           if (mate.x > W + 40) { mate.on = false; mate.cool = 7 + rnd() * 8; } } }
       const was = slack;
       if (doze > 0) { doze -= d; slack = true; if (doze <= 0) { slack = holding; bored = 30; } }
       else slack = holding && scold <= 0;
-      if (was && !slack && boss.st === 'warn' && !boss.fake) { close++; score += 20; fx.text(ME_X, 200, 'เฉียดฉิว! +20', { color: PAL.yel, size: 24 }); api.sfx('good'); }
+      if (was && !slack && boss.st === 'warn' && !boss.fake) { close++; score += 20; fx.text(meX(), meTxtY(200), 'เฉียดฉิว! +20', { color: PAL.yel, size: 24 }); api.sfx('good'); }
       if (slack) { streak += d; score += 10 * mult() * d; bored = Math.max(0, bored - 30 * d);
-        if ((likeT -= d) <= 0) { likeT = .45; fx.burst(ME_X + 93, 236, { n: 2, colors: [PAL.pink, PAL.yel], speed: 90, grav: -80, size: 5, shape: 'star', life: .6 }); }
+        if ((likeT -= d) <= 0) { likeT = .45; fx.burst(P ? P.bubX + 33 : ME_X + 93, P ? P.bubY + 6 : 236, { n: 2, colors: [PAL.pink, PAL.yel], speed: 90, grav: -80, size: 5, shape: 'star', life: .6 }); }
         if (boss.st === 'look' && scold <= 0) caught('boss'); }
-      else { streak = 0; bored = Math.min(100, bored + (8 + level) * d); if (bored >= 100 && doze <= 0) { doze = 1.6; fx.text(ME_X, 200, 'เผลอหลับ!', { color: PAL.blue, size: 26 }); api.sfx('bad'); } }
+      else { streak = 0; bored = Math.min(100, bored + (8 + level) * d); if (bored >= 100 && doze <= 0) { doze = 1.6; fx.text(meX(), meTxtY(200), 'เผลอหลับ!', { color: PAL.blue, size: 26 }); api.sfx('bad'); } }
       hud();
     }
     draw();
   });
   hud(); draw();
+  if (window.__TEST__) window.__slack = { boss, mate, get: () => ({ time, score, strikes, slack, bored }), set: o => { if (o.time != null) time = o.time; if (o.bored != null) bored = o.bored; } };
   api.intro({ how: `<p>📱 งานน่าเบื่อ… <b>${phone ? 'แตะค้างตรงไหนก็ได้' : 'กดค้าง</b> (Space หรือแตะจอ)<b>'}</b> เพื่อแอบเล่นมือถือ ยิ่งเล่นต่อเนื่องคะแนนยิ่งคูณ</p>
       <p>👔 หัวหน้าเดินไปมาอยู่ด้านหลัง ถ้ามี <b>?</b> ขึ้นหัว = กำลังจะหันมา <b>ปล่อยมือให้ทัน!</b> (ปล่อยตอนเสี้ยววินาทีสุดท้าย = เฉียดฉิว +20)</p>
       <p>🗣️ <b>เพื่อนขี้ฟ้อง</b> (ป้ายแดงบนหัว) มาหลังเล่นไป ~20 วิ — มี ⚠️ เตือนที่ขอบซ้ายก่อน แล้วเดินผ่านหลังเรา · ตอนเธออยู่ใน<b>กรอบแดง</b> ห้ามเล่นมือถือ · รอดได้ +25</p>

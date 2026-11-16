@@ -571,6 +571,14 @@ html.hand-l .g2deck.rows{flex-direction:column}html.hand-l .g2deck .g2row{direct
 .toss-pad .o{width:20px;height:20px;margin:-10px 0 0 -10px;border-radius:50%;background:var(--line)}
 .toss-pad .k{width:40px;height:40px;margin:-20px 0 0 -20px;border-radius:50%;background:#fff;border:3px solid var(--line)}
 .toss-pad .ln{height:4px;margin-top:-2px;background:var(--line);transform-origin:0 50%}
+/* portrait phone scenes (g2view in solo-games.js: stamp, toss, slack): top bar, a play area that fills the rest,
+   and a thumb deck (~20%) where the press / hold / pull happens */
+html.touch .g2t.g2p>.g2box{align-items:stretch;justify-content:stretch}
+html.touch .g2t.g2p>.g2box canvas{width:100cqw;height:calc(100cqh - 6px);max-height:none;aspect-ratio:auto}
+html.touch .g2p>.g2hint,html.touch .g2p>.toss-pad{flex:0 0 19%;min-height:calc(var(--b) * 2);box-sizing:border-box;margin-top:8px;padding:0 12px;
+  border:3px dashed #c9bda8;border-radius:16px;display:grid;place-items:center;text-align:center;font-size:15px;color:var(--muted);overflow:visible}
+html.touch .g2p>.hud [data-k=st]{display:none}
+html.touch .g2p>.g2hint.on,html.touch .g2t.g2p.held>.g2hint{border-style:solid;border-color:var(--line);background:#fff3c4;color:var(--ink);font-weight:600}
 /* barista / prism: deck rows under a playfield that keeps its own top */
 html.touch .g2t-barista>.g2box{align-items:flex-start}
 html.touch .g2t-prism>.g2box{align-items:flex-end}
