@@ -624,9 +624,11 @@ function stampGame(root, api) {
     ctx.fillStyle = 'rgba(255,92,138,.7)'; ctx.fillRect(bl, TY - band - 1, bw, 3); ctx.fillRect(bl, TY + band - 1, bw, 3);
     for (const d of docs) { const y = py(d.x); if (y > -40 * f && y < h + 100 * f) docP(d, y); }
     // the stamp swings in from the side over the band and squashes when it lands
-    const k = press > 0 ? 1 - Math.abs(press - .09) / .09 : 0, rest = cx + side * (bw / 2 + 46), hx = Math.round(rest + (cx - rest) * k);
+    // at rest it waits beside the belt at 70% size, kept fully on screen (16 Nov 2026: it hung off the right edge on phones)
+    const k = press > 0 ? 1 - Math.abs(press - .09) / .09 : 0, hw0 = 40 * f * .9 * .7,
+      rest = side > 0 ? Math.min(cx + bw / 2 + hw0 + 6, L.W - hw0 - 4) : Math.max(cx - bw / 2 - hw0 - 6, hw0 + 4), hx = Math.round(rest + (cx - rest) * k);
     ctx.fillStyle = '#8d5a3b'; ctx.fillRect(side > 0 ? hx : 0, TY - 6, side > 0 ? L.W - hx : hx, 12);
-    ctx.save(); ctx.translate(hx, TY); const s = f * .9 * (1 - k * .1); ctx.scale(s, s);
+    ctx.save(); ctx.translate(hx, TY); const s = f * .9 * (.7 + .3 * k) * (1 - k * .1); ctx.scale(s, s);
     ctx.fillStyle = 'rgba(43,33,64,.25)'; ctx.fillRect(-36, -18, 80, 44);
     rrect(ctx, -40, -24, 80, 44, 8, PAL.red, PAL.ink); rrect(ctx, -32, -16, 64, 28, 4, null, '#fff');
     txt(ctx, 'APPROVED', 0, -2, 11, '#fff', 'center', 800); ctx.restore();
