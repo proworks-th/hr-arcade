@@ -13,7 +13,10 @@ const GAME_PAY = 2;
 const BRICK_DAY = 12;
 // per-game pay exceptions: the dungeon pays score ÷ 20 with no ×GAME_PAY and no bricks (owner, 13 Nov 2026;
 // it will drop its own material later)
-const PAY_RULES = { dungeon: { pay: 1, bricks: false } };
+const PAY_RULES = { dungeon: { pay: 1, bricks: false, soft: false } };
+// soft cap: [base up to, share of base paid in this band]. spot (÷60): 9,000 pts full pay · 90,000 pts ½ · 900,000 pts ⅕ · beyond 1/16
+const SOFT_BANDS = [[150, 1], [1500, 1 / 2], [15000, 1 / 5], [Infinity, 1 / 16]];
+function softBase(raw) { let out = 0, lo = 0; for (const [hi, k] of SOFT_BANDS) { if (raw <= lo) break; out += (Math.min(raw, hi) - lo) * k; lo = hi; } return out; }
 const bkkDay = () => new Date(Date.now() + 7 * 3600e3).toISOString().slice(0, 10);   // the office's day (Bangkok)
 const PROG_NORM = { dungeon: 20, spot: 60, run: 20, whack: 16, stack: .8, tetris: 80, stamp: 24, barista: 24, toss: 24, slack: 16, conga: 12, prism: 12 };
 // a new title every 2–3 levels; each title level also unlocks an accessory (ACC in wardrobe.js)
@@ -49,8 +52,11 @@ const Prog = {
   // GAME_PAY scales coins only (XP stays on the base so levelling speed doesn't change).
   // No coin cap per round since 13 Nov 2026 (owner): coins = base × GAME_PAY × featured, base = score / PROG_NORM (min 2).
   // XP keeps the old cap (base 60 → max 190 XP a round) so levelling speed is unchanged. Bricks unchanged (1–3, BRICK_DAY).
+  // Soft coin cap since 16 Nov 2026 (owner): long runs still pay, but each band of base pays less (SOFT_BANDS).
+  // Normal rounds (base up to 150) are unchanged; the dungeon keeps its own uncapped rule.
   award(game, score, mult = 1) {
-    const rule = PAY_RULES[game] || {}, raw = Math.max(2, Math.round(score / (PROG_NORM[game] || 20))), c = Math.min(60, raw), r = Prog.give(raw * (rule.pay ?? GAME_PAY) * mult, c * 3 + 10, game);
+    const rule = PAY_RULES[game] || {}, raw = Math.max(2, Math.round(score / (PROG_NORM[game] || 20))), c = Math.min(60, raw),
+      base = rule.soft === false ? raw : softBase(raw), r = Prog.give(Math.round(base * (rule.pay ?? GAME_PAY) * mult), c * 3 + 10, game);
     r.noBricks = rule.bricks === false; r.bricks = r.noBricks ? 0 : Prog.brick(c < 12 ? 1 : c < 25 ? 2 : 3); return r;
   },
   // add up to n bricks within today's cap; returns how many were given (0 = cap reached)

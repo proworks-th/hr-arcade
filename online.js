@@ -5,7 +5,7 @@ import {getDatabase,ref,get,set,remove,push,onValue,onDisconnect,runTransaction,
 import {FIREBASE_CONFIG} from './firebase-config.js';
 
 // max = sanity cap so an obviously broken score can't take the board
-export const RANK_GAMES={dungeon:{max:999},spot:{max:30000},run:{max:200000},whack:{max:6000},stack:{max:400},dance:{max:400000},tetris:{max:2000000},stamp:{max:200000},barista:{max:30000},toss:{max:3000},slack:{max:200000},conga:{max:100000},prism:{max:1000}};
+export const RANK_GAMES={dungeon:{max:999},spot:{max:100000,key:'spotlv'},run:{max:200000},whack:{max:6000},stack:{max:400},dance:{max:400000},tetris:{max:2000000},stamp:{max:200000},barista:{max:30000},toss:{max:3000},slack:{max:200000},conga:{max:100000},prism:{max:1000}};
 export const PERIODS={d:'วันนี้',w:'สัปดาห์นี้',m:'เดือนนี้ 🏆',a:'ตลอดกาล'};   // m = trophy season (calendar month)
 const app=()=>getApps().find(a=>a.name==='hub')||initializeApp(FIREBASE_CONFIG,'hub'),db=()=>getDatabase(app());
 // Thai calendar: day resets at midnight ICT, week starts Monday
@@ -16,11 +16,14 @@ export const ready=()=>!!FIREBASE_CONFIG;
 
 /* ---------- rankings ---------- */
 // returns {d,w,a}: true where this score became the player's best for that period
-export async function submit(game,name,score,extra='',lv=0){
+// a game can rank under its own board key (spot ranks stages cleared on 'spotlv' since 16 Nov 2026; the old 'spot' points boards stay as they were)
+const rk=g=>(RANK_GAMES[g]&&RANK_GAMES[g].key)||g;
+// periods: only these boards (e.g. ['m','a'] for a run settled on a later day)
+export async function submit(game,name,score,extra='',lv=0,periods=null){
   if(!FIREBASE_CONFIG||!RANK_GAMES[game]||!name||!(score>0))return null;
   const s=Math.min(Math.round(score),RANK_GAMES[game].max),b=buckets(),k=nameKey(name),D=db(),t=Date.now(),out={};
-  await Promise.all(Object.entries(b).map(async([p,bk])=>{
-    const r=await runTransaction(ref(D,`rooms/_rank/${game}/${p}/${bk}/${k}`),cur=>{if(cur&&cur.s>=s)return;return{n:name.trim().slice(0,20),s,x:String(extra).slice(0,40),t,...(lv?{l:lv}:{})}});
+  await Promise.all(Object.entries(b).filter(([p])=>!periods||periods.includes(p)).map(async([p,bk])=>{
+    const r=await runTransaction(ref(D,`rooms/_rank/${rk(game)}/${p}/${bk}/${k}`),cur=>{if(cur&&cur.s>=s)return;return{n:name.trim().slice(0,20),s,x:String(extra).slice(0,40),t,...(lv?{l:lv}:{})}});
     out[p]=r.committed;
   }));
   return out;
@@ -28,7 +31,7 @@ export async function submit(game,name,score,extra='',lv=0){
 export function board(game,period){return boardAt(game,period,buckets()[period])}
 export async function boardAt(game,period,bk){
   if(!FIREBASE_CONFIG)return[];
-  const snap=await get(ref(db(),`rooms/_rank/${game}/${period}/${bk}`));
+  const snap=await get(ref(db(),`rooms/_rank/${rk(game)}/${period}/${bk}`));
   return Object.entries(snap.val()||{}).map(([k,v])=>({k,...v})).sort((a,b)=>b.s-a.s||a.t-b.t);
 }
 
@@ -331,7 +334,7 @@ export function wkAdd(cat,name,n){
 export async function weekAwards(w){
   if(!FIREBASE_CONFIG)return{};
   const D=db(),out={},rows=o=>Object.entries(o||{}).map(([k,x])=>({k,n:x.n,v:x.v})).filter(x=>x.v>0).sort((a,b)=>b.v-a.v);
-  const [wk,cant,...boards]=await Promise.all([get(ref(D,`rooms/_wk/${w}`)),get(ref(D,`rooms/_canteen/${w}/by`)),...Object.keys(RANK_GAMES).map(g=>get(ref(D,`rooms/_rank/${g}/w/${w}`)))]);
+  const [wk,cant,...boards]=await Promise.all([get(ref(D,`rooms/_wk/${w}`)),get(ref(D,`rooms/_canteen/${w}/by`)),...Object.keys(RANK_GAMES).map(g=>get(ref(D,`rooms/_rank/${rk(g)}/w/${w}`)))]);
   Object.entries(wk.val()||{}).forEach(([c,o])=>{if(c[0]!=='_')out[c]=rows(o)});
   out.cant=rows(Object.fromEntries(Object.entries(cant.val()||{}).map(([k,x])=>[k,{n:x.n,v:x.p}])));
   const rec={};
