@@ -9,7 +9,7 @@
 // or just this browser when it is off. Saves from the earlier nickname + PIN version (rooms/_save/{name}) can still be
 // loaded, and a device that was already PIN-linked keeps syncing that save quietly until it signs in with Google.
 const Cloud = {
-  SKIP: ['cloud', 'owner', 'shared', 'hubView', 'mOpen', 'aid', 'awSeen', 'pinSeen', 'muted'],
+  SKIP: ['pend', 'cloud', 'owner', 'shared', 'hubView', 'mOpen', 'aid', 'awSeen', 'pinSeen', 'muted'],
   acct: null, booted: false, reloading: false,
   hash: s => { let h = 0x811c9dc5; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36); },
   link: () => store.get('cloud', null),   // the old PIN link {k,h}

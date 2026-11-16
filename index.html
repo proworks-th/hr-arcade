@@ -759,7 +759,7 @@ html.touch #hub .vil-bar{flex-wrap:wrap;white-space:normal;overflow:visible}html
 <script src="prism-climb.js?v=1"></script>
 <script src="prism.js?v=10"></script>
 <script src="season-art.js?v=5"></script>
-<script src="office.js?v=32"></script>
+<script src="office.js?v=33"></script>
 <script src="skills.js?v=1"></script>
 <script src="wardrobe.js?v=9"></script>
 <script src="gacha.js?v=4"></script>
@@ -768,7 +768,7 @@ html.touch #hub .vil-bar{flex-wrap:wrap;white-space:normal;overflow:visible}html
 <script src="village-world.js?v=20"></script>
 <script src="village.js?v=38"></script>
 <script src="farm.js?v=13"></script>
-<script src="cloud.js?v=11"></script>
+<script src="cloud.js?v=12"></script>
 <script src="news.js?v=20"></script>
 <script>
 'use strict';
@@ -816,7 +816,7 @@ $('#muteBtn').onclick=()=>{muted=!muted;store.set('muted',muted);renderMute()};
 
 /* ---------- online services (online.js, Firebase): ranking, presence, feed ---------- */
 let onlineMod=null;
-const loadRank=()=>onlineMod||(onlineMod=import('./online.js?v=33'));
+const loadRank=()=>onlineMod||(onlineMod=import('./online.js?v=34'));
 const loadOnline=loadRank;
 const PIX_AVAS=['p_office','p_woffice','p_whealth','p_tech','p_cat','p_dog'];
 const myAva=()=>{const a=store.get('partyAva','p_office');return PIX_AVAS.includes(a)?a:'p_office'};
@@ -913,7 +913,10 @@ function renderCrew(){
   if(Date.now()-crewT<60000)return;crewT=Date.now();
   loadOnline().then(O=>O.listProfiles(40)).then(L=>{crewList=L;draw()}).catch(()=>{crewList=crewList||[];draw()});
 }
+let heldInvite=null;
+const inGame=()=>!!(current&&current.started&&!current.ended);
 function partyInvite(G,name){
+  if(inGame()){heldInvite={G,name,t:Date.now()};return}   // a popup over the game got tapped by accident and dropped whole runs (16 Nov 2026)
   const d=document.createElement('div');d.className='invite';
   d.innerHTML=`<span>🎉 <b>${esc(G.by||'เพื่อน')}</b> เปิด ${name} ในห้องปาร์ตี้!</span><button class="btn sm primary">เข้าร่วม</button><button class="btn sm" aria-label="ปิด">✕</button>`;
   const [go,x]=d.querySelectorAll('button');go.onclick=()=>{d.remove();store.set('hubView','room');goHome()};x.onclick=()=>d.remove();
@@ -1001,12 +1004,12 @@ async function showRanking(gid='spot',per='d'){
     ov.querySelectorAll('[data-g]').forEach(b=>b.onclick=()=>{gid=b.dataset.g;draw()});
     ov.querySelectorAll('[data-p]').forEach(b=>b.onclick=()=>{per=b.dataset.p;draw()});
     const g=GAMES.find(x=>x.id===gid),L=ov.querySelector('[data-k=list]');
-    ov.querySelector('[data-k=note]').textContent=(gid==='spot'?'นับเฉพาะด่านประจำวัน · ':'')+'เก็บคะแนนดีที่สุดคนละ 1 ค่า · วันนี้รีเซ็ตเที่ยงคืน · สัปดาห์รีเซ็ตวันจันทร์'+(per==='m'?' · ท็อป 3 ของเดือนได้ถ้วยไปวางในห้อง':'');
+    ov.querySelector('[data-k=note]').textContent=(gid==='spot'?'นับเฉพาะด่านประจำวัน · เรียงตามจำนวนด่านที่ผ่าน · ':'')+'เก็บคะแนนดีที่สุดคนละ 1 ค่า · วันนี้รีเซ็ตเที่ยงคืน · สัปดาห์รีเซ็ตวันจันทร์'+(per==='m'?' · ท็อป 3 ของเดือนได้ถ้วยไปวางในห้อง':'');
     L.innerHTML='<li class="muted">⏳ กำลังโหลด…</li>';
     try{
       const rows=await R.board(gid,per),medal=['🥇','🥈','🥉'],mi=rows.findIndex(r=>r.k===me);
       if(!rows.length){L.innerHTML='<li class="muted">ยังไม่มีใครลงอันดับ — เป็นคนแรกเลย!</li>';return}
-      const li=(r,i)=>`<li class="${r.k===me?'me':''}"><span class="pos">${medal[i]||'#'+(i+1)}</span><span class="nm">${esc(r.n)}${r.k===me?' (คุณ)':''}${r.l?` <i class="lvb">Lv${r.l}</i>`:''}</span><span><span class="sc">${fmt(r.s)}</span> ${g.unit||''}<br><span class="ex">${esc(r.x||'')}</span></span></li>`;
+      const li=(r,i)=>`<li class="${r.k===me?'me':''}"><span class="pos">${medal[i]||'#'+(i+1)}</span><span class="nm">${esc(r.n)}${r.k===me?' (คุณ)':''}${r.l?` <i class="lvb">Lv${r.l}</i>`:''}</span><span><span class="sc">${fmt(r.s)}</span> ${g.rankUnit||g.unit||''}<br><span class="ex">${esc(r.x||'')}</span></span></li>`;
       L.innerHTML=rows.slice(0,10).map(li).join('')+(mi>=10?`<li class="muted" style="justify-content:center">⋯</li>`+li(rows[mi],mi):'');
     }catch(e){L.innerHTML='<li class="muted">โหลดอันดับไม่ได้ 😢 (เน็ตหลุด?)</li>'}
   }
@@ -1025,6 +1028,21 @@ function frame(t){const dt=Math.min(.05,(t-lastT)/1000);lastT=t;
 requestAnimationFrame(frame);
 
 const hub=$('#hub'),stage=$('#stage');
+const rankable=(g,daily)=>!((g.id==='spot'||g.id==='prism')&&!daily);
+function payRun(g,score,daily,stats,mult){
+  recordMission({game:g.id,score,daily,st:stats});
+  const rw=Prog.award(g.id,stats.award!=null?stats.award:score,mult),lastSc=store.get('last_'+g.id,null);store.set('last_'+g.id,score);Stats.hit('g',g.id);
+  const bk='best_'+g.id,prev=store.get(bk,0),isBest=score>prev;if(isBest)store.set(bk,score);if(isBest&&prev>0)Season.add('best');if(mult>1)Season.add('feat');
+  store.set('pend',null);
+  return{rw,lastSc,prev,isBest};
+}
+// a run that ended without its result screen (left mid-run, or the tab was closed): pay what was banked at the last checkpoint
+function settleRun(p){
+  const g=GAMES.find(x=>x.id===p.g);if(!g||!(p.score>0)){store.set('pend',null);return}
+  const {rw}=payRun(g,p.score,p.daily,p.stats||{},p.mult||1),nm=store.get('name','').trim(),rs=(p.stats||{}).rank!=null?p.stats.rank:p.score;
+  if(nm&&rankable(g,p.daily)&&rs>0)loadRank().then(R=>R.submit(g.id,nm,rs,p.extra||'',Prog.get().lv,p.day===thaiDay()?null:['a'])).catch(()=>{});
+  toast(`บันทึกรอบ ${g.title} ที่ออกกลางคันแล้ว · +${rw.coins} 🪙`);
+}
 function startGame(id){
   const g=GAMES.find(x=>x.id===id);Stats.hit('s',id);
   presence(id);
@@ -1040,6 +1058,8 @@ function startGame(id){
     toast,
     onKey(fn){cur.keyFn=fn},
     get paused(){return paused||bossOn},
+    // bank progress so far (e.g. each cleared level): paid out if the run ends without reaching api.end
+    checkpoint(score,extra='',daily=false,stats={}){if(cur.ended)return;cur.cp={g:g.id,score,extra,daily,stats,mult:g.id===featuredId()?2:1,day:thaiDay()};store.set('pend',cur.cp)},
     intro({how,buttons}){
       const ov=document.createElement('div');ov.className='overlay';
       const first=!store.get('tut_'+g.id,false)&&TUT[g.id];store.set('tut_'+g.id,true);
@@ -1050,11 +1070,9 @@ function startGame(id){
     },
     end(score,extra='',daily=false,stats={}){
       if(cur.ended)return;cur.ended=true;
-      recordMission({game:g.id,score,daily,st:stats});
-      const mult=g.id===featuredId()?2:1,rw=Prog.award(g.id,stats.award!=null?stats.award:score,mult),lastSc=store.get('last_'+g.id,null);store.set('last_'+g.id,score);Stats.hit('g',g.id);
+      const mult=cur.cp?cur.cp.mult:g.id===featuredId()?2:1,{rw,lastSc,prev,isBest}=payRun(g,score,daily,stats,mult),rs=stats.rank!=null?stats.rank:score,ru=g.rankUnit||g.unit||'แต้ม';
       mine.forEach(f=>loops.delete(f));mine.clear();
       api.sfx('over');
-      const bk='best_'+g.id,prev=store.get(bk,0),isBest=score>prev;if(isBest)store.set(bk,score);if(isBest&&prev>0)Season.add('best');if(mult>1)Season.add('feat');
       const ov=document.createElement('div');ov.className='overlay';
       window.pendingFly=rw.coins;
       ov.innerHTML=`<div class="panel popin res"><h2 class="res-h">${g.emoji} ${g.title}</h2>
@@ -1074,18 +1092,18 @@ function startGame(id){
       ov.querySelector('[data-a=board]').onclick=()=>showRanking(g.id,'d');
       const rk=ov.querySelector('[data-a=rk]');
       const send=nm=>{rk.textContent='⏳ กำลังส่งคะแนนเข้าอันดับ…';
-        loadRank().then(async R=>{const res=await R.submit(g.id,nm,score,extra,Prog.get().lv);const rows=await R.board(g.id,'d'),i=rows.findIndex(r=>r.k===R.nameKey(nm));
+        loadRank().then(async R=>{const res=await R.submit(g.id,nm,rs,extra,Prog.get().lv);const rows=await R.board(g.id,'d'),i=rows.findIndex(r=>r.k===R.nameKey(nm));
           const nx=i>0?rows[i-1]:null;
           rk.innerHTML=i<0?'ส่งคะแนนแล้ว':`🏆 อันดับวันนี้ของคุณ: <b>#${i+1}</b> จาก ${rows.length} คน${res&&res.d?'':' <span class="muted">(ยังไม่ชนะสถิติวันนี้ของตัวเอง)</span>'}`
-            +(nx?`<div class="goal">🎯 อีก <b>${fmt(nx.s-rows[i].s+1)}</b> ${g.unit||'แต้ม'} แซง <b>${esc(nx.n)}</b> (#${i}) <button class="btn sm primary" data-a="again2">ลุยเลย</button></div>`:i===0&&rows.length>1?'<div class="goal">👑 คุณคือที่ 1 วันนี้! รักษาไว้ให้ได้</div>':'');
+            +(nx?`<div class="goal">🎯 อีก <b>${fmt(nx.s-rows[i].s+1)}</b> ${ru} แซง <b>${esc(nx.n)}</b> (#${i}) <button class="btn sm primary" data-a="again2">ลุยเลย</button></div>`:i===0&&rows.length>1?'<div class="goal">👑 คุณคือที่ 1 วันนี้! รักษาไว้ให้ได้</div>':'');
           const a2=rk.querySelector('[data-a=again2]');if(a2)a2.onclick=()=>startGame(g.id);
           if(i>=0)store.set('rk_'+g.id,{day:thaiDay(),i,above:rows.slice(0,i).map(r=>r.k)});
-          if(res&&res.d&&i===0)R.pushFeed(`👑 ${nm} ขึ้นที่ 1 วันนี้ ${g.emoji} ${g.title} (${fmt(score)}${g.unit?' '+g.unit:''})`,nm,meWho());
+          if(res&&res.d&&i===0)R.pushFeed(`👑 ${nm} ขึ้นที่ 1 วันนี้ ${g.emoji} ${g.title} (${fmt(rs)} ${ru})`,nm,meWho());
           else if(res&&res.d&&i>0&&i<3)R.pushFeed(`⚡ ${nm} ติดอันดับ ${i+1} วันนี้ ${g.emoji} ${g.title}`,nm,meWho())})
           .catch(()=>{rk.textContent='ส่งคะแนนเข้าอันดับไม่ได้ (เน็ตหลุด?)'})};
       if(g.id==='spot'&&!daily)rk.innerHTML='<span class="muted">โหมดสุ่มด่านไม่นับอันดับ — เล่นด่านประจำวันเพื่อลงอันดับ</span>';
       else if(g.id==='prism'&&!daily)rk.innerHTML='<span class="muted">ด่านปกติไม่นับอันดับ — เล่น 📅 ด่านประจำวันเพื่อลงอันดับ</span>';
-      else if(score>0){const nm=store.get('name','').trim();
+      else if(rs>0){const nm=store.get('name','').trim();
         if(nm)send(nm);
         else{rk.innerHTML='ใส่ชื่อเล่นเพื่อลงอันดับ: <input maxlength="20" placeholder="ชื่อเล่น"> <button class="btn sm">ส่ง</button>';
           const inp=rk.querySelector('input');rk.querySelector('button').onclick=()=>{const v=inp.value.trim();if(!v)return;store.set('name',v);send(v)}}}
@@ -1095,12 +1113,14 @@ function startGame(id){
         toast(await copyText(txt)?'คัดลอกแล้ว ไปวางในไลน์ได้เลย 📋':'คัดลอกไม่ได้ 😢');
       };
       root.appendChild(ov);
+      if(heldInvite){const h=heldInvite;heldInvite=null;if(Date.now()-h.t<180000)setTimeout(()=>partyInvite(h.G,h.name),1200)}
     }
   };
   current=cur;
   cur.inst=g.mount(root,api)||{};
 }
 function stopGame(){
+  if(current&&current.started&&!current.ended&&current.cp){current.ended=true;settleRun(current.cp)}
   if(current){current.mine.forEach(f=>loops.delete(f));current.inst&&current.inst.destroy&&current.inst.destroy();current=null}
   paused=false;const p=$('#pauseOv');p&&p.remove();
 }
@@ -1389,7 +1409,7 @@ function spotGame(root,api){
     if(best){if(best.found)return;best.found=true;ring(best);streak++;const pts=100+level*20+(streak>1?streak*10:0);score+=pts;runSfx('coin');const tb=Math.max(0,Math.min(3,maxT-time));time+=tb;
       for(const pp of panels){const R2=pp.getBoundingClientRect(),k=R2.width/100;domBurst(pp,best.cx*k,best.cy*k,{n:12,dist:50})}
       const f=document.createElement('div');f.className='float';f.textContent=tb>=1?`+${pts} · ⏱+${Math.round(tb)}`:'+'+pts;f.style.left=best.cx+'cqw';f.style.top=best.cy+'cqw';p.appendChild(f);setTimeout(()=>f.remove(),700);
-      if(diffs.every(d=>d.found)){done=true;const bonus=Math.ceil(time)*5;score+=bonus;api.sfx('level');api.toast(`ผ่านด่าน ${level}! โบนัสเวลา +${bonus}`);
+      if(diffs.every(d=>d.found)){done=true;const bonus=Math.ceil(time)*5;score+=bonus;api.sfx('level');api.toast(`ผ่านด่าน ${level}! โบนัสเวลา +${bonus}`);api.checkpoint(score,`ผ่าน ${level} ด่าน · ${fmt(score)} คะแนน`,mode==='daily',{levels:level,rank:level});
         for(const pp of panels){const R2=pp.getBoundingClientRect();domBurst(pp,R2.width/2,R2.height/2,{n:30,dist:160,size:10})}
         api.after(1.5,startLevel)}}
     else{time=Math.max(0,time-4);streak=0;runSfx('hurt');const xm=document.createElement('div');xm.className='xmark';xm.textContent='✖';
@@ -1400,7 +1420,7 @@ function spotGame(root,api){
     if(time<=11){api.toast('เวลาไม่พอใช้คำใบ้ 😅');return}
     const d=diffs.find(d=>!d.found);if(!d)return;time-=10;ring(d,'hint');hud()};
   api.loop(dt=>{if(!running||done)return;time-=dt;
-    if(time<=0){time=0;running=false;hud();api.end(score,`ผ่าน ${level-1} ด่าน`,mode==='daily',{levels:level-1})}else hud()});
+    if(time<=0){time=0;running=false;hud();api.end(score,`ผ่าน ${level-1} ด่าน`,mode==='daily',{levels:level-1,rank:level-1})}else hud()});
   api.intro({how:`<p>🔍 หาจุดที่ <b>ภาพซ้าย-ขวาไม่เหมือนกัน</b> ให้ครบก่อนหมดเวลา — สีเปลี่ยน ของหาย คนสลับ หันกลับด้าน ฯลฯ</p>
       <p>⏱ ผ่านด่านเร็ว = โบนัสเวลา · เจอติดๆ กัน = โบนัสคอมโบ · แตะผิด <b>−4 วินาที</b></p><p>💡 ติดจริงๆ กดใบ้ได้ (−10 วินาที)</p>
       <p>📅 <b>ด่านประจำวัน</b>: วันนี้ทุกคนได้ภาพชุดเดียวกัน มาวัดกันว่าใครตาไว!</p>`,
@@ -1778,7 +1798,7 @@ const GAMES=[
   {id:'party',title:'ปาร์ตี้ออนไลน์',emoji:'🎉',img:'assets/pixel/p_cat.png',color:'#ffe08a',online:true,desc:'เข้าห้องเดียวกันทั้งออฟฟิศ เห็นเพื่อนวิ่งไปมา แข่งวิ่งแบบ Fall Guys หรือช่วยกันเคลียร์งานแบบ Overcooked',time:'เล่นพร้อมกัน',mount:partyMount},
   {id:'party3d',title:'ห้องรวม 3D (ทดลอง)',emoji:'🧊',img:'assets/3d/chars/previews/character-female-c.png',color:'#d6ecff',online:true,href:'party3d.html',desc:'ต้นแบบห้องออฟฟิศ 3D กล้องล็อกมุมเดียวกันทุกคน เดินเล่น ส่งอีโมจิ ลองดูว่าเครื่องเราลื่นไหม',time:'ทดลอง'},
   {id:'dance',title:'Office Audition',emoji:'🕺',img:'assets/3d/chars/previews/character-male-b.png',color:'#ffd6ec',online:true,href:'party3d.html',desc:'เกมเต้นแบบ Audition ในห้อง 3D กดลูกศรตามจังหวะ เต้นพร้อมเพื่อนทั้งห้อง แข่งคะแนนสด',time:'1–2 นาที/เพลง'},
-  {id:'spot',title:'จับผิดภาพ',emoji:'🔍',img:'assets/mi/amelia_down.png',color:'#9fd8ff',desc:'หาจุดต่างบนโต๊ะทำงาน ด่านประจำวันเหมือนกันทั้งออฟฟิศ',time:'2–4 นาที',mount:spotGame},
+  {id:'spot',title:'จับผิดภาพ',emoji:'🔍',rankUnit:'ด่าน',img:'assets/mi/amelia_down.png',color:'#9fd8ff',desc:'หาจุดต่างบนโต๊ะทำงาน ด่านประจำวันเหมือนกันทั้งออฟฟิศ',time:'2–4 นาที',mount:spotGame},
   {id:'run',title:'วิ่งไปตอกบัตร',emoji:'🏃',img:'assets/mi/adam_right.png',color:'#c6f0ff',desc:'เกมวิ่งแนว flash กระโดดข้ามลังกับเก้าอี้ ก้มหลบเครื่องบินกระดาษ ให้ทันก่อน 8:30',time:'1–3 นาที',mount:runnerGame},
   {id:'whack',title:'สายด่วนถล่มโต๊ะ',emoji:'☎️',img:'assets/mi/alex_phone.png',color:'#ffb3c7',desc:'ตีสาย ตีอีเมล ตีงานด่วน… แต่อย่าเผลอตีหัวหน้า!',time:'40–65 วิ',mount:whackGame},
   {id:'tetris',title:'Printer Tetris',emoji:'🖨️',img:'assets/mi/pc_desk.png',color:'#d6e4ff',desc:'กระดาษไหลจากเครื่องพิมพ์ จัดให้เต็มแถว',time:'2–5 นาที',mount:tetrisGame},
@@ -1888,6 +1908,23 @@ function renderHub(){
 renderHub();
 onboarding();
 Cloud.boot();Stats.boot();$('#newsBtn').onclick=News.open;News.boot();setTimeout(roomNews,2500);setTimeout(claimCups,3500);
+// a run cut off by a closed or killed tab: settle the banked checkpoint once the save has synced
+setTimeout(()=>{if(Cloud.reloading||inGame())return;const p=store.get('pend',null);if(p)settleRun(p)},3000);
+// one-off payback (owner, 16 Nov 2026): มิ้นเองจร้า's จับผิดภาพ daily run on Sun 15 Nov (600 stages, 6,000,000 pts, featured ×2)
+// was dropped by the party invite popup. Paid once per account (the rooms/_comp flag stops a second device or a copycat name).
+async function compSpot1115(){
+  if(Cloud.reloading||store.get('comp_spot1115',false))return;
+  const nm=store.get('name','').trim(),R=await loadRank();
+  if(!nm||R.nameKey(nm)!==R.nameKey('มิ้นเองจร้า')||Prog.get().lv<35)return;
+  const ok=await R.onceFlag('rooms/_comp/spot1115/'+R.nameKey(nm));store.set('comp_spot1115',true);if(!ok)return;
+  const rw=Prog.award('spot',6000000,2);if(store.get('best_spot',0)<6000000)store.set('best_spot',6000000);
+  R.submit('spot',nm,600,'ผ่าน 600 ด่าน · 6,000,000 คะแนน',Prog.get().lv,['m','a']).catch(()=>{});
+  const ov=document.createElement('div');ov.className='overlay';
+  ov.innerHTML=`<div class="panel popin"><h2>รางวัลรอบที่หลุด</h2><p>รอบจับผิดภาพวันอาทิตย์ 15 พ.ย. (ผ่าน 600 ด่าน) หลุดเพราะป๊อปอัปห้องปาร์ตี้ แก้ให้แล้ว และจ่ายรางวัลรอบนั้นให้ครบ</p>
+    <div class="reward"><b>+${fmt(rw.coins)} 🪙</b> · <b>+${rw.xp} XP</b></div><p class="muted">สถิติ 600 ด่านขึ้นอันดับเดือนนี้และตลอดกาลแล้ว</p><div class="row"><button class="btn primary">รับ</button></div></div>`;
+  ov.querySelector('button').onclick=()=>{ov.remove();renderHub()};document.body.appendChild(ov);
+}
+setTimeout(()=>compSpot1115().catch(()=>{}),4500);
 if(/[?&]join=room/.test(location.search)){Tower.setView('room');setTimeout(()=>{document.getElementById('room')?.scrollIntoView({behavior:'smooth',block:'center'});
   const G=HubRoom.G;toast(G.sc&&G.sc!=='lobby'&&G.sc!=='res'?'🎉 เพื่อนกำลังเล่นอยู่ในห้องปาร์ตี้ — รอบหน้าเล่นด้วยกัน!':'👋 เพื่อนชวนมาที่ห้องปาร์ตี้ ทักทายกันได้เลย')},600)}
 // test-mode hook for verify/run.py (absent for normal visits)
