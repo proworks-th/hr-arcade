@@ -16,9 +16,21 @@ function g2canvas(root, W, H) {
   // a long press must never open the phone's copy / save-image menu or the text magnifier
   cv.addEventListener('contextmenu', e => e.preventDefault());
   const ctx = cv.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  // pointer position in logical canvas units
-  const at = e => { const r = cv.getBoundingClientRect(); return { x: (e.clientX - r.left) * W / r.width, y: (e.clientY - r.top) * H / r.height }; };
-  return { cv, ctx, at };
+  // pointer position in logical canvas units (a resized canvas maps inside its border)
+  let LW = W, LH = H, fitted = false;
+  const at = e => { const r = cv.getBoundingClientRect();
+    if (fitted) return { x: (e.clientX - r.left - cv.clientLeft) * LW / cv.clientWidth, y: (e.clientY - r.top - cv.clientTop) * LH / cv.clientHeight };
+    return { x: (e.clientX - r.left) * W / r.width, y: (e.clientY - r.top) * H / r.height }; };
+  // portrait phones: logical size = the CSS size of the play area (w x h px), placed at (x, y) in the box;
+  // size() with no arguments goes back to the fixed W x H scene
+  function size(w, h, x, y) {
+    fitted = w != null; LW = fitted ? w : W; LH = fitted ? h : H;
+    cv.style.cssText = fitted ? `position:absolute;left:${x}px;top:${y}px;width:${w}px;height:${h}px;box-sizing:content-box;max-height:none;aspect-ratio:auto` : '';
+    cv.style.setProperty('--ar', LW / LH);
+    if (cv.width !== Math.round(LW * dpr) || cv.height !== Math.round(LH * dpr)) { cv.width = Math.round(LW * dpr); cv.height = Math.round(LH * dpr); }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  return { cv, ctx, at, size, dpr, box };
 }
 // g2canvas, plus a portrait layout on phones held upright (PRD 7.3): there the canvas fills the play area between
 // the top bar and the thumb deck at 1 unit = 1 CSS px (backing store at devicePixelRatio), and the game lays out a
@@ -123,6 +135,8 @@ const PXA_ART = {
   rocket: ['...k...', '..kwk..', '..kwk..', '.kwbwk.', '.kwwwk.', '.kwwwk.', 'kpkwkpk', 'kp.k.pk', '...y...', '..yry..'],
   ufo: ['...kkk...', '..klllk..', '.kkkkkkk.', 'kssSsSssk', '.kkkkkkk.', '..y.y.y..'],
   cloud: ['....kkkk.......', '...kwwwwk.kkk..', '.kkwwwwwwkwwwk.', 'kwwwwwwwwwwwwwk', 'kwwwwwwwwwwwlwk', '.kkkkkkkkkkkkk.'],
+  hey: ['.kkkkk.', 'kwwrwwk', 'kwwrwwk', 'kwwrwwk', 'kwwwwwk', 'kwwrwwk', '.kkkkk.', '..kk...', '..k....'],
+  mad: ['.R...R.', 'Rr...rR', '.rR.Rr.', '.......', '.rR.Rr.', 'Rr...rR', '.R...R.'],
   fan: ['.kkkkk.', 'klbklbk', 'kbkskbk', 'klkskbk', '.kkkkk.', '...k...', '...k...', '.kkkkk.'],
 };
 const PXA = {};
@@ -267,6 +281,36 @@ function g2deck(root, g, cls = '') {
   if (g.rows) g.rows.forEach(r => add(r, 'g2row')); else { add(g.l || [], 'g2c g2c-l'); add(g.r || [], 'g2c g2c-r'); }
   root.appendChild(deck); phoneSize(deck); return deck;
 }
+// Portrait phone layouts (PRD 7.3): only on touch with the stage taller than wide; desktop and landscape keep the
+// old scene. Three bands: a thin top bar, the play area (.g2p fills it), the thumb deck at the bottom.
+function phonePortrait() {
+  if (!phoneOn()) return false;
+  const s = document.getElementById('stage'), w = s && s.clientWidth || innerWidth, h = s && s.clientHeight || innerHeight;
+  return h > w;
+}
+// fn() now and again (once per frame at most) when the screen turns or resizes or a phone setting changes, until root leaves
+function phoneRelayout(root, fn) {
+  let raf = 0;
+  const ro = new ResizeObserver(() => ask()), st = document.getElementById('stage');
+  const stop = () => { ro.disconnect(); off(); removeEventListener('orientationchange', ask); cancelAnimationFrame(raf); };
+  const ask = () => { if (!raf) raf = requestAnimationFrame(() => { raf = 0; if (!root.isConnected) return stop(); fn(); }); };
+  const off = Phone.on(ask);
+  ro.observe(root); if (st) ro.observe(st); addEventListener('orientationchange', ask);
+  fn(); return stop;
+}
+// the largest canvas (content px, a 3 px border around it, 6 px shadow below) that fits the play box
+function fitBox(box) { const w = Math.max(60, box.clientWidth - 6), h = Math.max(60, box.clientHeight - 12); return { w, h, x: Math.floor((box.clientWidth - w - 6) / 2), y: 0 }; }
+// pixel art drawn from a cached layer once its images have loaded (portrait scenes: wall, floor, counters)
+function artReady(names) { for (const n of names) { const im = pix(n); if (!im.complete || !im.naturalWidth) return false; } return true; }
+function layerCanvas(w, h, dpr) { const c = document.createElement('canvas'); c.width = Math.round(w * dpr); c.height = Math.round(h * dpr); const g = c.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); return { c, g }; }
+(() => {   // portrait CSS shared by the canvas games (whack keeps its own next to its other styles in index.html)
+  const st = document.createElement('style');
+  st.textContent = `html.touch .g2t.g2p>.g2box{position:relative;display:block;container-type:normal}
+html.touch .g2t-conga.g2p>.g2hint{flex:0 0 17%;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;margin-top:10px;padding:8px;
+  border:3px dashed #c9bda8;border-radius:16px;font-size:14px;color:var(--muted)}
+html.touch .g2t-conga.g2p>.g2hint::before{content:"";width:56px;height:56px;border-radius:50%;border:3px solid #c9bda8;box-sizing:border-box}`;
+  document.head.appendChild(st);
+})();
 // a quiet line at the bottom of a tap-anywhere game saying what a press does (no key names)
 function phoneHint(root, text) { const h = document.createElement('div'); h.className = 'g2hint'; h.textContent = text; root.appendChild(h); return h; }
 // a press anywhere on the game (not on the HUD, an overlay or a deck button) — the one-action games
@@ -612,16 +656,37 @@ function stampGame(root, api) {
    Lunch Barista — mix the drink each customer ordered before they lose patience
 ================================================================= */
 function baristaGame(root, api) {
-  const W = 760, H = 420, TOTAL = 90, BONUS_MAX = 40, COUNTER = 262;
+  const TOTAL = 90, BONUS_MAX = 40;
   // [key, label, liquid colour in the cup]
   const ING = [['shot', 'ช็อต', '#6b3e26'], ['milk', 'นม', '#fffdf6'], ['ice', 'น้ำแข็ง', '#bfe9ff'], ['choco', 'ช็อกโกแลต', '#7a4a2a'], ['water', 'น้ำ', '#9fdcff'], ['tea', 'ชา', '#e0913b']];
   const MENU = [{ n: 'อเมริกาโน่', r: ['shot', 'water'] }, { n: 'ลาเต้', r: ['shot', 'milk'] }, { n: 'ลาเต้เย็น', r: ['shot', 'milk', 'ice'] },
     { n: 'มอคค่า', r: ['shot', 'milk', 'choco'] }, { n: 'โกโก้เย็น', r: ['choco', 'milk', 'ice'] }, { n: 'ชาเย็น', r: ['tea', 'milk', 'ice'] },
     { n: 'ชาร้อน', r: ['tea', 'water'] }, { n: 'เอสเพรสโซ่', r: ['shot'] }];
   root.innerHTML = `<div class="hud"><div class="timer" data-k="tm"><div data-k="bar"></div></div><span>⏱ <b data-k="t">${TOTAL}</b></span><span>⭐ <b data-k="sc">0</b></span><span data-k="hp"></span></div>`;
-  const { cv, ctx, at } = g2canvas(root, W, H), q = k => root.querySelector(`[data-k="${k}"]`), fx = makeFX();
+  const G = g2canvas(root, 760, 420), { cv, ctx, at } = G, q = k => root.querySelector(`[data-k="${k}"]`), fx = makeFX();
   let bonus = 0, slots = [null, null, null], leaving = [], cup = [], time = TOTAL, el = 0, score = 0, served = 0, hearts = 3, next = 1, running = false, over = false, wob = 0, t = 0;
-  const SLOT_X = [140, 380, 620], CUP_X = W / 2;
+  // scene layout. LD = the 760 x 420 scene of desktop / landscape (the old constants); a portrait phone gets portrait(w, h):
+  // customers and order bubbles in the top third, a big cup in the middle, art at an integer 3x
+  const LD = { W: 760, H: 420, port: false, slot: [140, 380, 620], sw: 90, CUP_X: 380, COUNTER: 262, pby: 238, pk: 4, hop: 60, walk: 160,
+    bubY: 60, bx: -92, by: -42, bw: 184, bh: 86, tw: 10, ty: 43, tt: 56, ns: 16, ny: -22, iy: 20, ik: 3.4, is: 38, rx: -70, ry: 26, rw: 140, rh: 9,
+    fy: [170, 150, 120, 92, 64], mad: [44, 140], hitY: 260, fullY: 270, wrongY: 250, clearY: 360, cupTop: 300, cupBot: 402, cw: 84, lh: 22, ice: 1, emptyY: 352,
+    win: [['window_red', 58, 30, 3], ['window_red', 702, 30, 3]], back: [['fridge_wide', 260, 3], ['plant_pot', 500, 3]], plank: 64, shelf: false,
+    front: [['cans', 80, 396, 3], ['fruit_basket', 690, 396, 4], ['cake', 160, 264, 3], ['cake_straw', 196, 264, 3], ['pizza', 570, 264, 3], ['cake_slice', 606, 264, 3]] };
+  function portrait(W, H) {
+    const pk = 3, pby = 4 + 80 + 12 + 32 * pk, COUNTER = pby + 18, lh = Math.max(24, Math.min(40, Math.round((H - COUNTER - 22 - 120) / 5))), cw = Math.round(lh * 3.6) & ~1;
+    const cupBot = Math.round((COUNTER + 22 + H) / 2 + 2 * lh + 4 + 12), cupTop = cupBot - 4 * lh - 8, cx = Math.round(W / 2), side = (cx - cw / 2) / 4;
+    return { W, H, port: true, slot: [W / 6, W / 2, W * 5 / 6].map(Math.round), sw: Math.round(W / 6), CUP_X: cx, COUNTER, pby, pk, hop: 45, walk: 120,
+      bubY: 44, bx: -58, by: -40, bw: 116, bh: 80, tw: 8, ty: 39, tt: 50, ns: 14, ny: -20, iy: 17, ik: 3, is: 30, rx: -48, ry: 22, rw: 96, rh: 8,
+      fy: [pby - 50, pby - 70, pby - 96, pby - 120, pby - 144], mad: [30, pby - 74], hitY: COUNTER + 22, fullY: cupTop - 30, wrongY: cupTop - 56, clearY: cupBot - 42,
+      cupTop, cupBot, cw, lh, ice: lh / 22, emptyY: Math.round((cupTop + cupBot) / 2),
+      win: [], back: [['plant_pot', Math.round(W / 3), 3], ['fridge', Math.round(W * 2 / 3), 3]], plank: 48, shelf: true,
+      // the six ingredients stand on the shelf beside the cup, three on each side (the same icons as the buttons)
+      front: [...ING.map(([n], i) => [pxa(n), Math.round(i < 3 ? side * (i + 1) : W - side * (6 - i)), cupBot + 2, 3]),
+        ['cake_straw', Math.round(W / 3) + 38, COUNTER + 2, 3], ['cake_slice', Math.round(W * 2 / 3) - 42, COUNTER + 2, 3]] };
+  }
+  let L = LD, layers = null;   // portrait: cached static art { back, front }
+  const FY = 40;
+  const ART = ['wall_pink', 'floor_wood', 'plant_pot', 'fridge', 'cake_straw', 'cake_slice'];
   const same = (a, b) => a.length === b.length && [...a].sort().join() === [...b].sort().join();
   const ingOf = k => ING.find(z => z[0] === k);
   function hud() { q('t').textContent = Math.ceil(time); q('sc').textContent = fmt(score); q('bar').style.width = Math.min(100, time / TOTAL * 100) + '%'; q('tm').classList.toggle('low', time < 15);
@@ -631,30 +696,30 @@ function baristaGame(root, api) {
     const i = pick(rnd, free), m = pick(rnd, el < 25 ? MENU.slice(0, 5) : MENU), pat = Math.max(11, 20 - el * .09);
     slots[i] = { m, face: pick(rnd, MI_PEOPLE), pat, max: pat, in: 0 }; }
   function add(k) {
-    if (!running || api.paused) return; if (cup.length >= 4) { fx.text(CUP_X, 270, 'แก้วเต็มแล้ว!', { color: PAL.orange, size: 20 }); fx.shake(2, .1); return; }
+    if (!running || api.paused) return; if (cup.length >= 4) { fx.text(L.CUP_X, L.fullY, 'แก้วเต็มแล้ว!', { color: PAL.orange, size: 20 }); fx.shake(2, .1); return; }
     cup.push(k); wob = 1; api.sfx('tick');
-    fx.burst(CUP_X, 400 - cup.length * 22, { n: 8, colors: [ingOf(k)[2], '#fff'], speed: 160, grav: 600, size: 4, life: .5, spread: 1.6 });
+    fx.burst(L.CUP_X, L.cupBot - 2 - cup.length * L.lh, { n: 8, colors: [ingOf(k)[2], '#fff'], speed: 160, grav: 600, size: 4, life: .5, spread: 1.6 });
   }
   function serve(i) {
     if (!running || api.paused || !cup.length) return;
     if (i == null) i = slots.findIndex(s => s && same(s.m.r, cup));
     const s = slots[i];
     if (!s || !same(s.m.r, cup)) {
-      api.sfx('bad'); score = Math.max(0, score - 10); fx.text(CUP_X, 250, '❌ ไม่ตรงออเดอร์ −10', { color: PAL.red, size: 22 }); fx.shake(6, .25); fx.flash(PAL.red, .2);
+      api.sfx('bad'); score = Math.max(0, score - 10); fx.text(L.CUP_X, L.wrongY, '❌ ไม่ตรงออเดอร์ −10', { color: PAL.red, size: 22 }); fx.shake(6, .25); fx.flash(PAL.red, .2);
       if (s) s.pat -= 3; cup = []; hud(); return;
     }
     const tip = Math.round(s.pat / s.max * 20), pts = 30 + s.m.r.length * 5 + tip; score += pts; served++; api.sfx('good');
-    const x = SLOT_X[i];
-    fx.burst(x, 170, { n: 22, colors: CONFETTI, speed: 300, grav: 500, size: 6, shape: 'paper', life: .9 });
-    fx.burst(x, 150, { n: 6, colors: [PAL.yel], speed: 200, grav: 0, size: 7, shape: 'star', life: .5 });
+    const x = L.slot[i], fy = L.fy;
+    fx.burst(x, fy[0], { n: 22, colors: CONFETTI, speed: 300, grav: 500, size: 6, shape: 'paper', life: .9 });
+    fx.burst(x, fy[1], { n: 6, colors: [PAL.yel], speed: 200, grav: 0, size: 7, shape: 'star', life: .5 });
     const bt = Math.min(BONUS_MAX - bonus, tip >= 15 ? 5 : 3); bonus += bt; time += bt;
-    fx.text(x, 120, `+${pts}`, { color: PAL.yel, size: 30 }); if (bt > 0) fx.text(x, 92, bonus >= BONUS_MAX ? '⏱ โบนัสเต็ม!' : `⏱ +${bt} วิ`, { color: PAL.green, size: 20 }); if (tip >= 15) fx.text(x, 64, 'ทิปเพียบ! 💸', { color: PAL.green, size: 18 });
-    leaving.push({ x, face: s.face, t: 0, happy: true }); slots[i] = null; cup = []; hud();
+    fx.text(x, fy[2], `+${pts}`, { color: PAL.yel, size: 30 }); if (bt > 0) fx.text(x, fy[3], bonus >= BONUS_MAX ? '⏱ โบนัสเต็ม!' : `⏱ +${bt} วิ`, { color: PAL.green, size: 20 }); if (tip >= 15) fx.text(x, fy[4], 'ทิปเพียบ! 💸', { color: PAL.green, size: 18 });
+    leaving.push({ i, face: s.face, t: 0, happy: true }); slots[i] = null; cup = []; hud();
   }
-  const clear = () => { if (cup.length) fx.burst(CUP_X, 360, { n: 10, colors: cup.map(k => ingOf(k)[2]), speed: 120, grav: 700, size: 4, life: .5 }); cup = []; };
+  const clear = () => { if (cup.length) fx.burst(L.CUP_X, L.clearY, { n: 10, colors: cup.map(k => ingOf(k)[2]), speed: 120, grav: 700, size: 4, life: .5 }); cup = []; };
   api.onKey(e => { const n = +e.key; if (n >= 1 && n <= ING.length) { e.preventDefault(); add(ING[n - 1][0]); }
     else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); serve(null); } else if (e.key === 'Backspace' || e.key === 'Delete') { e.preventDefault(); clear(); } });
-  cv.addEventListener('pointerdown', e => { const p = at(e); const i = SLOT_X.findIndex(x => Math.abs(p.x - x) < 90 && p.y < 260); if (i >= 0 && slots[i]) serve(i); });
+  cv.addEventListener('pointerdown', e => { const p = at(e); const i = L.slot.findIndex(x => Math.abs(p.x - x) < L.sw && p.y < L.hitY); if (i >= 0 && slots[i]) serve(i); });
   const phone = g2phone(root, 'barista');
   if (!phone) g2pad(root, [...ING.map(([k, n]) => [`${pxImg(k, 22)}<small> ${n}</small>`, () => add(k)]), ['🗑️ เท', clear], ['🛎️ เสิร์ฟ', () => serve(null)]]);
   else {
@@ -662,46 +727,62 @@ function baristaGame(root, api) {
     const ib = ([k, n]) => [`${pxImg(k, 24)}<small>${n}</small>`, n, () => add(k), { cls: 'ing' }];
     g2deck(root, { rows: [ING.slice(0, 4).map(ib), [...ING.slice(4).map(ib), ['🗑️<small>เท</small>', 'เททิ้ง', clear, { cls: 'ing' }], ['🛎️<small>เสิร์ฟ</small>', 'เสิร์ฟ', () => serve(null), { cls: 'ing primary' }]]] });
   }
-  const person = (who, x, by, o, anim = 'idle_anim', dir = 'down') => drawChar(ctx, who, anim, dir, t, x, by, 4, o);
+  // static art: the wall with what stands against it (back), the counter and the shelf with their things (front)
+  function drawBack(c) {
+    officeBG(c, L.W, L.H, L.COUNTER, { wall: 'wall_pink', windows: L.win });
+    for (const [n, x, k] of L.back) drawPixAt(c, n, x, L.COUNTER, k);
+  }
+  function drawFront(c) {
+    const { W, H, COUNTER } = L;
+    c.fillStyle = PAL.ink; c.fillRect(0, COUNTER - 2, W, 24); c.fillStyle = '#d9a066'; c.fillRect(0, COUNTER, W, 18);
+    c.fillStyle = '#9b6a45'; c.fillRect(0, COUNTER + 22, W, H - COUNTER - 22);
+    c.fillStyle = 'rgba(0,0,0,.12)'; for (let x = 0; x < W; x += L.plank) c.fillRect(x, COUNTER + 22, 2, H);
+    if (L.shelf) { c.fillStyle = PAL.ink; c.fillRect(0, L.cupBot, W, 22); c.fillStyle = '#d9a066'; c.fillRect(0, L.cupBot + 2, W, 18); }
+    for (const [n, x, y, k] of L.front) drawPixAt(c, n, x, y, k);
+  }
+  function buildLayers() {
+    if (!artReady(ART)) return null;
+    const back = layerCanvas(L.W, L.H, G.dpr), front = layerCanvas(L.W, L.H - L.COUNTER + FY, G.dpr);   // FY: room for things on the counter
+    drawBack(back.g); front.g.translate(0, -(L.COUNTER - FY)); drawFront(front.g);
+    return { back: back.c, front: front.c };
+  }
+  const person = (who, x, by, o, anim = 'idle_anim', dir = 'down') => drawChar(ctx, who, anim, dir, t, x, by, L.pk, o);
   function draw() {
+    const { W, H, COUNTER } = L;
+    if (L.port && !layers) layers = buildLayers();
     fx.pre(ctx);
-    officeBG(ctx, W, H, COUNTER, { wall: 'wall_pink', windows: [['window_red', 58, 30, 3], ['window_red', 702, 30, 3]] });
-    drawPixAt(ctx, 'fridge_wide', 260, COUNTER, 3); drawPixAt(ctx, 'plant_pot', 500, COUNTER, 3);
+    if (layers) ctx.drawImage(layers.back, 0, 0, W, H); else drawBack(ctx);
     slots.forEach((s, i) => {
-      if (!s) return; const x = SLOT_X[i], f = s.pat / s.max, hop = (1 - s.in) * 60, angry = f < .3;
+      if (!s) return; const x = L.slot[i], f = s.pat / s.max, hop = (1 - s.in) * L.hop, angry = f < .3;
       const jit = angry ? (rnd() - .5) * 4 : 0, bob = Math.sin(t * 4 + i) * .025;
-      person(s.face, x + jit, 238 + hop, { sy: 1 + bob, sx: 1 - bob });
-      ctx.save(); ctx.translate(x, 60); const bs = s.in < 1 ? .6 + s.in * .4 : 1; ctx.scale(bs, bs);
-      rrect(ctx, -92, -42, 184, 86, 14, '#fff', PAL.ink);
-      ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.moveTo(-10, 43); ctx.lineTo(0, 56); ctx.lineTo(10, 43); ctx.fill();
-      txt(ctx, s.m.n, 0, -22, 16, PAL.ink, 'center', 700);
-      const n = s.m.r.length; s.m.r.forEach((k, j) => drawPixAt(ctx, pxa(k), (j - (n - 1) / 2) * 38, 20, 3.4));
-      rrect(ctx, -70, 26, 140, 9, 4, '#eee'); rrect(ctx, -70, 26, Math.max(4, 140 * f), 9, 4, angry ? (Math.floor(t * 8) % 2 ? PAL.red : '#ff9b9b') : PAL.green);
+      person(s.face, x + jit, L.pby + hop, { sy: 1 + bob, sx: 1 - bob });
+      ctx.save(); ctx.translate(x, L.bubY); const bs = s.in < 1 ? .6 + s.in * .4 : 1; ctx.scale(bs, bs);
+      rrect(ctx, L.bx, L.by, L.bw, L.bh, 14, '#fff', PAL.ink);
+      ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.moveTo(-L.tw, L.ty); ctx.lineTo(0, L.tt); ctx.lineTo(L.tw, L.ty); ctx.fill();
+      txt(ctx, s.m.n, 0, L.ny, L.ns, PAL.ink, 'center', 700);
+      const n = s.m.r.length; s.m.r.forEach((k, j) => drawPixAt(ctx, pxa(k), (j - (n - 1) / 2) * L.is, L.iy, L.ik));
+      rrect(ctx, L.rx, L.ry, L.rw, L.rh, 4, '#eee'); rrect(ctx, L.rx, L.ry, Math.max(4, L.rw * f), L.rh, 4, angry ? (Math.floor(t * 8) % 2 ? PAL.red : '#ff9b9b') : PAL.green);
       ctx.restore();
-      if (angry) txt(ctx, '💢', x + 44, 140, 22);
+      if (angry) { if (L.port) drawPixAt(ctx, pxa('mad'), x + L.mad[0], L.mad[1], 3); else txt(ctx, '💢', x + L.mad[0], L.mad[1], 22); }
     });
-    for (const l of leaving) person(l.face, l.x + l.t * 160, 238, { alpha: 1 - l.t }, 'run', 'right');
+    for (const l of leaving) person(l.face, L.slot[l.i] + l.t * L.walk, L.pby, { alpha: 1 - l.t }, 'run', 'right');
     // counter + machines
-    ctx.fillStyle = PAL.ink; ctx.fillRect(0, COUNTER - 2, W, 24); ctx.fillStyle = '#d9a066'; ctx.fillRect(0, COUNTER, W, 18);
-    ctx.fillStyle = '#9b6a45'; ctx.fillRect(0, COUNTER + 22, W, H - COUNTER - 22);
-    ctx.fillStyle = 'rgba(0,0,0,.12)'; for (let x = 0; x < W; x += 64) ctx.fillRect(x, COUNTER + 22, 2, H);
-    drawPixAt(ctx, 'cans', 80, 396, 3); drawPixAt(ctx, 'fruit_basket', 690, 396, 4);
-    [['cake', 160], ['cake_straw', 196], ['pizza', 570], ['cake_slice', 606]].forEach(([n, x]) => drawPixAt(ctx, n, x, COUNTER + 2, 3));
+    if (layers) ctx.drawImage(layers.front, 0, COUNTER - FY, W, H - COUNTER + FY); else drawFront(ctx);
     // the cup: liquid layers stack up, wobble when something is added
-    const cx = CUP_X, top = 300, bot = 402, cw = 84, sq = Math.sin(wob * 20) * wob * .06;
+    const cx = L.CUP_X, top = L.cupTop, bot = L.cupBot, cw = L.cw, lh = L.lh, s = L.ice, sq = Math.sin(wob * 20) * wob * .06;
     ctx.save(); ctx.translate(cx, bot); ctx.scale(1 + sq, 1 - sq); ctx.translate(-cx, -bot);
     ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.fillRect(cx - cw / 2, top, cw, bot - top);
-    let ly = bot - 4; const lh = 22;
+    let ly = bot - 4;
     cup.forEach((k, j) => {
       const c = ingOf(k)[2], wave = j === cup.length - 1 ? Math.sin(t * 12) * 2 * wob : 0;
       ctx.fillStyle = c; ctx.fillRect(cx - cw / 2 + 4, ly - lh + wave, cw - 8, lh - wave);
-      if (k === 'ice') { ctx.fillStyle = '#fff'; ctx.fillRect(cx - 24, ly - 16, 12, 10); ctx.fillRect(cx + 6, ly - 18, 12, 10); ctx.strokeStyle = PAL.ink; ctx.lineWidth = 1; ctx.strokeRect(cx - 24, ly - 16, 12, 10); ctx.strokeRect(cx + 6, ly - 18, 12, 10); }
+      if (k === 'ice') { ctx.fillStyle = '#fff'; ctx.fillRect(cx - 24 * s, ly - 16 * s, 12 * s, 10 * s); ctx.fillRect(cx + 6 * s, ly - 18 * s, 12 * s, 10 * s); ctx.strokeStyle = PAL.ink; ctx.lineWidth = 1; ctx.strokeRect(cx - 24 * s, ly - 16 * s, 12 * s, 10 * s); ctx.strokeRect(cx + 6 * s, ly - 18 * s, 12 * s, 10 * s); }
       ly -= lh;
     });
     ctx.strokeStyle = PAL.ink; ctx.lineWidth = 3; ctx.strokeRect(cx - cw / 2, top, cw, bot - top);
-    ctx.fillStyle = 'rgba(255,255,255,.7)'; ctx.fillRect(cx - cw / 2 + 6, top + 8, 5, bot - top - 16);
+    ctx.fillStyle = 'rgba(255,255,255,.7)'; ctx.fillRect(cx - cw / 2 + 6 * s, top + 8, 5 * s, bot - top - 16);
     ctx.restore();
-    if (!cup.length) txt(ctx, 'แก้วว่าง', cx, 352, 13, PAL.muted);
+    if (!cup.length) txt(ctx, 'แก้วว่าง', cx, L.emptyY, L.port ? 15 : 13, PAL.muted);
     fx.post(ctx, W, H);
   }
   api.loop(dt => {
@@ -711,11 +792,18 @@ function baristaGame(root, api) {
     if (running && d) {
       el += d; time -= d; next -= d;
       if (next <= 0) { spawn(); next = Math.max(2.2, 5.5 - el * .04); }
-      slots.forEach((s, i) => { if (s) { s.pat -= d; if (s.pat <= 0) { leaving.push({ x: SLOT_X[i], face: s.face, t: 0 }); slots[i] = null; hearts--; api.sfx('bad');
-        fx.text(SLOT_X[i], 150, '😤 รอไม่ไหว!', { color: PAL.red, size: 22 }); fx.shake(6, .25); } } });
+      slots.forEach((s, i) => { if (s) { s.pat -= d; if (s.pat <= 0) { leaving.push({ i, face: s.face, t: 0 }); slots[i] = null; hearts--; api.sfx('bad');
+        fx.text(L.slot[i], L.fy[1], '😤 รอไม่ไหว!', { color: PAL.red, size: 22 }); fx.shake(6, .25); } } });
       if (time <= 0 || hearts <= 0) { time = Math.max(0, time); hud(); end(); } else hud();
     }
     draw();
+  });
+  // portrait phone: the canvas takes the play area; back to the 760 x 420 scene when the screen turns sideways
+  if (phone) phoneRelayout(root, () => {
+    const p = phonePortrait(); root.classList.toggle('g2p', p);
+    if (!p) { if (L !== LD) { L = LD; layers = null; G.size(); draw(); } return; }
+    const b = fitBox(G.box); if (L.port && L.W === b.w && L.H === b.h) return;
+    G.size(b.w, b.h, b.x, b.y); L = portrait(b.w, b.h); layers = null; draw();
   });
   hud(); draw();
   api.intro({ how: `<p>☕ พักเที่ยงคิวยาว! ผสมเครื่องดื่มตามที่ลูกค้าสั่งในบับเบิล แล้วเสิร์ฟให้ทันก่อนหลอดความอดทนหมด</p>
@@ -1141,63 +1229,87 @@ function slackGame(root, api) {
    ขบวนไปกินข้าว — snake through the office: pick up coworkers, then lead the line out the door to lunch
 ================================================================= */
 function congaGame(root, api) {
-  const C = 32, COLS = 20, ROWS = 13, W = COLS * C, H = ROWS * C, TOP = 2;   // rows 0-1 are the back wall
+  const TOP = 2;   // rows 0-1 are the back wall
   const FURN = [{ n: 'pc_desk', w: 2, h: 1 }, { n: 'plant_pot', w: 1, h: 1 }, { n: 'sofa_grey', w: 3, h: 1 }, { n: 'table_light', w: 2, h: 2 }, { n: 'cabinet_wood', w: 2, h: 1 },
     { n: 'fridge', w: 1, h: 1 }, { n: 'shop_shelf', w: 2, h: 1 }, { n: 'sofa_red', w: 2, h: 1 }, { n: 'tree', w: 1, h: 1 }];
   const ROOMS = [['wall_mint', 'floor_herring'], ['wall_yellow', 'floor_wood'], ['wall_pink', 'floor_teal'], ['wall_grey', 'floor_yellow'], ['wall_beige', 'floor_brick']];
-  const DOOR = [9, 10];
+  // boards. BD: desktop / landscape, 20 x 13 tiles. BP: a portrait phone, a tall 9 x 15 office (13 floor rows, about half the
+  // floor) — same coworkers per level; furniture scaled to the floor area; a new coworker stands at least 7 steps from the
+  // head when there is room, so the walks stay about as long as on the wide board (mean 9.8 vs 10.3 tiles).
+  // sx/sy = start, cx/cy = the start corridor kept free of furniture. The board is picked at each level start.
+  const BD = { COLS: 20, ROWS: 13, DOOR: [9, 10], sx: 3, sy: 11, cx: 6, cy: 10, furn: 1, far: 0 },
+    BP = { COLS: 9, ROWS: 15, DOOR: [4, 5], sx: 2, sy: 13, cx: 4, cy: 12, furn: 9 * 13 / (20 * 11), far: 7 };
+  // the tall board only when the play box is phone-shaped (a portrait tablet keeps the wide board, scaled up)
+  const tall = () => phonePortrait() && (!G || G.box.clientHeight >= 1.3 * G.box.clientWidth);
+  let G = null, B = BD, COLS = B.COLS, ROWS = B.ROWS, DOOR = B.DOOR;
+  // pixels: tile C, art at k, board at (OX, OY) in a W x H canvas (desktop: 32 px tiles, 2x art, the whole canvas)
+  let W = 640, H = 416, C = 32, k = 2, s = 1, OX = 0, OY = 0, layer = null;
   root.innerHTML = `<div class="hud"><span>🍱 ด่าน <b data-k="lv">1</b></span><span>👥 <b data-k="got">0</b>/<b data-k="need">0</b></span><span>⭐ <b data-k="sc">0</b></span>
     <span class="muted g2tip">ลูกศร / WASD / ปัดจอ = เลี้ยว · เก็บเพื่อนให้ครบ แล้วพาออกประตูไปกินข้าว</span></div>`;
-  const { cv, ctx } = g2canvas(root, W, H), q = k => root.querySelector(`[data-k="${k}"]`), fx = makeFX();
+  G = g2canvas(root, W, H); const { cv, ctx } = G, q = k => root.querySelector(`[data-k="${k}"]`), fx = makeFX();
   let who = store.get('runWho', 'adam'); if (!MI_PEOPLE.includes(who)) who = 'adam';
   let level = 0, score = 0, snake = [], dir = [1, 0], queue = [], blocked = new Set(), furn = [], pick1 = null, cake = null, need = 0, got = 0, doorOpen = false;
   let combo = 0, comboT = -9, lastDir = [1, 0];   // juice only: quick pickups in a row show a combo, no extra score
   let acc = 0, tick = .18, running = false, over = false, t = 0, room = ROOMS[0], clearing = 0, total = 0, go = false;   // go: the line waits for the first turn
   const key = (x, y) => x + ',' + y, free = (x, y) => x >= 0 && x < COLS && y >= TOP && y < ROWS && !blocked.has(key(x, y));
+  const X = x => OX + x * C, Y = y => OY + y * C;   // tile -> canvas px
   function hud() { q('lv').textContent = level; q('got').textContent = got; q('need').textContent = need; q('sc').textContent = fmt(score); }
+  // the canvas follows the board: the portrait board fills the play area, the wide one keeps the 640 x 416 scene
+  function fit() {
+    const port = B === BP; root.classList.toggle('g2p', port); layer = null;
+    if (!port) { W = 640; H = 416; C = 32; k = 2; s = 1; OX = OY = 0; G.size(); return; }
+    const b = fitBox(G.box);
+    C = Math.max(16, Math.min(Math.floor(b.w / COLS), Math.floor(b.h / ROWS))); k = C >= 36 ? 3 : 2; s = C / 32;
+    W = b.w; H = b.h; OX = Math.floor((W - COLS * C) / 2); OY = H - ROWS * C; G.size(W, H, b.x, b.y);
+  }
   function layout() {
     for (let tries = 0; tries < 40; tries++) {
       blocked = new Set(); furn = [];
-      const n = Math.min(12, 3 + level);
+      const n = Math.max(2, Math.round(Math.min(12, 3 + level) * B.furn));
       for (let i = 0; i < n * 3 && furn.length < n; i++) {
         const f = pick(rnd, FURN), x = Math.floor(rnd() * (COLS - f.w)), y = TOP + 1 + Math.floor(rnd() * (ROWS - TOP - f.h - 1));
         let ok = true; for (let a = -1; a <= f.w; a++) for (let b = -1; b <= f.h; b++) if (blocked.has(key(x + a, y + b))) ok = false;
-        if (y + f.h - 1 >= 10 && x <= 6) ok = false;   // keep the start corridor clear
+        if (y + f.h - 1 >= B.cy && x <= B.cx) ok = false;   // keep the start corridor clear
         if (!ok) continue; furn.push({ ...f, x, y }); for (let a = 0; a < f.w; a++) for (let b = 0; b < f.h; b++) blocked.add(key(x + a, y + b));
       }
       // every free cell (and the door) must be reachable from the start
-      const seen = new Set([key(2, 11)]), st = [[2, 11]];
+      const seen = new Set([key(B.sx - 1, B.sy)]), st = [[B.sx - 1, B.sy]];
       while (st.length) { const [x, y] = st.pop(); for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const k = key(x + dx, y + dy); if (!seen.has(k) && free(x + dx, y + dy)) { seen.add(k); st.push([x + dx, y + dy]); } } }
       let cells = 0; for (let y = TOP; y < ROWS; y++) for (let x = 0; x < COLS; x++) if (free(x, y)) cells++;
       if (seen.size === cells) return;
     }
   }
   function spawnPick() {
+    const h = snake[0];
     for (let i = 0; i < 200; i++) { const x = Math.floor(rnd() * COLS), y = TOP + Math.floor(rnd() * (ROWS - TOP));
-      if (free(x, y) && !snake.some(s => s.x === x && s.y === y) && !(cake && cake.x === x && cake.y === y)) { pick1 = { x, y, who: pick(rnd, MI_PEOPLE), pop: 1 }; return; } }
+      if (free(x, y) && !snake.some(s => s.x === x && s.y === y) && !(cake && cake.x === x && cake.y === y)) {
+        if (B.far && h && i < 150 && Math.abs(x - h.x) + Math.abs(y - h.y) < B.far) continue;
+        pick1 = { x, y, who: pick(rnd, MI_PEOPLE), pop: 1 }; return; } }
   }
   function startLevel() {
-    level++; room = ROOMS[(level - 1) % ROOMS.length]; layout(); need = 4 + level * 3; got = 0; doorOpen = false; cake = null;   // longer lines (was 3 + 2/level) but a slower walk
-    snake = [{ x: 3, y: 11, px: 2, py: 11, who }, { x: 2, y: 11, px: 1, py: 11, who: null }].slice(0, 1); dir = [1, 0]; queue = [];
+    level++; B = tall() ? BP : BD; COLS = B.COLS; ROWS = B.ROWS; DOOR = B.DOOR; if (phoneOn()) fit();
+    room = ROOMS[(level - 1) % ROOMS.length]; layer = null; layout(); need = 4 + level * 3; got = 0; doorOpen = false; cake = null;   // longer lines (was 3 + 2/level) but a slower walk
+    snake = [{ x: B.sx, y: B.sy, px: B.sx - 1, py: B.sy, who }]; dir = [1, 0]; queue = [];
     tick = Math.max(.12, .22 - level * .008); acc = 0; go = false; spawnPick(); hud();   // was max(.08, .19 − .012/level): slower start, gentler speed-up
-    combo = 0; if (level > 1) { fx.flash('#fff', .12); fx.burst(0, H / 2, { n: 18, colors: ['#ffffff', PAL.yel], speed: 520, grav: 0, size: 3, shape: 'sq', life: .5 }); }
-    fx.text(W / 2, H / 2, `ด่าน ${level} — เก็บเพื่อน ${need} คน`, { color: PAL.yel, size: 28, life: 1.6, rise: 10 });
+    const bx = X(COLS / 2), by = Y(ROWS / 2);
+    combo = 0; if (level > 1) { fx.flash('#fff', .12); fx.burst(OX, by, { n: 18, colors: ['#ffffff', PAL.yel], speed: 520, grav: 0, size: 3, shape: 'sq', life: .5 }); }
+    fx.text(bx, by, `ด่าน ${level} — เก็บเพื่อน ${need} คน`, { color: PAL.yel, size: 28, life: 1.6, rise: 10 });
   }
   function die(msg) {
     over = true; running = false; api.sfx('bad'); fx.shake(10, .4); fx.flash(PAL.red, .3); fx.hitstop(.1);
-    fx.text(W / 2, H / 2, msg, { color: PAL.red, size: 30, life: 1.4 });
+    fx.text(X(COLS / 2), Y(ROWS / 2), msg, { color: PAL.red, size: 30, life: 1.4 });
     api.after(1.4, () => api.end(score, `ถึงด่าน ${level} · พาเพื่อนไปกินข้าว ${total} คน`, false, { level, total }));
   }
   function turn(dx, dy) { if (!go) { go = true; dir = [dx, dy]; queue = []; return; } const last = queue.length ? queue[queue.length - 1] : dir; if (last[0] === -dx && last[1] === -dy || last[0] === dx && last[1] === dy) return; if (queue.length < 2) queue.push([dx, dy]); }
   function step() {
     if (queue.length) dir = queue.shift();
     const h = snake[0], nx = h.x + dir[0], ny = h.y + dir[1];
-    if (go && (dir[0] !== lastDir[0] || dir[1] !== lastDir[1])) fx.burst(h.x * C + C / 2, (h.y + 1) * C - 4, { n: 5, colors: ['#e8dccb', '#fff'], speed: 70, grav: -20, size: 4, shape: 'puff', life: .35 });
+    if (go && (dir[0] !== lastDir[0] || dir[1] !== lastDir[1])) fx.burst(X(h.x) + C / 2, Y(h.y + 1) - 4 * s, { n: 5, colors: ['#e8dccb', '#fff'], speed: 70, grav: -20, size: 4, shape: 'puff', life: .35 });
     lastDir = dir;
     // the open door is in the wall right above the playfield
     if (doorOpen && ny === TOP - 1 && DOOR.includes(nx)) {
       const bonus = got * 10 * level + 100; score += bonus; total += got; clearing = 1.2; api.sfx('level');
-      fx.text(W / 2, H / 2 - 30, `ไปกินข้าว! +${bonus}`, { color: PAL.green, size: 32, life: 1.4 }); fx.burst(nx * C, TOP * C, { n: 40, colors: CONFETTI, speed: 360, grav: 500, size: 7, shape: 'paper', life: 1.2 }); fx.flash('#fff', .2);
+      fx.text(X(COLS / 2), Y(ROWS / 2) - 30 * s, `ไปกินข้าว! +${bonus}`, { color: PAL.green, size: 32, life: 1.4 }); fx.burst(X(nx), Y(TOP), { n: 40, colors: CONFETTI, speed: 360, grav: 500, size: 7, shape: 'paper', life: 1.2 }); fx.flash('#fff', .2);
       hud(); return;
     }
     if (!free(nx, ny)) return die(ny < TOP ? 'ชนผนัง!' : 'ชนโต๊ะ!');
@@ -1205,19 +1317,20 @@ function congaGame(root, api) {
     const grow = pick1 && pick1.x === nx && pick1.y === ny;
     for (let i = snake.length - 1; i >= 0; i--) { const s = snake[i]; s.px = s.x; s.py = s.y; if (i > 0) { s.x = snake[i - 1].x; s.y = snake[i - 1].y; } }
     h.x = nx; h.y = ny;
+    const cx = X(nx) + C / 2, cy = Y(ny);
     if (grow) {
       const tail = snake[snake.length - 1]; snake.push({ x: tail.px, y: tail.py, px: tail.px, py: tail.py, who: pick1.who, pop: 1 });
       got++; const p = 10 * level; score += p; api.sfx('good');
       snake.forEach((s, i) => { s.pop = Math.max(s.pop || 0, 1 - i * .07); });   // a happy wave runs down the line
-      combo = t - comboT < 2.6 ? combo + 1 : 1; comboT = t; if (combo >= 2) fx.text(nx * C + C / 2, ny * C - 34, `คอมโบ x${combo}!`, { color: PAL.green, size: 16 + Math.min(combo, 6) * 2, life: .8, rise: 30 });
+      combo = t - comboT < 2.6 ? combo + 1 : 1; comboT = t; if (combo >= 2) fx.text(cx, cy - 34 * s, `คอมโบ x${combo}!`, { color: PAL.green, size: 16 + Math.min(combo, 6) * 2, life: .8, rise: 30 });
       fx.shake(2, .08);
-      fx.text(nx * C + C / 2, ny * C - 10, `+${p}`, { color: PAL.yel, size: 22 }); fx.burst(nx * C + C / 2, ny * C + C / 2, { n: 14, colors: CONFETTI, speed: 220, grav: 300, size: 5, shape: 'paper', life: .7 });
-      if (got >= need && !doorOpen) { doorOpen = true; pick1 = null; fx.text(W / 2, 90, '🚪 ประตูเปิดแล้ว! พาไปกินข้าว', { color: PAL.green, size: 24, life: 1.6, rise: 10 }); fx.flash(PAL.yel, .2); fx.burst(DOOR[0] * C + 32, TOP * C, { n: 28, colors: CONFETTI, speed: 300, grav: 420, size: 6, shape: 'paper', life: 1.1 }); fx.shake(4, .15); api.sfx('level'); }
+      fx.text(cx, cy - 10 * s, `+${p}`, { color: PAL.yel, size: 22 }); fx.burst(cx, cy + C / 2, { n: 14, colors: CONFETTI, speed: 220, grav: 300, size: 5, shape: 'paper', life: .7 });
+      if (got >= need && !doorOpen) { doorOpen = true; pick1 = null; fx.text(X(COLS / 2), OY + 90 * s, '🚪 ประตูเปิดแล้ว! พาไปกินข้าว', { color: PAL.green, size: 24, life: 1.6, rise: 10 }); fx.flash(PAL.yel, .2); fx.burst(X(DOOR[0]) + C, Y(TOP), { n: 28, colors: CONFETTI, speed: 300, grav: 420, size: 6, shape: 'paper', life: 1.1 }); fx.shake(4, .15); api.sfx('level'); }
       else spawnPick();
       if (!cake && rnd() < .25) for (let i = 0; i < 50; i++) { const x = Math.floor(rnd() * COLS), y = TOP + Math.floor(rnd() * (ROWS - TOP)); if (free(x, y) && !snake.some(s => s.x === x && s.y === y)) { cake = { x, y, t: 6 }; break; } }
       hud();
     }
-    if (cake && cake.x === nx && cake.y === ny) { score += 30 * level; fx.text(nx * C + C / 2, ny * C - 10, `🍰 +${30 * level}`, { color: PAL.pink, size: 22 }); fx.burst(nx * C + C / 2, ny * C + C / 2, { n: 10, colors: [PAL.yel, '#fff'], speed: 200, grav: 0, size: 6, shape: 'star', life: .5 }); api.sfx('good'); cake = null; hud(); }
+    if (cake && cake.x === nx && cake.y === ny) { score += 30 * level; fx.text(cx, cy - 10 * s, `🍰 +${30 * level}`, { color: PAL.pink, size: 22 }); fx.burst(cx, cy + C / 2, { n: 10, colors: [PAL.yel, '#fff'], speed: 200, grav: 0, size: 6, shape: 'star', life: .5 }); api.sfx('good'); cake = null; hud(); }
   }
   api.onKey(e => { const m = { ArrowLeft: [-1, 0], a: [-1, 0], ArrowRight: [1, 0], d: [1, 0], ArrowUp: [0, -1], w: [0, -1], ArrowDown: [0, 1], s: [0, 1] }[e.key]; if (m && running) { e.preventDefault(); turn(...m); } });
   const phone = g2phone(root, 'conga');
@@ -1229,6 +1342,7 @@ function congaGame(root, api) {
   } else {
     // floating stick: thumb down anywhere, drag; the line turns as soon as the drag passes 18 px in a new
     // direction (a quick swipe does the same). The stick ring appears under the thumb, nothing needs aiming at.
+    // In portrait the hint becomes the thumb pad at the bottom (the stick still works anywhere).
     phoneHint(root, 'ปัดหรือลากนิ้วตรงไหนก็ได้ = เลี้ยว');
     const st = document.createElement('div'); st.className = 'g2stick'; st.innerHTML = '<i></i>'; root.appendChild(st);
     const knob = st.firstChild; let sk = null;
@@ -1243,25 +1357,49 @@ function congaGame(root, api) {
     root.addEventListener('pointerup', skEnd); root.addEventListener('pointercancel', skEnd);
   }
   const dname = (dx, dy) => dx > 0 ? 'right' : dx < 0 ? 'left' : dy < 0 ? 'up' : 'down';
+  // the room without the things that move. Portrait: the wall runs up to the top of the canvas, cached as one layer
+  function drawRoom(c) {
+    const [wall, floor] = room;
+    if (B !== BP) { officeBG(c, W, H, TOP * C, { wall, floor, k: 2, windows: [['window_big', 120, 6, 2], ['pic_land', 230, 14, 2], ['window_big', 520, 6, 2], ['world_map', 420, 12, 2]] }); return; }
+    const bw = COLS * C, bh = ROWS * C;
+    c.fillStyle = PAL.ink; c.fillRect(0, 0, W, H);   // the few px beside the board read as its frame
+    c.fillStyle = wallBase(wall); c.fillRect(OX, 0, bw, OY); c.fillStyle = 'rgba(255,249,238,.42)'; c.fillRect(OX, 0, bw, OY);   // the wall goes on up
+    c.save(); c.beginPath(); c.rect(OX, 0, bw, H); c.clip(); c.translate(OX, OY);
+    officeBG(c, bw, bh, TOP * C, { wall, floor, k, windows: [['window_big', 100 + 1.5 * C, 8 * s, k], ['window_big', 100 + bw - 1.5 * C, 8 * s, k]] }); c.restore();
+  }
+  const DL = [], order = [], so = { rot: 0, sx: 1, sy: 1 }, ca = { alpha: 1 }, NO = {}, byY = (p, q2) => p.y - q2.y;   // draw list, reused every frame
+  let dn = 0;
+  function put(y, kind, o, i) { let e = DL[dn]; if (!e) e = DL[dn] = { y: 0, kind: 0, o: null, i: 0 }; dn++; e.y = y; e.kind = kind; e.o = o; e.i = i; order.push(e); }
   function draw() {
     fx.pre(ctx);
-    const [wall, floor] = room;
-    officeBG(ctx, W, H, TOP * C, { wall, floor, k: 2, windows: [['window_big', 120, 6, 2], ['pic_land', 230, 14, 2], ['window_big', 520, 6, 2], ['world_map', 420, 12, 2]] });
+    if (B === BP && !layer && artReady([room[0], room[1], 'window_big'])) { const l = layerCanvas(W, H, G.dpr); drawRoom(l.g); layer = l.c; }
+    if (layer) ctx.drawImage(layer, 0, 0, W, H); else drawRoom(ctx);
     // door to the canteen
-    const dx0 = DOOR[0] * C;
-    if (doorOpen) { ctx.fillStyle = PAL.ink; ctx.fillRect(dx0, 6, 64, TOP * C - 6); ctx.fillStyle = `rgba(255,210,63,${.5 + Math.sin(t * 8) * .3})`; ctx.fillRect(dx0 + 4, 10, 56, TOP * C - 10);
-      txt(ctx, 'โรงอาหาร', dx0 + 32, 26, 13, PAL.ink, 'center', 800); txt(ctx, '▲', dx0 + 32, 48 - Math.abs(Math.sin(t * 6)) * 6, 18, PAL.ink, 'center', 800); }
-    else drawPixAt(ctx, 'door_double', dx0 + 32, TOP * C, 2);
+    const dx0 = X(DOOR[0]), dw = 2 * C, wy = OY + 6 * s;
+    if (doorOpen) { ctx.fillStyle = PAL.ink; ctx.fillRect(dx0, wy, dw, TOP * C - 6 * s); ctx.fillStyle = `rgba(255,210,63,${.5 + Math.sin(t * 8) * .3})`; ctx.fillRect(dx0 + 4 * s, OY + 10 * s, dw - 8 * s, TOP * C - 10 * s);
+      txt(ctx, 'โรงอาหาร', dx0 + C, OY + 26 * s, Math.round(13 * s), PAL.ink, 'center', 800); txt(ctx, '▲', dx0 + C, OY + (48 - Math.abs(Math.sin(t * 6)) * 6) * s, Math.round(18 * s), PAL.ink, 'center', 800); }
+    else drawPixAt(ctx, 'door_double', dx0 + C, Y(TOP), k, NO);
     // everything with a y gets drawn back-to-front
-    const a = Math.min(1, acc / tick), list = [];
-    for (const f of furn) list.push({ y: f.y + f.h, draw: () => drawPixAt(ctx, f.n, (f.x + f.w / 2) * C, (f.y + f.h) * C, 2) });
-    if (pick1) list.push({ y: pick1.y + 1, draw: () => { drawChar(ctx, pick1.who, 'idle_anim', 'down', t, pick1.x * C + C / 2, (pick1.y + 1) * C, 2, { sx: 1 + pick1.pop * .3, sy: 1 - pick1.pop * .2 }); txt(ctx, '🙋', pick1.x * C + C / 2 + 14, pick1.y * C - 26 - Math.abs(Math.sin(t * 5)) * 4, 16); } });
-    if (cake) list.push({ y: cake.y + 1, draw: () => drawPixAt(ctx, 'cake_straw', cake.x * C + C / 2, (cake.y + 1) * C - 4 - Math.abs(Math.sin(t * 6)) * 3, 3, { alpha: cake.t < 2 ? (Math.floor(t * 8) % 2 ? 1 : .3) : 1 }) });
-    snake.forEach((s, i) => { const x = (s.px + (s.x - s.px) * a) * C + C / 2, y = (s.py + (s.y - s.py) * a + 1) * C, mdx = s.x - s.px, mdy = s.y - s.py;
-      list.push({ y: s.py + (s.y - s.py) * a + 1 + .01, draw: () => drawChar(ctx, s.who || who, over ? 'idle_anim' : 'run', mdx || mdy ? dname(mdx, mdy) : 'right', t + i * .1, x, y, 2,
-        { rot: over ? (i % 2 ? .5 : -.5) : 0, sx: 1 + (s.pop || 0) * .3, sy: 1 - (s.pop || 0) * .25 }) }); });
-    list.sort((p, q2) => p.y - q2.y).forEach(o => o.draw());
-    if (running && !go && clearing <= 0) { rrect(ctx, W / 2 - 150, H - 70, 300, 40, 12, 'rgba(255,255,255,.92)', PAL.ink); txt(ctx, phone ? 'ปัดนิ้วเพื่อออกเดิน' : 'กดลูกศร / ปัดจอ เพื่อออกเดิน', W / 2, H - 50, 16, PAL.ink, 'center', 700); }
+    const a = Math.min(1, acc / tick); dn = 0; order.length = 0;
+    for (const f of furn) put(f.y + f.h, 0, f, 0);
+    if (pick1) put(pick1.y + 1, 1, pick1, 0);
+    if (cake) put(cake.y + 1, 2, cake, 0);
+    for (let i = 0; i < snake.length; i++) { const sg = snake[i]; put(sg.py + (sg.y - sg.py) * a + 1 + .01, 3, sg, i); }
+    order.sort(byY);
+    for (const e of order) {
+      const o = e.o;
+      if (e.kind === 0) drawPixAt(ctx, o.n, X(o.x + o.w / 2), Y(o.y + o.h), k, NO);
+      else if (e.kind === 1) { so.rot = 0; so.sx = 1 + o.pop * .3; so.sy = 1 - o.pop * .2;
+        drawChar(ctx, o.who, 'idle_anim', 'down', t, X(o.x) + C / 2, Y(o.y + 1), k, so);
+        const b = Math.abs(Math.sin(t * 5)) * 4;
+        if (B === BP) drawPixAt(ctx, pxa('hey'), X(o.x) + C / 2 + 22 * s, Y(o.y) - 18 * s - b * s, k, NO); else txt(ctx, '🙋', o.x * C + C / 2 + 14, o.y * C - 26 - b, 16); }
+      else if (e.kind === 2) { ca.alpha = o.t < 2 ? (Math.floor(t * 8) % 2 ? 1 : .3) : 1;
+        drawPixAt(ctx, 'cake_straw', X(o.x) + C / 2, Y(o.y + 1) - (4 + Math.abs(Math.sin(t * 6)) * 3) * s, k + 1, ca); }
+      else { const i = e.i, x = X(o.px + (o.x - o.px) * a) + C / 2, y = Y(o.py + (o.y - o.py) * a + 1), mdx = o.x - o.px, mdy = o.y - o.py;
+        so.rot = over ? (i % 2 ? .5 : -.5) : 0; so.sx = 1 + (o.pop || 0) * .3; so.sy = 1 - (o.pop || 0) * .25;
+        drawChar(ctx, o.who || who, over ? 'idle_anim' : 'run', mdx || mdy ? dname(mdx, mdy) : 'right', t + i * .1, x, y, k, so); }
+    }
+    if (running && !go && clearing <= 0) { const cx = X(COLS / 2), by = B === BP ? Y(ROWS / 2) + 20 : Y(ROWS);   /* portrait: clear of the start corner */ rrect(ctx, cx - 150, by - 70, 300, 40, 12, 'rgba(255,255,255,.92)', PAL.ink); txt(ctx, phone ? 'ปัดนิ้วเพื่อออกเดิน' : 'กดลูกศร / ปัดจอ เพื่อออกเดิน', cx, by - 50, 16, PAL.ink, 'center', 700); }
     fx.post(ctx, W, H);
   }
   api.loop(dt => {
@@ -1272,6 +1410,7 @@ function congaGame(root, api) {
     else if (running && d && go) { acc += d; while (acc >= tick && running && clearing <= 0) { acc -= tick; step(); } }
     draw();
   });
+  if (phone) phoneRelayout(root, () => { if (!level) { B = tall() ? BP : BD; COLS = B.COLS; ROWS = B.ROWS; DOOR = B.DOOR; } fit(); draw(); });
   hud(); draw();
   api.intro({ how: `<p>🍱 เที่ยงแล้ว! เดินไปชวนเพื่อนที่ยกมือ 🙋 มาต่อแถว ครบจำนวนแล้ว <b>ประตูโรงอาหารด้านบนจะเปิด</b> — พาขบวนเดินออกไปเพื่อผ่านด่าน</p>
       <p>${phone ? '👆 ปัดหรือลากนิ้วตรงไหนก็ได้ไปทางที่จะเลี้ยว' : '⌨️ ลูกศร / WASD · มือถือ: ปัดจอหรือใช้ปุ่มใต้จอ'} · 🍰 เค้กโผล่มาแป๊บเดียว เก็บได้คะแนนพิเศษ</p>
@@ -1280,9 +1419,8 @@ function congaGame(root, api) {
 }
 
 /* =================================================================
-   Phone extras for the hub's own games in index.html. Run, stack and spot build their phone layouts themselves;
-   whack is still wrapped here: on touch its mount gets the portrait layout and a press state on the holes.
-   Also the touch wording of the "how to play" cards (TUT). Desktop is not touched.
+   Phone extras for the hub's own games in index.html: only the touch wording of the "how to play" cards (TUT).
+   Run, stack, spot and whack build their phone layouts and controls themselves. Desktop is not touched.
 ================================================================= */
 const HUB_TOUCH_TUT = {
   run: [['👆', 'แตะ = กระโดด'], ['👇', 'ปัดลง / ปุ่มก้ม = ก้มหลบ'], ['🪙', 'เก็บเหรียญ ไปให้ไกลที่สุด']],
@@ -1294,16 +1432,7 @@ const HUB_TOUCH_TUT = {
   slack: [['✋', 'แตะค้าง = แอบเล่นมือถือ'], ['👀', 'หัวหน้าหันมา ปล่อยทันที!'], ['😴', 'ไม่เล่นเลยจะง่วงหลับ']],
   conga: [['👆', 'ปัดนิ้ว = เลี้ยวขบวน'], ['🧑‍🤝‍🧑', 'เก็บเพื่อนต่อแถว'], ['🚪', 'ครบแล้วพาออกประตู']],
 };
-const HUB_TOUCH = {
-  // the board sits in the lower two thirds; a press shows on the hole at once; no key labels
-  whack(root) {
-    g2phone(root, 'whack'); const grid = root.querySelector('.wgrid');
-    const off = e => { const h = e.target.closest && e.target.closest('.hole'); h && h.classList.remove('prs'); };
-    grid.addEventListener('pointerdown', e => { const h = e.target.closest('.hole'); if (h) h.classList.add('prs'); });
-    for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) grid.addEventListener(ev, off);
-    grid.addEventListener('pointerout', off);
-  },
-};
+const HUB_TOUCH = {};   // per-game mount wrappers: none left (the games handle touch themselves)
 addEventListener('DOMContentLoaded', () => {
   if (!phoneOn()) return;
   if (typeof TUT === 'object') Object.assign(TUT, HUB_TOUCH_TUT);
