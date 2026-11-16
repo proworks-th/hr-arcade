@@ -1929,6 +1929,21 @@ async function compSpot1115(){
   ov.querySelector('button').onclick=()=>{ov.remove();renderHub()};document.body.appendChild(ov);
 }
 setTimeout(()=>compSpot1115().catch(()=>{}),4500);
+// top-up (owner, 16 Nov 2026): มิ้นเองจร้า asked for ×1.5 of the 35,350 payback; owner approved a top-up to 53,025 in total.
+// Coins only, once per account (rooms/_comp flag), and only after the first payback was received on this save.
+async function compSpot1115b(){
+  if(Cloud.reloading||store.get('comp_spot1115b',false)||!store.get('comp_spot1115',false))return;
+  const nm=store.get('name','').trim(),R=await loadRank();
+  if(!nm||R.nameKey(nm)!==R.nameKey('มิ้นเองจร้า'))return;
+  const ok=await R.onceFlag('rooms/_comp/spot1115b/'+R.nameKey(nm));store.set('comp_spot1115b',true);if(!ok)return;
+  // straight into her coins: not Prog.give, so it doesn't count toward the weekly coin award or the office fund
+  const P=Prog.get();P.coins+=17675;Prog.put(P);if(typeof Stats!=='undefined')Stats.econ('in_comp',17675);
+  const ov=document.createElement('div');ov.className='overlay';
+  ov.innerHTML=`<div class="panel popin"><h2>รางวัลเพิ่มเติม</h2><p>เพิ่มรางวัลรอบจับผิดภาพวันอาทิตย์ 15 พ.ย. เป็น 1.5 เท่า รวมทั้งหมด 53,025 เหรียญ</p>
+    <div class="reward"><b>+${fmt(17675)} 🪙</b></div><div class="row"><button class="btn primary">รับ</button></div></div>`;
+  ov.querySelector('button').onclick=()=>{ov.remove();renderHub()};document.body.appendChild(ov);
+}
+setTimeout(()=>compSpot1115b().catch(()=>{}),6500);
 if(/[?&]join=room/.test(location.search)){Tower.setView('room');setTimeout(()=>{document.getElementById('room')?.scrollIntoView({behavior:'smooth',block:'center'});
   const G=HubRoom.G;toast(G.sc&&G.sc!=='lobby'&&G.sc!=='res'?'🎉 เพื่อนกำลังเล่นอยู่ในห้องปาร์ตี้ — รอบหน้าเล่นด้วยกัน!':'👋 เพื่อนชวนมาที่ห้องปาร์ตี้ ทักทายกันได้เลย')},600)}
 // test-mode hook for verify/run.py (absent for normal visits)
