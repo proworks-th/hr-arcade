@@ -585,6 +585,28 @@ html.touch .g2t-whack>.legend{flex:none;font-size:13px;margin:0 0 6px}
 html.touch .g2t-whack>.wgrid{flex:none;width:min(100%,62dvh);max-width:none;margin:auto auto 0;gap:12px}
 html.touch .g2t-whack .hole .key{display:none}
 .g2t-whack .hole.prs{transform:scale(.96);border-color:var(--pri)}
+/* whack, portrait phone (.g2p): a 3 x 4 board of desks fills the play area, the legend is the deck below it.
+   --k = whole-pixel art scale set by whackGame; flat colours, the desk is pixel art */
+.g2t-whack:not(.g2p) .hole:nth-child(n+10),.g2t-whack .wdeck{display:none}
+html.touch .g2t-whack.g2p>.legend{display:none}
+html.touch .g2t-whack.g2p>.hud{flex-wrap:nowrap;white-space:nowrap}html.touch .g2t-whack.g2p>.hud .timer{min-width:40px}
+html.touch .g2t-whack.g2p>.wgrid{flex:1 1 0;min-height:0;width:100%;max-width:none;margin:0;justify-content:center;align-content:center}
+.g2t-whack.g2p .hole{aspect-ratio:auto;background:#d3f6ee;border-radius:12px;box-shadow:inset 0 calc(var(--k) * 3px) 0 #b6e4d8,inset 0 calc(var(--k) * -2px) 0 #b6e4d8}
+.g2t-whack.g2p .hole.isboss{background:#ffd0c9;box-shadow:inset 0 calc(var(--k) * 3px) 0 #f3aea4,inset 0 calc(var(--k) * -2px) 0 #f3aea4}
+.g2t-whack.g2p .hole::after{left:50%;right:auto;width:calc(var(--k) * 32px);height:calc(var(--k) * 20px);margin-left:calc(var(--k) * -16px);border:0;z-index:2;
+  background:url(assets/mi/desk_small.png) calc(var(--k) * -16px) 0/calc(var(--k) * 48px) calc(var(--k) * 20px) no-repeat;image-rendering:pixelated}
+.g2t-whack.g2p .mole{top:0;bottom:calc(var(--k) * 11px);justify-content:flex-end;gap:0;transform:translateY(150%)}
+.g2t-whack.g2p .hole.up .mole{transform:translateY(0)}
+.g2t-whack.g2p .mole .mia{height:calc(var(--k) * 32px);width:calc(var(--k) * 16px)}
+.g2t-whack.g2p .mole .pxi{height:calc(var(--k) * 32px);width:auto}
+.g2t-whack.g2p .mole .pxi.cake{height:calc(var(--k) * 20px);margin-bottom:calc(var(--k) * 9px)}
+.g2t-whack.g2p .mole small{order:-1;margin-bottom:2px;white-space:nowrap}
+html.touch .g2t-whack.g2p>.wdeck{flex:none;display:flex;justify-content:space-around;align-items:flex-end;gap:6px;margin-top:10px;padding:8px 6px 6px;
+  border:3px solid var(--line);border-radius:14px;background:#fff;box-shadow:0 3px 0 var(--line)}
+.wdeck span{display:flex;flex-wrap:wrap;justify-content:center;align-items:flex-end;gap:0 2px}
+.wdeck .pxi{vertical-align:0}
+.wdeck b{flex:1 0 100%;text-align:center;font-size:14px;white-space:nowrap}
+.wdeck .no b{color:#d6304a}
 /* spot: two pictures stacked, the hint button at the bottom */
 html.touch .g2t-spot>.spot-tip{flex:none;margin:0 0 6px;font-size:13px}
 html.touch .g2t-spot>.spot-wrap{flex:1 1 0;min-height:0;container-type:size;display:flex;flex-direction:column;align-items:center;gap:12px;max-width:none;width:100%}
@@ -1480,25 +1502,29 @@ function runnerGame(root,api){
 ================================================================= */
 function whackGame(root,api){
   const KEYS=['7','8','9','4','5','6','1','2','3'],ALT=['q','w','e','a','s','d','z','x','c'];
+  // phones: a 3 x 4 board of desks fills a portrait screen (.g2p); turned sideways it keeps the 3 x 3 board (last row hidden)
+  const phone=g2phone(root,'whack'),NH=phone?12:9;
   const legend=`${pixImg('alex_phone',26)}${pixImg('papers',26)} +10 · ${pixImg('papers2',26)} งานด่วน +30 · ${pixImg('cake_slice',22)} +3 วิ · <b>${pixImg('bob_down',26)} หัวหน้า ห้ามตี!</b>`;
+  // portrait: the legend moves to the thumb deck under the board, art at 2x
+  const deck=phone?`<div class="wdeck"><span>${pixImg('alex_phone',44)}${pixImg('papers',64)}<b>+10</b></span><span>${pixImg('papers2',64)}<b>ด่วน +30</b></span><span>${pixImg('cake_slice',20)}<b>+3 วิ</b></span><span class="no">${pixImg('bob_down',44)}<b>ห้ามตี!</b></span></div>`:'';
   root.innerHTML=`<div class="hud"><div class="timer" data-k="tm"><div data-k="bar"></div></div><span>⏱ <b data-k="t">40</b></span><span>⭐ <b data-k="sc">0</b></span><span data-k="combo" class="muted"></span></div>
     <div class="legend">${legend}</div>
-    <div class="wgrid">${KEYS.map((k,i)=>`<div class="hole" data-i="${i}"><span class="key">${k}</span><div class="mole"></div></div>`).join('')}</div>`;
+    <div class="wgrid">${Array.from({length:NH},(_,i)=>`<div class="hole" data-i="${i}"><span class="key">${KEYS[i]||''}</span><div class="mole"></div></div>`).join('')}</div>${deck}`;
   const q=k=>root.querySelector(`[data-k="${k}"]`),grid=root.querySelector('.wgrid');
   const holes=[...root.querySelectorAll('.hole')].map(el=>({el,mole:el.querySelector('.mole'),obj:null,life:0,cool:0}));
   // art: an animated character sheet (anim) or a still sprite (img)
   const T={phone:{anim:'phone',cap:'โทรมา!',pts:10,life:1.4},paper:{img:'papers',cap:'เอกสาร',pts:10,life:1.5},
     fire:{img:'papers2',cap:'ด่วน!',pts:30,life:.8,hot:1},boss:{anim:'boss',cap:'หัวหน้า',pts:0,life:1.5},coffee:{img:'cake_slice',cap:'+3 วิ',pts:0,life:1}};
-  const TOTAL=40,BONUS_MAX=25;let bonus=0,time=TOTAL,sc=0,combo=0,best=0,spawnT=.4,el=0,running=false;
+  const TOTAL=40,BONUS_MAX=25;let bonus=0,time=TOTAL,sc=0,combo=0,best=0,spawnT=.4,el=0,running=false,act=9;   // act: holes in play
   function hud(){q('t').textContent=Math.ceil(time);q('sc').textContent=fmt(sc);q('bar').style.width=Math.min(100,time/TOTAL*100)+'%';q('tm').classList.toggle('low',time<8);
-    const m=1+Math.floor(combo/6)*.5;q('combo').textContent=combo>=3?`🔥 คอมโบ ${combo}${m>1?' (x'+m+')':''}`:''}
+    const m=1+Math.floor(combo/6)*.5;q('combo').textContent=combo<3?'':root.classList.contains('g2p')?`🔥 ${combo}${m>1?' ×'+m:''}`:`🔥 คอมโบ ${combo}${m>1?' (x'+m+')':''}`}
   function pickType(){const w=[['phone',40],['paper',25],['fire',10+el*.15],['boss',10+el*.45],['coffee',bonus>=BONUS_MAX?0:time<15?9:4]];
     let s=w.reduce((a,b)=>a+b[1],0)*rnd();for(const [t,v] of w){if((s-=v)<0)return t}return 'phone'}
   function art(t){const d=T[t];
     if(d.anim==='phone')return`<div class="mia ph" style="background-image:url(${MDIR}chars/${pick(rnd,['adam','alex','amelia'])}_phone.png)"></div>`;
     if(d.anim==='boss')return`<div class="mia boss" style="background-image:url(${MDIR}chars/bob_idle_anim.png)"></div>`;
-    return`<img alt="" class="pxi${d.hot?' hot':''}" src="${MDIR}${d.img}.png">`}
-  function spawn(){const empty=holes.filter(h=>!h.obj&&h.cool<=0);if(!empty.length)return;const h=pick(rnd,empty),t=pickType();
+    return`<img alt="" class="pxi${d.hot?' hot':''}${t==='coffee'?' cake':''}" src="${MDIR}${d.img}.png">`}
+  function spawn(){const empty=holes.filter((h,i)=>i<act&&!h.obj&&h.cool<=0);if(!empty.length)return;const h=pick(rnd,empty),t=pickType();
     h.obj=t;h.life=T[t].life*Math.max(.55,1-el/70);h.mole.innerHTML=`${art(t)}<small>${T[t].cap}</small>`;h.el.classList.add('up');h.el.classList.toggle('isboss',t==='boss')}
   function hide(h){h.obj=null;h.cool=.15;h.el.classList.remove('up','isboss')}
   function float(h,txt,cls=''){const f=document.createElement('div');f.className='float '+cls;f.textContent=txt;h.el.appendChild(f);setTimeout(()=>f.remove(),700)}
@@ -1513,10 +1539,20 @@ function whackGame(root,api){
       const bt=Math.min(BONUS_MAX-bonus,(t==='fire'?1:0)+(combo%5===0?1:0));if(bt>0){bonus+=bt;time+=bt;setTimeout(()=>float(h,bonus>=BONUS_MAX?'⏱ โบนัสเต็ม!':`⏱ +${bt} วิ`,'time'),120)}}
     h.obj=null;h.cool=.2;setTimeout(()=>{if(!h.obj)h.el.classList.remove('up','isboss')},180);hud();
   }
-  holes.forEach((h,i)=>h.el.addEventListener('pointerdown',e=>{e.preventDefault();hit(i)}));
+  holes.forEach((h,i)=>h.el.addEventListener('pointerdown',e=>{e.preventDefault();if(phone)h.el.classList.add('prs');hit(i)}));
+  if(phone){const off=e=>{const h=e.target.closest&&e.target.closest('.hole');h&&h.classList.remove('prs')};   // the press shows on the desk at once
+    for(const ev of['pointerup','pointercancel','pointerleave','pointerout'])grid.addEventListener(ev,off);
+    // portrait: 12 desks; cells and the art scale k in whole pixels (aim 3x on a 414 px phone)
+    phoneRelayout(root,()=>{const p=phonePortrait();root.classList.toggle('g2p',p);
+      const n=p?12:9;if(n!==act){act=n;holes.forEach((h,i)=>{if(i>=n&&h.obj)hide(h)})}
+      if(!p){grid.style.cssText='';return}
+      const gap=10,cw0=Math.floor((grid.clientWidth-2*gap)/3),ch=Math.floor((grid.clientHeight-3*gap)/4);
+      const k=Math.max(2,Math.min(Math.floor((cw0-6)/34),Math.floor((ch-6)/46))),cw=cw0-((cw0-6-32*k)&1);
+      grid.style.cssText=`--k:${k};grid-template-columns:repeat(3,${cw}px);grid-template-rows:repeat(4,${ch}px);gap:${gap}px`})}
   api.onKey(e=>{const k=e.key.toLowerCase();let i=KEYS.indexOf(k);if(i<0)i=ALT.indexOf(k);if(i>=0){e.preventDefault();hit(i)}});
   api.loop(dt=>{if(!running)return;el+=dt;time-=dt;spawnT-=dt;
-    if(spawnT<=0){spawn();if(el>12&&rnd()<.35)spawn();spawnT=Math.max(.36,.9-el*.014)}
+    // the spawn rate per desk stays the same with 12 desks (an interval 9/12 as long)
+    if(spawnT<=0){spawn();if(el>12&&rnd()<.35)spawn();spawnT=Math.max(.36,.9-el*.014)*9/act}
     for(const h of holes){h.cool-=dt;if(h.obj){h.life-=dt;if(h.life<=0){if(h.obj!=='boss'&&h.obj!=='coffee')combo=0;hide(h)}}}
     if(time<=0){time=0;running=false;hud();holes.forEach(hide);api.end(sc,`คอมโบสูงสุด ${best}`,false,{combo:best})}else hud()});
   hud();
@@ -1524,7 +1560,7 @@ function whackGame(root,api){
       <p>${legend}</p>
       <p>⏱ ตีงานด่วน +1 วิ · ตีติดกันทุก 5 ครั้ง +1 วิ · เค้ก +3 วิ — เวลาโบนัสรวมได้สูงสุด +25 วิ</p>
       <p>⚠️ ตีหัวหน้าโดน −40 และคอมโบหาย</p>
-      <p>⌨️ ใช้คีย์ <b>ตัวเลข 1-9</b> (แบบ numpad) หรือ <b>Q W E / A S D / Z X C</b> ได้</p>`,
+      ${phone?'<p>👆 แตะโต๊ะที่มีงานโผล่ขึ้นมา</p>':'<p>⌨️ ใช้คีย์ <b>ตัวเลข 1-9</b> (แบบ numpad) หรือ <b>Q W E / A S D / Z X C</b> ได้</p>'}`,
     buttons:[{label:'📞 รับสาย!',primary:true,go(){running=true}}]});
 }
 
