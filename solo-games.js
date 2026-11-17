@@ -555,7 +555,7 @@ function stampGame(root, api) {
   const W = 720, H = 360, SX = 360, BELT_Y = 230;
   const DOCS = ['รายงาน', 'ใบเสนอราคา', 'บันทึกประชุม', 'สัญญา', 'แผนงาน', 'ใบแจ้งหนี้', 'โปรเจกต์', 'งบประมาณ'];
   root.innerHTML = `<div class="hud"><span data-k="hp"></span><span>⭐ <b data-k="sc">0</b></span><span data-k="cb" class="muted"></span><span class="muted g2tip">Space / แตะจอ = ปั๊ม</span></div>`;
-  const { cv, ctx, L } = g2view(root, W, H, { min: 187, max: 300, h: 194 }, 'ปั๊มตอนกรอบสีฟ้าอยู่ในแถบสีชมพู · เอกสารร่างห้ามปั๊ม'), q = k => root.querySelector(`[data-k="${k}"]`), fx = makeFX();
+  const { cv, ctx, L } = g2view(root, W, H, { min: 187, max: 187, h: 136 }, 'ปั๊มตอนกรอบสีฟ้าอยู่ในแถบสีชมพู · เอกสารร่างห้ามปั๊ม'), q = k => root.querySelector(`[data-k="${k}"]`), fx = makeFX();
   let healed = 0, docs = [], speed = 150, gap = 0, made = 0, lives = 3, score = 0, combo = 0, maxc = 0, perfect = 0, running = false, over = false, press = 0, beltOff = 0;
   // where the pop-up texts go: the landscape scene's numbers, or the portrait ones from layout()
   const LAND = { x: SX, lab: 125, miss: 130, heal: 175, combo: 80, comboB: 90 };
@@ -566,7 +566,7 @@ function stampGame(root, api) {
   const py = x => P.TY + (x - SX) * P.f;
   const bg = g2layer(L, ['wall_yellow', 'floor_dwood', 'plant_pot', 'desk_drawer', 'box_wood', 'cabinet_wood'], paintBG);
   function layout() {
-    if (!L.portrait) { P = null; V = LAND; return; }
+    if (!L.portrait || L.frame) { P = null; V = LAND; return; }
     const cx = Math.round(L.W / 2), TY = Math.round(L.H - Math.max(64, L.H * .11)), f = (TY + 26) / 410, bw = Math.round(100 * f + 30);
     P = { cx, TY, f, bw, bl: cx - (bw >> 1), wallY: 30 * L.k, side: L.left ? -1 : 1 };
     V = { x: cx, lab: TY - 100 * f, miss: TY - 100 * f, heal: TY - 62 * f, combo: TY - 190 * f, comboB: TY - 180 * f };
@@ -590,7 +590,7 @@ function stampGame(root, api) {
     combo++; maxc = Math.max(maxc, combo);
     score += Math.round(pts * (1 + Math.floor(combo / 10) * .5)); best.mark = 'ok';
     // ink splatter where the stamp hit, harder feedback the closer it was
-    const hx = P ? P.cx : best.x, hy = P ? py(best.x) : BELT_Y - 29, sy = P ? hy - 31 * P.f : BELT_Y - 60;
+    const hx = P ? P.cx : best.x, hy = P ? py(best.x) : BELT_Y - 29 * DS(), sy = P ? hy - 31 * P.f : BELT_Y - 60 * DS();
     fx.burst(hx, hy, { n: label === 'PERFECT' ? 16 : 9, colors: [PAL.red, '#ff6b6b', '#b3203a'], speed: 200, grav: 300, size: 4, life: .45 });
     if (label === 'PERFECT') { fx.shake(7, .18); fx.hitstop(.07); fx.burst(hx, sy, { n: 10, colors: [PAL.yel, '#fff'], speed: 260, grav: 0, size: 7, shape: 'star', life: .5 }); api.sfx('good'); }
     else fx.shake(label === 'GOOD' ? 4 : 2, .12);
@@ -607,19 +607,20 @@ function stampGame(root, api) {
   else cv.addEventListener('pointerdown', e => { e.preventDefault(); stamp(); });
   api.onKey(e => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); stamp(); } });
   function doc(d) {
-    const x = d.x - 50, y = BELT_Y - 118, sq = d.sq;
-    ctx.save(); ctx.translate(d.x, BELT_Y); ctx.scale(1 + sq * .08, 1 - sq * .12); ctx.rotate(Math.sin(d.x / 60) * .03); ctx.translate(-d.x, -BELT_Y);
+    const x = d.x - 50, y = BELT_Y - 118, sq = d.sq, D = DS();
+    ctx.save(); ctx.translate(d.x, BELT_Y); ctx.scale(D * (1 + sq * .08), D * (1 - sq * .12)); ctx.rotate(Math.sin(d.x / 60) * .03); ctx.translate(-d.x, -BELT_Y);
     ctx.fillStyle = 'rgba(43,33,64,.18)'; ctx.fillRect(x + 6, y + 6, 100, 116);
     rrect(ctx, x, y, 100, 116, 4, d.draft ? '#e9e4ef' : PAL.paper, PAL.ink);
     txt(ctx, d.name, d.x, y + 16, 13, PAL.ink);
     ctx.fillStyle = 'rgba(43,33,64,.2)'; for (let i = 0; i < 4; i++) ctx.fillRect(x + 12, y + 30 + i * 10, 76 - (i % 2) * 18, 3);
-    if (d.draft) { txt(ctx, 'ร่าง', d.x, y + 82, 18, PAL.red, 'center', 800); txt(ctx, 'ห้ามปั๊ม', d.x, y + 100, 11, PAL.red); }
+    if (d.draft) { txt(ctx, 'ร่าง', d.x, y + 82, 18, PAL.red, 'center', 800); txt(ctx, 'ห้ามปั๊ม', d.x, y + 100, L.frame ? 13 : 11, PAL.red); }
     else { ctx.setLineDash([4, 3]); ctx.strokeStyle = PAL.blue; ctx.lineWidth = 2; ctx.strokeRect(d.x - 26, y + 74, 52, 30); ctx.setLineDash([]); }
     if (d.mark === 'ok') { ctx.save(); ctx.translate(d.x, y + 89); ctx.rotate(-.2); ctx.strokeStyle = PAL.red; ctx.lineWidth = 3; ctx.strokeRect(-36, -14, 72, 28); txt(ctx, 'APPROVED', 0, 1, 13, PAL.red, 'center', 800); ctx.restore(); }
     if (d.mark === 'void') { ctx.strokeStyle = PAL.red; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(x + 10, y + 10); ctx.lineTo(x + 90, y + 106); ctx.moveTo(x + 90, y + 10); ctx.lineTo(x + 10, y + 106); ctx.stroke(); }
     ctx.restore();
   }
   function draw() {
+    if (L.frame) return drawF();
     if (P) return drawP();
     fx.pre(ctx);
     officeBG(ctx, W, H, BELT_Y + 42, { wall: 'wall_yellow', floor: 'floor_dwood', windows: [['window_big', 112, 28, 3], ['window_grey', 612, 34, 3]] });
@@ -641,6 +642,34 @@ function stampGame(root, api) {
     txt(ctx, 'APPROVED', 0, -21, 11, '#fff', 'center', 800); ctx.restore();
     txt(ctx, `ความเร็วสายพาน ${Math.round(speed)}`, 12, H - 14, 12, '#fff3e0', 'left');
     fx.post(ctx, W, H);
+  }
+  // ---- frame scene (every window, owner 17 Nov 2026: left to right like the wide scene). The wide scene's units at
+  // 3 units per art pixel, so the room art is at the frame's scale. The stage is a fixed 561 units wide on every
+  // window: a document shows for the same 410 units before the stamp everywhere. Documents, the target zone and the
+  // stamp are drawn 1.4x so their text stays 12 px or more at scale 2; the hit windows are unchanged (d.x vs SX).
+  const DY = 47;   // room above the documents for the stamp arm
+  function DS() { return L.frame ? 1.4 : 1; }
+  function drawF() {
+    const f = L.k / 3, U = L.W / f, D = DS(), k = press > 0 ? 1 - Math.abs(press - .09) / .09 : 0, down = k * 40;
+    fx.pre(ctx); ctx.save(); ctx.scale(f, f);
+    officeBG(ctx, U, H + DY, BELT_Y + 42 + DY, { wall: 'wall_yellow', floor: 'floor_dwood', windows: [['window_big', 112, 20, 3], ['window_grey', Math.round(U) - 40, 26, 3]] });
+    ctx.translate(0, DY);
+    drawPixAt(ctx, 'plant_pot', Math.round(U) - 34, BELT_Y - 2, 3);
+    ctx.fillStyle = PAL.ink; ctx.fillRect(0, BELT_Y - 2, U, 40);
+    ctx.fillStyle = '#4a4458'; ctx.fillRect(0, BELT_Y, U, 30);
+    ctx.fillStyle = '#6b6478'; for (let x = -40 + beltOff % 40; x < U; x += 40) ctx.fillRect(x, BELT_Y + 6, 20, 4);
+    ctx.fillStyle = '#8a93a3'; for (let x = 20; x < U; x += 80) ctx.fillRect(x, BELT_Y + 30, 16, 8);
+    ctx.fillStyle = 'rgba(255,92,138,.14)'; ctx.fillRect(SX - 26 * D, BELT_Y - 118 * D, 52 * D, 118 * D);
+    ctx.fillStyle = 'rgba(255,92,138,.5)'; ctx.fillRect(SX - 26 * D, BELT_Y - 2, 52 * D, 3);
+    for (const d of docs) doc(d);
+    // the stamp waits 40 units above the documents and drops onto them
+    const rest = BELT_Y - 118 * D - 40;
+    ctx.fillStyle = '#8d5a3b'; ctx.fillRect(SX - 6, -DY, 12, rest + down - 30 * D + DY);
+    ctx.save(); ctx.translate(SX, rest + down); ctx.scale(D * (1 + k * .15), D * (1 - k * .12));
+    rrect(ctx, -34, -36, 68, 30, 8, PAL.red, PAL.ink); rrect(ctx, -40, -10, 80, 10, 3, PAL.ink);
+    txt(ctx, 'APPROVED', 0, -21, 11, '#fff', 'center', 800); ctx.restore();
+    txt(ctx, `ความเร็วสายพาน ${Math.round(speed)}`, 12, H - 16, 12 / f, '#fff3e0', 'left');
+    fx.post(ctx, U, H); ctx.restore();
   }
   // ---- portrait scene (phone held upright): the room seen from above, the belt runs top to bottom
   function paintBG(g) {
