@@ -151,7 +151,7 @@ const Farm = {
     if (row && (row.y || row.n > 10)) {                          // moved to the village (from จองที่ดิน on): the rooftop farm is closed
       ctx.fillStyle = '#fff8e6'; ctx.strokeStyle = '#6b3e26'; ctx.lineWidth = 1.5; const sw = Math.min(w - 8, 150);
       ctx.fillRect(x + w / 2 - sw / 2, y + H - 22, sw, 15); ctx.strokeRect(x + w / 2 - sw / 2, y + H - 22, sw, 15);
-      ctx.fillStyle = '#6b3e26'; ctx.font = '600 10px Kanit, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#6b3e26'; ctx.font = '600 10px "IBM Plex Sans Thai", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.fillText('🏡 ย้ายไปบ้านในหมู่บ้านแล้ว', x + w / 2, y + H - 14, sw - 6); return; }
     const step = w / n;
     for (let i = 0; i < n; i++) {
@@ -775,7 +775,7 @@ function farmMount(root, api) {
     return s;
   }
   function tip(s) {
-    ctx.font = '600 13px Kanit, sans-serif'; const w = ctx.measureText(s).width + 24, x = W / 2 - w / 2, y = LY && LY.ROWY.length > 2 ? 4 : H - 30;
+    ctx.font = '600 13px "IBM Plex Sans Thai", sans-serif'; const w = ctx.measureText(s).width + 24, x = W / 2 - w / 2, y = LY && LY.ROWY.length > 2 ? 4 : H - 30;
     rrect(ctx, x, y, w, 24, 12, 'rgba(43,33,64,.86)'); txt(ctx, s, W / 2, y + 12, 13, '#fff');
   }
   let cdT = 0;

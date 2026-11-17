@@ -6,30 +6,30 @@
 <title>Cozy Village Big</title>
 <link rel="icon" href="data:,">
 <style>
-:root{--ink:#3b2316;--pink:#ff6fa8;--card:#fff8ec;--muted:#7a5c48}
+:root{--ink:var(--t-ink,#2e2a36);--pink:var(--t-main,#4a7a52);--card:var(--t-surface,#fffaf3);--muted:var(--t-muted,#6b6373)}
 *{box-sizing:border-box}
-html,body{margin:0;height:100%;overflow:hidden;background:#1b1422;font-family:Kanit,"Leelawadee UI",Tahoma,sans-serif;color:var(--ink)}
+html,body{margin:0;height:100%;overflow:hidden;background:#1b1422;font-family:var(--t-font,Tahoma,sans-serif);color:var(--ink)}
 #cv{position:absolute;inset:0;width:100%;height:100%;image-rendering:pixelated;touch-action:none}
-.chip{position:absolute;background:var(--card);border:3px solid var(--ink);border-radius:14px;box-shadow:0 3px 0 var(--ink);padding:5px 12px;font-weight:600;font-size:14px;z-index:3}
+.chip{position:absolute;background:var(--card);border:2px solid var(--ink);border-radius:10px;box-shadow:3px 3px 0 var(--ink);padding:5px 12px;font-weight:600;font-size:14px;z-index:3}
 #title{left:12px;top:12px}
 #clock{left:12px;top:60px;display:flex;align-items:center;gap:8px;font-size:13px;padding:3px 6px 3px 12px}
 #clock input{width:120px}
 #clock button{min-height:44px;min-width:44px;font:inherit;font-size:12px;font-weight:700;border:2px solid var(--ink);border-radius:10px;background:#fff;color:var(--ink);cursor:pointer}
 #clock button.on{background:#ffd54a}
 .side{position:absolute;right:12px;top:12px;display:flex;flex-direction:column;gap:8px;align-items:flex-end;z-index:3}
-.btn{min-width:44px;min-height:44px;font:inherit;font-weight:700;font-size:15px;background:var(--card);border:3px solid var(--ink);border-radius:14px;box-shadow:0 3px 0 var(--ink);cursor:pointer;color:var(--ink);padding:0 10px}
-#exit{position:absolute;left:50%;bottom:34px;transform:translateX(-50%);display:none;z-index:3;background:#ffd54a}
+.btn{min-width:44px;min-height:44px;font:inherit;font-weight:700;font-size:15px;background:var(--card);border:2px solid var(--ink);border-radius:10px;box-shadow:3px 3px 0 var(--ink);cursor:pointer;color:var(--ink);padding:0 10px}
+#exit{position:absolute;left:50%;bottom:34px;transform:translateX(-50%);display:none;z-index:3;background:var(--pink);color:#fff}
 .tag{position:absolute;transform:translate(-50%,-100%);background:var(--card);border:2px solid var(--ink);border-radius:9px;padding:0 7px;font-size:12px;font-weight:600;white-space:nowrap;pointer-events:none}
-.tag.me{background:#ffe066}.tag.npc{background:#e3f1ff}.tag.lot{background:#efe4d0;font-weight:500;font-size:11px;color:var(--muted)}
+.tag.me{background:var(--t-main-soft,#e2e6d9)}.tag.npc{background:#e4e6ee}.tag.lot{background:#efe4d0;font-weight:500;font-size:11px;color:var(--muted)}
 .tag.place{background:#fff;font-size:13px;font-weight:700;border-width:3px;border-radius:11px}
 .bub{position:absolute;transform:translate(-50%,-100%);background:#fff;border:2px solid var(--ink);border-radius:12px;padding:3px 9px;font-size:13px;max-width:230px;pointer-events:none;text-align:center}
-.pop{position:absolute;transform:translate(-50%,-100%);font-weight:800;font-size:16px;color:#e8467c;text-shadow:0 2px 0 #fff,0 -1px 0 #fff;pointer-events:none;transition:transform 1.2s ease-out,opacity 1.2s}
-#card{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);width:min(460px,calc(100% - 32px));max-height:calc(100% - 130px);overflow:auto;background:var(--card);border:3px solid var(--ink);border-radius:18px;box-shadow:0 5px 0 var(--ink);padding:12px 14px;display:none;z-index:4}
+.pop{position:absolute;transform:translate(-50%,-100%);font-weight:700;font-size:16px;color:var(--t-main-dark,#436e4a);text-shadow:0 2px 0 #fff,0 -1px 0 #fff;pointer-events:none;transition:transform 1.2s ease-out,opacity 1.2s}
+#card{--ink:var(--t-wood-ink,#4a2a12);--muted:var(--t-wood-muted,#68452a);color:var(--ink);position:absolute;left:50%;bottom:14px;transform:translateX(-50%);width:min(460px,calc(100% - 32px));max-height:calc(100% - 130px);overflow:auto;background:var(--t-parch,#f5deb0);border:3px solid var(--t-wood,#5b3317);border-radius:6px;box-shadow:var(--t-wood-shadow,0 4px 0 #2b170b);padding:12px 14px;display:none;z-index:4}
 #card h3{margin:0;font-size:18px}
 #card .sub{margin:0;color:var(--muted);font-size:13px}
 #card .say{margin:8px 0;background:#fff;border:2px solid var(--ink);border-radius:12px;padding:6px 10px;font-size:14px}
 #card .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
-#card button{min-height:44px;font:inherit;font-weight:700;border:3px solid var(--ink);border-radius:14px;cursor:pointer;background:#fff;color:var(--ink)}
+#card button{min-height:44px;font:inherit;font-weight:700;border:2px solid var(--t-wood,#5b3317);border-radius:6px;cursor:pointer;background:var(--t-parch2,#e8c68a);color:var(--ink);box-shadow:0 2px 0 var(--t-wood,#5b3317)}
 #card .row>button{flex:1}
 #card .pri{background:var(--pink);color:#fff}
 #card button:disabled{opacity:.45;cursor:default}
@@ -45,7 +45,7 @@ html,body{margin:0;height:100%;overflow:hidden;background:#1b1422;font-family:Ka
 .likes{font-size:13px;margin-top:8px}
 .unl{list-style:none;margin:8px 0 0;padding:0;font-size:13px}
 .unl li{display:flex;gap:8px;align-items:center;padding:4px 0;border-top:1px dashed #d9c4a8}
-.unl li.ok{color:#2f7d3a;font-weight:600}
+.unl li.ok{color:var(--t-main-dark,#436e4a);font-weight:600}
 .unl li.lock{color:var(--muted)}
 .fr{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:6px 10px;margin-top:6px;font-weight:600!important}
 .fr canvas{width:24px;height:48px;image-rendering:pixelated}
@@ -61,7 +61,7 @@ html,body{margin:0;height:100%;overflow:hidden;background:#1b1422;font-family:Ka
 .slot img{width:30px;height:30px;object-fit:contain;image-rendering:pixelated}.slot .em{font-size:23px;line-height:1}
 .slot .c{position:absolute;right:2px;bottom:0;font-size:11px;font-weight:800;color:#fff;text-shadow:0 0 2px #000,0 0 2px #000}
 .slot .k{position:absolute;left:3px;top:0;font-size:9px;font-weight:700;color:#7a5c48}
-#tools .slot.on{background:#ffd54a;outline:3px solid #fff;outline-offset:-5px}
+#tools .slot.on{background:var(--t-main-soft,#e2e6d9);outline:3px solid var(--t-main,#4a7a52);outline-offset:-5px}
 #tools .bagb{font-size:23px;background:#ffe9a8;margin-left:3px}
 #card .slot{min-height:0;width:auto;aspect-ratio:1;height:auto;border-width:2px;border-radius:9px;background:#f3e2c2}
 #card .slot.pick{background:#ffd54a;outline:3px dashed var(--ink);outline-offset:-6px}
@@ -81,7 +81,7 @@ html,body{margin:0;height:100%;overflow:hidden;background:#1b1422;font-family:Ka
 .pv .stg{display:flex;align-items:flex-end;gap:3px}.pv .stg img{image-rendering:pixelated;height:auto}.pv .stg b{color:var(--muted)}
 .qty{display:flex;gap:6px;margin-top:6px}.qty button{min-width:52px}.qty .on{background:#ffd54a!important}
 .ord{display:flex;gap:10px;align-items:center;margin-top:8px}.ord img{width:40px;height:36px;image-rendering:pixelated}
-.bar{height:12px;border:2px solid var(--ink);border-radius:8px;background:#fff;overflow:hidden;margin:4px 0}.bar i{display:block;height:100%;background:#5fbf5a}
+.bar{height:12px;border:2px solid var(--ink);border-radius:8px;background:#fff;overflow:hidden;margin:4px 0}.bar i{display:block;height:100%;background:var(--t-main,#4a7a52)}
 .who{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}.who span{border:2px solid var(--ink);border-left:8px solid var(--c);border-radius:9px;padding:0 7px;font-size:12px;font-weight:600;background:#fff}
 .sell{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}.sell button{display:flex;align-items:center;gap:4px;padding:0 8px;font-size:13px}.sell img{width:20px;height:18px;image-rendering:pixelated}
 @media (max-width:600px){.side .lbl{display:none}#title small{display:none}#clock input{width:90px}}
@@ -601,7 +601,7 @@ const gameDay = (t = Date.now()) => Math.floor((t - GAME_T0) / DAY_MS) + 1;
 const thaiNow = (t = Date.now()) => ((t - GAME_T0) % DAY_MS) / DAY_MS * 24;
 const hhmm = h => `${String(Math.floor(h) % 24).padStart(2, '0')}:${String(Math.round(h % 1 * 60)).padStart(2, '0')}`;
 const spotOf = (N, h) => { let s = N.sched[N.sched.length - 1]; if (h < N.sched[0][0]) return s; for (const e of N.sched) if (h >= e[0]) s = e; return s; };
-function setHour(h, fromSlider) { hour = h; tmEl.textContent = `วัน ${gameDay()} · ${hhmm(Math.floor(h * 6) / 6)}`; if (!fromSlider) hourIn.value = Math.max(6, Math.min(23.5, h));
+function setHour(h, fromSlider) { hour = h; tmEl.textContent = hhmm(Math.floor(h * 6) / 6); if (!fromSlider) hourIn.value = Math.max(6, Math.min(23.5, h));
   for (const N of NPCS) { const s = spotOf(N, h); if (N.at !== s) { N.at = s; travel(N.P, spotCell(s[1])); } } }
 hourIn.oninput = () => { real = false; realB.classList.remove('on'); setHour(+hourIn.value, true); };
 realB.onclick = () => { real = true; realB.classList.add('on'); setHour(thaiNow()); };

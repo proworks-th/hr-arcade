@@ -284,7 +284,7 @@ export function partyGame(root,api){
       const iw=im.naturalWidth,ih=im.naturalHeight;let k=Math.min(w/iw,h/ih);if(k>=1)k=Math.floor(k);
       const dw=Math.round(iw*k),dh=Math.round(ih*k),dx=Math.round(x+(w-dw)/2),dy=Math.round(y+h-dh);
       if(flip){ctx.save();ctx.translate(dx+dw,dy);ctx.scale(-1,1);ctx.drawImage(im,0,0,dw,dh);ctx.restore()}else ctx.drawImage(im,dx,dy,dw,dh)}
-    function text(s,x,y,size=14,col='#2b2140',stroke='#fff'){ctx.font=`600 ${size}px Kanit, sans-serif`;ctx.textAlign='center';ctx.textBaseline='middle';
+    function text(s,x,y,size=14,col='#2b2140',stroke='#fff'){ctx.font=`600 ${size}px "IBM Plex Sans Thai", sans-serif`;ctx.textAlign='center';ctx.textBaseline='middle';
       ctx.lineWidth=4;ctx.strokeStyle=stroke;ctx.strokeText(s,x,y);ctx.fillStyle=col;ctx.fillText(s,x,y)}
     function drawPlayer(p,x,y,t,isMe){
       // the pixel characters have a single pose: animate with bob / squash / tilt instead of frames
@@ -296,7 +296,7 @@ export function partyGame(root,api){
         if(p.f<0)ctx.scale(-1,1);ctx.drawImage(im,-dw/2,-dh-bob,dw,dh);ctx.restore()}
       if(hit)text('💫',x+PW/2,y-34,18);
       text(p.n+(isMe?' ★':''),x+PW/2,y-26,13,isMe?'#d6336c':'#2b2140');
-      if(p.e&&t-p.et<3000){ctx.font='600 15px Kanit, sans-serif';const w=Math.max(34,ctx.measureText(p.e).width+16);
+      if(p.e&&t-p.et<3000){ctx.font='600 15px "IBM Plex Sans Thai", sans-serif';const w=Math.max(34,ctx.measureText(p.e).width+16);
         ctx.fillStyle='#fff';ctx.strokeStyle='#2b2140';ctx.lineWidth=2;ctx.beginPath();ctx.roundRect(x+PW/2-w/2,y-64,w,26,10);ctx.fill();ctx.stroke();
         ctx.fillStyle='#2b2140';ctx.textAlign='center';ctx.fillText(p.e,x+PW/2,y-50)}
     }
@@ -370,7 +370,7 @@ export function partyGame(root,api){
         text(`⏱ ${left}`,40,18,18);text(`⭐ ${fmt(K.sc||0)}`,40,42,18);
         const ords=Object.values(K.o||{}).sort((a,b)=>a.t-b.t);
         ords.forEach((o,i)=>{const r=RECIPES[o.r],X=90+i*170;ctx.fillStyle='#fffbe0';ctx.strokeStyle='#2b2140';ctx.lineWidth=2;ctx.beginPath();ctx.roundRect(X,6,160,46,8);ctx.fill();ctx.stroke();
-          ctx.fillStyle='#2b2140';ctx.font='600 13px Kanit, sans-serif';ctx.textAlign='left';ctx.textBaseline='middle';ctx.fillText(r.n,X+8,18);
+          ctx.fillStyle='#2b2140';ctx.font='600 13px "IBM Plex Sans Thai", sans-serif';ctx.textAlign='left';ctx.textBaseline='middle';ctx.fillText(r.n,X+8,18);
           spr('memo',X+8,26,18,18);if(r.s)spr('stamp',X+30,28,18,14);if(r.g)text('✒️',X+(r.s?62:40),36,13);
           const fr=Math.max(0,(o.exp-t)/55000);ctx.fillStyle=fr<.3?'#ff4d4d':'#21c07a';ctx.fillRect(X+90,32,64*fr,8);ctx.strokeRect(X+90,32,64,8)})}
     }

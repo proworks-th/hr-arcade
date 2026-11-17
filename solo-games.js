@@ -146,7 +146,7 @@ function g2pad(root, buttons) {
   root.appendChild(bar); return bar;
 }
 function txt(ctx, s, x, y, size = 16, col = '#2b2140', align = 'center', weight = 600) {
-  ctx.font = `${weight} ${size}px Kanit, sans-serif`; ctx.textAlign = align; ctx.textBaseline = 'middle'; ctx.fillStyle = col; ctx.fillText(s, x, y);
+  ctx.font = `${weight} ${size}px "IBM Plex Sans Thai", sans-serif`; ctx.textAlign = align; ctx.textBaseline = 'middle'; ctx.fillStyle = col; ctx.fillText(s, x, y);
 }
 function rrect(ctx, x, y, w, h, r, fill, stroke) {
   ctx.beginPath(); ctx.roundRect(x, y, w, h, r); if (fill) { ctx.fillStyle = fill; ctx.fill(); } if (stroke) { ctx.lineWidth = 2; ctx.strokeStyle = stroke; ctx.stroke(); }
@@ -283,7 +283,7 @@ function makeFX() {
       for (const t of T) {
         const k = t.t / t.life, sc = k < .12 ? .4 + k / .12 * .9 : k < .25 ? 1.3 - (k - .12) / .13 * .3 : 1;
         ctx.save(); ctx.globalAlpha = k > .7 ? 1 - (k - .7) / .3 : 1; ctx.translate(t.x, t.y - t.rise * Math.min(1, k * 1.6)); ctx.scale(sc, sc);
-        ctx.font = `800 ${t.size}px Kanit, sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.font = `800 ${t.size}px "IBM Plex Sans Thai", sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         ctx.lineJoin = 'round'; ctx.lineWidth = Math.max(4, t.size / 5); ctx.strokeStyle = PAL.ink; ctx.strokeText(t.s, 0, 0); ctx.fillStyle = t.c; ctx.fillText(t.s, 0, 0); ctx.restore();
       }
       if (flT > 0) { ctx.globalAlpha = flT / flMax * .55; ctx.fillStyle = flC; ctx.fillRect(-20 - W, -20 - H, 3 * W + 40, 3 * H + 40); ctx.globalAlpha = 1; }

@@ -394,7 +394,7 @@ css += ('#more{display:none}\n'
         '.side{top:8px;right:8px;gap:6px}#more{display:block}.side:not(.open)>.btn:not(#more){display:none}.side.open .lbl{display:inline}}\n'
         '@media (pointer:coarse){#zin,#zout{display:none}}\n'
         '#act{position:absolute;right:10px;bottom:96px;z-index:4;display:none;width:66px;height:66px;border-radius:50%;padding:0;'
-        'background:#ffd54a;font-size:11px;line-height:1.1;white-space:normal;box-shadow:0 3px 0 var(--ink)}#act b{display:block;font-size:22px;line-height:1.1}\n')
+        'background:var(--pink);color:#fff;font-size:11px;line-height:1.1;white-space:normal;box-shadow:0 3px 0 var(--ink)}#act b{display:block;font-size:22px;line-height:1.1}\n')
 assert body.count('<div class="side">') == 1
 body = body.replace('<div class="side">', '<div class="side"><button class="btn" id="more" type="button" aria-label="เมนู">☰</button>', 1)
 assert body.count('id="gohome"') == 1
@@ -512,7 +512,7 @@ rep("  if (has('t')) tree(X - 1, Y + 2, 'sap');", "  if (has('t')) tree(X + 10, 
 _eb = '<button class="btn" id="exit" type="button">🚪 ออกไปข้างนอก</button>'
 assert body.count(_eb) == 1
 body = body.replace(_eb, _eb + '<button class="btn" id="camb" type="button" hidden>🎯 กลับมาที่ตัวฉัน</button>')
-css += '#camb{position:absolute;left:50%;top:10px;transform:translateX(-50%);z-index:3;min-height:44px;background:#ffd54a}#camb[hidden]{display:none}\n'
+css += '#camb{position:absolute;left:50%;top:10px;transform:translateX(-50%);z-index:3;min-height:44px;background:var(--pink);color:#fff}#camb[hidden]{display:none}\n'
 rep("const cam = { x: me.px, y: me.py }, bubbles = [], held = new Set();",
     "const cam = { x: me.px, y: me.py, free: false, ex: 0, ey: 0, eT: 0 }, bubbles = [], held = new Set();")
 rep("  cam.x += (me.px - cam.x) * Math.min(1, dt * 5); cam.y += (camY - cam.y) * Math.min(1, dt * 5);",
