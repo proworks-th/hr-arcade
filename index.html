@@ -580,11 +580,12 @@ html.touch .g2p>.g2hint,html.touch .g2p>.toss-pad{flex:0 0 19%;min-height:calc(v
 html.touch .g2p>.hud [data-k=st]{display:none}
 html.touch .g2p>.g2hint.on,html.touch .g2t.g2p.held>.g2hint{border-style:solid;border-color:var(--line);background:#fff3c4;color:var(--ink);font-weight:600}
 /* one game frame on every window, PC and phone alike (g2view with a world in solo-games.js; PRD
-   _test/prd-phone-game-scale.md): top bar, info card (takes the free height), the stage at its own fixed size, the deck */
+   _test/prd-phone-game-scale.md): top bar, a small info card, then free space, the stage at its own fixed size and the
+   deck at the bottom near the thumbs (owner, 17 Nov 2026: the info card was too big when it took the free height) */
 .g2f{--b:48px;display:flex;flex-direction:column;box-sizing:border-box;width:100%;max-width:var(--fw,none);margin:0 auto}
 .g2f>.hud{flex:none}
 .g2f .g2tip{display:none}
-.g2f>.g2info{flex:1 1 0;min-height:0;box-sizing:border-box;margin:0 0 12px;padding:8px 12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+.g2f>.g2info{flex:none;box-sizing:border-box;margin:0 0 12px;padding:8px 12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
   border:3px dashed #c9bda8;border-radius:16px;text-align:center;font-size:15px;line-height:1.35;color:var(--muted);overflow:hidden}
 .g2f>.g2info b{font-size:18px;color:var(--ink)}
 .g2f>.g2info [data-k=info]:empty{display:none}
@@ -767,7 +768,7 @@ html.touch #hub .vil-bar{flex-wrap:wrap;white-space:normal;overflow:visible}html
 <div id="rotOv" role="alert"><div><b>หมุนโทรศัพท์ตั้งขึ้น</b><span class="muted">เกมหยุดรอไว้ก่อน หมุนกลับแล้วกดเล่นต่อ</span></div></div>
 
 <script src="phone.js?v=1"></script>
-<script src="solo-games.js?v=19"></script>
+<script src="solo-games.js?v=20"></script>
 <script src="dungeon/data.js?v=2"></script>
 <script src="dungeon/engine.js?v=2"></script>
 <script src="dungeon/gen.js?v=1"></script>

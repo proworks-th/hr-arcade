@@ -37,7 +37,8 @@ function g2canvas(root, W, H) {
 //   the art scale s  CSS px per art pixel, a whole number of device pixels, the same in every game on that window:
 //                    the largest that fits a 187 x 180 art world, at most 3 (phone 2, 1366 laptop 2, 1080p monitor 3)
 //   the stage width  the game's world grows from world.min to world.max art px wide; more scenery, never bigger art
-// Stage height = world.h x s. What is left of the height goes to the info card (best score, the rule in one line).
+// Stage height = world.h x s. A small info card (best score, the rule in one line) sits under the top bar; the stage
+// and deck sit at the bottom, near the thumbs, with the free space between.
 const FRAME_REF = { w: 187, h: 180, max: 3 };
 const frameDpr = () => Math.min(2, devicePixelRatio || 1);
 function frameScale(aw, ah) {
@@ -81,10 +82,11 @@ function g2view(root, W, H, world, rule) {
     const ah = root.clientHeight - used - 6, s = frameScale(aw - 6, ah);
     const w = Math.round(Math.max(Math.min(aw - 6, world.max * s), Math.min(aw - 6, world.min * s))), h = Math.round(world.h * s);
     root.style.setProperty('--fw', (w + 6 + px(root, 'paddingLeft') + px(root, 'paddingRight')) + 'px');
-    box.style.cssText = 'flex:none;height:auto;container-type:normal;display:flex;justify-content:center';
+    box.style.cssText = 'flex:none;height:auto;margin-top:auto;container-type:normal;display:flex;justify-content:center';
     cv.style.cssText = `width:${w}px;height:${h}px;max-height:none;aspect-ratio:auto;box-sizing:content-box`;
-    // short on height (a laptop): one line, best score and rule side by side; no room at all: an empty gap
-    if (info) { const ih = info.offsetHeight; info.classList.toggle('one', ih >= 34 && ih < 64); info.classList.toggle('tiny', ih < 34); }
+    // the info card keeps its own small size; the space left over sits between it and the stage. Short on height
+    // (a laptop): one line, best score and rule side by side; no room at all: an empty gap
+    if (info) { const free = ah + 6 - (h + 6) - 12; info.classList.toggle('one', free >= 46 && free < 80); info.classList.toggle('tiny', free < 46); }
     return { w, h, s };
   }
   function apply(fromObserver) {
