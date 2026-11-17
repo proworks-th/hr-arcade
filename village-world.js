@@ -540,7 +540,7 @@ const gameDay = (t = Date.now()) => Math.floor((t - GAME_T0) / DAY_MS) + 1;
 const thaiNow = (t = Date.now()) => ((t - GAME_T0) % DAY_MS) / DAY_MS * 24;
 const hhmm = h => `${String(Math.floor(h) % 24).padStart(2, '0')}:${String(Math.round(h % 1 * 60)).padStart(2, '0')}`;
 const spotOf = (N, h) => { let s = N.sched[N.sched.length - 1]; if (h < N.sched[0][0]) return s; for (const e of N.sched) if (h >= e[0]) s = e; return s; };
-function setHour(h, fromSlider) { hour = h; tmEl.textContent = `วัน ${gameDay()} · ${hhmm(Math.floor(h * 6) / 6)}`; if (!fromSlider) hourIn.value = Math.max(6, Math.min(23.5, h));
+function setHour(h, fromSlider) { hour = h; tmEl.textContent = hhmm(Math.floor(h * 6) / 6); if (!fromSlider) hourIn.value = Math.max(6, Math.min(23.5, h));
   for (const N of NPCS) { const s = spotOf(N, h); if (N.at !== s) { N.at = s; travel(N.P, spotCell(s[1])); } } }
 hourIn.oninput = () => { real = false; realB.classList.remove('on'); setHour(+hourIn.value, true); };
 realB.onclick = () => { real = true; realB.classList.add('on'); setHour(thaiNow()); };
