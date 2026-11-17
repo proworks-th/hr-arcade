@@ -32,34 +32,91 @@ function g2canvas(root, W, H) {
   }
   return { cv, ctx, at, size, dpr, box };
 }
-// g2canvas, plus a portrait layout on phones held upright (PRD 7.3): there the canvas fills the play area between
-// the top bar and the thumb deck at 1 unit = 1 CSS px (backing store at devicePixelRatio), and the game lays out a
-// portrait scene for L.W x L.H. Everywhere else it is the fixed W x H scene, unchanged. L.fn() runs after every
-// change (rotation, resize, the hand setting); L.k is the whole-number pixel-art scale (3 on a 414 px phone).
-function g2view(root, W, H) {
-  const g = g2canvas(root, W, H), { cv, ctx } = g, dpr = Math.min(2, devicePixelRatio || 1);
-  const L = { portrait: false, W, H, k: 3, left: false, fn: null };
+// One game frame on every window (PRD _test/prd-phone-game-scale.md, owner 17 Nov 2026): top bar, info card, stage
+// and deck, the same on a phone and a PC. The window decides two things only:
+//   the art scale s  CSS px per art pixel, a whole number of device pixels, the same in every game on that window:
+//                    the largest that fits a 187 x 180 art world, at most 3 (phone 2, 1366 laptop 2, 1080p monitor 3)
+//   the stage width  the game's world grows from world.min to world.max art px wide; more scenery, never bigger art
+// Stage height = world.h x s. What is left of the height goes to the info card (best score, the rule in one line).
+const FRAME_REF = { w: 187, h: 180, max: 3 };
+const frameDpr = () => Math.min(2, devicePixelRatio || 1);
+function frameScale(aw, ah) {
+  const dpr = frameDpr();
+  for (let n = Math.floor(FRAME_REF.max * dpr + 1e-6); n > 1; n--) { const s = n / dpr; if (FRAME_REF.w * s <= aw && FRAME_REF.h * s <= ah) return s; }
+  return 1 / dpr;
+}
+// the info card under the top bar: the best score and one line on how to win; the game may add a line with set()
+function g2info(root, rule) {
+  const el = document.createElement('div'); el.className = 'g2info';
+  const id = (root.className.match(/\bgame-(\w+)/) || [])[1], best = id && typeof store !== 'undefined' ? store.get('best_' + id, 0) : 0;
+  el.innerHTML = `<b>${best > 0 ? 'สถิติดีสุด ' + fmt(best) : 'รอบแรก ลองดูเลย'}</b><span>${rule || ''}</span><span data-k="info"></span>`;
+  const hud = root.querySelector('.hud'); hud ? hud.after(el) : root.prepend(el);
+  return el;
+}
+// g2canvas, plus two other layouts:
+//   world given ({ min, max, h } in art px, rule = the info card's line): the frame above, on every window and device
+//   no world: a portrait layout on phones held upright (PRD 7.3) that fills the play area; elsewhere the fixed W x H scene
+// Both new layouts set L.portrait, draw at 1 unit = 1 CSS px (backing store at devicePixelRatio) and use L.k as the
+// pixel-art scale. L.fn() runs after every change (rotation, resize, the hand setting).
+function g2view(root, W, H, world, rule) {
+  const g = g2canvas(root, W, H), { cv, ctx, box } = g, dpr = frameDpr();
+  const L = { portrait: false, frame: !!world, W, H, k: 3, left: false, fn: null };
   const tall = () => phoneOn() && innerHeight > innerWidth;
+  let info = null;
+  if (world) { root.classList.add('g2f'); info = g2info(root, rule); }
+  const px = (el, side) => parseFloat(getComputedStyle(el)[side]) || 0;
+  // frame: measure what the top bar and the deck leave, pick the scale, size the canvas in CSS px
+  function fit() {
+    if (!phoneOn() || !document.body.classList.contains('playing')) {   // PC: the frame fills the window under the page header
+      const top = root.getBoundingClientRect().top + scrollY, pb = root.parentElement ? px(root.parentElement, 'paddingBottom') : 16;
+      root.style.height = Math.max(420, Math.floor(innerHeight - top - pb - 4)) + 'px';
+    }
+    const par = root.parentElement, aw = Math.max(200, (par ? par.clientWidth - px(par, 'paddingLeft') - px(par, 'paddingRight') : innerWidth) - px(root, 'paddingLeft') - px(root, 'paddingRight'));
+    let used = px(root, 'paddingTop') + px(root, 'paddingBottom');
+    for (const c of root.children) {
+      if (c === box || c === info || c.classList.contains('overlay') || getComputedStyle(c).position === 'absolute') continue;
+      used += c.offsetHeight + px(c, 'marginTop') + px(c, 'marginBottom');
+    }
+    if (info) used += px(info, 'marginTop') + px(info, 'marginBottom');
+    const ah = root.clientHeight - used - 6, s = frameScale(aw - 6, ah);
+    const w = Math.round(Math.max(Math.min(aw - 6, world.max * s), Math.min(aw - 6, world.min * s))), h = Math.round(world.h * s);
+    root.style.setProperty('--fw', (w + 6 + px(root, 'paddingLeft') + px(root, 'paddingRight')) + 'px');
+    box.style.cssText = 'flex:none;height:auto;container-type:normal;display:flex;justify-content:center';
+    cv.style.cssText = `width:${w}px;height:${h}px;max-height:none;aspect-ratio:auto;box-sizing:content-box`;
+    // short on height (a laptop): one line, best score and rule side by side; no room at all: an empty gap
+    if (info) { const ih = info.offsetHeight; info.classList.toggle('one', ih >= 34 && ih < 64); info.classList.toggle('tiny', ih < 34); }
+    return { w, h, s };
+  }
   function apply(fromObserver) {
     if (!root.isConnected && L.fn) return stop();
-    const p = tall();
-    if (!fromObserver) root.classList.toggle('g2p', p);   // the class only from window events: no ResizeObserver loop
-    else if (p !== root.classList.contains('g2p')) return;
-    const w = p ? cv.clientWidth : W, h = p ? cv.clientHeight : H, left = phoneOn() && Phone.left();
-    if (!w || !h || (p === L.portrait && w === L.W && h === L.H && left === L.left)) return;
-    Object.assign(L, { portrait: p, W: w, H: h, left, k: Math.max(2, Math.min(4, Math.round(w / 135))) });
+    const left = phoneOn() && Phone.left();
+    let p, w, h, k;
+    if (world) { ({ w, h, s: k } = fit()); p = true; }
+    else {
+      p = tall();
+      if (!fromObserver) root.classList.toggle('g2p', p);   // the class only from window events: no ResizeObserver loop
+      else if (p !== root.classList.contains('g2p')) return;
+      w = p ? cv.clientWidth : W; h = p ? cv.clientHeight : H; k = Math.max(2, Math.min(4, Math.round(w / 135)));
+    }
+    if (!w || !h || (p === L.portrait && w === L.W && h === L.H && k === L.k && left === L.left)) return;
+    Object.assign(L, { portrait: p, W: w, H: h, left, k });
     cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.imageSmoothingEnabled = false;
     L.fn && L.fn();
   }
-  const onWin = () => apply(false), ro = typeof ResizeObserver === 'function' ? new ResizeObserver(() => apply(true)) : null;
-  addEventListener('resize', onWin); addEventListener('orientationchange', onWin); ro && ro.observe(cv);
+  let raf = 0;
+  const later = () => { if (!raf) raf = requestAnimationFrame(() => { raf = 0; apply(true); }); };
+  const onWin = () => apply(false), ro = typeof ResizeObserver === 'function' ? new ResizeObserver(world ? later : () => apply(true)) : null;
+  // frame: the deck and hint are added after g2view returns, so watch the game's children too
+  const mo = world && typeof MutationObserver === 'function' ? new MutationObserver(later) : null;
+  addEventListener('resize', onWin); addEventListener('orientationchange', onWin); ro && ro.observe(world ? root : cv); mo && mo.observe(root, { childList: true });
   const offPhone = phoneOn() ? Phone.on(onWin) : null;
-  function stop() { removeEventListener('resize', onWin); removeEventListener('orientationchange', onWin); ro && ro.disconnect(); offPhone && offPhone(); }
-  apply(false);
+  function stop() { removeEventListener('resize', onWin); removeEventListener('orientationchange', onWin); ro && ro.disconnect(); mo && mo.disconnect(); offPhone && offPhone(); cancelAnimationFrame(raf); }
+  apply(false); if (world) later();
+  if (world && window.__TEST__) window.__frame = { L, world };
   // pointer position in canvas units for either layout
   const at = e => { const r = cv.getBoundingClientRect();
     return L.portrait ? { x: e.clientX - r.left - cv.clientLeft, y: e.clientY - r.top - cv.clientTop } : { x: (e.clientX - r.left) * W / r.width, y: (e.clientY - r.top) * H / r.height }; };
-  return { cv, ctx, at, L, stop };
+  return { cv, ctx, at, L, stop, info };
 }
 // a cached static layer (portrait scenes): paint(g) draws the room once into an offscreen canvas at device resolution;
 // it is repainted after reset() (new layout) and until the named sprites have loaded
@@ -257,7 +314,10 @@ function domFlash(el, color = 'rgba(255,77,77,.35)') {
    Every button shows its press state on pointerdown; its size follows Phone.btn(), re-read live through Phone.on.
 ================================================================= */
 const phoneOn = () => typeof Phone !== 'undefined' && Phone.touch;
-function g2phone(root, kind) { if (!phoneOn()) return false; root.classList.add('g2t'); if (kind) root.classList.add('g2t-' + kind); return true; }
+// deck and hint text: the touch wording, or the PC one (mouse + keys)
+const onTouch = (touch, pc) => phoneOn() ? touch : pc;
+// all: the game uses the frame (g2view with a world) and shows its deck on PC too, mouse and keys both work
+function g2phone(root, kind, all) { if (!phoneOn() && !all) return false; root.classList.add('g2t'); if (kind) root.classList.add('g2t-' + kind); return true; }
 function phoneSize(el) {
   const set = () => el.style.setProperty('--b', Phone.btn() + 'px'); set();
   const off = Phone.on(() => { if (!el.isConnected) return off(); set(); });
@@ -495,7 +555,7 @@ function stampGame(root, api) {
   const W = 720, H = 360, SX = 360, BELT_Y = 230;
   const DOCS = ['รายงาน', 'ใบเสนอราคา', 'บันทึกประชุม', 'สัญญา', 'แผนงาน', 'ใบแจ้งหนี้', 'โปรเจกต์', 'งบประมาณ'];
   root.innerHTML = `<div class="hud"><span data-k="hp"></span><span>⭐ <b data-k="sc">0</b></span><span data-k="cb" class="muted"></span><span class="muted g2tip">Space / แตะจอ = ปั๊ม</span></div>`;
-  const { cv, ctx, L } = g2view(root, W, H), q = k => root.querySelector(`[data-k="${k}"]`), fx = makeFX();
+  const { cv, ctx, L } = g2view(root, W, H, { min: 187, max: 300, h: 194 }, 'ปั๊มตอนกรอบสีฟ้าอยู่ในแถบสีชมพู · เอกสารร่างห้ามปั๊ม'), q = k => root.querySelector(`[data-k="${k}"]`), fx = makeFX();
   let healed = 0, docs = [], speed = 150, gap = 0, made = 0, lives = 3, score = 0, combo = 0, maxc = 0, perfect = 0, running = false, over = false, press = 0, beltOff = 0;
   // where the pop-up texts go: the landscape scene's numbers, or the portrait ones from layout()
   const LAND = { x: SX, lab: 125, miss: 130, heal: 175, combo: 80, comboB: 90 };
@@ -540,8 +600,8 @@ function stampGame(root, api) {
     hud();
   }
   // phone: a press anywhere on the game stamps (one action); desktop: the canvas. In portrait the hint is the thumb deck.
-  const phone = g2phone(root, 'tap');
-  if (phone) { const pad = phoneHint(root, 'แตะตรงไหนก็ได้ = ปั๊ม'); let padT = 0;
+  const phone = g2phone(root, 'tap', true);
+  if (phone) { const pad = phoneHint(root, onTouch('แตะตรงไหนก็ได้ = ปั๊ม', 'คลิกตรงไหนก็ได้ หรือกด Space = ปั๊ม')); let padT = 0;
     root.addEventListener('pointerdown', e => { if (!freePress(e)) return; e.preventDefault(); pressRing(root, e);
       pad.classList.add('on'); clearTimeout(padT); padT = setTimeout(() => pad.classList.remove('on'), 140); stamp(); }); }
   else cv.addEventListener('pointerdown', e => { e.preventDefault(); stamp(); });
@@ -649,7 +709,7 @@ function stampGame(root, api) {
   });
   hud(); draw();
   if (window.__TEST__) window.__stamp = { SX, get: () => ({ docs, score, lives, perfect, made, P }) };
-  api.intro({ how: `<p>🏢 เอกสารวิ่งมาบนสายพาน — ${phone ? '<b>แตะตรงไหนก็ได้</b>' : 'กด <b>Space</b> หรือแตะจอ'} ตอนกรอบสีฟ้าอยู่${P ? 'ในแถบสีชมพู' : 'ใต้ตราปั๊ม'}</p>
+  api.intro({ how: `<p>🏢 เอกสารวิ่งมาบนสายพาน — ${phoneOn() ? '<b>แตะตรงไหนก็ได้</b>' : '<b>คลิกตรงไหนก็ได้</b> หรือกด <b>Space</b>'} ตอนกรอบสีฟ้าอยู่${P ? 'ในแถบสีชมพู' : 'ใต้ตราปั๊ม'}</p>
       <p>🎯 ตรงกลางเป๊ะ = <b>PERFECT</b> · ยิ่งคอมโบยาวคะแนนยิ่งคูณ · คอมโบครบ 10 ได้หัวใจคืน ❤️ (สูงสุด 2 ครั้ง)</p><p>⚠️ เอกสาร <b>"ร่าง"</b> ห้ามปั๊ม · ปล่อยเอกสารปกติหลุดไป = เสียหัวใจ ❤️</p>`,
     buttons: [{ label: '🔏 เริ่มปั๊ม!', primary: true, go() { running = true; } }] });
 }
@@ -823,7 +883,7 @@ function tossGame(root, api) {
   const W = 720, H = 420, G = 900, THROWS = 10, R = 11, START = { x: 100, y: 300 };
   let FLOOR = 372;
   root.innerHTML = `<div class="hud"><span>🗑️ ลงถัง <b data-k="mk">0</b>/<b data-k="th">0</b></span><span>เหลือ <b data-k="left">10</b> ลูก</span><span>⭐ <b data-k="sc">0</b></span><span data-k="st" class="muted"></span><span class="muted g2tip">ลากลูกบอลถอยหลังแล้วปล่อย · หรือ ←→ เล็ง + กด Space ค้างเพื่อออกแรง</span></div>`;
-  const { cv, ctx, at, L } = g2view(root, W, H), q = k => root.querySelector(`[data-k="${k}"]`), fx = makeFX();
+  const { cv, ctx, at, L } = g2view(root, W, H, { min: 187, max: 300, h: 160 }, 'ลงถังติดกันได้คะแนนเพิ่ม · ลงกลางถังไม่โดนขอบ ได้ลูกฟรี'), q = k => root.querySelector(`[data-k="${k}"]`), fx = makeFX();
   let ball = null, drag = null, wind = 0, throws = 0, made = 0, score = 0, streak = 0, running = false, over = false, binX = 520, aim = -.9, power = 0, charging = false, t = 0, rimHit = false; let bonusT = 0;
   let fanA = 0, binSq = 0, throwSq = 0, trail = [], streaks = [];
   const BIN_K = 6, who = pick(rnd, MI_PEOPLE);
@@ -840,7 +900,9 @@ function tossGame(root, api) {
     if (!L.portrait) { P = null; VS = 1; WW = W; FLOOR = 372; START.x = 100; START.y = 300; BIN_W = 54; BIN_H = 78; BIN_B = FLOOR;
       binBase = 520; binA = 90; LF = 5.2; PULL = 1.25; stY0 = 90; stYR = 230; }
     else {
-      VS = Math.min(L.W / 300, L.H / 480); WW = L.W / VS; const HW = L.H / VS, m = L.left ? -1 : 1, kb = Math.round(9 * VS);
+      // frame: 3 world units per art pixel, so the room is 480 units tall like the portrait one and the bin, pull and arc
+      // keep their sizes; the old portrait fill fitted 300 x 480 units to the screen
+      VS = L.frame ? L.k / 3 : Math.min(L.W / 300, L.H / 480); WW = L.W / VS; const HW = L.H / VS, m = L.left ? -1 : 1, kb = Math.round(9 * VS);
       BIN_W = 9 * kb / VS; BIN_H = 13 * kb / VS;
       FLOOR = HW - 18; START.x = WW / 2 - 63 * m; START.y = FLOOR - 72; BIN_B = Math.max(40, START.y - 210) + BIN_H;
       binBase = WW / 2 + 63 * m; binA = Math.max(0, Math.min(90, WW / 2 - 63 - BIN_W / 2 - 8));
@@ -883,10 +945,10 @@ function tossGame(root, api) {
   cv.addEventListener('pointerup', release); cv.addEventListener('pointercancel', () => { drag = null; });
   // phone: a slingshot pad in the lower part of the screen — thumb down anywhere on it, pull back, let go.
   // The pull (screen px x 1.25, max 150) is the same vector as dragging the ball itself.
-  const phone = g2phone(root, 'toss');
+  const phone = g2phone(root, 'toss', true);
   if (phone) {
     const zone = document.createElement('div'); zone.className = 'g2zone toss-pad';
-    zone.innerHTML = '<span>ลากนิ้วถอยหลังแล้วปล่อย = ปา</span><i class="o"></i><i class="ln"></i><i class="k"></i>'; root.appendChild(zone);
+    zone.innerHTML = '<span>' + onTouch('ลากนิ้วถอยหลังแล้วปล่อย = ปา', 'ลากเมาส์ถอยหลังแล้วปล่อย = ปา · หรือ ← → เล็ง แล้วกด Space ค้าง') + '</span><i class="o"></i><i class="ln"></i><i class="k"></i>'; root.appendChild(zone);
     const [o, ln, kn] = zone.querySelectorAll('i'); let pull = null;
     const show = (on, x0, y0, x1, y1) => { zone.classList.toggle('on', on); if (!on) return;
       o.style.left = x0 + 'px'; o.style.top = y0 + 'px'; kn.style.left = x1 + 'px'; kn.style.top = y1 + 'px';
@@ -984,6 +1046,9 @@ function tossGame(root, api) {
     }
     for (let i = 0; i < trail.length; i++) { const p = trail[i]; ctx.globalAlpha = i / trail.length * .4; ctx.fillStyle = '#fff'; ctx.fillRect(Math.round(S(p.x)) - 5, Math.round(S(p.y)) - 5, 10, 10); } ctx.globalAlpha = 1;
     if (ball) drawPixAt(ctx, pxa('ball'), Math.round(S(bx)), Math.round(S(by) + 3.5 * kball), kball, { rot: ball.rot });
+    // Space held (PC): the power meter beside the fork
+    if (charging) { const sx = Math.round(S(START.x)) - 40 * m, sy = Math.round(S(START.y)) - 30, bh = 60;
+      rrect(ctx, sx - 7, sy - bh / 2, 14, bh, 4, '#fff', PAL.ink); rrect(ctx, sx - 6, sy + bh / 2 - 1 - power * (bh - 2), 12, power * (bh - 2), 3, power > .85 ? PAL.red : PAL.pink); }
     // the streak lives here instead of the top bar, which must stay one line
     if (streak >= 2) txt(ctx, `🔥 ติดกัน ${streak}`, m > 0 ? w - 12 : 12, 22, 16, PAL.orange, m > 0 ? 'right' : 'left', 800);
     fx.post(ctx, w, h);
@@ -1021,7 +1086,8 @@ function tossGame(root, api) {
   layout(); hud(); draw();
   if (window.__TEST__) window.__toss = { get: () => ({ START, binX, BIN_B, BIN_W, BIN_H, wind, WW, FLOOR, VS, PULL, LF, made, throws, score, fly: !!(ball && ball.fly) }) };
   api.intro({ how: `<p>🗑️ ปากระดาษก้อนลงถังให้ได้มากที่สุดใน ${THROWS} ลูก · <b>SWISH</b> (ลงไม่โดนขอบ) ได้ลูกฟรี +1 (สูงสุด 5 ลูก)</p>
-      ${phone ? '<p>👆 วางนิ้วบน<b>แผ่นด้านล่าง</b> ลากถอยหลังเหมือนหนังสติ๊กแล้วปล่อย (หรือลากที่ลูกบอลก็ได้) · ลากยาว = แรงขึ้น</p>'
+      ${phoneOn() ? '<p>👆 วางนิ้วบน<b>แผ่นด้านล่าง</b> ลากถอยหลังเหมือนหนังสติ๊กแล้วปล่อย (หรือลากที่ลูกบอลก็ได้) · ลากยาว = แรงขึ้น</p>'
+        : P ? '<p>🖱️ กดเมาส์บน<b>แผ่นด้านล่าง</b> ลากถอยหลังเหมือนหนังสติ๊กแล้วปล่อย · หรือ <b>← →</b> เล็ง แล้ว <b>กด Space ค้าง</b> เพื่อออกแรง</p>'
         : '<p>🖱️ <b>ลากลูกบอลถอยหลัง</b> เหมือนหนังสติ๊กแล้วปล่อย · หรือ <b>← →</b> เล็ง แล้ว <b>กด Space ค้าง</b> เพื่อออกแรง</p>'}
       <p>🌬️ ดูลมจากพัดลม${P ? 'ด้านข้าง' : 'ด้านบน'}ด้วย · ลงถังไม่โดนขอบ = <b>SWISH</b> +50 · ครึ่งหลังถังจะเลื่อนไปมา</p>`,
     buttons: [{ label: '🗑️ เริ่มปา!', primary: true, go() { running = true; newThrow(); } }] });
@@ -1035,7 +1101,7 @@ function slackGame(root, api) {
   const W = 720, H = 400, BOSS_Y = 236, ME_X = 360;
   root.innerHTML = `<div class="hud"><span data-k="hp"></span><span>⭐ <b data-k="sc">0</b></span><span>⏱ <b data-k="t">0</b> วิ</span><span data-k="mul" class="muted"></span>
     <span class="muted g2tip">กด Space / แตะจอค้าง = แอบเล่นมือถือ · ปล่อย = ทำงาน</span></div>`;
-  const { cv, ctx, L } = g2view(root, W, H), q = k => root.querySelector(`[data-k="${k}"]`), fx = makeFX();
+  const { cv, ctx, L } = g2view(root, W, H, { min: 187, max: 300, h: 180 }, 'ปล่อยมือให้ทันก่อนหัวหน้าหันมา · ระวังเพื่อนขี้ฟ้องเดินผ่าน'), q = k => root.querySelector(`[data-k="${k}"]`), fx = makeFX();
   let who = store.get('runWho', 'amelia'); if (!MI_PEOPLE.includes(who) || who === 'bob') who = 'amelia';
   let holding = false, slack = false, streak = 0, score = 0, strikes = 0, time = 0, level = 1, bored = 0, doze = 0, close = 0, running = false, over = false, t = 0, scold = 0, likeT = 0;
   // the boss patrols the back of the room; 'warn' is the fair tell before 'look'
@@ -1072,8 +1138,8 @@ function slackGame(root, api) {
   }
   const down = () => { if (running && !api.paused) holding = true; }, up = () => { holding = false; root.classList.remove('held'); };
   // phone: hold anywhere on the game (one action); desktop: the canvas
-  const phone = g2phone(root, 'tap'), holdEl = phone ? root : cv;
-  if (phone) phoneHint(root, 'แตะค้างตรงไหนก็ได้ = เล่นมือถือ · ปล่อย = ทำงาน');
+  const phone = g2phone(root, 'tap', true), holdEl = phone ? root : cv;
+  if (phone) phoneHint(root, onTouch('แตะค้างตรงไหนก็ได้ = เล่นมือถือ · ปล่อย = ทำงาน', 'กดเมาส์ค้าง หรือ Space ค้าง = เล่นมือถือ · ปล่อย = ทำงาน'));
   holdEl.addEventListener('pointerdown', e => { if (!freePress(e)) return; e.preventDefault(); if (phone) root.classList.add('held'); down(); }); addEventListener('pointerup', up); holdEl.addEventListener('pointercancel', up);
   // holding for seconds is the whole game: stop iOS/Android from turning the hold into select / copy / zoom,
   // and keep the finger counting as "holding" even if it slides off the canvas onto the text above
@@ -1217,7 +1283,7 @@ function slackGame(root, api) {
   });
   hud(); draw();
   if (window.__TEST__) window.__slack = { boss, mate, get: () => ({ time, score, strikes, slack, bored }), set: o => { if (o.time != null) time = o.time; if (o.bored != null) bored = o.bored; } };
-  api.intro({ how: `<p>📱 งานน่าเบื่อ… <b>${phone ? 'แตะค้างตรงไหนก็ได้' : 'กดค้าง</b> (Space หรือแตะจอ)<b>'}</b> เพื่อแอบเล่นมือถือ ยิ่งเล่นต่อเนื่องคะแนนยิ่งคูณ</p>
+  api.intro({ how: `<p>📱 งานน่าเบื่อ… <b>${phoneOn() ? 'แตะค้างตรงไหนก็ได้' : 'กดเมาส์ค้าง</b> หรือ <b>Space ค้าง'}</b> เพื่อแอบเล่นมือถือ ยิ่งเล่นต่อเนื่องคะแนนยิ่งคูณ</p>
       <p>👔 หัวหน้าเดินไปมาอยู่ด้านหลัง ถ้ามี <b>?</b> ขึ้นหัว = กำลังจะหันมา <b>ปล่อยมือให้ทัน!</b> (ปล่อยตอนเสี้ยววินาทีสุดท้าย = เฉียดฉิว +20)</p>
       <p>🗣️ <b>เพื่อนขี้ฟ้อง</b> (ป้ายแดงบนหัว) มาหลังเล่นไป ~20 วิ — มี ⚠️ เตือนที่ขอบซ้ายก่อน แล้วเดินผ่านหลังเรา · ตอนเธออยู่ใน<b>กรอบแดง</b> ห้ามเล่นมือถือ · รอดได้ +25</p>
       <p>😪 ทำงานนานเกินจนแถบความเบื่อเต็ม = เผลอหลับ · โดนจับได้ 3 ครั้ง = จบ</p>

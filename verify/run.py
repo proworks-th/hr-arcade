@@ -22,9 +22,20 @@ VIEWPORTS = {  # phone first (PRD phone-first 7.1): the iPhone 11 is the referen
     'narrow': dict(viewport={'width': 390, 'height': 844}, is_mobile=True, has_touch=True, device_scale_factor=2),
     'desktop': dict(viewport={'width': 1366, 'height': 768}),
     'tablet': dict(viewport={'width': 768, 'height': 1024}, has_touch=True),
+    # what players really see (PRD phone-game-scale 4.4): Safari / Chrome with their toolbars, a laptop and a 1080p
+    # monitor in Chrome with its tabs and address bar
+    'iphone-safari': dict(viewport={'width': 414, 'height': 715}, is_mobile=True, has_touch=True, device_scale_factor=2),
+    'narrow-safari': dict(viewport={'width': 390, 'height': 664}, is_mobile=True, has_touch=True, device_scale_factor=2),
+    'laptop': dict(viewport={'width': 1366, 'height': 657}),
+    'monitor': dict(viewport={'width': 1920, 'height': 969}),
 }
 VP_ALIAS = {'mobile': 'narrow'}  # old name for the 390x844 case
-PHONE_VPS = ('iphone11', 'narrow')
+PHONE_VPS = ('iphone11', 'narrow', 'iphone-safari', 'narrow-safari')
+# frame games (g2view with a world): art scale per viewport, compared across games at the end
+FRAMES = {}
+FRAME_JS = '''() => { const f = window.__frame, g = document.querySelector('.g2f'); if (!f || !g) return null;
+  const r = g.querySelector('canvas').getBoundingClientRect(), kids = [...g.children].filter(e => !e.classList.contains('overlay') && getComputedStyle(e).position !== 'absolute');
+  return { k: f.L.k, w: f.L.W, h: f.L.H, wh: f.world.h, ch: r.height - 6, bottom: Math.max(...kids.map(e => e.getBoundingClientRect().bottom)), vh: innerHeight }; }'''
 # phone checks (keys on touch, thumb-zone controls, zoom, 12 px text, 390 px scroll) are warnings until the
 # phone-first game work lands; flip this to make every phone finding a failure
 PHONE_STRICT = False
@@ -102,7 +113,7 @@ def solo(game, play_ms=1200):
         page.evaluate('__app.start()')
         page.wait_for_function("__app.state().started", timeout=3000)
         page.wait_for_timeout(play_ms)
-        shot(f'{game}-play', running=True)
+        shot(f'{game}-play', running=True, frame=True)
     return run
 
 
@@ -613,6 +624,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--only', default='')
     ap.add_argument('--vp', default='')
+    ap.add_argument('--engine', default='chromium', choices=('chromium', 'webkit'), help='webkit = the Safari engine')
     a = ap.parse_args()
     screens = [s for s in SCREENS if not a.only or s in a.only.split(',')]
     want = {VP_ALIAS.get(v, v) for v in a.vp.split(',') if v}
@@ -626,7 +638,10 @@ def main():
         args = ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--autoplay-policy=no-user-gesture-required']
         browser = None
         # bundled Chromium (CI); some Windows PCs block its exe ("spawn UNKNOWN"), so fall back to installed Edge/Chrome
-        for channel in (None, 'msedge', 'chrome'):
+        if a.engine == 'webkit':
+            browser = pw.webkit.launch()
+            print(f'browser: webkit {browser.version}')
+        for channel in (() if browser else (None, 'msedge', 'chrome')):
             try:
                 browser = pw.chromium.launch(args=args, **({'channel': channel} if channel else {}))
                 print(f'browser: {channel or "bundled chromium"} {browser.version}')
@@ -651,7 +666,7 @@ def main():
 
                 findings = {'fail': [], 'warn': [], 'phone': [], 'fps': []}
 
-                def shot(label, running=False, page=page, vp=vp, shots=shots, findings=findings, name=name):
+                def shot(label, running=False, frame=False, page=page, vp=vp, shots=shots, findings=findings, name=name):
                     # measure only after entrance animations (e.g. dialog pop-in scale) have settled
                     page.wait_for_function("document.getAnimations().every(a => a.playState !== 'running' || a.effect.getTiming().iterations === Infinity)", timeout=3000)
                     res = page.evaluate(CHECKS, VIEWPORTS[vp].get('has_touch', False))
@@ -662,12 +677,20 @@ def main():
                                                           'narrow': VIEWPORTS[vp]['viewport']['width'] <= 390})
                         findings['phone'] += [f'[{label}] {x}' for x in ph]
                         findings['fail' if PHONE_STRICT else 'warn'] += [f'[{label}] phone: {x}' for x in ph]
-                    f = OUT / f'{label}@{vp}.png'
+                    if frame:
+                        fr = page.evaluate(FRAME_JS)
+                        if fr:
+                            FRAMES.setdefault(vp, {})[name] = fr['k']
+                            if fr['ch'] > fr['wh'] * fr['k'] + 2:
+                                findings['fail'].append(f"[{label}] frame: stage {fr['ch']:.0f} px tall, world {fr['wh']} x scale {fr['k']} = {fr['wh'] * fr['k']:.0f}")
+                            if fr['bottom'] > fr['vh'] + 1:
+                                findings['fail'].append(f"[{label}] frame: deck ends at {fr['bottom']:.0f} px, below the window ({fr['vh']} px)")
+                    f = OUT / f'{label}@{vp}{"-wk" if a.engine == "webkit" else ""}.png'
                     # full-page capture resizes the emulated viewport and drops touch emulation for later checks,
                     # so only the hub (its first shot) is captured full length
                     page.screenshot(path=str(f), full_page=(label == 'hub'))
                     shots.append({'label': label, 'file': f.name, 'height': res['height']})
-                    if running:  # frame rate while the game runs (after the screenshot, so the shot shows early play)
+                    if running and a.engine == 'chromium':  # frame rate (CPU throttling is Chromium only) while the game runs (after the screenshot, so the shot shows early play)
                         fr = measure_fps(page)
                         findings['fps'].append({'label': label, **fr})
                         if fr['fps'] < FPS_WARN:
@@ -691,6 +714,12 @@ def main():
                 ctx.close()
         browser.close()
     httpd.shutdown()
+    for vp, ks in FRAMES.items():
+        if len(set(ks.values())) > 1:
+            failed += 1
+            print(f'FAIL  frame    {vp:8} art scale differs between games: ' + ', '.join(f'{g} {k}' for g, k in ks.items()))
+        elif ks:
+            print(f'frame scale {vp}: {next(iter(ks.values()))} ({len(ks)} games)')
     (OUT / 'report.json').write_text(json.dumps(report, ensure_ascii=False, indent=1), encoding='utf-8')
     fr = [(r['screen'], r['viewport'], f) for r in report for f in r['fps']]
     if fr:
