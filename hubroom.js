@@ -339,7 +339,7 @@ const HubRoom = (() => {
 
   /* ---------- drawing the room ---------- */
   function bubble(x, y, text) {
-    ctx.font = '600 12px Kanit,"Leelawadee UI",sans-serif'; const w = Math.min(180, ctx.measureText(text).width + 14), h = 20, bx = Math.max(2, Math.min(W - w - 2, x - w / 2)), by = y - h - 6;
+    ctx.font = '600 12px "IBM Plex Sans Thai","Leelawadee UI",sans-serif'; const w = Math.min(180, ctx.measureText(text).width + 14), h = 20, bx = Math.max(2, Math.min(W - w - 2, x - w / 2)), by = y - h - 6;
     ctx.fillStyle = '#fff'; ctx.strokeStyle = '#2b2140'; ctx.lineWidth = 2; ctx.beginPath(); ctx.roundRect(bx, by, w, h, 8); ctx.fill(); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(x - 4, by + h); ctx.lineTo(x, by + h + 5); ctx.lineTo(x + 4, by + h); ctx.fill();
     ctx.fillStyle = '#2b2140'; ctx.textAlign = 'center'; ctx.fillText(text.length > 28 ? text.slice(0, 27) + '…' : text, bx + w / 2, by + 14); ctx.textAlign = 'start';
@@ -351,7 +351,7 @@ const HubRoom = (() => {
     ctx.save(); ctx.fillStyle = G.sc === 'lobby' || G.sc === 'res' ? 'rgba(255,92,138,.16)' : `hsla(${(t * 90) % 360},80%,65%,.3)`;
     ctx.strokeStyle = 'rgba(255,92,138,.75)'; ctx.setLineDash([6, 4]); ctx.lineWidth = 2;
     ctx.beginPath(); ctx.roundRect(STAGE.x0 * C + 2, STAGE.y0 * C + 2, (STAGE.x1 - STAGE.x0 + 1) * C - 4, (STAGE.y1 - STAGE.y0 + 1) * C - 4, 12); ctx.fill(); ctx.stroke(); ctx.restore();
-    if (G.sc === 'lobby') { ctx.font = '600 12px Kanit,sans-serif'; ctx.fillStyle = 'rgba(214,51,108,.8)'; ctx.textAlign = 'center'; ctx.fillText('🎉 เวทีปาร์ตี้ · กดปุ่ม 🎉 เล่นปาร์ตี้', (STAGE.x0 + STAGE.x1 + 1) / 2 * C, STAGE.y0 * C + 18); ctx.textAlign = 'start'; }
+    if (G.sc === 'lobby') { ctx.font = '600 12px "IBM Plex Sans Thai",sans-serif'; ctx.fillStyle = 'rgba(214,51,108,.8)'; ctx.textAlign = 'center'; ctx.fillText('🎉 เวทีปาร์ตี้ · กดปุ่ม 🎉 เล่นปาร์ตี้', (STAGE.x0 + STAGE.x1 + 1) / 2 * C, STAGE.y0 * C + 18); ctx.textAlign = 'start'; }
     const list = [];
     for (const [n, x, y, lift = 0] of ROOM.items) { const k = kindOf(n), cx = (x + cellsW(n) / 2) * C, im = typeof itemImg === 'function' ? itemImg(n) : n;
       if (k === 'w') drawPixAt(ctx, im, cx, TOP * C - 6, 2); else if (k === 'r') drawPixAt(ctx, im, cx, (y + 1) * C, 2); else list.push({ y: y + 1 + (lift ? .01 : 0), d: () => drawPixAt(ctx, im, cx, (y + 1) * C - lift * 2, 2) }); }
@@ -414,7 +414,7 @@ const HubRoom = (() => {
     if (free) { ctx.fillStyle = '#ffd23f'; for (let i = 0; i < 3; i++) { const a = t * 2 + i * 2.1; ctx.fillRect(x + w / 2 + Math.cos(a) * 26 - 2, by - 50 + Math.sin(a) * 18 - 2, 4, 4); } }
   }
   function tag(x, y, text, mine) {
-    ctx.font = '600 11px Kanit,"Leelawadee UI",sans-serif'; ctx.textAlign = 'center'; ctx.lineWidth = 3; ctx.strokeStyle = '#fff';
+    ctx.font = '600 11px "IBM Plex Sans Thai","Leelawadee UI",sans-serif'; ctx.textAlign = 'center'; ctx.lineWidth = 3; ctx.strokeStyle = '#fff';
     ctx.strokeText(text, x, y); ctx.fillStyle = mine ? '#d6336c' : '#2b2140'; ctx.fillText(text, x, y); ctx.textAlign = 'start';
   }
   function renderLog() {

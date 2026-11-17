@@ -139,7 +139,7 @@ const Village = (() => {
     if (PT.collar && !asleep && a !== 'jump') { const K = PT.collar, hx = x + (pt.face > 0 ? K.r : K.l) * s, hy = y + (a === 'run' || a === 'walk' ? K.ry : K.y) * s;   // collar; party hat with premium food
       ctx.fillStyle = '#e63946'; ctx.fillRect(hx - (pt.face > 0 ? 3 : 0) * s, hy + 4 * s, 3 * s, 1 * s); ctx.fillStyle = '#ffd84d'; ctx.fillRect(hx - (pt.face > 0 ? 2 : -1) * s, hy + 5 * s, 1 * s, 1 * s);
       if (prem) { ctx.fillStyle = '#ff5c8a'; ctx.beginPath(); ctx.moveTo(hx - 2.5 * s, hy); ctx.lineTo(hx + 2.5 * s, hy); ctx.lineTo(hx, hy - 6 * s); ctx.fill(); ctx.fillStyle = '#fff'; ctx.fillRect(hx - 1.5 * s, hy - 3 * s, 3 * s, 1 * s); ctx.fillStyle = '#ffd84d'; ctx.fillRect(hx - s, hy - 7 * s, 2 * s, 2 * s); } }
-    if (asleep) { const k = (t * .55 + (pt.x || 0) * .37) % 1; ctx.save(); ctx.globalAlpha = k < .8 ? 1 - k / .8 : 0; ctx.fillStyle = '#5b6b8c'; ctx.font = `bold ${Math.round(5 * s + k * 3 * s)}px Kanit,Tahoma,sans-serif`; ctx.fillText('z', x + (pt.face < 0 ? 6 : 22) * s + Math.sin(k * 6) * 2 * s, y + 18 * s - k * 12 * s); ctx.restore(); }   // 💤 drifting z
+    if (asleep) { const k = (t * .55 + (pt.x || 0) * .37) % 1; ctx.save(); ctx.globalAlpha = k < .8 ? 1 - k / .8 : 0; ctx.fillStyle = '#5b6b8c'; ctx.font = `bold ${Math.round(5 * s + k * 3 * s)}px "IBM Plex Sans Thai",Tahoma,sans-serif`; ctx.fillText('z', x + (pt.face < 0 ? 6 : 22) * s + Math.sin(k * 6) * 2 * s, y + 18 * s - k * 12 * s); ctx.restore(); }   // 💤 drifting z
     if (tag) { const top = y + 19 * s - (prem && !asleep ? 8 : 2) * s; tags.push([x + cw / 2, top, tag[0], { fs: 10, bg: tag[1], hit: tag[2] }]);
       if (tag[2]) hits.push({ l: x + 4 * s, t: y + 12 * s, w: 24 * s, h: 20 * s, hit: tag[2] }); }
   }
@@ -785,7 +785,7 @@ const Village = (() => {
     return { x: cl((me.x + .5) * T - vw / 2, 0, C * T - vw), y: cl((me.y + .5) * T - vh / 2, 0, R * T - vh) };
   }
   function pill(x, y, text, o = {}) {
-    const fs = (o.fs || 12) * dpr; ctx.font = `600 ${fs}px Kanit, sans-serif`;
+    const fs = (o.fs || 12) * dpr; ctx.font = `600 ${fs}px "IBM Plex Sans Thai", sans-serif`;
     const w = ctx.measureText(text).width + 14 * dpr, h = fs + 9 * dpr, l = x - w / 2, tp = y - h;
     ctx.fillStyle = o.bg || '#fff'; ctx.strokeStyle = o.line || '#3a2a20'; ctx.lineWidth = 2 * dpr;
     ctx.beginPath(); ctx.roundRect(l, tp, w, h, 7 * dpr); ctx.fill(); ctx.stroke();
@@ -819,7 +819,7 @@ const Village = (() => {
   function drawTags() {                           // lowest on screen last; nudge a tag up if it would cover one already drawn
     // the engine's DOM name tags (people) count as already drawn, so canvas pills step around them too
     const done = W && W.tagRects && ctx === ovx ? W.tagRects().map(r => [r[0] * dpr, r[1] * dpr, r[2] * dpr]) : []; tags.sort((a, b) => a[1] - b[1]);
-    for (const [x0, y0, txt, o] of tags) { ctx.font = `600 ${o.fs * dpr}px Kanit, sans-serif`; const w = ctx.measureText(txt).width + 16 * dpr, h = (o.fs + 9) * dpr; let y = y0;
+    for (const [x0, y0, txt, o] of tags) { ctx.font = `600 ${o.fs * dpr}px "IBM Plex Sans Thai", sans-serif`; const w = ctx.measureText(txt).width + 16 * dpr, h = (o.fs + 9) * dpr; let y = y0;
       const x = Math.max(w / 2 + 2 * dpr, Math.min(ctx.canvas.width - w / 2 - 2 * dpr, x0));   // never half off the edge of the map
       for (let k = 0; k < 4; k++) { const hit = done.find(r => Math.abs(r[0] - x) < (r[2] + w) / 2 && Math.abs(r[1] - y) < h); if (!hit) break; y = hit[1] - h - 2 * dpr; }
       done.push([x, y, w]); pill(x, y, txt, o); }
