@@ -35,7 +35,7 @@ PHONE_VPS = ('iphone11', 'narrow', 'iphone-safari', 'narrow-safari')
 FRAMES = {}
 FRAME_JS = '''() => { const f = window.__frame, g = document.querySelector('.g2f'); if (!f || !g) return null;
   const r = g.querySelector('canvas').getBoundingClientRect(), kids = [...g.children].filter(e => !e.classList.contains('overlay') && getComputedStyle(e).position !== 'absolute');
-  return { k: f.L.k, w: f.L.W, h: f.L.H, wh: f.world.h, ch: r.height - 6, bottom: Math.max(...kids.map(e => e.getBoundingClientRect().bottom)), vh: innerHeight }; }'''
+  return { fit: !!f.world.fit, k: f.L.k, w: f.L.W, h: f.L.H, wh: f.world.h, ch: r.height - 6, bottom: Math.max(...kids.map(e => e.getBoundingClientRect().bottom)), vh: innerHeight }; }'''
 # phone checks (keys on touch, thumb-zone controls, zoom, 12 px text, 390 px scroll) are warnings until the
 # phone-first game work lands; flip this to make every phone finding a failure
 PHONE_STRICT = False
@@ -680,8 +680,9 @@ def main():
                     if frame:
                         fr = page.evaluate(FRAME_JS)
                         if fr:
-                            FRAMES.setdefault(vp, {})[name] = fr['k']
-                            if fr['ch'] > fr['wh'] * fr['k'] + 2:
+                            if not fr['fit']:   # a whole-room game (toss) has its own scale
+                                FRAMES.setdefault(vp, {})[name] = fr['k']
+                            if not fr['fit'] and fr['ch'] > fr['wh'] * fr['k'] + 2:
                                 findings['fail'].append(f"[{label}] frame: stage {fr['ch']:.0f} px tall, world {fr['wh']} x scale {fr['k']} = {fr['wh'] * fr['k']:.0f}")
                             if fr['bottom'] > fr['vh'] + 1:
                                 findings['fail'].append(f"[{label}] frame: deck ends at {fr['bottom']:.0f} px, below the window ({fr['vh']} px)")

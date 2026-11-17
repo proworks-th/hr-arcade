@@ -595,6 +595,8 @@ html.touch .g2p>.g2hint.on,html.touch .g2t.g2p.held>.g2hint{border-style:solid;b
   display:grid;place-items:center;text-align:center;font-size:15px;color:var(--muted);overflow:hidden}
 .g2f>.g2hint.on,.g2f.held>.g2hint{border-style:solid;border-color:var(--line);background:#fff3c4;color:var(--ink);font-weight:600}
 .g2f>.toss-pad{cursor:grab}
+.g2f>.toss-pad.grow{flex:1 1 auto;height:auto;min-height:calc(var(--b) * 1.6)}
+.g2f>.toss-pad.on{border-style:solid;border-color:var(--line);background:#fff3c4;color:var(--ink);font-weight:600}
 /* barista / prism: deck rows under a playfield that keeps its own top */
 html.touch .g2t-barista>.g2box{align-items:flex-start}
 html.touch .g2t-prism>.g2box{align-items:flex-end}
@@ -768,7 +770,7 @@ html.touch #hub .vil-bar{flex-wrap:wrap;white-space:normal;overflow:visible}html
 <div id="rotOv" role="alert"><div><b>หมุนโทรศัพท์ตั้งขึ้น</b><span class="muted">เกมหยุดรอไว้ก่อน หมุนกลับแล้วกดเล่นต่อ</span></div></div>
 
 <script src="phone.js?v=1"></script>
-<script src="solo-games.js?v=20"></script>
+<script src="solo-games.js?v=22"></script>
 <script src="dungeon/data.js?v=2"></script>
 <script src="dungeon/engine.js?v=2"></script>
 <script src="dungeon/gen.js?v=1"></script>

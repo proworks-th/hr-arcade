@@ -55,7 +55,8 @@ function g2info(root, rule) {
   return el;
 }
 // g2canvas, plus two other layouts:
-//   world given ({ min, max, h } in art px, rule = the info card's line): the frame above, on every window and device
+//   world given ({ min, max, h } in art px, rule = the info card's line): the frame above, on every window and device;
+//   or { fit: [u, v], cap }: a room of u x v units always shown whole, L.g = CSS px per unit (at most cap), L.k = 3 x L.g
 //   no world: a portrait layout on phones held upright (PRD 7.3) that fills the play area; elsewhere the fixed W x H scene
 // Both new layouts set L.portrait, draw at 1 unit = 1 CSS px (backing store at devicePixelRatio) and use L.k as the
 // pixel-art scale. L.fn() runs after every change (rotation, resize, the hand setting).
@@ -76,24 +77,28 @@ function g2view(root, W, H, world, rule) {
     let used = px(root, 'paddingTop') + px(root, 'paddingBottom');
     for (const c of root.children) {
       if (c === box || c === info || c.classList.contains('overlay') || getComputedStyle(c).position === 'absolute') continue;
-      used += c.offsetHeight + px(c, 'marginTop') + px(c, 'marginBottom');
+      // a growing deck (toss's pull pad) takes what is left after the stage: count its minimum only
+      used += (c.classList.contains('grow') ? px(c, 'minHeight') : c.offsetHeight) + px(c, 'marginTop') + px(c, 'marginBottom');
     }
     if (info) used += px(info, 'marginTop') + px(info, 'marginBottom');
     const ah = root.clientHeight - used - 6, s = frameScale(aw - 6, ah);
-    const w = Math.round(Math.max(Math.min(aw - 6, world.max * s), Math.min(aw - 6, world.min * s))), h = Math.round(world.h * s);
+    let w, h, g = 0;
+    if (world.fit) {   // the whole room, always (toss): its u x v units scaled to the width or the height, whichever is smaller
+      const [u, v] = world.fit; g = Math.min((aw - 6) / u, ah / v, world.cap || 1.6); w = Math.round(u * g); h = Math.round(v * g);
+    } else { w = Math.round(Math.max(Math.min(aw - 6, world.max * s), Math.min(aw - 6, world.min * s))); h = Math.round(world.h * s); }
     root.style.setProperty('--fw', (w + 6 + px(root, 'paddingLeft') + px(root, 'paddingRight')) + 'px');
     box.style.cssText = 'flex:none;height:auto;margin-top:auto;container-type:normal;display:flex;justify-content:center';
     cv.style.cssText = `width:${w}px;height:${h}px;max-height:none;aspect-ratio:auto;box-sizing:content-box`;
     // the info card keeps its own small size; the space left over sits between it and the stage. Short on height
     // (a laptop): one line, best score and rule side by side; no room at all: an empty gap
     if (info) { const free = ah + 6 - (h + 6) - 12; info.classList.toggle('one', free >= 46 && free < 80); info.classList.toggle('tiny', free < 46); }
-    return { w, h, s };
+    return { w, h, s: g ? 3 * g : s, g };
   }
   function apply(fromObserver) {
     if (!root.isConnected && L.fn) return stop();
     const left = phoneOn() && Phone.left();
     let p, w, h, k;
-    if (world) { ({ w, h, s: k } = fit()); p = true; }
+    if (world) { let g; ({ w, h, s: k, g } = fit()); L.g = g; p = true; }
     else {
       p = tall();
       if (!fromObserver) root.classList.toggle('g2p', p);   // the class only from window events: no ResizeObserver loop
@@ -914,7 +919,7 @@ function tossGame(root, api) {
   const W = 720, H = 420, G = 900, THROWS = 10, R = 11, START = { x: 100, y: 300 };
   let FLOOR = 372;
   root.innerHTML = `<div class="hud"><span>🗑️ ลงถัง <b data-k="mk">0</b>/<b data-k="th">0</b></span><span>เหลือ <b data-k="left">10</b> ลูก</span><span>⭐ <b data-k="sc">0</b></span><span data-k="st" class="muted"></span><span class="muted g2tip">ลากลูกบอลถอยหลังแล้วปล่อย · หรือ ←→ เล็ง + กด Space ค้างเพื่อออกแรง</span></div>`;
-  const { cv, ctx, at, L } = g2view(root, W, H, { min: 187, max: 300, h: 160 }, 'ลงถังติดกันได้คะแนนเพิ่ม · ลงกลางถังไม่โดนขอบ ได้ลูกฟรี'), q = k => root.querySelector(`[data-k="${k}"]`), fx = makeFX();
+  const { cv, ctx, at, L } = g2view(root, W, H, { fit: [W, H], cap: 1.6 }, 'ลงถังติดกันได้คะแนนเพิ่ม · ลงกลางถังไม่โดนขอบ ได้ลูกฟรี'), q = k => root.querySelector(`[data-k="${k}"]`), fx = makeFX();
   let ball = null, drag = null, wind = 0, throws = 0, made = 0, score = 0, streak = 0, running = false, over = false, binX = 520, aim = -.9, power = 0, charging = false, t = 0, rimHit = false; let bonusT = 0;
   let fanA = 0, binSq = 0, throwSq = 0, trail = [], streaks = [];
   const BIN_K = 6, who = pick(rnd, MI_PEOPLE);
@@ -928,7 +933,7 @@ function tossGame(root, api) {
   // pull the shot back from the bottom, so the arc uses the full height. The bin is 1.5x wider there: a high lob is
   // a smaller target than the wide scene's flat throw, and this keeps the target the same size in pull space
   function layout() {
-    if (!L.portrait) { P = null; VS = 1; WW = W; FLOOR = 372; START.x = 100; START.y = 300; BIN_W = 54; BIN_H = 78; BIN_B = FLOOR;
+    if (!L.portrait || L.frame) { P = null; VS = 1; WW = W; FLOOR = 372; START.x = 100; START.y = 300; BIN_W = 54; BIN_H = 78; BIN_B = FLOOR;
       binBase = 520; binA = 90; LF = 5.2; PULL = 1.25; stY0 = 90; stYR = 230; }
     else {
       // frame: 3 world units per art pixel, so the room is 480 units tall like the portrait one and the bin, pull and arc
@@ -969,7 +974,7 @@ function tossGame(root, api) {
     hud(); ball = null;
     if (throws >= THROWS + bonusT) { over = true; running = false; api.after(1.2, () => api.end(score, `ลงถัง ${made}/${throws}`, false, { made })); } else api.after(.9, newThrow);
   }
-  cv.addEventListener('pointerdown', e => { if (P || !ball || ball.fly) return; const p = at(e); if (Math.hypot(p.x - ball.x, p.y - ball.y) < 60) { drag = p; cv.setPointerCapture(e.pointerId); } });
+  cv.addEventListener('pointerdown', e => { if (P || L.frame || !ball || ball.fly) return; const p = at(e); if (Math.hypot(p.x - ball.x, p.y - ball.y) < 60) { drag = p; cv.setPointerCapture(e.pointerId); } });
   cv.addEventListener('pointermove', e => { if (drag) drag = at(e); });
   const release = () => { if (!drag || !ball) { drag = null; return; } const dx = START.x - drag.x, dy = START.y - drag.y, l = Math.min(150, Math.hypot(dx, dy)), a = Math.atan2(dy, dx); drag = null;
     if (l > 15) launch(Math.cos(a) * l * LF, Math.sin(a) * l * LF); };
@@ -977,7 +982,33 @@ function tossGame(root, api) {
   // phone: a slingshot pad in the lower part of the screen — thumb down anywhere on it, pull back, let go.
   // The pull (screen px x 1.25, max 150) is the same vector as dragging the ball itself.
   const phone = g2phone(root, 'toss', true);
-  if (phone) {
+  // ---- frame controls (owner, 17 Nov 2026: the old toss back, with a better controller): put the thumb or the mouse
+  // down anywhere on the room or the pad and pull back; the pull is measured from where you pressed, not from the
+  // ball, so you never have to hit a small ball. PULLF world units per CSS px of pull, the same on every screen
+  // (full power at 110 px). Letting go close to where you pressed throws nothing. Keys work as before.
+  const PULLF = 150 / 110;
+  if (L.frame) {
+    const pad = document.createElement('div'); pad.className = 'g2zone toss-pad grow';
+    const padTxt = () => onTouch('วางนิ้วตรงไหนก็ได้ ลากถอยหลังแล้วปล่อย = ปา', 'กดเมาส์ตรงไหนก็ได้ ลากถอยหลังแล้วปล่อย = ปา · หรือ ← → เล็ง แล้วกด Space ค้าง');
+    pad.innerHTML = `<span>${padTxt()}</span>`; root.appendChild(pad); const lab = pad.firstChild;
+    let pull = null;
+    const toDragF = e => { const dx = (e.clientX - pull.x) * PULLF, dy = (e.clientY - pull.y) * PULLF, l = Math.hypot(dx, dy), m = l > 150 ? 150 / l : 1;
+      return { x: START.x + dx * m, y: START.y + dy * m }; };
+    const show = () => { if (!pull || !drag) { pad.classList.remove('on'); lab.textContent = padTxt(); return; }
+      const l = Math.min(150, Math.hypot(START.x - drag.x, START.y - drag.y)); pad.classList.add('on');
+      lab.textContent = l > 15 ? `แรง ${Math.round(l / 1.5)}% · ปล่อย = ปา` : 'ลากถอยหลัง (ปล่อยตรงนี้ = ยกเลิก)'; };
+    const end = () => { pull = null; drag = null; show(); };
+    root.addEventListener('pointerdown', e => {
+      if (!freePress(e) || e.target.closest('.hud, .g2info') || pull) return;
+      e.preventDefault(); if (!running || !ball || ball.fly || api.paused) return;
+      pull = { id: e.pointerId, x: e.clientX, y: e.clientY }; try { root.setPointerCapture(e.pointerId); } catch (er) {}
+      drag = { x: START.x, y: START.y }; show(); });
+    root.addEventListener('pointermove', e => { if (!pull || e.pointerId !== pull.id) return; drag = toDragF(e); show(); });
+    root.addEventListener('pointerup', e => { if (!pull || e.pointerId !== pull.id) return; drag = toDragF(e); pull = null; release(); show(); });
+    root.addEventListener('pointercancel', e => { if (pull && e.pointerId === pull.id) end(); });
+    root.addEventListener('lostpointercapture', e => { if (pull && e.pointerId === pull.id) end(); });
+  }
+  if (phone && !L.frame) {
     const zone = document.createElement('div'); zone.className = 'g2zone toss-pad';
     zone.innerHTML = '<span>' + onTouch('ลากนิ้วถอยหลังแล้วปล่อย = ปา', 'ลากเมาส์ถอยหลังแล้วปล่อย = ปา · หรือ ← → เล็ง แล้วกด Space ค้าง') + '</span><i class="o"></i><i class="ln"></i><i class="k"></i>'; root.appendChild(zone);
     const [o, ln, kn] = zone.querySelectorAll('i'); let pull = null;
@@ -1007,6 +1038,11 @@ function tossGame(root, api) {
   addEventListener('keyup', up);
   function draw() {
     if (P) return drawP();
+    if (L.frame) { ctx.save(); ctx.scale(L.g, L.g); drawW(); ctx.restore(); return; }
+    drawW();
+  }
+  // the wide room, in its own 720 x 420 units
+  function drawW() {
     fx.pre(ctx);
     officeBG(ctx, W, H, FLOOR, { wall: 'wall_beige', windows: [['window_big', 285, 40, 4]] });
     drawPixAt(ctx, 'bookshelf', 672, FLOOR, 3); drawPixAt(ctx, 'plant_pot', 210, FLOOR, 3); drawPixAt(ctx, 'board_calendar', 560, 150, 3);
@@ -1016,7 +1052,7 @@ function tossGame(root, api) {
     ctx.save(); ctx.translate(fx0, fy); ctx.beginPath(); ctx.arc(0, 0, 22, 0, 7); ctx.fillStyle = '#fff'; ctx.fill(); ctx.lineWidth = 3; ctx.strokeStyle = PAL.ink; ctx.stroke();
     ctx.rotate(fanA); ctx.fillStyle = '#4cc3ff'; for (let i = 0; i < 3; i++) { ctx.rotate(Math.PI * 2 / 3); ctx.beginPath(); ctx.ellipse(0, -10, 6, 10, 0, 0, 7); ctx.fill(); }
     ctx.fillStyle = PAL.ink; ctx.beginPath(); ctx.arc(0, 0, 4, 0, 7); ctx.fill(); ctx.restore();
-    const wl = Math.round(Math.abs(wind) * 5); txt(ctx, wind === 0 ? 'ลม: นิ่ง' : `ลม: ${wind > 0 ? '→'.repeat(wl || 1) : '←'.repeat(wl || 1)}`, 472, 50, 16, PAL.blue, 'left', 700);
+    const wl = Math.round(Math.abs(wind) * 5); txt(ctx, wind === 0 ? 'ลม: นิ่ง' : `ลม: ${wind > 0 ? '→'.repeat(wl || 1) : '←'.repeat(wl || 1)}`, 472, 50, L.frame ? Math.max(16, 13 / L.g) : 16, PAL.blue, 'left', 700);   // 13 px or more in the frame
     // bin (pixel sprite) with a happy squash when something lands in it
     drawPixAt(ctx, 'bin', binX, FLOOR, BIN_K, { sx: 1 + binSq * .15, sy: 1 - binSq * .15 });
     // thrower at a desk
@@ -1029,9 +1065,17 @@ function tossGame(root, api) {
       ctx.fillStyle = 'rgba(43,33,64,.35)'; let x = ball.x, y = ball.y, wx = vx, wy = vy;
       for (let i = 0; i < 9; i++) { for (let k = 0; k < 4; k++) { wx += wind * 220 * .02; wy += G * .02; x += wx * .02; y += wy * .02; } ctx.fillRect(Math.round(x) - 3, Math.round(y) - 3, 6, 6); }
       if (charging) { rrect(ctx, 30, 200, 14, 100, 4, '#fff', PAL.ink); rrect(ctx, 31, 299 - power * 98, 12, power * 98, 3, power > .85 ? PAL.red : PAL.pink); }
+      // pulling: the same meter shows the pull's strength
+      if (drag) { const pl = Math.min(150, Math.hypot(START.x - drag.x, START.y - drag.y)) / 150;
+        rrect(ctx, 30, 200, 14, 100, 4, '#fff', PAL.ink); rrect(ctx, 31, 299 - pl * 98, 12, pl * 98, 3, pl > .85 ? PAL.red : PAL.pink); }
     }
     for (const [i, p] of trail.entries()) { ctx.globalAlpha = i / trail.length * .4; ctx.fillStyle = '#fff'; ctx.fillRect(p.x - 4, p.y - 4, 8, 8); } ctx.globalAlpha = 1;
-    if (ball) { const j = charging ? (rnd() - .5) * power * 4 : 0; drawPixAt(ctx, pxa('ball'), ball.x + j, ball.y + 10.5, 3, { rot: ball.rot }); }
+    // the ball pulled back on a band while you aim (a fifth of the pull, so it stays by the hand)
+    if (ball) { let bx = ball.x, by = ball.y;
+      if (drag && !ball.fly) { const dx = START.x - drag.x, dy = START.y - drag.y, hh = Math.hypot(dx, dy), q = hh ? Math.min(150, hh) * .22 / hh : 0;
+        bx = START.x - dx * q; by = START.y - dy * q;
+        ctx.strokeStyle = '#b3203a'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(START.x - 14, START.y + 4); ctx.lineTo(bx, by); ctx.lineTo(START.x + 14, START.y + 4); ctx.stroke(); }
+      const j = charging ? (rnd() - .5) * power * 4 : 0; drawPixAt(ctx, pxa('ball'), bx + j, by + 10.5, 3, { rot: ball.rot }); }
     fx.post(ctx, W, H);
   }
   // ---- portrait scene
@@ -1117,7 +1161,9 @@ function tossGame(root, api) {
   layout(); hud(); draw();
   if (window.__TEST__) window.__toss = { get: () => ({ START, binX, BIN_B, BIN_W, BIN_H, wind, WW, FLOOR, VS, PULL, LF, made, throws, score, fly: !!(ball && ball.fly) }) };
   api.intro({ how: `<p>🗑️ ปากระดาษก้อนลงถังให้ได้มากที่สุดใน ${THROWS} ลูก · <b>SWISH</b> (ลงไม่โดนขอบ) ได้ลูกฟรี +1 (สูงสุด 5 ลูก)</p>
-      ${phoneOn() ? '<p>👆 วางนิ้วบน<b>แผ่นด้านล่าง</b> ลากถอยหลังเหมือนหนังสติ๊กแล้วปล่อย (หรือลากที่ลูกบอลก็ได้) · ลากยาว = แรงขึ้น</p>'
+      ${L.frame ? (phoneOn() ? '<p>👆 <b>วางนิ้วตรงไหนก็ได้</b> ลากถอยหลังเหมือนหนังสติ๊กแล้วปล่อย · ลากยาว = แรงขึ้น · ปล่อยตรงจุดเดิม = ยกเลิก</p>'
+          : '<p>🖱️ <b>กดเมาส์ตรงไหนก็ได้</b> ลากถอยหลังเหมือนหนังสติ๊กแล้วปล่อย · ลากยาว = แรงขึ้น · หรือ <b>← →</b> เล็ง แล้ว <b>กด Space ค้าง</b> เพื่อออกแรง</p>')
+        : phoneOn() ? '<p>👆 วางนิ้วบน<b>แผ่นด้านล่าง</b> ลากถอยหลังเหมือนหนังสติ๊กแล้วปล่อย (หรือลากที่ลูกบอลก็ได้) · ลากยาว = แรงขึ้น</p>'
         : P ? '<p>🖱️ กดเมาส์บน<b>แผ่นด้านล่าง</b> ลากถอยหลังเหมือนหนังสติ๊กแล้วปล่อย · หรือ <b>← →</b> เล็ง แล้ว <b>กด Space ค้าง</b> เพื่อออกแรง</p>'
         : '<p>🖱️ <b>ลากลูกบอลถอยหลัง</b> เหมือนหนังสติ๊กแล้วปล่อย · หรือ <b>← →</b> เล็ง แล้ว <b>กด Space ค้าง</b> เพื่อออกแรง</p>'}
       <p>🌬️ ดูลมจากพัดลม${P ? 'ด้านข้าง' : 'ด้านบน'}ด้วย · ลงถังไม่โดนขอบ = <b>SWISH</b> +50 · ครึ่งหลังถังจะเลื่อนไปมา</p>`,
