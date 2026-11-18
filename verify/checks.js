@@ -38,13 +38,22 @@
   if (touch) for (const el of inter) { const r = el.getBoundingClientRect(); if (r.width < 44 || r.height < 44) fail.push(`tap target ${Math.round(r.width)}x${Math.round(r.height)} < 44x44: ${label(el)}`); }
 
   // 6. overlapping / covered controls (content scrolled under a sticky bar — the page header, the basket sell bar — is fine)
+  // Only the part a player can see counts: a control scrolled out of its panel (the farm shop list, the pet card) is clipped
+  // by that panel and can't overlap or be covered (18 Nov 2026: those hidden rects were reported as overlaps).
+  const shown = el => { const r = el.getBoundingClientRect(); let L = r.left, T = r.top, R = r.right, B = r.bottom;
+    if (getComputedStyle(el).position !== 'fixed') for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
+      const s = getComputedStyle(p); if (s.position === 'fixed') break;
+      const cx = !['visible', ''].includes(s.overflowX), cy = !['visible', ''].includes(s.overflowY); if (!cx && !cy) continue;
+      const q = p.getBoundingClientRect(); if (cx) { L = Math.max(L, q.left); R = Math.min(R, q.right); } if (cy) { T = Math.max(T, q.top); B = Math.min(B, q.bottom); } }
+    return { left: L, top: T, right: R, bottom: B, width: R - L, height: B - T }; };
   const STICKY = 'header.top, .bag-bar';
-  for (let i = 0; i < inter.length; i++) {
-    const a = inter[i], ra = a.getBoundingClientRect();
-    for (let j = i + 1; j < inter.length; j++) {
-      const b = inter[j]; if (a.contains(b) || b.contains(a)) continue;
+  const seen = inter.map(el => [el, shown(el)]).filter(([, r]) => r.width > 4 && r.height > 4);
+  for (let i = 0; i < seen.length; i++) {
+    const [a, ra] = seen[i];
+    for (let j = i + 1; j < seen.length; j++) {
+      const [b, rb] = seen[j]; if (a.contains(b) || b.contains(a)) continue;
       if (!a.closest(STICKY) !== !b.closest(STICKY)) continue;
-      const rb = b.getBoundingClientRect(), ox = Math.min(ra.right, rb.right) - Math.max(ra.left, rb.left), oy = Math.min(ra.bottom, rb.bottom) - Math.max(ra.top, rb.top);
+      const ox = Math.min(ra.right, rb.right) - Math.max(ra.left, rb.left), oy = Math.min(ra.bottom, rb.bottom) - Math.max(ra.top, rb.top);
       if (ox > 4 && oy > 4) fail.push(`controls overlap: ${label(a)} × ${label(b)}`);
     }
     const cx = ra.left + ra.width / 2, cy = ra.top + ra.height / 2;
