@@ -382,7 +382,8 @@ furnish = function furnish(r) {
     P('city', 70, 9, 2); P('city', 71, 0, 5); rug('#4cc3ff', 1, 4, 3, 2); }
   if (r.kind === 'arcade') { lampW(1); lampW(7); rug('#ff6fa8', 1, 8, 8, 1);
     // 13 Nov 2026: 10 x 9 hall so it fits a phone at zoom 2 — three rows of cabinets with aisles between (stand on the row below a cabinet)
-    const SP = [[2, 2], [4, 2], [6, 2], [1, 4], [3, 4], [5, 4], [7, 4], [1, 6], [3, 6], [5, 6], [7, 6]];
+    // 18 Nov 2026: 12th spot at the far right of row 2, added last so the other cabinets keep their places (ซ้อนแฟ้มเสียดฟ้า had no cabinet, so it could not be played)
+    const SP = [[2, 2], [4, 2], [6, 2], [1, 4], [3, 4], [5, 4], [7, 4], [1, 6], [3, 6], [5, 6], [7, 6], [9, 4]];
     r.mach = []; H.games().slice(0, SP.length).forEach((gm, i) => { const x = X + SP[i][0], y = Y + SP[i][1], M = { id: gm.id, x, y }; r.mach.push(M); setBlk(x, y, 1);
       add(y * T + 14, (g, t) => drawCab(g, gm, x * T, y * T, t)); });
     r.board = [X + 8, Y + 2]; setBlk(X + 8, Y + 2, 1); add((Y + 2) * T + 14, g => drawTrophy(g, (X + 8) * T, (Y + 2) * T));
@@ -1238,7 +1239,8 @@ return { me, held, C, R,
   // board deliveries (village.js) also use vegetables harvested here: count / take '<crop>' from the bag
   bagN: id => count(BAG, id), bagTake(id, n) { if (count(BAG, id) < n) return false; takeFrom(BAG, id, n); save(); hud(); return true; },
   arcade: { room: arcRoom, walk(id, cb) { const r = arcRoom(); if (!r) return false; const M = r.mach.find(m => m.id === id); warpArc();
-    if (M) playAt(M, cb); else { closeCard(); me.after = null; travel(me, r.entry); } return true; },
+    if (M) playAt(M, cb); else if (id && H.games().some(g => g.id === id)) { closeCard(); H.play(id); }   // a game without a cabinet still starts
+    else { closeCard(); me.after = null; travel(me, r.entry); } return true; },
     to(what, cb) { const r = arcRoom(); if (!r || !r[what]) return false; warpArc(); playAt({ x: r[what][0], y: r[what][1], st: what === 'alist' ? [r[what][0] - 1, r[what][1]] : null }, cb); return true; } }, get G() { return G; }, get block() { return block; }, get ctx() { return ctx; }, ov: SR.getElementById('ov'),
   travel: c => { closeCard(); me.after = null; travel(me, c); }, place: c => place(me, c), warp: c => { closeCard(); warp(c); }, warpArc: () => { closeCard(); return warpArc(); },
   pos: () => cellOf(me), walkable: (x, y) => walkable(x, y), get ride() { return riding(me); }, rideMul: k => RIDES[k]?.[2] || 1,

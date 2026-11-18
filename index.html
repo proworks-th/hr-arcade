@@ -12,7 +12,7 @@
 <link rel="preload" href="assets/fonts/plexthai-thai-600.woff2" as="font" type="font/woff2" crossorigin>
 <script>/* canvas text needs the faces loaded before it draws */if(document.fonts){for(const w of [400,600,700])document.fonts.load(w+" 16px 'IBM Plex Sans Thai'","กA1");document.fonts.load("500 16px 'Pixelify Sans'","1")}</script>
 <style>
-:root{/* mapped onto tokens.css (17 Nov 2026); old names kept so every screen picks the new colors up */--bg:var(--t-bg);--ink:var(--t-ink);--card:var(--t-surface);--line:var(--t-ink);--pri:var(--t-main);--yel:var(--t-main-soft);--ok:var(--t-main);--bad:var(--t-bad);--blue:var(--t-main-dark);--muted:var(--t-muted);
+:root{/* mapped onto tokens.css (17 Nov 2026); old names kept so every screen picks the new colors up */--bg:var(--t-bg);--ink:var(--t-ink);--card:var(--t-surface);--line:var(--t-ink);--pri:var(--t-main);--yel:var(--t-main-soft);--ok:var(--t-main);--bad:var(--t-bad);--blue:var(--t-main-dark);--muted:var(--t-muted);--pink:var(--t-main);/* badges + dots (ตะกร้า count, gacha/cloud dots) used --pink, which was never set here, so they were see-through (18 Nov 2026) */
   --emoji:"Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif}
 *{box-sizing:border-box}
 html,body{margin:0;min-height:100%}
@@ -789,7 +789,7 @@ html.touch #hub .vil-bar{flex-wrap:wrap;white-space:normal;overflow:visible}html
 <script src="gacha.js?v=4"></script>
 <script src="hubroom.js?v=12"></script>
 <script src="tower.js?v=12"></script>
-<script src="village-world.js?v=22"></script>
+<script src="village-world.js?v=23"></script>
 <script src="village.js?v=39"></script>
 <script src="farm.js?v=14"></script>
 <script src="cloud.js?v=12"></script>
