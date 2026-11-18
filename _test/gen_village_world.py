@@ -28,7 +28,7 @@ def cut(a, b, keep_b=True, repl=''):
 
 # ---------------- CSS / HTML ----------------
 css = css.replace(':root{', ':host{')
-css = re.sub(r'html,body\{[^}]*\}', ':host{position:absolute;inset:0;z-index:1;display:block;overflow:hidden;background:#1b1422;font-family:Kanit,"Leelawadee UI",Tahoma,sans-serif;color:var(--ink);font-size:14px;line-height:1.4}', css)
+css = re.sub(r'html,body\{[^}]*\}', ':host{position:absolute;inset:0;z-index:1;display:block;overflow:hidden;background:#1b1422;font-family:var(--t-font,Tahoma,sans-serif);color:var(--ink);font-size:14px;line-height:1.4}', css)
 css += '\n#ov{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}\n#clock input,#clock button{display:none}\n#clock{padding:3px 12px}\n'
 assert '<small style="font-weight:400;color:var(--muted)">· ตัวอย่าง 2</small>' in body
 body = body.replace(' <small style="font-weight:400;color:var(--muted)">· ตัวอย่าง 2</small>', '')
@@ -75,7 +75,7 @@ rep("""  L.garden = gCells(L);   // real plots (added with the farm plots below)
   const fN = L.stage === 4 && L.building ? 3 : 5;
   for (let i = 0; i < fN; i++) fence(X + 5 + i, Y + 3, i === 0 ? 0 : i === 4 ? 2 : 1);""",
 """  L.garden = [];   // the live farm's beds (same cells as farm.js plots); crops drawn from the real save, tap = the lot card
-  for (let i = 0; i < L.gN; i++) { const [x, y] = H.gCell(L.live, i); L.garden.push([x, y]); block[y][x] = 1;
+  for (let i = 0; i < L.gN; i++) { const [x, y] = H.gCell(L.live, i); L.garden.push([x, y]); setBlk(x, y, 1);
     const p = { x, y, o: 'home', c: null, w: 0, fw: [] }; BED_AT.set(x + ',' + y, p);
     add(y * T + 14, g => { drawSoil(g, p, x * T, y * T); H.drawCrop(g, L.live, i, x * T, y * T); }); }
   if (L.garden.every(c => c[1] < Y + 3)) { const fN = L.stage === 4 && L.building ? 3 : 5;
@@ -100,14 +100,14 @@ rep("  if (r.kind === 'barn') {", """  if (r.kind === 'arcade') { lampW(1); lamp
     // 13 Nov 2026: 10 x 9 hall so it fits a phone at zoom 2 — three rows of cabinets with aisles between (stand on the row below a cabinet)
     // 18 Nov 2026: 12th spot at the far right of row 2, added last so the other cabinets keep their places (ซ้อนแฟ้มเสียดฟ้า had no cabinet, so it could not be played)
     const SP = [[2, 2], [4, 2], [6, 2], [1, 4], [3, 4], [5, 4], [7, 4], [1, 6], [3, 6], [5, 6], [7, 6], [9, 4]];
-    r.mach = []; H.games().slice(0, SP.length).forEach((gm, i) => { const x = X + SP[i][0], y = Y + SP[i][1], M = { id: gm.id, x, y }; r.mach.push(M); block[y][x] = 1;
+    r.mach = []; H.games().slice(0, SP.length).forEach((gm, i) => { const x = X + SP[i][0], y = Y + SP[i][1], M = { id: gm.id, x, y }; r.mach.push(M); setBlk(x, y, 1);
       add(y * T + 14, (g, t) => drawCab(g, gm, x * T, y * T, t)); });
-    r.board = [X + 8, Y + 2]; block[Y + 2][X + 8] = 1; add((Y + 2) * T + 14, g => drawTrophy(g, (X + 8) * T, (Y + 2) * T));
+    r.board = [X + 8, Y + 2]; setBlk(X + 8, Y + 2, 1); add((Y + 2) * T + 14, g => drawTrophy(g, (X + 8) * T, (Y + 2) * T));
     // 🎰 gacha machine + 🎉 party room door (12 Nov 2026: ห้องรวม moved here — the door opens the party room)
-    r.gacha = [X, Y + 2]; block[Y + 2][X] = 1; add((Y + 2) * T + 14, (g, t) => drawGachaM(g, X * T, (Y + 2) * T, t));
-    r.party = [X + 9, Y + 2]; block[Y + 2][X + 9] = 1; add((Y + 2) * T + 14, (g, t) => drawPartyDoor(g, (X + 9) * T, (Y + 2) * T, t));
+    r.gacha = [X, Y + 2]; setBlk(X, Y + 2, 1); add((Y + 2) * T + 14, (g, t) => drawGachaM(g, X * T, (Y + 2) * T, t));
+    r.party = [X + 9, Y + 2]; setBlk(X + 9, Y + 2, 1); add((Y + 2) * T + 14, (g, t) => drawPartyDoor(g, (X + 9) * T, (Y + 2) * T, t));
     // 📋 the game list sign, right next to where you walk in
-    r.alist = [X + 6, Y + 8]; block[Y + 8][X + 6] = 1; add((Y + 8) * T + 14, g => drawListSign(g, (X + 6) * T, (Y + 8) * T)); }
+    r.alist = [X + 6, Y + 8]; setBlk(X + 6, Y + 8, 1); add((Y + 8) * T + 14, g => drawListSign(g, (X + 6) * T, (Y + 8) * T)); }
   if (r.kind === 'barn') {""")
 # arcade cabinet + trophy board, drawn live (featured glow pulses, screen flickers)
 rep("/* ============ ground, painted once ============ */", """function drawCab(g, gm, x, y, t) {

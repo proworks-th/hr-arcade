@@ -34,15 +34,22 @@ const kt = (sh, id) => ktc[sh + id] ??= (() => { const s = K[sh], cols = s.width
 function tiles(sh, rows) { const c = mk(Math.max(...rows.map(r => r.length)) * 16, rows.length * 16), g = c.getContext('2d');
   rows.forEach((r, y) => r.forEach((id, x) => { if (id != null) g.drawImage(kt(sh, id), x * 16, y * 16); })); return c; }
 
-let T, VC, VR, RX0, C, R, O, rnd, ri, grid, G, block, res, setG, rect, PARK, POND, TOWER, BOARD, WELL, STAGE_TH, ROOFS, ROOF_IN, WALLS, WALL_IN, LOTS, MY, BED_AT, ROOMS, ROOM, makeRoom, sceneOf, ga, alphaAt, qStats, WANT, QPICK, grassAt, hexRGB, paint, cottageRaw, bigRaw, houseCache, isBig, hasHouse, houseFor, sprite, SIGN, STAKE, JAR, LANTERN, BOARD_S, WELL_S, LAMP, SCAFF, FOUND, BRICKS, tower, STALL, BED, SOFA, COUNTER, COFFEE, RACK, MIRROR, FRAME, MENU, WLAMP, RUG, BUNT, skyAt, objs, glows, places, add, MAPLE, tree, fence, at, put, putS, bunting, G_ORDER, gCells, flower, lot, cityB, BUILDINGS, building, SALA, BED_F, LANE_W, LANE_E, ROAD_X0, ROAD_X1, CARS, barn, BARN, ANIM, PLOTS, CHEST_S, inLot, free, furnish, drawCab, drawListSign, drawGachaM, drawPartyDoor, drawTrophy, ground;
+let T, VC, VR, RX0, C, R, O, rnd, ri, WX0, WY0, inW, grid, G, block, res, gAt, setG, blk, setBlk, resAt, setRes, rect, PARK, POND, TOWER, BOARD, WELL, STAGE_TH, ROOFS, ROOF_IN, WALLS, WALL_IN, LOTS, MY, BED_AT, ROOMS, ROOM, makeRoom, sceneOf, ga, alphaAt, qStats, WANT, QPICK, grassAt, hexRGB, paint, cottageRaw, bigRaw, houseCache, isBig, hasHouse, houseFor, sprite, SIGN, STAKE, JAR, LANTERN, BOARD_S, WELL_S, LAMP, SCAFF, FOUND, BRICKS, tower, STALL, BED, SOFA, COUNTER, COFFEE, RACK, MIRROR, FRAME, MENU, WLAMP, RUG, BUNT, skyAt, objs, glows, places, add, MAPLE, tree, fence, at, put, putS, bunting, G_ORDER, gCells, flower, lot, cityB, BUILDINGS, building, SALA, BED_F, LANE_W, LANE_E, ROAD_X0, ROAD_X1, CARS, barn, BARN, ANIM, PLOTS, CHEST_S, inLot, free, furnish, drawCab, drawListSign, drawGachaM, drawPartyDoor, drawTrophy, ground;
 function buildWorld() {
 /* ============ world grid: the live 48×34 village, grown to 72×48, plus a strip of rooms off to the right ============ */
 T = 16, VC = 72, VR = 48, RX0 = 76, C = RX0 + 8 * 16, R = VR, O = '#3b2316';
 rnd = (s => () => (s = s * 16807 % 2147483647) / 2147483647)(7);
 ri = n => Math.floor(rnd() * n);
-grid = v => Array.from({ length: R }, (_, y) => Array.from({ length: C }, (_, x) => x >= VC ? (v === 1 ? 10 : 1) : v));
+// The grid is read and written only through these helpers, so the world can later grow past 0,0 (the ring around the
+// village, PRD "new maps and coin spending", Tech plan 1) without the village's own coordinates changing. WX0/WY0 = the
+// world's top-left tile; 0, 0 today.
+WX0 = 0, WY0 = 0;
+inW = (x, y) => x >= WX0 && y >= WY0 && x < C && y < R;
+grid = v => Array.from({ length: R - WY0 }, () => Array.from({ length: C - WX0 }, (_, i) => i + WX0 >= VC ? (v === 1 ? 10 : 1) : v));
 G = grid(1), block = grid(0), res = grid(0).map(r => r.map(() => 0));
-setG = (x, y, v) => { if (G[y] && G[y][x] !== undefined) G[y][x] = v; };
+gAt = (x, y) => inW(x, y) ? G[y - WY0][x - WX0] : undefined, setG = (x, y, v) => { if (inW(x, y)) G[y - WY0][x - WX0] = v; };
+blk = (x, y) => inW(x, y) ? block[y - WY0][x - WX0] : undefined, setBlk = (x, y, v) => { if (inW(x, y)) block[y - WY0][x - WX0] = v; };
+resAt = (x, y) => inW(x, y) ? res[y - WY0][x - WX0] : undefined, setRes = (x, y, v) => { if (inW(x, y)) res[y - WY0][x - WX0] = v; };
 rect = (x0, y0, x1, y1, f) => { for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) f(x, y); };
 // live roads
 for (let x = 0; x <= 48; x++) { setG(x, 9, 0); setG(x, 10, 0); }
@@ -53,7 +60,7 @@ PARK = { x0: 23, y0: 11, x1: 33, y1: 22, cx: 28, cy: 16 }, POND = { x0: 29, y0: 
 rect(PARK.x0, PARK.y0, PARK.x1, PARK.y1, (x, y) => setG(x, y, 1));
 rect(PARK.x0, 16, PARK.x1, 16, (x, y) => setG(x, y, 3)); rect(28, PARK.y0, 28, PARK.y1, (x, y) => setG(x, y, 3));
 rect(26, 14, 30, 18, (x, y) => { if (!((x === 26 || x === 30) && (y === 14 || y === 18))) setG(x, y, 3); });
-rect(POND.x0, POND.y0, POND.x1, POND.y1, (x, y) => { setG(x, y, 6); block[y][x] = 1; });
+rect(POND.x0, POND.y0, POND.x1, POND.y1, (x, y) => { setG(x, y, 6); setBlk(x, y, 1); });
 rect(1, 11, 9, 17, (x, y) => setG(x, y, 3)); setG(5, 7, 3); setG(5, 8, 3);
 // new: east lane, farm road, town street (asphalt + sidewalks)
 for (let y = 11; y <= 35; y++) setG(48, y, 0);
@@ -62,8 +69,8 @@ rect(49, 9, 71, 10, (x, y) => setG(x, y, 4));
 rect(49, 7, 71, 8, (x, y) => setG(x, y, 5)); rect(49, 11, 71, 11, (x, y) => setG(x, y, 5));
 rect(49, 18, 53, 18, (x, y) => setG(x, y, 5)); rect(60, 12, 60, 25, (x, y) => setG(x, y, 5)); rect(60, 25, 70, 25, (x, y) => setG(x, y, 5));
 TOWER = { x: 1, y: 1, w: 8 }, BOARD = [8, 12], WELL = [5, 13];
-rect(1, 1, 8, 6, (x, y) => block[y][x] = 1);
-for (const r of [[49, 0, 70, 8], [49, 12, 58, 19], [59, 12, 70, 33], [1, 33, 70, 45]]) rect(...r, (x, y) => res[y][x] = 1);
+rect(1, 1, 8, 6, (x, y) => setBlk(x, y, 1));
+for (const r of [[49, 0, 70, 8], [49, 12, 58, 19], [59, 12, 70, 33], [1, 33, 70, 45]]) rect(...r, (x, y) => setRes(x, y, 1));
 
 STAGE_TH = ['ว่าง', 'จองที่ดินแล้ว', 'บ้านหลังแรก', 'บ้านหลังใหญ่', 'สวน 14 แปลง', 'ขึ้นบ้านใหม่'];
 ROOFS = { blue: '#8796ad', red: null, green: '#5f9e4f', purple: '#8b6bbf', brown: '#8a5a3c', pink: '#e98bab', teal: '#3f9e9b', navy: '#3d4f8a' };
@@ -79,8 +86,8 @@ for (const L of LOTS) setG(L.x + 2, L.y + 3, 3);
 ROOMS = [], ROOM = {};
 makeRoom = function makeRoom(o) { const i = o.slot ?? ROOMS.length, x0 = RX0 + 2 + (i % 8) * 16, y0 = 1 + (i >> 3) * 12, r = { ...o, x0, y0, slot: i };
   r.door = [x0 + (o.w >> 1), y0 + o.h]; r.entry = [r.door[0], r.door[1] - 1];
-  rect(x0, y0, x0 + o.w - 1, y0 + o.h - 1, (x, y) => { const wall = y < y0 + 2; G[y][x] = wall ? 9 : 8; block[y][x] = wall ? 1 : 0; });
-  G[r.door[1]][r.door[0]] = 11; block[r.door[1]][r.door[0]] = 0;
+  rect(x0, y0, x0 + o.w - 1, y0 + o.h - 1, (x, y) => { const wall = y < y0 + 2; setG(x, y, wall ? 9 : 8); setBlk(x, y, wall ? 1 : 0); });
+  setG(r.door[0], r.door[1], 11); setBlk(r.door[0], r.door[1], 0);
   ROOMS.push(r); if (o.key) ROOM[o.key] = r; return r; }
 sceneOf = c => ROOMS.find(r => c[0] >= r.x0 && c[0] < r.x0 + r.w && c[1] >= r.y0 && c[1] <= r.y0 + r.h) || null;
 
@@ -97,7 +104,7 @@ WANT = { full: [0, 0, 0, 0], outer: [1, 1, 1, 0], h: [1, 0, .6, 0], v: [0, 1, .6
 for (const [k, w] of Object.entries(WANT)) for (let q = 0; q < 4; q++) { let best = 1e9, at = null;
   for (let ty = 0; ty < 4; ty++) for (let tx = 0; tx < 12; tx++) { const s = qStats(tx, ty, q), d = s.reduce((a, v, i) => a + (v - w[i]) ** 2 * (i === 3 ? 4 : 1), 0); if (d < best) { best = d; at = [tx, ty]; } }
   QPICK[k + q] = at; }
-grassAt = (x, y) => x < 0 || y < 0 || x >= VC || y >= VR ? true : G[y][x] === 1 || G[y][x] === 6;
+grassAt = (x, y) => x < 0 || y < 0 || x >= VC || y >= VR ? true : gAt(x, y) === 1 || gAt(x, y) === 6;
 
 /* ============ Maeve houses, repainted per lot ============ */
 hexRGB = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
@@ -175,23 +182,23 @@ skyAt = h => h < 6 || h >= 19.5 ? '#24325e' : h < 7.5 ? '#ffc89a' : h < 17 ? '#9
 objs = [], glows = [], places = [];
 add = (y, draw, extra = {}) => objs.push({ y, draw, ...extra });
 MAPLE = { big: [96, 1, 32, 46], mid: [71, 14, 20, 33], sap: [43, 34, 9, 12] };
-tree = function tree(x, y, k = 'big') { const r = MAPLE[k], bx = x * T + 8, by = y * T + 14; block[y][x] = 1;
+tree = function tree(x, y, k = 'big') { const r = MAPLE[k], bx = x * T + 8, by = y * T + 14; setBlk(x, y, 1);
   add(by, g => g.drawImage(S.maple, r[0], r[1], r[2], r[3], bx - r[2] / 2 | 0, by - r[3], r[2], r[3]), { shadow: [bx, by - 1, k === 'big' ? 11 : 6] }); }
-fence = (x, y, k) => { block[y][x] = 1; add(y * T + 14, g => g.drawImage(S.fences, k * 16, 32, 16, 16, x * T, y * T, 16, 16)); };
+fence = (x, y, k) => { setBlk(x, y, 1); add(y * T + 14, g => g.drawImage(S.fences, k * 16, 32, 16, 16, x * T, y * T, 16, 16)); };
 at = (spr, cx, by, opt) => add(by, g => g.drawImage(spr, Math.round(cx - spr.width / 2), by - spr.height), opt);
 // a Kenney tile on a cell (bottom-aligned); tall = [topId, bottomId]
 put = function put(sh, id, x, y, o = {}) { const ids = Array.isArray(id) ? id : [id], spr = tiles(sh, ids.map(i => [i]));
-  if (o.block !== false) block[y][x] = 1; add(y * T + 15 + (o.dy || 0), g => g.drawImage(spr, x * T + (o.dx || 0), (y + 1) * T - spr.height + (o.dy || 0)), o); }
-putS = (spr, x, y, o = {}) => { if (o.block !== false) for (let i = 0; i < Math.ceil(spr.width / 16); i++) block[y][x + i] = 1;
+  if (o.block !== false) setBlk(x, y, 1); add(y * T + 15 + (o.dy || 0), g => g.drawImage(spr, x * T + (o.dx || 0), (y + 1) * T - spr.height + (o.dy || 0)), o); }
+putS = (spr, x, y, o = {}) => { if (o.block !== false) for (let i = 0; i < Math.ceil(spr.width / 16); i++) setBlk(x + i, y, 1);
   add(y * T + 15 + (o.dy || 0), g => g.drawImage(spr, x * T + (o.dx || 0), (y + 1) * T - spr.height + (o.dy || 0)), o); };
 
 add(7 * T + 4, g => g.drawImage(tower, TOWER.x * T, 7 * T - tower.height + 4), { shadow: [5 * T, 7 * T + 2, 60] });
 for (let k = 0; k < 3; k++) for (let j = 0; j < 6; j++) glows.push([TOWER.x * T + 17 + j * 19, 25 + k * 19 + 7 * T - tower.height + 4, 10, .2]);
-at(BOARD_S, BOARD[0] * T + 8, BOARD[1] * T + 15); block[BOARD[1]][BOARD[0]] = 1;
-at(WELL_S, WELL[0] * T + 8, WELL[1] * T + 15, { shadow: [WELL[0] * T + 8, WELL[1] * T + 14, 13] }); block[WELL[1]][WELL[0]] = 1;
-for (const [x, y] of [[1, 11], [9, 11], [1, 17], [9, 17]]) { at(LAMP, x * T + 8, y * T + 14); block[y][x] = 1; glows.push([x * T + 8, y * T - 10, 26, .55]); }
+at(BOARD_S, BOARD[0] * T + 8, BOARD[1] * T + 15); setBlk(BOARD[0], BOARD[1], 1);
+at(WELL_S, WELL[0] * T + 8, WELL[1] * T + 15, { shadow: [WELL[0] * T + 8, WELL[1] * T + 14, 13] }); setBlk(WELL[0], WELL[1], 1);
+for (const [x, y] of [[1, 11], [9, 11], [1, 17], [9, 17]]) { at(LAMP, x * T + 8, y * T + 14); setBlk(x, y, 1); glows.push([x * T + 8, y * T - 10, 26, .55]); }
 // department flags on the plaza (Tiny Battle flags wave between two frames)
-[[34, 3], [52, 4], [70, 6], [88, 7]].forEach(([id, x]) => { block[17][x] = 1; add(17 * T + 15, (g, t) => g.drawImage(kt('battle', id + ((t * 2 + x) % 2 | 0)), x * T, 17 * T)); });
+[[34, 3], [52, 4], [70, 6], [88, 7]].forEach(([id, x]) => { setBlk(x, 17, 1); add(17 * T + 15, (g, t) => g.drawImage(kt('battle', id + ((t * 2 + x) % 2 | 0)), x * T, 17 * T)); });
 // bunting over the plaza
 bunting = function bunting(x0, y0, x1, y1, sag) { add(1e6, g => { g.strokeStyle = O; g.lineWidth = 1; g.beginPath();
   const n = Math.round((x1 - x0) / 7); for (let i = 0; i <= n; i++) { const u = i / n, x = x0 + (x1 - x0) * u, y = y0 + (y1 - y0) * u + Math.sin(u * Math.PI) * sag; i ? g.lineTo(x, y) : g.moveTo(x, y); } g.stroke();
@@ -207,9 +214,9 @@ flower = function flower(g, x, y) { const c = ['#ffffff', '#ff8fbf', '#fff1a8', 
   g.fillStyle = c; g.fillRect(x + 1, y, 3, 3); g.fillStyle = '#e9b53f'; g.fillRect(x + 2, y + 1, 1, 1); }
 lot = function lot(L) {
   const X = L.x, Y = L.y, cx = (X + 2) * T + 8, by = (Y + 3) * T + 2, has = c => L.xs.includes(c);
-  if (!L.stage) { at(SIGN, cx, (Y + 1) * T + 14); block[Y + 1][X + 2] = 1; L.tag = 'ว่าง · จองได้'; return; }
+  if (!L.stage) { at(SIGN, cx, (Y + 1) * T + 14); setBlk(X + 2, Y + 1, 1); L.tag = 'ว่าง · จองได้'; return; }
   L.garden = [];   // the live farm's beds (same cells as farm.js plots); crops drawn from the real save, tap = the lot card
-  for (let i = 0; i < L.gN; i++) { const [x, y] = H.gCell(L.live, i); L.garden.push([x, y]); block[y][x] = 1;
+  for (let i = 0; i < L.gN; i++) { const [x, y] = H.gCell(L.live, i); L.garden.push([x, y]); setBlk(x, y, 1);
     const p = { x, y, o: 'home', c: null, w: 0, fw: [] }; BED_AT.set(x + ',' + y, p);
     add(y * T + 14, g => { drawSoil(g, p, x * T, y * T); H.drawCrop(g, L.live, i, x * T, y * T); }); }
   if (L.garden.every(c => c[1] < Y + 3)) { const fN = L.stage === 4 && L.building ? 3 : 5;
@@ -217,7 +224,7 @@ lot = function lot(L) {
   if (L.stage === 1) { for (const [x, y] of [[X, Y], [X + 3, Y], [X, Y + 2], [X + 3, Y + 2]]) at(STAKE, x * T + 8, y * T + 14);
     add((Y + 1) * T, g => { g.strokeStyle = '#fff4e0'; g.setLineDash([2, 2]); g.strokeRect(X * T + 8, Y * T + 8, 3 * T, 2 * T); g.setLineDash([]); });
     at(SIGN, (X + 3) * T + 8, (Y + 3) * T + 14); L.tag = 'จองแล้ว · ' + L.owner; return; }
-  rect(X, Y + 1, X + 4, Y + 2, (x, y) => block[y][x] = 1);
+  rect(X, Y + 1, X + 4, Y + 2, (x, y) => setBlk(x, y, 1));
   if (L.stage === 2 && L.building) { at(FOUND, cx, by - 4); at(SCAFF, cx, by - 6); at(BRICKS, (X + 4) * T + 8, by + 2); L.bar = 1; L.tag = 'กำลังสร้าง · ' + L.owner; return; }
   add(by, g => { const hs = houseFor(L); g.drawImage(hs, cx - (hs.width >> 1), by - hs.height); }, { shadow: [cx, by - 2, isBig(L) ? 38 : 30], lot: L });
   glows.push([cx - 18, by - 24, 16, .5], [cx + 18, by - 24, 16, .5]);
@@ -247,7 +254,7 @@ cityB = function cityB(w, roofH, roof, wall, door) {   // door: [col, 'single'|'
   return tiles('city', rows); }
 BUILDINGS = [];
 building = function building(key, x, y, w, roofH, roof, wall, door, title, room) {
-  const spr = cityB(w, roofH, roof, wall, door), h = roofH + 2; rect(x, y, x + w - 1, y + h - 1, (cx, cy) => block[cy][cx] = 1);
+  const spr = cityB(w, roofH, roof, wall, door), h = roofH + 2; rect(x, y, x + w - 1, y + h - 1, (cx, cy) => setBlk(cx, cy, 1));
   add((y + h) * T, g => g.drawImage(spr, x * T, y * T), { shadow: [(x + w / 2) * T, (y + h) * T - 1, w * 7] });
   for (let i = 1; i < w - 1; i += 2) glows.push([(x + i) * T + 8, (y + roofH) * T + 8, 12, .45]);
   const out = [x + door[0], y + h], B = { key, x, y, w, h, title, out };
@@ -257,7 +264,7 @@ building('shop', 59, 2, 7, 3, 'blue', 'brown', [3, 'shop'], '👕 ร้าน�
 building('cafe', 50, 13, 6, 3, 'blue', 'red', [2, 'single'], '☕ คาเฟ่', { kind: 'cafe', w: 10, h: 6, wall: '#d9efe6', floor: '#a8703f' });
 building('arcade', 61, 27, 8, 3, 'blue', 'red', [3, 'double'], '🕹️ ตึกเกม', { kind: 'arcade', w: 10, h: 9, wall: '#3d3478', floor: '#6a5aa8', slot: 16 });
 rect(64, 32, 65, 33, (x, y) => setG(x, y, 5));
-putS(STALL, 67, 6, { dx: 2 }); block[6][69] = 1; block[6][70] = 1;
+putS(STALL, 67, 6, { dx: 2 }); setBlk(69, 6, 1); setBlk(70, 6, 1);
 add(6 * T + 16, g => { ['mgo', 'ram', 'lyc', 'wat', 'pum', 'tom'].filter(id => CROPS[id]).forEach((id, i) => { const a = cropArt(id); g.drawImage(a, 67 * T + 8 + i * 7 - (a.width >> 1) + 2, 6 * T + 11 - a.height + (i % 2) * 2); }); });
 places.push([69 * T, 3 * T + 6, '🥭 แผงผลไม้']);
 for (const x of [52, 58, 64, 70]) { put('city', [86, 98], x, 8, { block: true }); glows.push([x * T + 8, 7 * T + 6, 26, .6]); }
@@ -279,16 +286,16 @@ add(16 * T + 15, (g, t) => { const x = PARK.cx * T + 8, y = 16 * T + 10;
   g.fillStyle = O; g.fillRect(x - 3, y - 18, 6, 17); g.fillStyle = '#d3d7df'; g.fillRect(x - 2, y - 17, 4, 15); g.fillStyle = O; g.fillRect(x - 7, y - 20, 14, 4); g.fillStyle = '#d3d7df'; g.fillRect(x - 6, y - 19, 12, 2);
   g.fillStyle = '#bfe9ff'; for (let i = 0; i < 6; i++) { const a = (t * 1.8 + i / 6) % 1, dx = (i % 2 ? 1 : -1) * (2 + a * 11); g.fillRect(x + dx, y - 22 - Math.sin(a * Math.PI) * 9 + a * 12, 2, 2); } },
   { shadow: [PARK.cx * T + 8, 16 * T + 12, 28] });
-block[16][27] = block[16][28] = block[16][29] = 1; places.push([PARK.cx * T + 8, 14.2 * T, '⛲ สวนกลางหมู่บ้าน']);
+setBlk(27, 16, 1); setBlk(28, 16, 1); setBlk(29, 16, 1); places.push([PARK.cx * T + 8, 14.2 * T, '⛲ สวนกลางหมู่บ้าน']);
 places.push([31 * T, 18.6 * T, '🪷 สระลอยกระทง']);
 for (const [x, y] of [[26, 13], [29, 13], [26, 19]]) at(BED_F, (x + 1) * T, y * T + 14);
-for (const [x, y] of [[26, 13], [27, 13], [29, 13], [30, 13], [26, 19], [27, 19]]) block[y][x] = 1;
+for (const [x, y] of [[26, 13], [27, 13], [29, 13], [30, 13], [26, 19], [27, 19]]) setBlk(x, y, 1);
 for (const [x, y, k] of [[32, 12, 'big'], [33, 14, 'mid'], [31, 14, 'sap'], [24, 21, 'big'], [23, 18, 'mid'], [26, 22, 'sap'], [33, 22, 'mid']]) tree(x, y, k);
 putS(tiles('city', [[93, 94, 95]]), 24, 17); putS(tiles('city', [[93, 94, 95]]), 30, 11);
-for (const [x, y] of [[25, 15], [31, 15], [27, 20], [29, 11]]) { at(LAMP, x * T + 8, y * T + 14); block[y][x] = 1; glows.push([x * T + 8, y * T - 10, 26, .55]); }
+for (const [x, y] of [[25, 15], [31, 15], [27, 20], [29, 11]]) { at(LAMP, x * T + 8, y * T + 14); setBlk(x, y, 1); glows.push([x * T + 8, y * T - 10, 26, .55]); }
 bunting(25 * T + 8, 14 * T - 10, 31 * T + 8, 14 * T - 10, 7);
 // park + lake (Tiny Battle water) on the town side
-(() => { const x0 = 61, y0 = 15, w = 8, h = 9; rect(x0, y0, x0 + w - 1, y0 + h - 1, (x, y) => { G[y][x] = 6; block[y][x] = 1; }); })();
+(() => { const x0 = 61, y0 = 15, w = 8, h = 9; rect(x0, y0, x0 + w - 1, y0 + h - 1, (x, y) => { setG(x, y, 6); setBlk(x, y, 1); }); })();
 for (const [x, y, id] of [[59, 13, 68], [69, 14, 67], [70, 21, 68], [60, 29, 68], [70, 30, 68]]) put('city', [id, id + 12], x, y);
 putS(tiles('city', [[93, 94, 95]]), 61, 26); putS(tiles('city', [[93, 94, 95]]), 66, 26);
 for (const x of [61, 69]) { put('city', [86, 98], x, 24); glows.push([x * T + 8, 23 * T + 6, 26, .6]); }
@@ -302,7 +309,7 @@ CARS.forEach(c => { c.spr = tiles('city', c.ids); });
 
 /* ---- south: community farm (Tiny Farm) ---- */
 barn = (() => { const c = tiles('farm', [[null, 82, null], [93, 94, 95], [105, 106, 107], [117, 118, 119], [90, 91, 92], [114, 115, 116]]); c.getContext('2d').drawImage(kt('farm', 127), 16, 80); return c; })();
-rect(3, 36, 5, 41, (x, y) => block[y][x] = 1);
+rect(3, 36, 5, 41, (x, y) => setBlk(x, y, 1));
 add(42 * T, g => g.drawImage(barn, 3 * T, 36 * T), { shadow: [4.5 * T, 42 * T - 1, 26] });
 BARN = { key: 'barn', x: 3, y: 36, w: 3, h: 6, title: '🐄 โรงนา', out: [4, 42] };
 BARN.room = makeRoom({ slot: 15, kind: 'barn', key: 'barn', w: 10, h: 6, out: BARN.out, title: BARN.title, wall: '#c4553c', floor: '#e8c36a' }); BUILDINGS.push(BARN);
@@ -310,7 +317,7 @@ places.push([4.5 * T, 36 * T - 2, '🐄 โรงนา']);
 put('farm', 96, 6, 40); put('farm', 97, 6, 41); put('farm', 124, 2, 41); put('farm', 85, 2, 40);
 // animal pen
 for (let x = 8; x <= 19; x++) { fence(x, 37, x === 8 ? 0 : x === 19 ? 2 : 1); if (x !== 13) fence(x, 44, x === 8 ? 0 : x === 19 ? 2 : 1); }
-for (let y = 38; y <= 43; y++) for (const x of [8, 19]) { block[y][x] = 1; add(y * T + 14, g => g.drawImage(S.fences, 16, 64, 16, 16, x * T, y * T, 16, 16)); }
+for (let y = 38; y <= 43; y++) for (const x of [8, 19]) { setBlk(x, y, 1); add(y * T + 14, g => g.drawImage(S.fences, 16, 64, 16, 16, x * T, y * T, 16, 16)); }
 putS(tiles('farm', [[110, 111]]), 15, 38);
 ANIM = [];
 [[121, 3], [120, 3], [122, 6]].forEach(([id, n]) => { for (let i = 0; i < n; i++) ANIM.push({ id, x: (10 + ri(8)) * T, y: (39 + ri(4)) * T, tx: 0, ty: 0, f: 1, t: rnd() * 9, sp: id === 122 ? 22 : 9 }); });
@@ -319,27 +326,27 @@ ANIM.forEach(a => { a.tx = a.x; a.ty = a.y; });
 // harvests any plot (house gardens stay private). Crops grow on the real clock (farm.js times). Logic: "community farm" section below.
 rect(22, 36, 34, 44, (x, y) => setG(x, y, 2));
 PLOTS = [];
-[37, 39, 41, 43].forEach(y => { for (let x = 23; x <= 33; x++) { block[y][x] = 1; const p = { x, y, o: null, by: null, c: null, t: 0, w: 0, fw: [], rt: 0, fx: -9, fk: '' }; PLOTS.push(p);
+[37, 39, 41, 43].forEach(y => { for (let x = 23; x <= 33; x++) { setBlk(x, y, 1); const p = { x, y, o: null, by: null, c: null, t: 0, w: 0, fw: [], rt: 0, fx: -9, fk: '' }; PLOTS.push(p);
   add(y * T + 14, (g, t) => drawPlot(g, p, t)); } });
 // every house garden uses the same rules: already loosened and owned by the house; only the owner plants and harvests, anyone can help water
 places.push([28 * T, 36 * T + 2, '🌻 ไร่ชุมชน']);
 putS(STALL, 36, 38); places.push([37.6 * T, 35.6 * T, '🛒 ร้านเมล็ด']);
 CHEST_S = sprite(16, 15, (g, r) => { r(0, 2, 16, 13, O); r(1, 3, 14, 11, '#a8643a'); r(1, 3, 14, 4, '#c47f4a'); r(1, 7, 14, 1, O); r(1, 3, 14, 1, '#d99a62');
   r(3, 3, 1, 11, '#6e3d22'); r(12, 3, 1, 11, '#6e3d22'); r(6, 6, 4, 4, O); r(7, 7, 2, 2, '#ffd23f'); r(1, 13, 14, 1, '#7a4426'); });
-at(CHEST_S, 35 * T + 8, 40 * T + 14); block[40][35] = 1; places.push([35.5 * T, 39 * T, '📦 หีบ']);
-at(BOARD_S, 41 * T + 8, 38 * T + 15); block[38][41] = 1; places.push([41.5 * T, 36.6 * T, '📋 ออร์เดอร์']);
+at(CHEST_S, 35 * T + 8, 40 * T + 14); setBlk(35, 40, 1); places.push([35.5 * T, 39 * T, '📦 หีบ']);
+at(BOARD_S, 41 * T + 8, 38 * T + 15); setBlk(41, 38, 1); places.push([41.5 * T, 36.6 * T, '📋 ออร์เดอร์']);
 rect(36, 41, 41, 43, (x, y) => put('farm', 83, x, y, { dy: (x + y) % 2 ? -2 : 0 }));
 rect(43, 37, 46, 43, (x, y) => put('farm', 66, x, y));
 [['pum', 50, 37], ['wat', 50, 40], ['tom', 54, 37], ['chi', 54, 40], ['cor', 58, 37], ['car', 58, 40]].forEach(([id, x0, y0]) => { if (!CROPS[id]) return;
-  rect(x0, y0, x0 + 2, y0 + 1, (x, y) => { G[y][x] = 7; block[y][x] = 1; const a = cropArt(id); add(y * T + 14, g => g.drawImage(a, x * T + 8 - (a.width >> 1), y * T + 14 - a.height)); }); });
+  rect(x0, y0, x0 + 2, y0 + 1, (x, y) => { setG(x, y, 7); setBlk(x, y, 1); const a = cropArt(id); add(y * T + 14, g => g.drawImage(a, x * T + 8 - (a.width >> 1), y * T + 14 - a.height)); }); });
 for (let x = 62; x <= 70; x += 2) for (let y = 37; y <= 43; y += 3) put('farm', (x + y) % 4 ? 78 : 39, x, y);
 
 /* ---- trees: edges, the hedge between village and farm, a few between lanes ---- */
 inLot = (x, y) => LOTS.some(L => x >= L.x - 1 && x <= L.x + 10 && y >= L.y - 4 && y <= L.y + 3);
-free = (x, y) => x < VC && y < VR - 1 && G[y][x] === 1 && G[y + 1]?.[x] === 1 && !block[y][x] && !block[y + 1][x] && !inLot(x, y) && !(x <= 9 && y <= 8) && !res[y][x];
+free = (x, y) => x < VC && y < VR - 1 && gAt(x, y) === 1 && gAt(x, y + 1) === 1 && !blk(x, y) && !blk(x, y + 1) && !inLot(x, y) && !(x <= 9 && y <= 8) && !resAt(x, y);
 for (let y = 0; y < VR - 1; y++) for (const x of [0, VC - 1]) if (free(x, y) && rnd() < .55) tree(x, y, rnd() < .7 ? 'big' : 'mid');
 for (let x = 1; x < 48; x++) { if (free(x, 31) && rnd() < .6) tree(x, 31, rnd() < .75 ? 'big' : 'mid'); if (free(x, 32) && rnd() < .3) tree(x, 32, 'mid'); if (free(x, 0) && rnd() < .5) tree(x, 0, rnd() < .5 ? 'big' : 'mid'); }
-for (let x = 1; x < VC - 1; x++) for (const y of [46, 47]) if (G[y][x] === 1 && !block[y][x] && rnd() < .75) put('farm', [3, 15], x, y);
+for (let x = 1; x < VC - 1; x++) for (const y of [46, 47]) if (gAt(x, y) === 1 && !blk(x, y) && rnd() < .75) put('farm', [3, 15], x, y);
 for (let i = 0; i < 90; i++) { const x = 1 + ri(VC - 2), y = 1 + ri(44); if (free(x, y) && free(x + 1, y)) tree(x, y, rnd() < .5 ? 'big' : rnd() < .6 ? 'mid' : 'sap'); }
 
 /* ---- room furniture ---- */
@@ -353,7 +360,7 @@ furnish = function furnish(r) {
   if (r.kind === 'cottage' || r.kind === 'big') { const big = r.kind === 'big', L = r.L;
     win(1); win(big ? 8 : 5); deco(FRAME, 3); lampW(big ? 6 : 4); if (big) { deco(FRAME, 10); }
     rug(r.quilt, big ? 3 : 2, 3, big ? 5 : 4, 2);
-    PS(BED(r.quilt), 0, 3); block[Y + 2][X] = 1;
+    PS(BED(r.quilt), 0, 3); setBlk(X, Y + 2, 1);
     P('dungeon', 89, 1, 2); P('dungeon', 63, big ? 4 : 6, 2); P('city', 70, big ? 5 : 7, 2);
     P('dungeon', 72, big ? 5 : 4, 4); P('dungeon', 73, big ? 4 : 3, 4); P('dungeon', 73, big ? 6 : 5, 4);
     P('farm', 85, 0, r.h - 1); P('farm', 83, r.w - 1, r.h - 1);
@@ -377,14 +384,14 @@ furnish = function furnish(r) {
     // 13 Nov 2026: 10 x 9 hall so it fits a phone at zoom 2 — three rows of cabinets with aisles between (stand on the row below a cabinet)
     // 18 Nov 2026: 12th spot at the far right of row 2, added last so the other cabinets keep their places (ซ้อนแฟ้มเสียดฟ้า had no cabinet, so it could not be played)
     const SP = [[2, 2], [4, 2], [6, 2], [1, 4], [3, 4], [5, 4], [7, 4], [1, 6], [3, 6], [5, 6], [7, 6], [9, 4]];
-    r.mach = []; H.games().slice(0, SP.length).forEach((gm, i) => { const x = X + SP[i][0], y = Y + SP[i][1], M = { id: gm.id, x, y }; r.mach.push(M); block[y][x] = 1;
+    r.mach = []; H.games().slice(0, SP.length).forEach((gm, i) => { const x = X + SP[i][0], y = Y + SP[i][1], M = { id: gm.id, x, y }; r.mach.push(M); setBlk(x, y, 1);
       add(y * T + 14, (g, t) => drawCab(g, gm, x * T, y * T, t)); });
-    r.board = [X + 8, Y + 2]; block[Y + 2][X + 8] = 1; add((Y + 2) * T + 14, g => drawTrophy(g, (X + 8) * T, (Y + 2) * T));
+    r.board = [X + 8, Y + 2]; setBlk(X + 8, Y + 2, 1); add((Y + 2) * T + 14, g => drawTrophy(g, (X + 8) * T, (Y + 2) * T));
     // 🎰 gacha machine + 🎉 party room door (12 Nov 2026: ห้องรวม moved here — the door opens the party room)
-    r.gacha = [X, Y + 2]; block[Y + 2][X] = 1; add((Y + 2) * T + 14, (g, t) => drawGachaM(g, X * T, (Y + 2) * T, t));
-    r.party = [X + 9, Y + 2]; block[Y + 2][X + 9] = 1; add((Y + 2) * T + 14, (g, t) => drawPartyDoor(g, (X + 9) * T, (Y + 2) * T, t));
+    r.gacha = [X, Y + 2]; setBlk(X, Y + 2, 1); add((Y + 2) * T + 14, (g, t) => drawGachaM(g, X * T, (Y + 2) * T, t));
+    r.party = [X + 9, Y + 2]; setBlk(X + 9, Y + 2, 1); add((Y + 2) * T + 14, (g, t) => drawPartyDoor(g, (X + 9) * T, (Y + 2) * T, t));
     // 📋 the game list sign, right next to where you walk in
-    r.alist = [X + 6, Y + 8]; block[Y + 8][X + 6] = 1; add((Y + 8) * T + 14, g => drawListSign(g, (X + 6) * T, (Y + 8) * T)); }
+    r.alist = [X + 6, Y + 8]; setBlk(X + 6, Y + 8, 1); add((Y + 8) * T + 14, g => drawListSign(g, (X + 6) * T, (Y + 8) * T)); }
   if (r.kind === 'barn') { win(3); win(7); lampW(5);
     P('farm', 96, 0, 2); P('farm', 97, 1, 2); P('farm', 96, 0, 3); P('farm', 121, 3, 2); P('farm', 121, 6, 2); P('farm', 120, 8, 4);
     P('farm', 122, 1, 5, { block: false }); P('farm', 122, 3, 4, { block: false }); P('farm', 124, 9, 2); P('farm', 73, 4, 4); P('farm', 85, 9, 5); }
@@ -415,7 +422,7 @@ drawTrophy = function drawTrophy(g, x, y) { const f = (a, b, w, h, c) => { g.fil
 /* ============ ground, painted once ============ */
 ground = mk(C * T, R * T);
 (() => { const g = ground.getContext('2d'); g.fillStyle = '#1b1422'; g.fillRect(0, 0, ground.width, ground.height);
-  for (let y = 0; y < VR; y++) for (let x = 0; x < VC; x++) { const X = x * T, Y = y * T, v = G[y][x];
+  for (let y = 0; y < VR; y++) for (let x = 0; x < VC; x++) { const X = x * T, Y = y * T, v = gAt(x, y);
     g.fillStyle = '#b07a4a'; g.fillRect(X, Y, T, T);
     for (let k = 0; k < 4; k++) { g.fillStyle = rnd() < .5 ? '#9d6a3f' : '#c08a57'; g.fillRect(X + ri(16), Y + ri(16), 1 + ri(2), 1); }
     if (v === 3) { g.fillStyle = '#c9b48f'; g.fillRect(X, Y, T, T); g.fillStyle = '#b39c76'; g.fillRect(X, Y + 7, T, 1);
@@ -429,7 +436,7 @@ ground = mk(C * T, R * T);
     for (let q = 0; q < 4; q++) { const dx = q & 1 ? 1 : -1, dy = q >> 1 ? 1 : -1, Hh = grassAt(x, y + dy), V = grassAt(x + dx, y), D = grassAt(x + dx, y + dy);
       const k = !Hh && !V ? 'outer' : !Hh ? 'h' : !V ? 'v' : !D ? 'inner' : 'full', [tx, ty] = QPICK[k + q], ox = (q & 1) * 8, oy = (q >> 1) * 8;
       g.drawImage(S.grass, tx * 16 + ox, ty * 16 + oy, 8, 8, X + ox, Y + oy, 8, 8); }
-    if (v === 1 && !block[y][x]) { if (rnd() < (y > 11 && y < 33 && x > 48 ? .3 : .12)) flower(g, X + 3 + ri(9), Y + 3 + ri(8));
+    if (v === 1 && !blk(x, y)) { if (rnd() < (y > 11 && y < 33 && x > 48 ? .3 : .12)) flower(g, X + 3 + ri(9), Y + 3 + ri(8));
       else if (rnd() < .18) { g.fillStyle = '#4f8f3a'; const fx = X + 2 + ri(12), fy = Y + 4 + ri(10); g.fillRect(fx, fy, 1, 2); g.fillRect(fx + 2, fy - 1, 1, 3); } } }
   // lake + park pond: Tiny Battle 3×3 water tiles
   for (const [x0, y0, x1, y1] of [[61, 15, 68, 23], [POND.x0, POND.y0, POND.x1, POND.y1]]) for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) { const c = x === x0 ? 0 : x === x1 ? 2 : 1, rw = y === y0 ? 0 : y === y1 ? 2 : 1;
@@ -459,7 +466,7 @@ const people = [], TOUCH = matchMedia('(pointer:coarse)').matches; var TAGR = []
 function person(name, cls, who, x, y) { const P = { name, cls, who, px: x * T + 8, py: y * T + 12, path: [], dir: 'down', moving: false, t: Math.random() * 5, speed: 46 };
   P.el = document.createElement('div'); P.el.className = 'tag ' + cls; P.el.textContent = name; SR.append(P.el); people.push(P); return P; }
 const cellOf = P => [Math.floor(P.px / T), Math.floor(P.py / T)];
-const walkable = (x, y) => x >= 0 && y >= 0 && x < C && y < R && !block[y][x];
+const walkable = (x, y) => x >= 0 && y >= 0 && x < C && y < R && !blk(x, y);
 function bfs(from, to) { const k = (x, y) => y * C + x, prev = new Map([[k(...from), -1]]), q = [from];
   while (q.length) { const [x, y] = q.shift(); if (x === to[0] && y === to[1]) break;
     for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = x + dx, ny = y + dy; if (walkable(nx, ny) && !prev.has(k(nx, ny))) { prev.set(k(nx, ny), k(x, y)); q.push([nx, ny]); } } }
