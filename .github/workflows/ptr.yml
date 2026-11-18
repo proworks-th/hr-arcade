@@ -1,0 +1,39 @@
+# PTR (test server): every push to the `ptr` branch is published to https://hr-arcade-ptr.web.app with its own
+# database (Firebase project hr-arcade-ptr), so testing never touches live players' saves, boards or the office fund.
+# Live stays on GitHub Pages from `main`. Needs the repo secret FIREBASE_SERVICE_ACCOUNT_PTR (service account JSON).
+name: ptr
+on:
+  push:
+    branches: [ptr]
+  workflow_dispatch:
+concurrency: { group: ptr, cancel-in-progress: true }
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - name: Service account
+        env: { SA: "${{ secrets.FIREBASE_SERVICE_ACCOUNT_PTR }}" }
+        run: |
+          test -n "$SA" || { echo "Repo secret FIREBASE_SERVICE_ACCOUNT_PTR is not set"; exit 1; }
+          printf '%s' "$SA" > "$RUNNER_TEMP/sa.json"
+          echo "GOOGLE_APPLICATION_CREDENTIALS=$RUNNER_TEMP/sa.json" >> "$GITHUB_ENV"
+      - name: Point the game at the PTR database
+        # The web app config is read from the PTR project itself, so nothing PTR-specific lives in the repo.
+        run: |
+          npx -y firebase-tools@13 apps:sdkconfig web --project hr-arcade-ptr --json > "$RUNNER_TEMP/cfg.json"
+          node -e '
+            const c = require(process.argv[1]).result.sdkConfig;
+            if (!c || !c.databaseURL || !c.projectId.startsWith("hr-arcade-ptr")) { console.error("PTR config missing or wrong project"); process.exit(1); }
+            require("fs").writeFileSync("firebase-config.js",
+              "// PTR build: written by .github/workflows/ptr.yml from the hr-arcade-ptr project. Not the live config.\n" +
+              "export const FIREBASE_CONFIG = " + JSON.stringify(c, null, 2) + ";\n");
+          ' "$RUNNER_TEMP/cfg.json"
+          grep -q hr-arcade-ptr firebase-config.js
+      - name: Deploy hosting and database rules
+        run: npx -y firebase-tools@13 deploy --only hosting,database --project hr-arcade-ptr --non-interactive
+      - name: Clean up
+        if: always()
+        run: rm -f "$RUNNER_TEMP/sa.json"
