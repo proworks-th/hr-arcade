@@ -320,7 +320,7 @@ const Dungeon = {
       const best = daily('best', 0), deep = S.depth; if (deep > best) setDaily('best', deep);
       codex.runs++; codex.kills += S.kills; codex.best = Math.max(codex.best, deep); store2.set(CODEX, codex);
       // combat skill XP (lasting perks), then the hub's results card: the ranked number is the deepest floor,
-      // the pay comes from the run score (office.js PAY_RULES.dungeon: score ÷ 20, no ×2, no bricks)
+      // the pay comes from the run score (office.js PAY_RULES.dungeon: score ÷ 20 through the soft cap, no ×2, no bricks)
       const xp = sk ? sk.add('combat', 10 + S.kills + deep * 5) : null;
       const arms = Object.entries(S.arms).map(([k, a]) => a.evo ? DD.ARMS[k].evo.name : `${DD.ARMS[k].name} Lv ${a.lv}`).join(', ');
       api.end(deep, `${msg} · คะแนน ${fmt(S.score)} · ปราบ ${S.kills} ตัว${xp ? ` · XP การต่อสู้ ${xp.got ? '+' + xp.got : 'ครบวันนี้'}${xp.up ? ` · ขึ้นขั้น ${xp.up}!` : ''}` : ''}`, false,

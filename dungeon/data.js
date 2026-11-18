@@ -125,8 +125,9 @@ const DD = {
   GEM: { small: 3, big: 12 },                // gem score; monsters drop gems worth about their points
   CLEAR: depth => 40 * depth,                 // bonus for clearing a floor
   CHEST: depth => 25 * depth,
-  // pay (owner, 13 Nov): coins = round(score / 20), no cap, no ×2 game pay, no bricks (the dungeon will drop its own
-  // material later). Measured on 30 days of maps: reaching B5 ≈ 94 coins, B10 ≈ 351, B12 ≈ 488, B20 ≈ 1,252.
+  // pay (owner, 13 Nov): base = round(score / 20), no ×2 game pay, no bricks (the dungeon will drop its own material
+  // later). Soft cap since 18 Nov (owner: every game): the base goes through office.js SOFT_BANDS like every other game.
+  // Measured on 30 days of maps, before → after the soft cap: B5 94 → 94, B10 351 → 251, B12 488 → 319, B20 1,252 → 701.
   NORM: 20, PAY_CAP: null, GAME_PAY: 1, BRICKS: false,
   // daily checkpoints (owner, 13 Nov): beat a boss today → later runs today may start on the floor after it (B6, B11…).
   // Starting deeper gives catch-up level-ups so the build isn't empty: 3 picks per 5 floors skipped.
