@@ -34,7 +34,7 @@ const kt = (sh, id) => ktc[sh + id] ??= (() => { const s = K[sh], cols = s.width
 function tiles(sh, rows) { const c = mk(Math.max(...rows.map(r => r.length)) * 16, rows.length * 16), g = c.getContext('2d');
   rows.forEach((r, y) => r.forEach((id, x) => { if (id != null) g.drawImage(kt(sh, id), x * 16, y * 16); })); return c; }
 
-let T, VC, VR, VM, RX0, C, R, O, RS, rnd, ri, WX0, WY0, inW, grid, G, block, res, gAt, setG, blk, setBlk, resAt, setRes, rect, PARK, POND, TOWER, BOARD, WELL, STAGE_TH, ROOFS, ROOF_IN, WALLS, WALL_IN, LOTS, MY, BED_AT, ROOMS, ROOM, makeRoom, sceneOf, ga, alphaAt, qStats, WANT, QPICK, grassAt, hexRGB, paint, cottageRaw, bigRaw, houseCache, isBig, hasHouse, houseFor, sprite, SIGN, STAKE, JAR, LANTERN, BOARD_S, WELL_S, LAMP, SCAFF, FOUND, BRICKS, tower, STALL, BED, SOFA, COUNTER, COFFEE, RACK, MIRROR, FRAME, MENU, WLAMP, RUG, BUNT, skyAt, objs, glows, places, add, MAPLE, tree, fence, at, put, putS, bunting, G_ORDER, gCells, flower, lot, cityB, BUILDINGS, building, SALA, BED_F, POND_E, PIER, REED, LANE_W, LANE_E, ROAD_X0, ROAD_X1, CARS, barn, BARN, ANIM, PLOTS, CHEST_S, inLot, free, furnish, inV, hashXY, drawCab, drawListSign, drawGachaM, drawPartyDoor, drawTrophy, CHUNK, CHUNK_PX, CHUNKS, groundTile, groundOver, LOT_DIRT, GW, GH, gi, TILE_SEED, TILE_V, TILE_B, tileV, tileB, chunkAt, drawGround;
+let T, VC, VR, VM, RX0, C, R, O, RS, rnd, ri, WX0, WY0, inW, grid, G, block, res, gAt, setG, blk, setBlk, resAt, setRes, rect, PARK, POND_K, LANDING, TOWER, BOARD, WELL, STAGE_TH, ROOFS, ROOF_IN, WALLS, WALL_IN, LOTS, MY, BED_AT, ROOMS, ROOM, makeRoom, sceneOf, ga, alphaAt, qStats, WANT, QPICK, grassAt, hexRGB, paint, cottageRaw, bigRaw, houseCache, isBig, hasHouse, houseFor, sprite, SIGN, STAKE, JAR, LANTERN, BOARD_S, WELL_S, LAMP, SCAFF, FOUND, BRICKS, tower, STALL, BED, SOFA, COUNTER, COFFEE, RACK, MIRROR, FRAME, MENU, WLAMP, RUG, BUNT, skyAt, objs, glows, places, add, MAPLE, tree, fence, at, put, putS, bunting, G_ORDER, gCells, flower, lot, cityB, BUILDINGS, building, REED, SALA, BED_F, DECK, POND_E, PIER, LANE_W, LANE_E, ROAD_X0, ROAD_X1, CARS, barn, BARN, ANIM, PLOTS, CHEST_S, inLot, free, furnish, inV, hashXY, drawCab, drawListSign, drawGachaM, drawPartyDoor, drawTrophy, CHUNK, CHUNK_PX, CHUNKS, groundTile, groundOver, LOT_DIRT, GW, GH, gi, TILE_SEED, TILE_V, TILE_B, tileV, tileB, chunkAt, drawGround;
 function buildWorld() {
 /* ============ world grid: the live 48×34 village, grown to 72×48, plus a strip of rooms off to the right ============ */
 T = 16, VC = 72, VR = 48, VM = 3, RX0 = 76, C = RX0 + 8 * 16, R = VR + VM, O = '#3b2316';   // VM: border tiles round the village
@@ -57,11 +57,13 @@ for (let x = 0; x <= 48; x++) { setG(x, 9, 0); setG(x, 10, 0); }
 for (let y = 7; y <= 35; y++) { setG(22, y, 0); setG(34, y, 0); }
 for (const y of [16, 23, 30]) for (let x = 1; x <= 48; x++) setG(x, y, 0);
 // central park: grass, a stone cross path and a round plaza in the middle, the Loy Krathong pond in one corner
-PARK = { x0: 23, y0: 11, x1: 33, y1: 22, cx: 28, cy: 16 }, POND = { x0: 29, y0: 19, x1: 32, y1: 21 };
+PARK = { x0: 23, y0: 11, x1: 33, y1: 22, cx: 28, cy: 16 };
+// 18 Nov 2026: the Loy Krathong pond, a rounded shape (x 30–33, y 18–22) with a landing on the path side at (29, 20)
+POND_K = ['.WW.', 'WWWW', 'WWWW', 'WWWW', '.WW.'], LANDING = [29, 20];
 rect(PARK.x0, PARK.y0, PARK.x1, PARK.y1, (x, y) => setG(x, y, 1));
 rect(PARK.x0, 16, PARK.x1, 16, (x, y) => setG(x, y, 3)); rect(28, PARK.y0, 28, PARK.y1, (x, y) => setG(x, y, 3));
 rect(26, 14, 30, 18, (x, y) => { if (!((x === 26 || x === 30) && (y === 14 || y === 18))) setG(x, y, 3); });
-rect(POND.x0, POND.y0, POND.x1, POND.y1, (x, y) => { setG(x, y, 6); setBlk(x, y, 1); });
+POND_K.forEach((row, i) => [...row].forEach((c, j) => { if (c === 'W') { setG(30 + j, 18 + i, 6); setBlk(30 + j, 18 + i, 1); } }));
 rect(1, 11, 9, 17, (x, y) => setG(x, y, 3)); setG(5, 7, 3); setG(5, 8, 3);
 // new: east lane, farm road, town street (asphalt + sidewalks)
 for (let y = 11; y <= 35; y++) setG(48, y, 0);
@@ -272,6 +274,7 @@ places.push([69 * T, 3 * T + 6, '🥭 แผงผลไม้']);
 for (const x of [56, 63, 70]) { at(LAMP, x * T + 8, 11 * T + 14); setBlk(x, 11, 1); glows.push([x * T + 8, 11 * T - 10, 26, .55]); }
 putS(STALL, 60, 12, { dx: 2 }); putS(STALL, 64, 12, { dx: 2 });   // more market stalls on the lane's south side
 put('city', 84, 69, 33); put('city', [91, 103], 70, 33); put('city', [92, 104], 71, 33);   // bus stop on the south-east road (the town bus, later)
+REED = sprite(12, 14, (g, r) => { for (const [x, h] of [[2, 10], [5, 13], [8, 9]]) { r(x, 14 - h, 1, h, '#4f8f3a'); r(x, 14 - h, 2, 3, '#8a5a36'); } r(0, 12, 12, 2, '#3f7a30'); });
 // ---- central park: fountain plaza, a Thai sala, the Loy Krathong pond, benches, trees, lamps, flower beds ----
 SALA = sprite(50, 46, (g, r) => { r(3, 40, 44, 6, O); r(4, 41, 42, 4, '#b97a45'); r(4, 41, 42, 1, '#d99a62');
   for (const x of [6, 22, 38]) r(x, 18, 5, 23, O), r(x + 1, 18, 3, 23, '#c47f4a');
@@ -288,19 +291,23 @@ add(16 * T + 15, (g, t) => { const x = PARK.cx * T + 8, y = 16 * T + 10;
   g.fillStyle = '#bfe9ff'; for (let i = 0; i < 6; i++) { const a = (t * 1.8 + i / 6) % 1, dx = (i % 2 ? 1 : -1) * (2 + a * 11); g.fillRect(x + dx, y - 22 - Math.sin(a * Math.PI) * 9 + a * 12, 2, 2); } },
   { shadow: [PARK.cx * T + 8, 16 * T + 12, 28] });
 setBlk(27, 16, 1); setBlk(28, 16, 1); setBlk(29, 16, 1); places.push([PARK.cx * T + 8, 14.2 * T, '⛲ สวนกลางหมู่บ้าน']);
-places.push([31 * T, 18.6 * T, '🪷 สระลอยกระทง']);
+places.push([31.5 * T, 23.7 * T, '🪷 สระลอยกระทง']);   // below the pond, clear of the fountain
+// the landing: a small wooden deck with steps, where you stand to float a krathong
+DECK = sprite(34, 16, (g, r) => { r(0, 0, 34, 11, O); r(1, 1, 32, 9, '#c4864f'); for (let x = 6; x < 33; x += 5) r(x, 1, 1, 9, '#8a5a36'); r(1, 1, 32, 2, '#e0a56c');
+  for (const x of [20, 29]) { r(x, 10, 3, 6, O); r(x + 1, 10, 1, 5, '#6b4428'); } r(0, 10, 9, 4, O); r(1, 11, 7, 2, '#c4864f'); });   // planks over the water, posts in it, a step up from the path
+add(LANDING[1] * T + 3, g => g.drawImage(DECK, LANDING[0] * T + 1, LANDING[1] * T + 3));
+for (const [x, y] of [[33, 17], [29, 21], [30, 22]]) at(REED, x * T + 8, y * T + 15);
 for (const [x, y] of [[26, 13], [29, 13], [26, 19]]) at(BED_F, (x + 1) * T, y * T + 14);
 for (const [x, y] of [[26, 13], [27, 13], [29, 13], [30, 13], [26, 19], [27, 19]]) setBlk(x, y, 1);
-for (const [x, y, k] of [[32, 12, 'big'], [33, 14, 'mid'], [31, 14, 'sap'], [24, 21, 'big'], [23, 18, 'mid'], [26, 22, 'sap'], [33, 22, 'mid']]) tree(x, y, k);
+for (const [x, y, k] of [[32, 12, 'big'], [33, 14, 'mid'], [31, 14, 'sap'], [24, 21, 'big'], [23, 18, 'mid'], [26, 22, 'sap']]) tree(x, y, k);   // (the tree at 33, 22 went: it crowded the pond)
 putS(tiles('city', [[93, 94, 95]]), 24, 17); putS(tiles('city', [[93, 94, 95]]), 30, 11);
 for (const [x, y] of [[25, 15], [31, 15], [27, 20], [29, 11]]) { at(LAMP, x * T + 8, y * T + 14); setBlk(x, y, 1); glows.push([x * T + 8, y * T - 10, 26, .55]); }
-bunting(25 * T + 8, 14 * T - 10, 31 * T + 8, 14 * T - 10, 7);
+// (the plaza bunting is gone: it sat under the park's name; the Loy Krathong lights hang here during the event)
 // park + lake (Tiny Battle water) on the town side
 POND_E = ['..WWWWW.....', '.WWWWWWWW...', 'WWWWWWWWWW..', 'WWWWWWWWWWW.', 'WWWWWWWWWWWW', 'WWWWWWWWWWWW', '.WWWWWWWWW..', '.WWWWWWWW...', '..WWWWWW....', '...WWW......'];   // x 60–71, y 14–23; rows 18–19 run on east as a stream
 POND_E.forEach((row, i) => [...row].forEach((c, j) => { if (c === 'W') { setG(60 + j, 14 + i, 6); setBlk(60 + j, 14 + i, 1); } }));
 PIER = sprite(48, 14, (g, r) => { r(0, 0, 48, 12, O); r(1, 1, 46, 10, '#b97a45'); for (let x = 7; x < 46; x += 7) r(x, 1, 1, 10, '#8a5a36'); r(1, 1, 46, 2, '#d99a62'); r(4, 11, 3, 3, O); r(40, 11, 3, 3, O); });
 add(18 * T + 13, g => g.drawImage(PIER, 60 * T, 18 * T + 2)); for (const x of [60, 61, 62]) setBlk(x, 18, 0);   // a short pier: fishing starts here
-REED = sprite(12, 14, (g, r) => { for (const [x, h] of [[2, 10], [5, 13], [8, 9]]) { r(x, 14 - h, 1, h, '#4f8f3a'); r(x, 14 - h, 2, 3, '#8a5a36'); } r(0, 12, 12, 2, '#3f7a30'); });
 for (const [x, y] of [[61, 14], [67, 14], [70, 16], [60, 20], [62, 22], [66, 23], [69, 21]]) at(REED, x * T + 8, y * T + 15);
 for (const [x, y, id] of [[69, 14, 67], [70, 21, 68], [60, 29, 68], [70, 30, 68]]) tree(x, y, id === 67 ? 'sap' : 'mid');   // village trees, not Tiny City's
 putS(tiles('city', [[93, 94, 95]]), 61, 26); putS(tiles('city', [[93, 94, 95]]), 66, 26);
