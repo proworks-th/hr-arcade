@@ -109,7 +109,7 @@ rep("  if (r.kind === 'barn') {", """  if (r.kind === 'arcade') { lampW(1); lamp
     r.alist = [X + 6, Y + 8]; setBlk(X + 6, Y + 8, 1); add((Y + 8) * T + 14, g => drawListSign(g, (X + 6) * T, (Y + 8) * T)); }
   if (r.kind === 'barn') {""")
 # arcade cabinet + trophy board, drawn live (featured glow pulses, screen flickers)
-rep("/* ============ ground, painted once ============ */", """function drawCab(g, gm, x, y, t) {
+rep("/* ============ ground, painted in chunks the first time they come on screen ============ */", """function drawCab(g, gm, x, y, t) {
   const L = x + 1, B = y + 15, ft = H.featured() === gm.id, f = (a, b, w, h, c) => { g.fillStyle = c; g.fillRect(L + a, B - 26 + b, w, h); };
   if (ft) { g.fillStyle = `rgba(255,214,74,${.35 + .25 * Math.sin(t * 4)})`; g.fillRect(L - 2, B - 29, 18, 30); }
   const col = gm.color || '#ff8fbf';
@@ -130,7 +130,7 @@ function drawPartyDoor(g, x, y, t) { const f = (a, b, w, h, c) => { g.fillStyle 
 function drawTrophy(g, x, y) { const f = (a, b, w, h, c) => { g.fillStyle = c; g.fillRect(x + a, y + b, w, h); };
   f(1, -10, 14, 25, O); f(2, -9, 12, 18, '#f7e3b5'); f(2, 9, 12, 5, '#a8643a'); f(5, -7, 6, 5, '#ffd23f'); f(7, -2, 2, 3, '#ffd23f'); f(5, 1, 6, 1, '#c99a1a');
   for (let i = 0; i < 3; i++) f(4, 3 + i * 2, 8, 1, '#c9a27a'); }
-/* ============ ground, painted once ============ */""")
+/* ============ ground, painted in chunks the first time they come on screen ============ */""")
 
 # ---------------- world build → a function that can run again when lots change ----------------
 A = "/* ============ world grid"; B = "/* ============ people ============ */"
