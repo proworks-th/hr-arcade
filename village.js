@@ -432,7 +432,7 @@ const Village = (() => {
     if (!barEl) return; const L = lock(), ck = b => b ? '✓' : '', B = Prog.bricks(), mL = myLot();
     const full = document.getElementById('hub')?.classList.contains('vil-full'), jd = jobsDone().length;
     // phones: the play button leads the bar (2 taps to a game, PRD phone-first 7.3); the long lock line moves to its own row
-    barEl.innerHTML = `${typeof Phone !== 'undefined' && Phone.touch ? '<button class="btn primary vil-play" type="button" data-a="play">เล่นเกม</button>' : ''}<button class="btn sm" type="button" data-a="full" aria-pressed="${!!full}" aria-label="${full ? 'ย่อแผนที่' : 'ขยายแผนที่เต็มจอ'}">${full ? '🗗' : '⛶'}<span class="bl"> ${full ? 'ย่อ' : 'เต็มจอ'}</span></button>${mL ? '<button class="btn sm" type="button" data-a="home" aria-label="บ้านฉัน">📍<span class="bl"> บ้านฉัน</span></button>' : ''}<button class="btn sm" type="button" data-a="pet">${(pt => pt ? `${catIcon(pt.coat, pt.type)}<span class="bl"> ${escH(pt.n)}</span>${petFed(pt) ? '' : ' 💤'}` : '🐾<span class="bl"> สัตว์เลี้ยง</span>')(myPet())}</button><span class="vil-brick" title="อิฐได้จากมินิเกม รอบละ 1–3 ก้อน วันละไม่เกิน ${B.cap} + อิฐบนถนนในหมู่บ้านวันละ ${FLOOR_N} ก้อน">🧱 ${fmtN(B.n)} <small>เกม ${B.today}/${B.cap} · ถนน ${bricksGot()}/${FLOOR_N}</small></span><button class="btn sm vil-bd" type="button" data-a="board" aria-label="งานส่งของ ${jd}/${JOB_N}">📦<span class="bl"> ส่งของ</span> <b class="${jd < JOB_N ? 'vil-n' : ''}">${jd}/${JOB_N}</b></button><span class="muted">${mL ? `⭐ บ้านคุณ แปลง ${mL.id} · ${STAGE_TH[mL.stage]}${building(mL) ? ` ${Math.round(pctOf(mL) * 100)}%` : ''}`
+    barEl.innerHTML = `${typeof Phone !== 'undefined' && Phone.touch ? '<button class="btn primary vil-play" type="button" data-a="play">เล่นเกม</button>' : ''}${loyOn() ? '<button class="btn sm" type="button" data-a="loy" aria-label="ไปลอยกระทง">🪷<span class="bl"> ลอยกระทง</span></button>' : ''}<button class="btn sm" type="button" data-a="full" aria-pressed="${!!full}" aria-label="${full ? 'ย่อแผนที่' : 'ขยายแผนที่เต็มจอ'}">${full ? '🗗' : '⛶'}<span class="bl"> ${full ? 'ย่อ' : 'เต็มจอ'}</span></button>${mL ? '<button class="btn sm" type="button" data-a="home" aria-label="บ้านฉัน">📍<span class="bl"> บ้านฉัน</span></button>' : ''}<button class="btn sm" type="button" data-a="pet">${(pt => pt ? `${catIcon(pt.coat, pt.type)}<span class="bl"> ${escH(pt.n)}</span>${petFed(pt) ? '' : ' 💤'}` : '🐾<span class="bl"> สัตว์เลี้ยง</span>')(myPet())}</button><span class="vil-brick" title="อิฐได้จากมินิเกม รอบละ 1–3 ก้อน วันละไม่เกิน ${B.cap} + อิฐบนถนนในหมู่บ้านวันละ ${FLOOR_N} ก้อน">🧱 ${fmtN(B.n)} <small>เกม ${B.today}/${B.cap} · ถนน ${bricksGot()}/${FLOOR_N}</small></span><button class="btn sm vil-bd" type="button" data-a="board" aria-label="งานส่งของ ${jd}/${JOB_N}">📦<span class="bl"> ส่งของ</span> <b class="${jd < JOB_N ? 'vil-n' : ''}">${jd}/${JOB_N}</b></button><span class="muted">${mL ? `⭐ บ้านคุณ แปลง ${mL.id} · ${STAGE_TH[mL.stage]}${building(mL) ? ` ${Math.round(pctOf(mL) * 100)}%` : ''}`
       : L.ok ? '✅ ครบเงื่อนไขแล้ว · แตะป้าย 🪧 เพื่อจองที่ดิน'
       : `🔒 สร้างบ้านได้เมื่อมีห้อง ${UNLOCK_W} + Lv ${UNLOCK_LV} · ตอนนี้ ห้อง ${L.w}/${UNLOCK_W} ${ck(L.w >= UNLOCK_W)} · Lv ${L.lv}/${UNLOCK_LV} ${ck(L.lv >= UNLOCK_LV)}`}</span>`;
   }
@@ -707,6 +707,92 @@ const Village = (() => {
 
   /* ---------- lot card ---------- */
   const leftTxt = ms => { const m = Math.max(1, Math.ceil(ms / 60000)), h = Math.floor(m / 60); return h ? `${h} ชม. ${m % 60} นาที` : `${m} นาที`; };
+  // ---------------- Loy Krathong 2569 (23–27 Nov 2026): float a krathong on the east pond ----------------
+  // online.js rooms/_loy2569: k = floated krathongs (latest 60; each drifts across the pond and down the stream, gone after
+  // LOY_LIFE), n = how many the office floated, by = names. First krathong a day free, then LOY_PRICE coins, LOY_CAP a day.
+  // Fireworks over the pond at village night once the office floated LOY_GOAL, from 24 Nov. PTR host or ?loy=1: always on.
+  const LOY_FROM = Date.UTC(2026, 10, 22, 17), LOY_TO = Date.UTC(2026, 10, 27, 17), LOY_FIRE = Date.UTC(2026, 10, 23, 17);   // Bangkok 23 Nov 00:00, 28 Nov 00:00, 24 Nov 00:00
+  const LOY_PRICE = 200, LOY_CAP = 5, LOY_GOAL = 50, LOY_LIFE = 30 * 60e3, PIER = [62, 18], LOYC = { loy: 1 };
+  const loyTest = /^hr-arcade-ptr\./.test(location.hostname) || /[?&]loy=1\b/.test(location.search);
+  const loyOn = () => loyTest || (srvNow() >= LOY_FROM && srvNow() < LOY_TO);
+  const LOY_STY = [['ใบตอง', '#5fae4a', ['#ffb21f', '#ff7a1a', '#ffb21f']], ['ดอกบัว', '#ff9cc0', ['#ffe3ee', '#ff6fa8', '#ffe3ee']], ['ขนมปัง', '#d9a35f', ['#ff5c8a', '#4cc3ff', '#ffd23f']]];
+  const LOY_BAD = ['ควย', 'เหี้ย', 'เหี่ย', 'สัส', 'สัด', 'เย็ด', 'หี', 'แตด', 'มึง', 'ไอ้สัตว์', 'อีสัตว์', 'ระยำ', 'ชิบหาย', 'ส้นตีน', 'ตีน', 'อีดอก', 'ดอกทอง', 'กะหรี่', 'แม่ง', 'เชี่ย', 'พ่องตาย', 'พ่อมึง', 'แม่มึง', 'ห่าน', 'อีห่า', 'ไอ้ห่า', 'จัญไร', 'fuck', 'shit', 'bitch', 'dick', 'pussy', 'asshole', 'cunt', 'bastard'];
+  const loyClean = s => { const z = String(s).toLowerCase().replace(/[\s.\-_*!?,'"~0-9]/g, ''); return !LOY_BAD.some(b => z.includes(b)); };
+  const hashS = s => { let h = 7; for (const c of String(s)) h = (h * 31 + c.charCodeAt(0)) | 0; return h >>> 0; };
+  let loyK = {}, loyN = 0, loyNames = null, loySty = 0, loyW = '', loyBusy = false; const loyHide = new Set(), loyMine = new Set();
+  const loyDay = p => { const d = bkkDay(); p.loy = p.loy && p.loy.d === d ? p.loy : { d, n: 0 }; return p.loy; };
+  function loyWatch(M) { if (!M.watchLoy || !loyOn()) return;
+    M.watchLoy(v => { loyK = Object.fromEntries(Object.entries(v).map(([id, k]) => [id, { ...k, id }])); });
+    M.watchLoyCount(n => { loyN = n | 0; if (cardL === LOYC && !loyTyping()) renderCard(); }); }
+  const loyTyping = () => { const f = document.activeElement; return !!(f && f.id === 'vilLoyWish' && cardEl && cardEl.contains(f)); };
+  function loyOpen() { goTo(PIER); openCard(LOYC); if (O && O.loyNames) O.loyNames().then(a => { loyNames = a; if (cardL === LOYC && !loyTyping()) renderCard(); }).catch(() => {}); }
+  function loyCard() {
+    const p = Prog.get(), st = loyDay(p), left = LOY_CAP - st.n, dis = loyBusy ? ' disabled' : '';
+    let h = `<h4>🪷 ลอยกระทง 2569</h4><p class="muted">บึงหมู่บ้าน · 23–27 พ.ย. · ทั้งออฟฟิศลอยแล้ว ${fmtN(loyN)}/${LOY_GOAL}${loyN >= LOY_GOAL ? ' · มีดอกไม้ไฟตอนค่ำ' : ' · ครบแล้วมีดอกไม้ไฟตอนค่ำ'}</p>`;
+    h += `<div class="vil-loy-sty" role="group" aria-label="แบบกระทง">${LOY_STY.map((s, i) => `<button class="btn sm" type="button" data-a="loySty" data-i="${i}" aria-pressed="${i === loySty}">${s[0]}</button>`).join('')}</div>`;
+    h += `<input id="vilLoyWish" type="text" maxlength="40" placeholder="คำอธิษฐาน (ไม่เกิน 40 ตัวอักษร)" value="${escH(loyW)}" style="width:100%;margin:6px 0">`;
+    h += left > 0 ? `<button class="btn primary" type="button" data-a="loyFloat"${dis}>ลอยกระทง · ${st.n ? `🪙 ${LOY_PRICE}` : 'ฟรีวันนี้'}</button><p class="muted">วันนี้ลอยได้อีก ${left} ใบ</p>`
+      : '<p>วันนี้ลอยครบ 5 ใบแล้ว พรุ่งนี้มาลอยใหม่ได้</p>';
+    if (loyNames && loyNames.length) { const ns = loyNames.slice().sort((a, b) => (b.c | 0) - (a.c | 0)).map(r => escH(r.n));
+      h += `<p class="muted">ร่วมลอยแล้ว ${ns.length} คน: ${ns.slice(0, 24).join(', ')}${ns.length > 24 ? ' …' : ''}</p>`; }
+    return h; }
+  function loyKCard(k) { const mine = loyMine.has(k.id) || (k.k && k.k === myKey());
+    return `<h4>🪷 กระทงของ${escH(k.n)}</h4><p>${k.w ? `"${escH(k.w)}"` : 'ไม่ได้เขียนคำอธิษฐาน'}</p><p class="muted">แบบ${(LOY_STY[k.s] || LOY_STY[0])[0]}</p>`
+      + (mine ? '<button class="btn" type="button" data-a="loySink">เก็บกระทงขึ้นจากน้ำ</button>' : '<button class="btn sm" type="button" data-a="loyHide">ซ่อนใบนี้ (เฉพาะเครื่องนี้)</button>'); }
+  async function loyFloat() {
+    const nm = typeof myName === 'function' ? myName() : ''; if (!nm) return toast('ตั้งชื่อก่อนแล้วค่อยลอยนะ');
+    const w = (loyW || '').trim().slice(0, 40); if (!loyClean(w)) return toast('คำอธิษฐานมีคำไม่สุภาพ ลองเขียนใหม่นะ');
+    const p = Prog.get(), st = loyDay(p); if (st.n >= LOY_CAP) return toast('วันนี้ลอยครบ 5 ใบแล้ว');
+    if (st.n && (p.coins | 0) < LOY_PRICE) return toast(`เหรียญไม่พอ (ต้องใช้ 🪙 ${LOY_PRICE})`);
+    if (!O || !O.floatLoy) return toast('ยังต่อออนไลน์ไม่ได้ ลองใหม่อีกครั้ง');
+    loyBusy = true; renderCard(); goTo(PIER);
+    try { const id = await O.floatLoy(nm, loySty, w); if (!id) throw new Error('no id');
+      const q = Prog.get(), s2 = loyDay(q); if (s2.n) { q.coins -= LOY_PRICE; if (typeof Stats !== 'undefined') Stats.econ('out_loy', LOY_PRICE); } s2.n++; Prog.put(q);
+      loyMine.add(id); loyW = ''; const t = typeof Skills !== 'undefined' && Skills.evAdd && Skills.evAdd('loy2569');
+      toast(t ? 'ลอยแล้ว · ได้ฉายา "ลอยกระทง 2569" ใส่ได้ที่หน้าทักษะ' : 'ลอยกระทงแล้ว');
+      feed(`🪷 ${nm} ลอยกระทงที่บึงหมู่บ้านแล้ว`); }
+    catch (e) { toast('ลอยไม่สำเร็จ ลองใหม่อีกครั้ง'); }
+    finally { loyBusy = false; if (cardL === LOYC) renderCard(); } }
+  function loyAct(a, b) {
+    if (a === 'loySty') { loySty = +b.dataset.i || 0; return renderCard(); }
+    if (a === 'loyFloat') return loyFloat();
+    if (a === 'loySink' && cardL && cardL.loyK) { const id = cardL.loyK; closeCard(); if (O && O.sinkLoy) O.sinkLoy(id); delete loyK[id]; return toast('เก็บกระทงขึ้นแล้ว'); }
+    if (a === 'loyHide' && cardL && cardL.loyK) { loyHide.add(cardL.loyK); closeCard(); }
+  }
+  // where a krathong is now: across the pond from the pier, then down the stream east; fades out at the end
+  function loyPos(k, now) { const age = (now - (k.t || now)) / LOY_LIFE, h = hashS(k.id); if (age >= 1 || age < -.02) return null;
+    const a = Math.max(0, age); let x, y;
+    if (a < .6) { const u = a / .6, e = 1 - (1 - u) * (1 - u);   // eases out: moves off the pier quickly, then drifts
+      x = 63.8 + e * 5.8; y = 18.5 + (((h >> 3) % 3) - 1) * .45 * (1 - u) + Math.sin(u * Math.PI) * ((h % 5) - 2) * .8; }
+    else { const u = (a - .6) / .4; x = 69.6 + u * 5.4; y = 18.5; }
+    return [x * T, (y + Math.sin(now / 1700 + h) * .08) * T, a > .85 ? 1 - (a - .85) / .15 : 1]; }
+  function drawKr(g, k, x, y, al, night) { const S1 = LOY_STY[k.s] || LOY_STY[0], h = hashS(k.id), bx = Math.round(x) - 6, by = Math.round(y) - 5, fl = Math.floor(srvNow() / 160 + h) % 3 === 0 ? 1 : 0;
+    g.save(); g.globalAlpha = al;
+    if (night) { g.globalAlpha = al * .3; g.fillStyle = '#ffcf6a'; g.beginPath(); g.arc(bx + 6, by - 3, 11, 0, 7); g.fill(); g.globalAlpha = al; }
+    g.fillStyle = '#ffffff66'; g.fillRect(bx - 1, by + 8, 14, 1);
+    g.fillStyle = '#3b2316'; g.fillRect(bx, by + 3, 12, 5); g.fillStyle = S1[1]; g.fillRect(bx + 1, by + 4, 10, 3); g.fillStyle = '#0003'; for (let i = 2; i < 11; i += 3) g.fillRect(bx + i, by + 4, 1, 3);
+    S1[2].forEach((c, i) => { g.fillStyle = '#3b2316'; g.fillRect(bx + 1 + i * 3.5, by, 4, 4); g.fillStyle = c; g.fillRect(bx + 2 + i * 3.5, by + 1, 2, 2); });
+    g.fillStyle = '#3b2316'; g.fillRect(bx + 5, by - 4, 3, 5); g.fillStyle = '#fff8e0'; g.fillRect(bx + 6, by - 3, 1, 3);
+    g.fillStyle = '#ff9a1f'; g.fillRect(bx + 5, by - 7 + fl, 3, 3); g.fillStyle = '#fff3a0'; g.fillRect(bx + 6, by - 6 + fl, 1, 2);
+    g.restore(); }
+  const loyNight = () => { const h = W && W.hour ? W.hour() : 12; return h < 6 || h >= 18.75; };
+  function loyDraw(out) { const now = srvNow(), night = loyNight();
+    for (const k of Object.values(loyK)) { if (loyHide.has(k.id)) continue; const p = loyPos(k, now); if (!p) continue;
+      out.push({ y: p[1] + 2, d: () => drawKr(W.ctx, k, p[0], p[1], p[2], night) });
+      hits.push({ l: p[0] - 9, t: p[1] - 12, w: 18, h: 18, hit: { loyK: k.id } }); }
+    // the park's festival lights, strung across the plaza where the bunting was
+    out.push({ y: 1e6, d: () => { const g = W.ctx, cols = ['#ffd23f', '#ff6fa8', '#ffb21f', '#7fd3ff'];
+      for (const [x0, x1, y0, sag] of [[25.5, 31.5, 13.7, 8], [25.5, 31.5, 18.2, 6]]) { g.strokeStyle = '#3b2316'; g.lineWidth = 1; g.beginPath();
+        for (let i = 0; i <= 12; i++) { const u = i / 12, x = (x0 + (x1 - x0) * u) * T, y = y0 * T + Math.sin(u * Math.PI) * sag; i ? g.lineTo(x, y) : g.moveTo(x, y); } g.stroke();
+        for (let i = 1; i < 12; i++) { const u = i / 12, x = Math.round((x0 + (x1 - x0) * u) * T), y = Math.round(y0 * T + Math.sin(u * Math.PI) * sag);
+          if (night) { g.globalAlpha = .35; g.fillStyle = cols[i % 4]; g.beginPath(); g.arc(x, y + 2, 5, 0, 7); g.fill(); g.globalAlpha = 1; }
+          g.fillStyle = '#3b2316'; g.fillRect(x - 2, y, 4, 4); g.fillStyle = cols[i % 4]; g.fillRect(x - 1, y + 1, 2, 2); } } } }); }
+  // fireworks over the east pond at village night, once the office goal is reached (from 24 Nov), in overlay px
+  function loyFire(g) { const t = srvNow() / 1000, S1 = S(), cx = sx(65 * T), cy = sy(16.5 * T), cols = ['#ffd23f', '#ff6fa8', '#7fd3ff', '#9cff8a', '#ffb21f'];
+    for (let j = 0; j < 3; j++) { const n = Math.floor(t / 1.3) - j, u = (t / 1.3 - Math.floor(t / 1.3) + j) / 2; if (u > 1) continue; const r1 = hashS('fw' + n);
+      const x0 = cx + ((r1 % 9) - 4) * 16 * S1, y0 = cy - ((r1 >> 4) % 5) * 9 * S1, c = cols[r1 % cols.length]; g.globalAlpha = Math.max(0, 1 - u); g.fillStyle = c;
+      for (let i = 0; i < 18; i++) { const a = i / 18 * 6.283, rr = (6 + 36 * Math.sqrt(u)) * S1; g.fillRect(x0 + Math.cos(a) * rr - S1, y0 + Math.sin(a) * rr + u * u * 14 * S1 - S1, 2 * S1, 2 * S1); } }
+    g.globalAlpha = 1; }
   function openCard(L) { if (W) W.closeCard(); if (cardL !== L) moveArm = 0; cardL = L; renderCard(); }
   function closeCard() { cardL = null; if (cardEl) cardEl.hidden = true; }
   function renderCard() {
@@ -715,6 +801,8 @@ const Village = (() => {
     const X = `<button class="x" type="button" data-a="close" aria-label="ปิด">✕</button>`;
     if (cardL === BOARDC) { cardEl.innerHTML = X + boardCard(); cardEl.hidden = false; return; }
     if (cardL === ARCC) { cardEl.innerHTML = X + arcListCard(); cardEl.hidden = false; return; }
+    if (cardL === LOYC) { if (loyTyping()) return; cardEl.innerHTML = X + loyCard(); cardEl.hidden = false; return; }
+    if (cardL.loyK) { const k = loyK[cardL.loyK]; if (!k) return closeCard(); cardEl.innerHTML = X + loyKCard(k); cardEl.hidden = false; return; }
     if (cardL.npc != null) { cardEl.innerHTML = X + npcCard(cardL.npc); cardEl.hidden = false; return; }
     const L = cardL, mk = myKey(), mine = L.stage && L.k === mk, mL = myLot(), dis = busy ? ' disabled' : '';
     let h = X;
@@ -753,6 +841,7 @@ const Village = (() => {
   }
   function cardAct(a, b) {
     if (a === 'close') return closeCard();
+    if (a.startsWith('loy')) return loyAct(a, b);
     if (a === 'adopt') return adopt(); if (a === 'feed') return feedPet(b && b.dataset.k); if (a === 'rename') return renamePet(); if (a === 'coat') return dyePet(b && b.dataset.k); if (a === 'dye') return dyePet(b && b.dataset.k, true);
     if (a === 'coatx') { petPick = petTyPick = ''; return petCard(); }
     if (a === 'pty') { petTyPick = b.dataset.k; petPick = ''; if (!(petBook(Prog.get()))[petTyPick]) adoptPick.y = petTyPick; return petCard(); }
@@ -901,6 +990,8 @@ const Village = (() => {
     if (g && g.gacha && W) { W.arcade.to('gacha', () => typeof Gacha !== 'undefined' && Gacha.open()); return; }
     if (g && g.party && W) { W.arcade.to('party', partyIn); return; }
     if (g === 'board') { goTo(nearestWalk(BOARD[0], BOARD[1] + 1)); openCard(BOARDC); return; }
+    if (g === LOYC) return loyOpen();
+    if (g && g.loyK) { if (loyK[g.loyK]) openCard({ loyK: g.loyK }); return; }
     if (g && g.npc != null && W) { W.talk(g.npc); return; }
     if (g && g.npc != null) { const [nx, ny] = NPCS[g.npc].at; goTo(nearestWalk(nx + 1, ny)); openCard(NPCC[g.npc]); return; }
     if (g && g.person) { const p = g.person, a = others[p.id]; if (a) goTo(nearestWalk(Math.round(a.x) + 1, Math.round(a.y))); toast(`👋 ${p.n || '?'}${p.lv ? ` · Lv ${p.lv}` : ''} อยู่ในหมู่บ้าน`); return; }
@@ -926,8 +1017,9 @@ const Village = (() => {
     el.innerHTML = `<div class="vil-wrap"><canvas aria-label="แผนที่หมู่บ้าน"></canvas><div class="vil-card" role="dialog" aria-label="ที่ดินและบ้าน" hidden></div></div><div class="vil-bar"></div>`;
     cv = el.querySelector('canvas'); ctx = cv.getContext('2d'); wrapEl = el.querySelector('.vil-wrap'); barEl = el.querySelector('.vil-bar'); cardEl = el.querySelector('.vil-card');
     cardEl.addEventListener('click', e => { const b = e.target.closest('[data-a]'); if (b && !b.disabled) cardAct(b.dataset.a, b); });
-    cardEl.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id === 'vilPetName') renamePet(); });
-    barEl.addEventListener('click', e => { if (e.target.closest('[data-a=play]')) act({ alist: 1 }); if (e.target.closest('[data-a=home]')) { const L = myLot(); if (L) act(L); } if (e.target.closest('[data-a=pet]')) act('pet'); if (e.target.closest('[data-a=board]')) act('board'); if (e.target.closest('[data-a=full]')) setFull(); });
+    cardEl.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id === 'vilPetName') renamePet(); if (e.key === 'Enter' && e.target.id === 'vilLoyWish') loyFloat(); });
+    cardEl.addEventListener('input', e => { if (e.target.id === 'vilLoyWish') loyW = e.target.value.slice(0, 40); });
+    barEl.addEventListener('click', e => { if (e.target.closest('[data-a=loy]')) act(LOYC); if (e.target.closest('[data-a=play]')) act({ alist: 1 }); if (e.target.closest('[data-a=home]')) { const L = myLot(); if (L) act(L); } if (e.target.closest('[data-a=pet]')) act('pet'); if (e.target.closest('[data-a=board]')) act('board'); if (e.target.closest('[data-a=full]')) setFull(); });
     sheetSwipe(cardEl, closeCard);
     try { if (localStorage.getItem('vilFull')) document.getElementById('hub')?.classList.add('vil-full'); } catch (e) { /* private window */ }
     el.addEventListener('keydown', e => { if (e.key === 'Escape') closeCard(); });
@@ -968,6 +1060,7 @@ const Village = (() => {
     if (!sc) for (const L of LOTS) { const o = L.stage === 5 && L.pet && Array.isArray(L.pet.o) ? L.pet.o : null; if (!o) continue; const h = homeOf(L); L.cats = L.cats || [];
       o.slice(0, 4).forEach((q, i) => { if (!Array.isArray(q)) return; const c = L.cats[i] || (L.cats[i] = { x: 0, y: 0, face: 1, moving: false }); c.x = h[0] - 2 - i; c.y = h[1];
         out.push({ y: c.y * T + 11, d: () => drawCat(c, q[1], false, true, null, q[0]) }); }); }
+    if (!sc && loyOn()) loyDraw(out);
     return out;
   }
   // after the engine drew the world: name tags, lot / tower / board pills and the road pickups on the overlay canvas (screen px × dpr)
@@ -980,6 +1073,9 @@ const Village = (() => {
     if (!scn) {
       pill(sx((TOWER.x + 4) * T), sy(TOWER.y * T) - 4 * dpr, '🏢 ตึกออฟฟิศ', { bg: '#e8f0ff', hit: 'tower' });
       const open = jobs().filter(J => !jobsDone().includes(J.j)), jobK = new Set(open.map(J => J.to.L ? 'L' + J.to.L.id : 'N' + J.to.npc));
+      if (loyOn()) { if (loyN >= LOY_GOAL && (loyTest || srvNow() >= LOY_FIRE) && loyNight()) loyFire(ctx);
+        pill(sx(62 * T), sy(12 * T) - 16 * dpr, `🪷 ลอยกระทง · ${fmtN(loyN)}/${LOY_GOAL}`, { bg: '#ffe0ea', line: '#d14d72', hit: LOYC });
+        pill(sx(33.5 * T), sy(15 * T), '🪷 ลอยกระทงที่บึงหมู่บ้าน →', { fs: 10, bg: '#fff8d6', hit: LOYC }); }
       pill(sx((BOARD[0] + .5) * T), sy(BOARD[1] * T) - 14 * dpr, open.length ? `📌 งานส่งของ ${open.length}` : '📌 บอร์ด', { fs: 11, bg: open.length ? '#fff3c4' : '#fff', hit: 'board' });
       const onK = onlineKeys(), mk = myKey();
       for (const L of LOTS) { const x = sx((L.x + 2.5) * T), y = sy(W.lotTop(L.id)) - 2 * dpr;
@@ -1086,7 +1182,7 @@ const Village = (() => {
   function start() {
     if (started) return; started = true; for (const y of Object.keys(PET_TYPES)) petImg(y).src = PET_TYPES[y].src;
     startWorld().catch(e => { console.warn('village engine fallback', e); startOld(); });
-    loadOnline().then(M => { O = M; send(true); M.watchOffset(v => offset = v || 0); M.watchOnline(l => { people = l; syncOthers(); }); if (M.watchLots) M.watchLots(applyLots); hookFarm(); }).catch(() => {});
+    loadOnline().then(M => { O = M; send(true); M.watchOffset(v => offset = v || 0); M.watchOnline(l => { people = l; syncOthers(); }); if (M.watchLots) M.watchLots(applyLots); hookFarm(); loyWatch(M); }).catch(() => {});
   }
   return {
     on,
@@ -1096,6 +1192,6 @@ const Village = (() => {
     // walk into 🕹️ ตึกเกม (to a machine when id is given); waits for the engine to load the first time
     party(n = 0) { if (W && W.arcade) return void W.arcade.to('party', partyIn); if (n < 60) setTimeout(() => Village.party(n + 1), 150); },
     arcade(id, n = 0) { if (W && W.arcade) return void W.arcade.walk(id || ''); if (n < 60) setTimeout(() => Village.arcade(id, n + 1), 150); },
-    _dbg: { me, LOTS, others, pm, adopt, feedPet, dyePet, renamePet, swapPet, petBook, myPet, moveHouse, moveInfo, get farms() { return farms; }, syncHome, gCell, get hits() { return hits; }, get ready() { return !!(world || W); }, get W() { return W; }, act, lock, goTo, fast: false, floorSpots, reserve, jobs, jobsDone, deliver, haveCrop, NPCS, BOARDC, next, help, myLot, get busy() { return busy; }, decorate, movedIn, get held() { return W ? W.held : held; }, gSize, tinted, roofOf, wallOf },
+    _dbg: { loy: { open: loyOpen, float: loyFloat, wish: v => { loyW = v; }, get n() { return loyN; }, get k() { return loyK; }, pos: loyPos, on: () => loyOn() }, me, LOTS, others, pm, adopt, feedPet, dyePet, renamePet, swapPet, petBook, myPet, moveHouse, moveInfo, get farms() { return farms; }, syncHome, gCell, get hits() { return hits; }, get ready() { return !!(world || W); }, get W() { return W; }, act, lock, goTo, fast: false, floorSpots, reserve, jobs, jobsDone, deliver, haveCrop, NPCS, BOARDC, next, help, myLot, get busy() { return busy; }, decorate, movedIn, get held() { return W ? W.held : held; }, gSize, tinted, roofOf, wallOf },
   };
 })();

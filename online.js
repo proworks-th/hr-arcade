@@ -207,6 +207,16 @@ export async function takeGifts(me){
 }
 /* ---------- farm market: rooms/_mkt/o/{id}={s:'s'|'b',c,q,l,p,k,n,d,t} resting orders (d = hours it stays up) (crops or coins already held by the owner);
    a fill owed to a resting order's owner waits in rooms/_mkt/c/{key}/{id}={s,c,u,p,n,t}; NPC vendor lots taken: rooms/_mkt/bt/{slot}=n ---------- */
+// Loy Krathong 23–27 Nov 2026 (rooms/_loy2569): k = floated krathongs (latest 60), n = how many the office floated, by = who and how many
+const LOY='rooms/_loy2569',loyId=id=>String(id).replace(/[.#$\[\]\/]/g,'');
+export function watchLoy(cb){return FIREBASE_CONFIG?onValue(query(ref(db(),LOY+'/k'),limitToLast(60)),s=>cb(s.val()||{})):()=>{}}
+export function watchLoyCount(cb){return FIREBASE_CONFIG?onValue(ref(db(),LOY+'/n'),s=>cb(s.val()||0)):()=>{}}
+export async function loyNames(){if(!FIREBASE_CONFIG)return[];const s=await get(ref(db(),LOY+'/by'));return Object.values(s.val()||{})}
+export async function floatLoy(name,sty,wish){
+  if(!FIREBASE_CONFIG||!name)return null;const n=String(name).trim().slice(0,20),k=nameKey(name);
+  const r=await push(ref(db(),LOY+'/k'),{n,k,s:sty|0,w:String(wish||'').slice(0,40),t:serverTimestamp()});
+  runTransaction(ref(db(),LOY+'/n'),c=>(c||0)+1);runTransaction(ref(db(),LOY+'/by/'+k),c=>({n,c:((c&&c.c)||0)+1}));return r.key}
+export function sinkLoy(id){return FIREBASE_CONFIG?remove(ref(db(),LOY+'/k/'+loyId(id))):Promise.resolve()}
 export function watchMkt(cb){return FIREBASE_CONFIG?onValue(ref(db(),'rooms/_mkt/o'),s=>cb(s.val()||{})):()=>{}}
 export function watchNpc(cb){return FIREBASE_CONFIG?onValue(ref(db(),'rooms/_mkt/bt'),s=>cb(s.val()||{})):()=>{}}
 export async function mktPut(o){const r=await push(ref(db(),'rooms/_mkt/o'),{s:o.s,c:String(o.c).slice(0,4),q:o.q|0,l:o.q|0,p:o.p|0,k:o.k,n:String(o.n).trim().slice(0,20),d:Math.max(1,Math.min(24,o.d|0||24)),t:serverTimestamp()});return r.key}

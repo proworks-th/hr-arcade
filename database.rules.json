@@ -2,8 +2,8 @@
   "rules": {
     "rooms": {
       "$room": {
-        ".read": "$room !== '_usave' && $room !== '_mkt'",
-        ".write": "$room !== '_usave' && $room !== '_mkt'",
+        ".read": "$room !== '_usave' && $room !== '_mkt' && $room !== '_loy2569'",
+        ".write": "$room !== '_usave' && $room !== '_mkt' && $room !== '_loy2569'",
         ".validate": "$room.length <= 16"
       },
       "_usave": {
@@ -32,6 +32,25 @@
           "$id": {
             ".write": true,
             ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 999 && (!data.exists() || newData.val() > data.val())"
+          }
+        }
+      },
+      "_loy2569": {
+        ".read": true,
+        "k": {
+          "$id": {
+            ".write": true,
+            ".validate": "newData.hasChildren(['n','k','s','w','t']) && newData.child('n').isString() && newData.child('n').val().length <= 20 && newData.child('k').isString() && newData.child('k').val().length <= 24 && newData.child('s').isNumber() && newData.child('s').val() >= 0 && newData.child('s').val() <= 2 && newData.child('w').isString() && newData.child('w').val().length <= 40 && newData.child('t').isNumber()"
+          }
+        },
+        "n": {
+          ".write": true,
+          ".validate": "newData.isNumber() && newData.val() === (data.exists() ? data.val() : 0) + 1"
+        },
+        "by": {
+          "$key": {
+            ".write": true,
+            ".validate": "newData.hasChildren(['n','c']) && newData.child('n').isString() && newData.child('n').val().length <= 20 && newData.child('c').isNumber() && newData.child('c').val() === (data.exists() ? data.child('c').val() : 0) + 1"
           }
         }
       }

@@ -291,7 +291,7 @@ add(16 * T + 15, (g, t) => { const x = PARK.cx * T + 8, y = 16 * T + 10;
   g.fillStyle = '#bfe9ff'; for (let i = 0; i < 6; i++) { const a = (t * 1.8 + i / 6) % 1, dx = (i % 2 ? 1 : -1) * (2 + a * 11); g.fillRect(x + dx, y - 22 - Math.sin(a * Math.PI) * 9 + a * 12, 2, 2); } },
   { shadow: [PARK.cx * T + 8, 16 * T + 12, 28] });
 setBlk(27, 16, 1); setBlk(28, 16, 1); setBlk(29, 16, 1); places.push([PARK.cx * T + 8, 14.2 * T, '⛲ สวนกลางหมู่บ้าน']);
-places.push([31.5 * T, 23.7 * T, '🪷 สระลอยกระทง']);   // below the pond, clear of the fountain
+places.push([31.5 * T, 23.7 * T, '🪷 สระบัว']);   // 18 Nov 2026: Loy Krathong happens on the east pond   // below the pond, clear of the fountain
 // the landing: a small wooden deck with steps, where you stand to float a krathong
 DECK = sprite(34, 16, (g, r) => { r(0, 0, 34, 11, O); r(1, 1, 32, 9, '#c4864f'); for (let x = 6; x < 33; x += 5) r(x, 1, 1, 9, '#8a5a36'); r(1, 1, 32, 2, '#e0a56c');
   for (const x of [20, 29]) { r(x, 10, 3, 6, O); r(x + 1, 10, 1, 5, '#6b4428'); } r(0, 10, 9, 4, O); r(1, 11, 7, 2, '#c4864f'); });   // planks over the water, posts in it, a step up from the path
@@ -1298,7 +1298,7 @@ return { me, held, C, R,
     if (M) playAt(M, cb); else if (id && H.games().some(g => g.id === id)) { closeCard(); H.play(id); }   // a game without a cabinet still starts
     else { closeCard(); me.after = null; travel(me, r.entry); } return true; },
     to(what, cb) { const r = arcRoom(); if (!r || !r[what]) return false; warpArc(); playAt({ x: r[what][0], y: r[what][1], st: what === 'alist' ? [r[what][0] - 1, r[what][1]] : null }, cb); return true; } }, // gAt / blk: tile and wall at (x, y), x and y may be negative (the border); the raw G / block rows start at WX0 / WY0, not 0
-  gAt: (x, y) => gAt(x, y), blk: (x, y) => blk(x, y), get G() { return G; }, get block() { return block; }, get ctx() { return ctx; }, ov: SR.getElementById('ov'),
+  gAt: (x, y) => gAt(x, y), blk: (x, y) => blk(x, y), hour: () => hour, get G() { return G; }, get block() { return block; }, get ctx() { return ctx; }, ov: SR.getElementById('ov'),
   travel: c => { closeCard(); me.after = null; travel(me, c); }, place: c => place(me, c), warp: c => { closeCard(); warp(c); }, warpArc: () => { closeCard(); return warpArc(); },
   pos: () => cellOf(me), walkable: (x, y) => walkable(x, y), get ride() { return riding(me); }, rideMul: k => RIDES[k]?.[2] || 1,
   drawRide: (g, P, k, back, col) => { if (RIDE_SPR[k]) drawRide(g, P, k, back, col || ''); }, get rideCol() { const k = riding(me); return k ? rcolOk(k, F.rcol[k]) : ''; }, sceneOf, scene: () => scene, relots, closeCard,

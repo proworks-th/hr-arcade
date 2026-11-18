@@ -396,7 +396,7 @@ add(16 * T + 15, (g, t) => { const x = PARK.cx * T + 8, y = 16 * T + 10;
   g.fillStyle = '#bfe9ff'; for (let i = 0; i < 6; i++) { const a = (t * 1.8 + i / 6) % 1, dx = (i % 2 ? 1 : -1) * (2 + a * 11); g.fillRect(x + dx, y - 22 - Math.sin(a * Math.PI) * 9 + a * 12, 2, 2); } },
   { shadow: [PARK.cx * T + 8, 16 * T + 12, 28] });
 setBlk(27, 16, 1); setBlk(28, 16, 1); setBlk(29, 16, 1); places.push([PARK.cx * T + 8, 14.2 * T, '⛲ สวนกลางหมู่บ้าน']);
-places.push([31.5 * T, 23.7 * T, '🪷 สระลอยกระทง']);   // below the pond, clear of the fountain
+places.push([31.5 * T, 23.7 * T, '🪷 สระบัว']);   // 18 Nov 2026: Loy Krathong happens on the east pond   // below the pond, clear of the fountain
 // the landing: a small wooden deck with steps, where you stand to float a krathong
 const DECK = sprite(34, 16, (g, r) => { r(0, 0, 34, 11, O); r(1, 1, 32, 9, '#c4864f'); for (let x = 6; x < 33; x += 5) r(x, 1, 1, 9, '#8a5a36'); r(1, 1, 32, 2, '#e0a56c');
   for (const x of [20, 29]) { r(x, 10, 3, 6, O); r(x + 1, 10, 1, 5, '#6b4428'); } r(0, 10, 9, 4, O); r(1, 11, 7, 2, '#c4864f'); });   // planks over the water, posts in it, a step up from the path

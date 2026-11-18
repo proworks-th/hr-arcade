@@ -55,9 +55,13 @@ const Skills = (() => {
     const v = (PERKS[id][t - 1].b || {})[key] || 0; return Math.min(v, CAP[key] ?? v);
   }
   // titles: one shown on the name tag. Every reached tier of every skill is a title you can wear.
-  const titles = () => Object.keys(DEF).flatMap(id => DEF[id][2].slice(0, tier(id)).map((t, i) => ({ id, t: i + 1, name: t })));
-  const title = () => { const w = st().sk.title; if (!w) return null; const [id, t] = w.split(':'); return tier(id) >= +t ? DEF[id][2][t - 1] : null; };
+  // event titles (18 Nov 2026): earned once at an event, worn the same way (id 'ev', t = the event key)
+  const EV = { loy2569: 'ลอยกระทง 2569' };
+  const evs = () => (st().sk.ev || []).filter(k => EV[k]);
+  const titles = () => Object.keys(DEF).flatMap(id => DEF[id][2].slice(0, tier(id)).map((t, i) => ({ id, t: i + 1, name: t }))).concat(evs().map(k => ({ id: 'ev', t: k, name: EV[k] })));
+  const title = () => { const w = st().sk.title; if (!w) return null; const [id, t] = w.split(':'); if (id === 'ev') return evs().includes(t) ? EV[t] : null; return tier(id) >= +t ? DEF[id][2][t - 1] : null; };
+  function evAdd(k) { const p = st(); p.sk.ev ||= []; if (!EV[k] || p.sk.ev.includes(k)) return false; p.sk.ev.push(k); Prog.put(p); return true; }
   function wear(id, t) { const p = st(); p.sk.title = id ? id + ':' + t : null; Prog.put(p); }
 
-  return { DEF, TIER_XP, DAY_CAP, PERKS, CAP, xp, tier, next, todayLeft, add, bonus, titles, title, wear };
+  return { DEF, TIER_XP, DAY_CAP, PERKS, CAP, xp, tier, next, todayLeft, add, bonus, titles, title, wear, evAdd };
 })();
