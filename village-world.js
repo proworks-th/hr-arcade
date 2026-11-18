@@ -34,19 +34,19 @@ const kt = (sh, id) => ktc[sh + id] ??= (() => { const s = K[sh], cols = s.width
 function tiles(sh, rows) { const c = mk(Math.max(...rows.map(r => r.length)) * 16, rows.length * 16), g = c.getContext('2d');
   rows.forEach((r, y) => r.forEach((id, x) => { if (id != null) g.drawImage(kt(sh, id), x * 16, y * 16); })); return c; }
 
-let T, VC, VR, RX0, C, R, O, RS, rnd, ri, WX0, WY0, inW, grid, G, block, res, gAt, setG, blk, setBlk, resAt, setRes, rect, PARK, POND, TOWER, BOARD, WELL, STAGE_TH, ROOFS, ROOF_IN, WALLS, WALL_IN, LOTS, MY, BED_AT, ROOMS, ROOM, makeRoom, sceneOf, ga, alphaAt, qStats, WANT, QPICK, grassAt, hexRGB, paint, cottageRaw, bigRaw, houseCache, isBig, hasHouse, houseFor, sprite, SIGN, STAKE, JAR, LANTERN, BOARD_S, WELL_S, LAMP, SCAFF, FOUND, BRICKS, tower, STALL, BED, SOFA, COUNTER, COFFEE, RACK, MIRROR, FRAME, MENU, WLAMP, RUG, BUNT, skyAt, objs, glows, places, add, MAPLE, tree, fence, at, put, putS, bunting, G_ORDER, gCells, flower, lot, cityB, BUILDINGS, building, SALA, BED_F, LANE_W, LANE_E, ROAD_X0, ROAD_X1, CARS, barn, BARN, ANIM, PLOTS, CHEST_S, inLot, free, furnish, drawCab, drawListSign, drawGachaM, drawPartyDoor, drawTrophy, CHUNK, CHUNK_PX, CHUNKS, groundTile, groundOver, LOT_DIRT, TILE_SEED, TILE_V, TILE_B, tileV, tileB, chunkAt, drawGround;
+let T, VC, VR, VM, RX0, C, R, O, RS, rnd, ri, WX0, WY0, inW, grid, G, block, res, gAt, setG, blk, setBlk, resAt, setRes, rect, PARK, POND, TOWER, BOARD, WELL, STAGE_TH, ROOFS, ROOF_IN, WALLS, WALL_IN, LOTS, MY, BED_AT, ROOMS, ROOM, makeRoom, sceneOf, ga, alphaAt, qStats, WANT, QPICK, grassAt, hexRGB, paint, cottageRaw, bigRaw, houseCache, isBig, hasHouse, houseFor, sprite, SIGN, STAKE, JAR, LANTERN, BOARD_S, WELL_S, LAMP, SCAFF, FOUND, BRICKS, tower, STALL, BED, SOFA, COUNTER, COFFEE, RACK, MIRROR, FRAME, MENU, WLAMP, RUG, BUNT, skyAt, objs, glows, places, add, MAPLE, tree, fence, at, put, putS, bunting, G_ORDER, gCells, flower, lot, cityB, BUILDINGS, building, SALA, BED_F, LANE_W, LANE_E, ROAD_X0, ROAD_X1, CARS, barn, BARN, ANIM, PLOTS, CHEST_S, inLot, free, furnish, inV, hashXY, drawCab, drawListSign, drawGachaM, drawPartyDoor, drawTrophy, CHUNK, CHUNK_PX, CHUNKS, groundTile, groundOver, LOT_DIRT, GW, GH, gi, TILE_SEED, TILE_V, TILE_B, tileV, tileB, chunkAt, drawGround;
 function buildWorld() {
 /* ============ world grid: the live 48×34 village, grown to 72×48, plus a strip of rooms off to the right ============ */
-T = 16, VC = 72, VR = 48, RX0 = 76, C = RX0 + 8 * 16, R = VR, O = '#3b2316';
+T = 16, VC = 72, VR = 48, VM = 3, RX0 = 76, C = RX0 + 8 * 16, R = VR + VM, O = '#3b2316';   // VM: border tiles round the village
 RS = 7;   // random state: the ground chunks set it per tile, so lazy painting gives the same speckles
 rnd = () => (RS = RS * 16807 % 2147483647) / 2147483647;
 ri = n => Math.floor(rnd() * n);
 // The grid is read and written only through these helpers, so the world can later grow past 0,0 (the ring around the
 // village, PRD "new maps and coin spending", Tech plan 1) without the village's own coordinates changing. WX0/WY0 = the
 // world's top-left tile; 0, 0 today.
-WX0 = 0, WY0 = 0;
+WX0 = -VM, WY0 = -VM;
 inW = (x, y) => x >= WX0 && y >= WY0 && x < C && y < R;
-grid = v => Array.from({ length: R - WY0 }, () => Array.from({ length: C - WX0 }, (_, i) => i + WX0 >= VC ? (v === 1 ? 10 : 1) : v));
+grid = v => Array.from({ length: R - WY0 }, () => Array.from({ length: C - WX0 }, (_, i) => i + WX0 >= VC + VM ? (v === 1 ? 10 : 1) : v));
 G = grid(1), block = grid(0), res = grid(0).map(r => r.map(() => 0));
 gAt = (x, y) => inW(x, y) ? G[y - WY0][x - WX0] : undefined, setG = (x, y, v) => { if (inW(x, y)) G[y - WY0][x - WX0] = v; };
 blk = (x, y) => inW(x, y) ? block[y - WY0][x - WX0] : undefined, setBlk = (x, y, v) => { if (inW(x, y)) block[y - WY0][x - WX0] = v; };
@@ -303,7 +303,7 @@ for (const x of [61, 69]) { put('city', [86, 98], x, 24); glows.push([x * T + 8,
 places.push([65 * T, 15 * T - 4, '🌊 บึงหมู่บ้าน']);
 // traffic on the town street
 // two lanes on road rows 9–10 (westbound on top, eastbound below). The car body sits at y 9–28 of its 32px tile, so y = body bottom + 4.
-LANE_W = 9 * T + 19, LANE_E = 10 * T + 19, ROAD_X0 = 49 * T, ROAD_X1 = 72 * T;
+LANE_W = 9 * T + 19, LANE_E = 10 * T + 19, ROAD_X0 = 49 * T, ROAD_X1 = (VC + VM) * T;   // cars drive on into the border
 CARS = [[52, LANE_E, 1, 0, 34], [66, LANE_W, -1, 1, 26], [62, LANE_E, 1, 1, 30], [55, LANE_W, -1, 0, 38]]
   .map(([x, y, d, k, v]) => ({ x: x * T, y, d, v, s: v, ids: k ? [[110, 111], [122, 123]] : [[112, 113], [124, 125]] }));
 CARS.forEach(c => { c.spr = tiles('city', c.ids); });
@@ -399,6 +399,20 @@ furnish = function furnish(r) {
 }
 ROOMS.forEach(furnish);
 
+/* ============ village border: VM tiles past every edge, so buildings and trees at the edge show whole ============ */
+// 18 Nov 2026. The border continues whatever ground touches it (the street and paths run on), carries a tree line on
+// its grass and can't be walked on. Its trees use their own hash, not rnd(), so everything else stays where it was.
+inV = (x, y) => x >= 0 && y >= 0 && x < VC && y < VR;
+hashXY = (x, y) => { let h = Math.imul(x, 374761393) + Math.imul(y, 668265263) | 0; h = Math.imul(h ^ h >>> 13, 1274126177); return ((h ^ h >>> 16) >>> 0) / 4294967296; };
+for (let y = -VM; y < VR + VM; y++) for (let x = -VM; x < VC + VM; x++) if (!inV(x, y)) {
+  setG(x, y, gAt(Math.min(VC - 1, Math.max(0, x)), Math.min(VR - 1, Math.max(0, y)))); setBlk(x, y, 1); }
+{ const clear = (x, y) => { for (let dy = -2; dy <= 0; dy++) for (let dx = -1; dx <= 1; dx++) { const cx = x + dx, cy = y + dy;   // grass under the whole canopy
+      if (cx >= -VM && cy >= -VM && cx < VC + VM && cy < VR + VM && gAt(cx, cy) !== 1) return false; } return true; };
+  const line = [];
+  for (let x = 1 - VM; x < VC + VM - 1; x += 2) line.push([x, -1], [x, VR + VM - 1]);   // top and bottom, canopies inside the scene
+  for (let y = 1; y < VR; y += 2) line.push([1 - VM, y], [VC + VM - 2, y]);           // left and right
+  for (const [x, y] of line) if (clear(x, y)) tree(x, y, hashXY(x, y) < .7 ? 'big' : 'mid'); }
+
 drawCab = function drawCab(g, gm, x, y, t) {
   const L = x + 1, B = y + 15, ft = H.featured() === gm.id, f = (a, b, w, h, c) => { g.fillStyle = c; g.fillRect(L + a, B - 26 + b, w, h); };
   if (ft) { g.fillStyle = `rgba(255,214,74,${.35 + .25 * Math.sin(t * 4)})`; g.fillRect(L - 2, B - 29, 18, 30); }
@@ -425,7 +439,7 @@ drawTrophy = function drawTrophy(g, x, y) { const f = (a, b, w, h, c) => { g.fil
 // negative tiles) without a giant canvas. Chunks show the village as it was when it loaded, like the one-pass
 // ground did: TILE_V/TILE_B note each tile then, TILE_SEED its random state (same speckles and flowers), LOT_DIRT the lots.
 CHUNK = 16, CHUNK_PX = CHUNK * T, CHUNKS = new Map();
-groundTile = function groundTile(g, x, y, at, bk) { const X = x * T, Y = y * T, v = at(x, y), gr = (x, y) => x < 0 || y < 0 || x >= VC || y >= VR || at(x, y) === 1 || at(x, y) === 6;
+groundTile = function groundTile(g, x, y, at, bk) { const X = x * T, Y = y * T, v = at(x, y), gr = (x, y) => x < -VM || y < -VM || x >= VC + VM || y >= VR + VM || at(x, y) === 1 || at(x, y) === 6;
   g.fillStyle = '#b07a4a'; g.fillRect(X, Y, T, T);
   for (let k = 0; k < 4; k++) { g.fillStyle = rnd() < .5 ? '#9d6a3f' : '#c08a57'; g.fillRect(X + ri(16), Y + ri(16), 1 + ri(2), 1); }
   if (v === 3) { g.fillStyle = '#c9b48f'; g.fillRect(X, Y, T, T); g.fillStyle = '#b39c76'; g.fillRect(X, Y + 7, T, 1);
@@ -461,15 +475,17 @@ groundOver = function groundOver(g, bx0, by0, bx1, by1) {   // overlays for the 
     g.fillStyle = '#ffffff14'; g.fillRect(X, Y + 2 * T, W, 2);
     const [dx, dy] = r.door; g.fillStyle = r.floor; g.fillRect(dx * T, dy * T - 1, T, T); g.fillStyle = '#c4553c'; g.fillRect(dx * T + 1, dy * T + 3, 14, 9); g.fillStyle = '#e8846a'; g.fillRect(dx * T + 3, dy * T + 5, 10, 5); } }
 LOT_DIRT = LOTS.filter(L => L.stage === 1 || (L.stage === 2 && L.building)).map(L => [L.x, L.y]);
-TILE_SEED = new Int32Array(VC * VR), TILE_V = new Uint8Array(VC * VR), TILE_B = new Uint8Array(VC * VR);
-tileV = (x, y) => TILE_V[y * VC + x], tileB = (x, y) => TILE_B[y * VC + x];
+GW = VC + 2 * VM, GH = VR + 2 * VM, gi = (x, y) => (y + VM) * GW + x + VM;   // ground tiles, border included
+TILE_SEED = new Int32Array(GW * GH), TILE_V = new Uint8Array(GW * GH), TILE_B = new Uint8Array(GW * GH);
+tileV = (x, y) => TILE_V[gi(x, y)], tileB = (x, y) => TILE_B[gi(x, y)];
 (() => { const none = { fillRect() {}, drawImage() {} };   // a dry run: note each tile as it is now and advance the random state
-  for (let y = 0; y < VR; y++) for (let x = 0; x < VC; x++) { const i = y * VC + x; TILE_V[i] = gAt(x, y); TILE_B[i] = blk(x, y) ? 1 : 0; }
-  for (let y = 0; y < VR; y++) for (let x = 0; x < VC; x++) { TILE_SEED[y * VC + x] = RS; groundTile(none, x, y, tileV, tileB); } })();
+  for (let y = -VM; y < VR + VM; y++) for (let x = -VM; x < VC + VM; x++) { const i = gi(x, y); TILE_V[i] = gAt(x, y); TILE_B[i] = inV(x, y) && blk(x, y) ? 1 : 0;
+    if (!inV(x, y)) TILE_SEED[i] = 1 + Math.floor(hashXY(x, y) * 2147483645); }   // border: its own seed (flowers allowed, it's only blocked for walking)
+  for (let y = 0; y < VR; y++) for (let x = 0; x < VC; x++) { TILE_SEED[gi(x, y)] = RS; groundTile(none, x, y, tileV, tileB); } })();
 chunkAt = function chunkAt(cx, cy) { const k = cx + ',' + cy; let c = CHUNKS.get(k); if (c) return c;
   c = mk(CHUNK_PX, CHUNK_PX); const g = c.getContext('2d'), keep = RS, X0 = cx * CHUNK, Y0 = cy * CHUNK; g.translate(-X0 * T, -Y0 * T);
   g.fillStyle = '#1b1422'; g.fillRect(X0 * T, Y0 * T, CHUNK_PX, CHUNK_PX);
-  for (let y = Math.max(Y0, 0); y < Math.min(Y0 + CHUNK, VR); y++) for (let x = Math.max(X0, 0); x < Math.min(X0 + CHUNK, VC); x++) { RS = TILE_SEED[y * VC + x]; groundTile(g, x, y, tileV, tileB); }
+  for (let y = Math.max(Y0, -VM); y < Math.min(Y0 + CHUNK, VR + VM); y++) for (let x = Math.max(X0, -VM); x < Math.min(X0 + CHUNK, VC + VM); x++) { RS = TILE_SEED[gi(x, y)]; groundTile(g, x, y, tileV, tileB); }
   RS = keep; groundOver(g, X0 * T, Y0 * T, X0 * T + CHUNK_PX, Y0 * T + CHUNK_PX); CHUNKS.set(k, c); return c; }
 // draw the ground under rect (x, y, w, h), then paint ahead one not-yet-painted chunk from the ring one chunk
 // around it (inside scene rect sr), so walking on finds its ground ready and a visit paints only what it sees
@@ -584,7 +600,7 @@ const CUR = Object.fromEntries(Object.entries({ arrow: [88, 4, 2], talk: [50, 16
 
 /* ============ draw ============ */
 const cv = SR.getElementById('cv'), ctx = cv.getContext('2d');
-const minSC = () => Math.max(1, Math.ceil(Math.max(VW() / (VC * T), VH() / (VR * T))));
+const minSC = () => Math.max(1, Math.ceil(Math.max(VW() / ((VC + 2 * VM) * T), VH() / ((VR + 2 * VM) * T))));
 let SC = Math.max(minSC(), VW() < 700 ? 2 : 3), view = { ox: 0, oy: 0 };
 function resize() { cv.width = Math.ceil(VW() / SC); cv.height = Math.ceil(VH() / SC); ctx.imageSmoothingEnabled = false; }
 resize(); new ResizeObserver(() => { SC = Math.max(SC, minSC()); resize(); }).observe(host);
@@ -638,7 +654,7 @@ const shadow = (g, x, y, r) => { g.fillStyle = 'rgba(40,25,10,.22)'; g.beginPath
 const placeTags = places.map(p => { const el = document.createElement('div'); el.className = 'tag place'; el.textContent = p[2]; SR.append(el); return el; });
 let scene = null, gameT = 0;
 const whereEl = SR.getElementById('where'), exitB = SR.getElementById('exit'), camB = SR.getElementById('camb'), fade = SR.getElementById('fade');
-const sceneRect = s => s && s.kind === 'arcade' ? { x: s.x0 * T - 4, y: s.y0 * T - 8, w: s.w * T + 8, h: (s.h + 1) * T + 8 } : s ? { x: (s.x0 - 1) * T, y: s.y0 * T - 8, w: (s.w + 2) * T, h: (s.h + 1) * T + 8 } : { x: 0, y: 0, w: VC * T, h: VR * T };
+const sceneRect = s => s && s.kind === 'arcade' ? { x: s.x0 * T - 4, y: s.y0 * T - 8, w: s.w * T + 8, h: (s.h + 1) * T + 8 } : s ? { x: (s.x0 - 1) * T, y: s.y0 * T - 8, w: (s.w + 2) * T, h: (s.h + 1) * T + 8 } : { x: -VM * T, y: -VM * T, w: (VC + 2 * VM) * T, h: (VR + 2 * VM) * T };
 let outSC = null;
 function enterScene(s) {
   if (s && !scene) outSC = SC;
@@ -1262,7 +1278,8 @@ return { me, held, C, R,
   arcade: { room: arcRoom, walk(id, cb) { const r = arcRoom(); if (!r) return false; const M = r.mach.find(m => m.id === id); warpArc();
     if (M) playAt(M, cb); else if (id && H.games().some(g => g.id === id)) { closeCard(); H.play(id); }   // a game without a cabinet still starts
     else { closeCard(); me.after = null; travel(me, r.entry); } return true; },
-    to(what, cb) { const r = arcRoom(); if (!r || !r[what]) return false; warpArc(); playAt({ x: r[what][0], y: r[what][1], st: what === 'alist' ? [r[what][0] - 1, r[what][1]] : null }, cb); return true; } }, get G() { return G; }, get block() { return block; }, get ctx() { return ctx; }, ov: SR.getElementById('ov'),
+    to(what, cb) { const r = arcRoom(); if (!r || !r[what]) return false; warpArc(); playAt({ x: r[what][0], y: r[what][1], st: what === 'alist' ? [r[what][0] - 1, r[what][1]] : null }, cb); return true; } }, // gAt / blk: tile and wall at (x, y), x and y may be negative (the border); the raw G / block rows start at WX0 / WY0, not 0
+  gAt: (x, y) => gAt(x, y), blk: (x, y) => blk(x, y), get G() { return G; }, get block() { return block; }, get ctx() { return ctx; }, ov: SR.getElementById('ov'),
   travel: c => { closeCard(); me.after = null; travel(me, c); }, place: c => place(me, c), warp: c => { closeCard(); warp(c); }, warpArc: () => { closeCard(); return warpArc(); },
   pos: () => cellOf(me), walkable: (x, y) => walkable(x, y), get ride() { return riding(me); }, rideMul: k => RIDES[k]?.[2] || 1,
   drawRide: (g, P, k, back, col) => { if (RIDE_SPR[k]) drawRide(g, P, k, back, col || ''); }, get rideCol() { const k = riding(me); return k ? rcolOk(k, F.rcol[k]) : ''; }, sceneOf, scene: () => scene, relots, closeCard,

@@ -620,7 +620,8 @@ return { me, held, C, R,
   arcade: { room: arcRoom, walk(id, cb) { const r = arcRoom(); if (!r) return false; const M = r.mach.find(m => m.id === id); warpArc();
     if (M) playAt(M, cb); else if (id && H.games().some(g => g.id === id)) { closeCard(); H.play(id); }   // a game without a cabinet still starts
     else { closeCard(); me.after = null; travel(me, r.entry); } return true; },
-    to(what, cb) { const r = arcRoom(); if (!r || !r[what]) return false; warpArc(); playAt({ x: r[what][0], y: r[what][1], st: what === 'alist' ? [r[what][0] - 1, r[what][1]] : null }, cb); return true; } }, get G() { return G; }, get block() { return block; }, get ctx() { return ctx; }, ov: SR.getElementById('ov'),
+    to(what, cb) { const r = arcRoom(); if (!r || !r[what]) return false; warpArc(); playAt({ x: r[what][0], y: r[what][1], st: what === 'alist' ? [r[what][0] - 1, r[what][1]] : null }, cb); return true; } }, // gAt / blk: tile and wall at (x, y), x and y may be negative (the border); the raw G / block rows start at WX0 / WY0, not 0
+  gAt: (x, y) => gAt(x, y), blk: (x, y) => blk(x, y), get G() { return G; }, get block() { return block; }, get ctx() { return ctx; }, ov: SR.getElementById('ov'),
   travel: c => { closeCard(); me.after = null; travel(me, c); }, place: c => place(me, c), warp: c => { closeCard(); warp(c); }, warpArc: () => { closeCard(); return warpArc(); },
   pos: () => cellOf(me), walkable: (x, y) => walkable(x, y), get ride() { return riding(me); }, rideMul: k => RIDES[k]?.[2] || 1,
   drawRide: (g, P, k, back, col) => { if (RIDE_SPR[k]) drawRide(g, P, k, back, col || ''); }, get rideCol() { const k = riding(me); return k ? rcolOk(k, F.rcol[k]) : ''; }, sceneOf, scene: () => scene, relots, closeCard,
