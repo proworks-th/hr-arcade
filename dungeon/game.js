@@ -99,7 +99,7 @@ const Dungeon = {
       cam = DE.camera(VW, VH, g.w * T, g.h * T, TOUCH);
       P.x = (F.start.x + .5) * T; P.y = (F.start.y + .8) * T; P.inv = 1.2; lastCell = '';
       const sc = DD.scale(depth);
-      mons = F.spawns.map(s => { const d = DD.MON[s.kind], hp = d.boss ? Math.round(d.hp + depth * DD.BOSS_HP) : Math.round(d.hp * sc.hp);
+      mons = F.spawns.map(s => { const d = DD.MON[s.kind], hp = d.boss ? DD.bossHp(d.hp, depth) : Math.round(d.hp * sc.hp);
         const m = { kind: s.kind, d, x: (s.x + .5) * T, y: (s.y + .8) * T, hp, max: hp, sp: d.sp * (d.boss ? 1 : sc.sp), state: s.kind === 'mimic' ? 'disguised' : 'sleep',
           t: R() * 6, st: 1 + R() * 2, cd: 1.5 + R(), flash: 0, kb: 0, kx: 0, ky: 0, stun: 0, phase: R() * 3, cell: [s.x, s.y], hitT: {} };
         if (m.state === 'disguised') g.block[s.y * g.w + s.x] = 1; return m; });
