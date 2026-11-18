@@ -1,0 +1,9 @@
+{
+  "hosting": {
+    "site": "hr-arcade-ptr",
+    "public": ".",
+    "ignore": ["firebase.json", "database.rules.json", "**/.*", "**/node_modules/**", "_test/**", "verify/**", "*.md"],
+    "headers": [{ "source": "**", "headers": [{ "key": "Cache-Control", "value": "max-age=60" }] }]
+  },
+  "database": { "rules": "database.rules.json" }
+}
