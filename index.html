@@ -1964,6 +1964,21 @@ async function compSpot1115b(){
   ov.querySelector('button').onclick=()=>{ov.remove();renderHub()};document.body.appendChild(ov);
 }
 setTimeout(()=>compSpot1115b().catch(()=>{}),6500);
+// one-off payback (owner, 18 Nov 2026): jjib's dungeon run (about 1,000,000 points) was cut off before its result screen,
+// so it paid nothing (the dungeon banked no checkpoint). Owner set the payback at 40,000 coins. Coins only, once per account
+// (rooms/_comp flag), not through Prog.give, so it doesn't count toward the weekly coin award or the office fund.
+async function compDgn1118(){
+  if(Cloud.reloading||store.get('comp_dgn1118',false))return;
+  const nm=store.get('name','').trim(),R=await loadRank();
+  if(!nm||R.nameKey(nm)!==R.nameKey('jjib')||Prog.get().lv<45)return;
+  const ok=await R.onceFlag('rooms/_comp/dgn1118/'+R.nameKey(nm));store.set('comp_dgn1118',true);if(!ok)return;
+  const P=Prog.get();P.coins+=40000;Prog.put(P);if(typeof Stats!=='undefined')Stats.econ('in_comp',40000);
+  const ov=document.createElement('div');ov.className='overlay';
+  ov.innerHTML=`<div class="panel popin"><h2>รางวัลรอบที่หลุด</h2><p>รอบดันเจี้ยนใต้ตึกของคุณหลุดก่อนถึงหน้าสรุปผล เลยไม่ได้เหรียญ ขอโทษด้วยนะ ชดเชยให้ตามนี้</p>
+    <div class="reward"><b>+${fmt(40000)} 🪙</b></div><div class="row"><button class="btn primary">รับ</button></div></div>`;
+  ov.querySelector('button').onclick=()=>{ov.remove();renderHub()};document.body.appendChild(ov);
+}
+setTimeout(()=>compDgn1118().catch(()=>{}),8500);
 if(/[?&]join=room/.test(location.search)){Tower.setView('room');setTimeout(()=>{document.getElementById('room')?.scrollIntoView({behavior:'smooth',block:'center'});
   const G=HubRoom.G;toast(G.sc&&G.sc!=='lobby'&&G.sc!=='res'?'🎉 เพื่อนกำลังเล่นอยู่ในห้องปาร์ตี้ — รอบหน้าเล่นด้วยกัน!':'👋 เพื่อนชวนมาที่ห้องปาร์ตี้ ทักทายกันได้เลย')},600)}
 // test-mode hook for verify/run.py (absent for normal visits)
