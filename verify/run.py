@@ -168,6 +168,90 @@ def dungeon(page, base, shot):
     if errs: raise AssertionError('dungeon: ' + '; '.join(errs))
 
 
+def dungeon_leave(page, base, shot):
+    """Dungeon, every way out (18 Nov 2026: a ~1,000,000-point run left through 🏠 paid nothing and never ranked).
+    The run is banked after each cleared floor; 🏠 and the pause card ask first and end on the result screen;
+    another screen opening mid-run pays in full; a killed tab is paid on the next visit and ranked."""
+    page.goto(base + '/index.html?test=1')
+    page.wait_for_function('window.__app', timeout=3000)
+    page.evaluate("store.set('name', 'ทดสอบ')")
+    errs = []
+    coins = lambda: page.evaluate('Prog.get().coins')
+    pend = lambda: page.evaluate("store.get('pend', null)")
+    runs = lambda: page.evaluate('(Prog.get().dgn && Prog.get().dgn.codex && Prog.get().dgn.codex.runs) || 0')
+
+    def new_run():
+        page.evaluate('__app.open("dungeon")')
+        page.wait_for_selector('.overlay .btn.primary', timeout=3000)
+        page.evaluate('__app.start()')
+        page.wait_for_function('window.__dgn && __dgn.state().mode === "play"', timeout=5000)
+        page.evaluate('__dgn.god(true); __dgn.openDoor()')  # clears B1: the run must be banked now
+        page.wait_for_timeout(300)
+        if page.evaluate('__dgn.state().mode') == 'pick': page.evaluate('__dgn.pick(0)'); page.wait_for_timeout(200)
+        st = page.evaluate('__dgn.state()'); p = pend()
+        if not p or p.get('g') != 'dungeon' or p.get('score') != st['depth'] or (p.get('stats') or {}).get('award') != st['score']:
+            errs.append(f"floor clear didn't bank the run: pend={p}, state depth {st['depth']} score {st['score']}")
+        return st
+
+    def want(score): return max(2, round(score / 20))  # test scores stay under the soft cap's first band
+
+    # the exit button players see: phones get the corner ออก (#gmExit, the top bar is hidden), PCs the top bar's 🏠
+    def exit_btn(): return '#gmExit' if page.evaluate("getComputedStyle(document.querySelector('#gmExit')).display !== 'none'") else '#homeBtn'
+
+    # 1) 🏠 asks first; เล่นต่อ goes back; ออกและรับรางวัล ends on the result screen and ranks the floor
+    st = new_run()
+    page.click(exit_btn())
+    page.wait_for_selector('.dgn-leave', timeout=2000)
+    shot('dungeon-leave-confirm')
+    if page.evaluate('__dgn.state().mode') != 'menu': errs.append('the game must freeze while the leave question is open')
+    page.click('.dgn-leave .go')
+    page.wait_for_timeout(200)
+    if page.query_selector('.dgn-leave') or page.evaluate('__dgn.state().mode') != 'play': errs.append('เล่นต่อ must close the question and resume')
+    c0 = coins(); page.click(exit_btn()); page.wait_for_selector('.dgn-leave .q', timeout=2000); page.click('.dgn-leave .q')
+    page.wait_for_selector('.overlay .res', timeout=5000)
+    shot('dungeon-leave-result')
+    got = coins() - c0
+    if got != want(st['score']): errs.append(f"🏠 → leave paid {got}, want {want(st['score'])}")
+    if pend(): errs.append('pend must be cleared once the run is paid')
+    page.wait_for_function("document.querySelector('.res [data-a=rk]').textContent.includes('#')", timeout=4000)
+    page.evaluate('__app.home()')
+
+    # 2) another screen opened mid-run (goHome straight, no question): full pay, armoury run recorded, toast
+    st = new_run(); c0, r0 = coins(), runs()
+    page.evaluate('__app.home()')
+    page.wait_for_timeout(300)
+    got = coins() - c0
+    if got != want(st['score']): errs.append(f"leaving through another screen paid {got}, want {want(st['score'])}")
+    if runs() != r0 + 1: errs.append('leaving through another screen must finish the run (armoury runs +1)')
+    if 'บันทึกรอบ' not in (page.evaluate("[...document.querySelectorAll('#toast div')].map(t => t.textContent).join(' | ')") or ''):
+        errs.append('leaving through another screen must say the run was saved')
+    if pend(): errs.append('pend left behind after leaving through another screen')
+
+    # 3) phone locked / app switched: banked at once; the pause card's home button asks first too
+    st = new_run()
+    page.evaluate("__dgn.give('sword', 1)")
+    page.evaluate("""() => { Object.defineProperty(document, 'hidden', { configurable: true, get: () => true });
+      document.dispatchEvent(new Event('visibilitychange')); delete document.hidden; }""")
+    page.wait_for_selector('#pauseOv', timeout=2000)
+    p = pend()
+    if not p or (p.get('stats') or {}).get('award') != page.evaluate('__dgn.state().score'): errs.append(f'hiding the tab must bank the run, pend={p}')
+    page.click('#pauseOv .btn:not(.primary)')
+    page.wait_for_selector('.dgn-leave', timeout=2000)
+    if page.query_selector('#pauseOv'): errs.append('the pause card must close when the leave question opens')
+    page.click('.dgn-leave .go')
+
+    # 4) the tab is killed (reload with the run still banked): paid on the next visit and ranked
+    banked = pend(); c0 = coins()
+    page.reload()
+    page.wait_for_function('window.__app', timeout=3000)
+    page.wait_for_function("store.get('pend', null) === null", timeout=8000)
+    got = coins() - c0
+    if not banked or got != want(banked['stats']['award']): errs.append(f"killed tab: paid {got} for banked {banked}")
+    rows = page.evaluate("loadRank().then(R => R.board('dungeon', 'd'))")
+    if not any(r.get('n') == 'ทดสอบ' and r.get('s', 0) >= 1 for r in rows): errs.append(f'killed tab: floor not ranked, board={rows}')
+    if errs: raise AssertionError('dungeon leave: ' + '; '.join(errs))
+
+
 def party2d(page, base, shot):
     page.goto(base + '/index.html?test=1')
     page.wait_for_function('window.__app', timeout=3000)
@@ -615,7 +699,7 @@ def village(page, base, shot):
 
 
 SCREENS = {'office': office, 'farm': farm, 'hub': hub, 'tower': tower, 'village': village, 'spot': solo('spot'), 'run': solo('run'), 'whack': solo('whack'), 'stack': solo('stack', 600),
-           'tetris': solo('tetris'), 'stamp': solo('stamp'), 'barista': solo('barista', 2500), 'toss': solo('toss'), 'slack': solo('slack', 2000), 'conga': solo('conga', 2000), 'prism': solo('prism'), 'dungeon': dungeon,
+           'tetris': solo('tetris'), 'stamp': solo('stamp'), 'barista': solo('barista', 2500), 'toss': solo('toss'), 'slack': solo('slack', 2000), 'conga': solo('conga', 2000), 'prism': solo('prism'), 'dungeon': dungeon, 'dungeon-leave': dungeon_leave,
            'party': party2d}
 
 
