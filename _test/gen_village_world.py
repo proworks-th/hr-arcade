@@ -28,7 +28,7 @@ def cut(a, b, keep_b=True, repl=''):
 
 # ---------------- CSS / HTML ----------------
 css = css.replace(':root{', ':host{')
-css = re.sub(r'html,body\{[^}]*\}', ':host{position:absolute;inset:0;z-index:1;display:block;overflow:hidden;background:#1b1422;font-family:Kanit,"Leelawadee UI",Tahoma,sans-serif;color:var(--ink);font-size:14px;line-height:1.4}', css)
+css = re.sub(r'html,body\{[^}]*\}', ':host{position:absolute;inset:0;z-index:1;display:block;overflow:hidden;background:#1b1422;font-family:var(--t-font,Tahoma,sans-serif);color:var(--ink);font-size:14px;line-height:1.4}', css)
 css += '\n#ov{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}\n#clock input,#clock button{display:none}\n#clock{padding:3px 12px}\n'
 assert '<small style="font-weight:400;color:var(--muted)">· ตัวอย่าง 2</small>' in body
 body = body.replace(' <small style="font-weight:400;color:var(--muted)">· ตัวอย่าง 2</small>', '')
