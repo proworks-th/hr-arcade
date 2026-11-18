@@ -54,7 +54,11 @@ const DD = {
     cyclops:  { name: 'ยักษ์ตาเดียว',   tile: 109, hp: 14, sp: 30, dmg: 1, pts: 200, r: 30, sc: 6, ai: 'boss', boss: 'cyclops', from: 5, w: 0 },
     demon:    { name: 'ราชาอสูรแดง',   tile: 110, hp: 18, sp: 36, dmg: 2, pts: 260, r: 32, sc: 6, ai: 'boss', boss: 'demon', from: 10, w: 0 },
   },
-  BOSS_HP: 1.6,                               // boss hp = base + depth × this
+  // boss hp (owner, 18 Nov: bump the bosses): base + depth × BOSS_HP, plus a curve past B30 so very deep runs meet a wall
+  // (normal monsters stop getting tougher around B30; runs to B169 and B181 were paying 94k–110k coins).
+  // demon: B10 34 → 42, B20 50 → 66, B30 66 → 90, B50 98 → 238, B100 178 → 1,483, B180 306 → 6,075.
+  BOSS_HP: 2.4, BOSS_HP_DEEP: .25, BOSS_DEEP_FROM: 30,
+  bossHp: (base, depth) => Math.round(base + depth * DD.BOSS_HP + Math.max(0, depth - DD.BOSS_DEEP_FROM) ** 2 * DD.BOSS_HP_DEEP),
   bossFor: depth => (depth / 5) % 2 === 1 ? 'cyclops' : 'demon',
   // endless scaling: tougher and faster with depth, but never so fast you can't dodge
   // difficulty curve (playtest 13 Nov: "easy at first, juice up later"): B1–B3 at base, then +7% hp a floor (cap ×3),
