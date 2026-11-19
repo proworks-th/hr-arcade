@@ -8,8 +8,8 @@
   const say = m => (typeof toast === 'function' ? toast(m) : console.log(m));
   const fmt = n => Math.round(n).toLocaleString('en-US');
   const realNow = () => Date.now() - (window.__devDT || 0);
-  const PLACES = [['ตึกออฟฟิศ', 5, 9], ['สวนกลาง', 28, 17], ['ตลาด', 56, 9], ['สะพานท่าน้ำ', 62, 18], ['ตึกเกม', 64, 33], ['ขอบตะวันออก', 71, 8], ['ขอบใต้', 36, 46]];
-  const PRESETS = [['23 พ.ย. 09:00', '2026-11-23T09:00', 'งานเริ่ม'], ['24 พ.ย. 20:00', '2026-11-24T20:00', 'คืนลอยกระทง'], ['28 พ.ย. 00:05', '2026-11-28T00:05', 'งานจบแล้ว']];
+  const PLACES = [['ตึกออฟฟิศ', 5, 9], ['สวนกลาง', 28, 17], ['ตลาด', 56, 9], ['สะพานท่าน้ำ', 62, 18], ['ตึกเกม', 64, 33], ['ปลายลำธาร', 71, 17], ['ป้ายที่สวน', 30, 27], ['ขอบตะวันออก', 71, 8], ['ขอบใต้', 36, 46]];
+  const PRESETS = [['23 พ.ย. 09:00', '2026-11-23T09:00', 'งานเริ่ม'], ['24 พ.ย. 20:00', '2026-11-24T20:00', 'คืนลอยกระทง'], ['25 พ.ย. 12:00', '2026-11-25T12:00', 'วันลอยให้เพื่อน'], ['26 พ.ย. 12:00', '2026-11-26T12:00', 'วันทำกระทง 3 ดาว'], ['27 พ.ย. 20:00', '2026-11-27T20:00', 'คืนส่งท้าย'], ['28 พ.ย. 00:05', '2026-11-28T00:05', 'งานจบแล้ว']];
   let el = null, timer = 0, armed = '', opener = null;
 
   const CSS = `.ptr-dev{position:fixed;top:26px;right:0;bottom:0;width:min(340px,94vw);z-index:9998;overflow:auto;background:var(--t-surface,#fffaf0);
@@ -63,10 +63,13 @@
       <p class="muted">ตำแหน่งตอนนี้: <b data-pos>–</b></p>
 
       <h3>อีเวนต์ลอยกระทง</h3>
-      ${dv ? `<div class="row"><span>สถานะ</span>${[['on', 'เปิด'], ['off', 'ปิด'], ['date', 'ตามวันที่']].map(([m, l]) => `<button class="btn sm" type="button" data-lm="${m}" aria-pressed="${(mode || 'on') === m}">${l}</button>`).join('')}</div>
-      <p class="muted">ตอนนี้: ${dv.loyOn() ? 'เปิดอยู่' : 'ปิดอยู่'} · "ตามวันที่" ใช้ 23–27 พ.ย. จริง ใช้คู่กับวันที่สมมติได้</p>
+      ${dv ? `<div class="row"><span>สถานะ</span>${[['on', 'เปิด'], ['off', 'ปิด'], ['date', 'ตามวันที่'], ['clean', 'หลังงาน (เก็บกระทง)']].map(([m, l]) => `<button class="btn sm" type="button" data-lm="${m}" aria-pressed="${(mode || 'on') === m}">${l}</button>`).join('')}</div>
+      <p class="muted">ตอนนี้: ${dv.loyOn() ? 'เปิดอยู่' : dv.loyPhase() === 'clean' ? 'ช่วงเก็บกระทงหลังงาน' : 'ปิดอยู่'} · "ตามวันที่" ใช้ 23–27 พ.ย. จริง (หลังงาน 28 พ.ย. – 6 ธ.ค.) ใช้คู่กับวันที่สมมติได้</p>
       <div class="row"><label for="dvLoyN">ยอดลอย (เครื่องนี้)</label><input id="dvLoyN" type="number" min="0" placeholder="ยอดจริง"><button class="btn sm" type="button" data-k="loyN">ตั้ง</button><button class="btn sm" type="button" data-k="loyNx">ใช้ยอดจริง</button></div>
-      <p class="muted">ตั้ง 50 เพื่อดูดอกไม้ไฟตอนค่ำ (เห็นแค่เครื่องนี้)</p>
+      <p class="muted">25 โคมไฟตามทาง · 50 ดอกไม้ไฟตอนค่ำ · 100 ชื่อทุกคนบนฟ้าตอนค่ำ (เห็นแค่เครื่องนี้)</p>
+      <div class="row"><span>แสตมป์ ${dv.loyStampsNow ? [0, 1, 2, 3, 4].filter(i => dv.loyStampsNow & (1 << i)).length : 0}/5</span><button class="btn sm" type="button" data-k="stAll">ให้ครบ 5</button><button class="btn sm" type="button" data-k="st4">ให้ 4 ดวง</button><button class="btn sm" type="button" data-k="st0">ล้าง</button></div>
+      <p class="muted">ครบ 5 ดวงแล้วสัตว์เลี้ยงใส่มงกุฎดอกบัว · ภารกิจแต่ละวันนับเฉพาะวันนั้น ใช้วันที่สมมติ 23–27 พ.ย. เพื่อทดสอบ</p>
+      <div class="row"><button class="btn sm" type="button" data-k="loyGame">เปิดมินิเกมทำกระทง</button><button class="btn sm" type="button" data-k="loyFriend">เพื่อนทดสอบลอยให้ฉัน</button><button class="btn sm" type="button" data-k="loyCleanR">รีเซ็ตการเก็บ/แจ้งเตือน</button></div>
       <div class="row"><button class="btn sm" type="button" data-k="loyFill">ลอยกระทงทดสอบ 10 ใบ</button><button class="btn sm${armed === 'loyClear' ? ' warn' : ''}" type="button" data-k="loyClear">${armed === 'loyClear' ? 'กดอีกครั้งเพื่อเก็บทั้งหมด' : 'เก็บกระทงทั้งหมดในบึง'}</button></div>`
       : '<p class="muted">เปิดหมู่บ้านก่อน แล้วกดเครื่องมือทดสอบอีกครั้ง</p>'}`;
   }
@@ -96,6 +99,12 @@
     else if (b.dataset.lm && dv) { dv.loyMode(b.dataset.lm); }
     else if (k === 'loyN' && dv) { const v = el.querySelector('#dvLoyN').value; dv.loyN(v === '' ? null : Math.max(0, +v | 0)); say(v === '' ? 'ใช้ยอดจริง' : `ยอดลอย (เครื่องนี้) = ${v}`); }
     else if (k === 'loyNx' && dv) { dv.loyN(null); say('ใช้ยอดจริง'); }
+    else if (k === 'stAll' && dv) { dv.loyStamps(31); say('แสตมป์ครบ 5 ดวง'); }
+    else if (k === 'st4' && dv) { dv.loyStamps(15); say('แสตมป์ 4 ดวง (ขาดวันศุกร์)'); }
+    else if (k === 'st0' && dv) { dv.loyStamps(0); say('ล้างแสตมป์แล้ว'); }
+    else if (k === 'loyGame' && dv) { close(); dv.loyGame(); return; }
+    else if (k === 'loyFriend' && dv) { b.disabled = true; dv.loyFriendTest().then(ok => { say(ok ? 'เพื่อนทดสอบลอยให้แล้ว แจ้งเตือนจะขึ้นในไม่กี่วินาที (ปิดแผงนี้ก่อน)' : 'ลอยไม่ได้: ตั้งชื่อก่อน'); render(); }); return; }
+    else if (k === 'loyCleanR' && dv) { dv.loyCleanReset(); say('รีเซ็ตยอดเก็บวันนี้และแจ้งเตือนที่เห็นแล้ว'); }
     else if (k === 'loyFill' && dv) { b.disabled = true; dv.loyFill(10).then(n => { say(`ลอยกระทงทดสอบ ${n} ใบแล้ว`); render(); }); return; }
     else if (k === 'loyClear' && dv) { if (armed !== 'loyClear') { armed = 'loyClear'; } else { armed = ''; say(`เก็บกระทง ${dv.loyClear()} ใบแล้ว`); } }
     render();
