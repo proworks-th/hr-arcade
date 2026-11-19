@@ -227,6 +227,13 @@ export async function floatLoy(name,sty,wish,o={}){
   const r=await push(ref(db(),LOY+'/k'),v);
   if(v.fk&&v.fk!==k)set(ref(db(),LOY+'/to/'+v.fk+'/'+r.key),{n,w:v.w,t:serverTimestamp()}).catch(()=>{});
   runTransaction(ref(db(),LOY+'/n'),c=>(c||0)+1);runTransaction(ref(db(),LOY+'/by/'+k),c=>({n,c:((c&&c.c)||0)+1}));return r.key}
+// sky lanterns l/{id}={n,k,c,t}; likes lk/{krathongId}/{key}=1 (once each); best/{day}={n,k,p,s,q,t} = the day's best krathong, written once
+export function watchLanterns(cb){return FIREBASE_CONFIG?onValue(query(ref(db(),LOY+'/l'),limitToLast(40)),s=>cb(s.val()||{})):()=>{}}
+export async function releaseLantern(name,c){if(!FIREBASE_CONFIG||!name)return null;const r=await push(ref(db(),LOY+'/l'),{n:String(name).trim().slice(0,20),k:nameKey(name),c:Math.max(0,Math.min(2,c|0)),t:serverTimestamp()});return r.key}
+export function watchLoyLikes(cb){return FIREBASE_CONFIG?onValue(ref(db(),LOY+'/lk'),s=>cb(s.val()||{})):()=>{}}
+export function likeLoy(id,name){return FIREBASE_CONFIG&&name?set(ref(db(),LOY+'/lk/'+loyId(id)+'/'+nameKey(name)),1):Promise.resolve()}
+export function watchLoyBest(cb){return FIREBASE_CONFIG?onValue(ref(db(),LOY+'/best'),s=>cb(s.val()||{})):()=>{}}
+export async function setLoyBest(day,v){if(!FIREBASE_CONFIG)return false;const r=await runTransaction(ref(db(),LOY+'/best/'+loyId(day)),c=>c?undefined:{n:String(v.n).slice(0,20),k:String(v.k).slice(0,24),p:Math.max(0,Math.min(100,v.p|0)),s:Math.max(0,Math.min(3,v.s|0)),q:Math.max(0,Math.min(3,v.q|0)),t:Date.now()});return r.committed}
 export function sinkLoy(id){return FIREBASE_CONFIG?remove(ref(db(),LOY+'/k/'+loyId(id))):Promise.resolve()}
 // clean-up: claim krathong id for me; resolves true when it was still there to pick up
 export async function pickLoy(id,name){if(!FIREBASE_CONFIG||!name)return false;

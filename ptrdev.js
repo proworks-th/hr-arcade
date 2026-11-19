@@ -69,7 +69,7 @@
       <p class="muted">25 โคมไฟตามทาง · 50 ดอกไม้ไฟตอนค่ำ · 100 ชื่อทุกคนบนฟ้าตอนค่ำ (เห็นแค่เครื่องนี้)</p>
       <div class="row"><span>แสตมป์ ${dv.loyStampsNow ? [0, 1, 2, 3, 4].filter(i => dv.loyStampsNow & (1 << i)).length : 0}/5</span><button class="btn sm" type="button" data-k="stAll">ให้ครบ 5</button><button class="btn sm" type="button" data-k="st4">ให้ 4 ดวง</button><button class="btn sm" type="button" data-k="st0">ล้าง</button></div>
       <p class="muted">ครบ 5 ดวงแล้วสัตว์เลี้ยงใส่มงกุฎดอกบัว · ภารกิจแต่ละวันนับเฉพาะวันนั้น ใช้วันที่สมมติ 23–27 พ.ย. เพื่อทดสอบ</p>
-      <div class="row"><button class="btn sm" type="button" data-k="loyGame">เปิดมินิเกมทำกระทง</button><button class="btn sm" type="button" data-k="loyGive">ใส่กระทง 3 ดาวในกระเป๋า</button><button class="btn sm" type="button" data-k="loyKeep">ทดสอบของที่ระลึกหน้าบ้าน</button><button class="btn sm" type="button" data-k="loyFriend">เพื่อนทดสอบลอยให้ฉัน</button><button class="btn sm" type="button" data-k="loyCleanR">รีเซ็ตการเก็บ/แจ้งเตือน</button></div>
+      <div class="row"><button class="btn sm" type="button" data-k="loyGame">เปิดมินิเกมทำกระทง</button><button class="btn sm" type="button" data-k="loyGive">ใส่กระทง 3 ดาวในกระเป๋า</button><button class="btn sm" type="button" data-k="loyKeep">ทดสอบของที่ระลึกหน้าบ้าน</button><button class="btn sm" type="button" data-k="loyPop">แสดงป๊อปอัปอีเวนต์</button><button class="btn sm" type="button" data-k="loyFriend">เพื่อนทดสอบลอยให้ฉัน</button><button class="btn sm" type="button" data-k="loyCleanR">รีเซ็ตการเก็บ/แจ้งเตือน</button></div>
       <div class="row"><button class="btn sm" type="button" data-k="loyFill">ลอยกระทงทดสอบ 10 ใบ</button><button class="btn sm${armed === 'loyClear' ? ' warn' : ''}" type="button" data-k="loyClear">${armed === 'loyClear' ? 'กดอีกครั้งเพื่อเก็บทั้งหมด' : 'เก็บกระทงทั้งหมดในบึง'}</button></div>`
       : '<p class="muted">เปิดหมู่บ้านก่อน แล้วกดเครื่องมือทดสอบอีกครั้ง</p>'}`;
   }
@@ -104,6 +104,7 @@
     else if (k === 'st0' && dv) { dv.loyStamps(0); say('ล้างแสตมป์แล้ว'); }
     else if (k === 'loyGame' && dv) { close(); dv.loyGame(); return; }
     else if (k === 'loyGive' && dv) { say(`กระทงในกระเป๋า ${dv.loyGive(3)}/3`); }
+    else if (k === 'loyPop') { try { localStorage.removeItem('hra_loyPop'); } catch (e) {} close(); if (Village._dbg) Village._dbg.loy.popup(); return; }
     else if (k === 'loyKeep' && dv) { dv.loyKeepTest(); say('ตั้งของที่ระลึก 3 ดาวหน้าบ้านแล้ว (ต้องมีบ้าน)'); }
     else if (k === 'loyFriend' && dv) { b.disabled = true; dv.loyFriendTest().then(ok => { say(ok ? 'เพื่อนทดสอบลอยให้แล้ว แจ้งเตือนจะขึ้นในไม่กี่วินาที (ปิดแผงนี้ก่อน)' : 'ลอยไม่ได้: ตั้งชื่อก่อน'); render(); }); return; }
     else if (k === 'loyCleanR' && dv) { dv.loyCleanReset(); say('รีเซ็ตยอดเก็บวันนี้และแจ้งเตือนที่เห็นแล้ว'); }
