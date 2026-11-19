@@ -719,7 +719,9 @@ const Village = (() => {
   const LOY_BAD = ['ควย', 'เหี้ย', 'เหี่ย', 'สัส', 'สัด', 'เย็ด', 'หี', 'แตด', 'มึง', 'ไอ้สัตว์', 'อีสัตว์', 'ระยำ', 'ชิบหาย', 'ส้นตีน', 'ตีน', 'อีดอก', 'ดอกทอง', 'กะหรี่', 'แม่ง', 'เชี่ย', 'พ่องตาย', 'พ่อมึง', 'แม่มึง', 'ห่าน', 'อีห่า', 'ไอ้ห่า', 'จัญไร', 'fuck', 'shit', 'bitch', 'dick', 'pussy', 'asshole', 'cunt', 'bastard'];
   const loyClean = s => { const z = String(s).toLowerCase().replace(/[\s.\-_*!?,'"~0-9]/g, ''); return !LOY_BAD.some(b => z.includes(b)); };
   const hashS = s => { let h = 7; for (const c of String(s)) h = (h * 31 + c.charCodeAt(0)) | 0; return h >>> 0; };
-  let loyK = {}, loyN = 0, loyNames = null, loySty = 0, loyW = '', loyBusy = false; const loyHide = new Set(), loyMine = new Set();
+  let loyK = {}, loyN = 0, loyNames = null, loySty = 0, loyW = '', loyBusy = false, loyGo = 0;   // loyGo: when a float waits for you to reach the pier
+  const onPier = () => { const m = W && W.me; if (!m) return false; const x = Math.floor(m.px / T), y = Math.floor(m.py / T); return y === PIER[1] && x >= PIER[0] - 1 && x <= PIER[0]; };   // standing at the end of the pier
+  const loyHide = new Set(), loyMine = new Set();
   const loyDay = p => { const d = bkkDay(); p.loy = p.loy && p.loy.d === d ? p.loy : { d, n: 0 }; return p.loy; };
   function loyWatch(M) { if (!M.watchLoy || !loyOn()) return;
     M.watchLoy(v => { loyK = Object.fromEntries(Object.entries(v).map(([id, k]) => [id, { ...k, id }])); });
@@ -731,7 +733,8 @@ const Village = (() => {
     let h = `<h4>🪷 ลอยกระทง 2569</h4><p class="muted">บึงหมู่บ้าน · 23–27 พ.ย. · ทั้งออฟฟิศลอยแล้ว ${fmtN(loyN)}/${LOY_GOAL}${loyN >= LOY_GOAL ? ' · มีดอกไม้ไฟตอนค่ำ' : ' · ครบแล้วมีดอกไม้ไฟตอนค่ำ'}</p>`;
     h += `<div class="vil-loy-sty" role="group" aria-label="แบบกระทง">${LOY_STY.map((s, i) => `<button class="btn sm" type="button" data-a="loySty" data-i="${i}" aria-pressed="${i === loySty}">${s[0]}</button>`).join('')}</div>`;
     h += `<input id="vilLoyWish" type="text" maxlength="40" placeholder="คำอธิษฐาน (ไม่เกิน 40 ตัวอักษร)" value="${escH(loyW)}" style="width:100%;margin:6px 0">`;
-    h += left > 0 ? `<button class="btn primary" type="button" data-a="loyFloat"${dis}>ลอยกระทง · ${st.n ? `🪙 ${LOY_PRICE}` : 'ฟรีวันนี้'}</button><p class="muted">วันนี้ลอยได้อีก ${left} ใบ</p>`
+    h += left > 0 ? (loyGo ? '<button class="btn primary" type="button" disabled>กำลังเดินไปที่สะพาน…</button><p class="muted">ถึงปลายสะพานแล้วจะลอยให้เลย</p>'
+        : `<button class="btn primary" type="button" data-a="loyFloat"${dis}>ลอยกระทง · ${st.n ? `🪙 ${LOY_PRICE}` : 'ฟรีวันนี้'}</button><p class="muted">${onPier() ? '' : 'เดินไปยืนที่ปลายสะพานก่อน · '}วันนี้ลอยได้อีก ${left} ใบ</p>`)
       : '<p>วันนี้ลอยครบ 5 ใบแล้ว พรุ่งนี้มาลอยใหม่ได้</p>';
     if (loyNames && loyNames.length) { const ns = loyNames.slice().sort((a, b) => (b.c | 0) - (a.c | 0)).map(r => escH(r.n));
       h += `<p class="muted">ร่วมลอยแล้ว ${ns.length} คน: ${ns.slice(0, 24).join(', ')}${ns.length > 24 ? ' …' : ''}</p>`; }
@@ -745,7 +748,8 @@ const Village = (() => {
     const p = Prog.get(), st = loyDay(p); if (st.n >= LOY_CAP) return toast('วันนี้ลอยครบ 5 ใบแล้ว');
     if (st.n && (p.coins | 0) < LOY_PRICE) return toast(`เหรียญไม่พอ (ต้องใช้ 🪙 ${LOY_PRICE})`);
     if (!O || !O.floatLoy) return toast('ยังต่อออนไลน์ไม่ได้ ลองใหม่อีกครั้ง');
-    loyBusy = true; renderCard(); goTo(PIER);
+    if (!onPier()) { loyGo = Date.now(); goTo(PIER); renderCard(); return; }   // step onto the pier first; liveTick floats it on arrival
+    loyGo = 0; loyBusy = true; renderCard();
     try { const id = await O.floatLoy(nm, loySty, w); if (!id) throw new Error('no id');
       const q = Prog.get(), s2 = loyDay(q); if (s2.n) { q.coins -= LOY_PRICE; if (typeof Stats !== 'undefined') Stats.econ('out_loy', LOY_PRICE); } s2.n++; Prog.put(q);
       loyMine.add(id); loyW = ''; const t = typeof Skills !== 'undefined' && Skills.evAdd && Skills.evAdd('loy2569');
@@ -1035,6 +1039,7 @@ const Village = (() => {
   function liveTick(dt) {
     if (!W) return; t += dt; const rt = performance.now(), every = (k, ms) => rt - (tickAt[k] || 0) >= ms && (tickAt[k] = rt);   // real-time timers: slow frames don't delay them
     if (every('bs', 1000)) { const bs = LOTS.map(L => building(L) ? 1 : 0).join(''); if (bs !== bsSig) { const first = !bsSig; bsSig = bs; if (!first) { relotW(); syncHome(); renderCard(); renderBar(); } } }
+    if (loyGo) { if (Date.now() - loyGo > 60e3) { loyGo = 0; if (cardL === LOYC) renderCard(); } else if (onPier()) loyFloat(); }   // reached the pier: float it
     for (const a of Object.values(others)) step(a, dt);
     if (every('send', 500)) send();
     if (every('pos', 3000)) savePos();
