@@ -334,7 +334,7 @@ const Village = (() => {
   // rooms/_vil/lots -> houses on the map (repaint only when something changed)
   function applyLots(v) {
     const sig = JSON.stringify(v || {}); if (sig === lotsSig) return; lotsSig = sig; lotRaw = v || {};
-    for (const L of LOTS) { const d = (v || {})[L.id] || {}; Object.assign(L, { stage: Math.max(0, Math.min(5, d.stage | 0)), k: d.k || '', n: d.n || '', who: d.who || '', g: d.g | 0, h: d.h | 0, end: +d.end || 0, hp: d.hp || null, pet: d.pet && d.pet.c ? d.pet : null, rc: d.rc || '', wc: d.wc || '', xs: typeof d.xs === 'string' ? d.xs.slice(0, 8) : '', cz: d.cz | 0, mv: +d.mv || 0, u: d.u || '' }); }
+    for (const L of LOTS) { const d = (v || {})[L.id] || {}; Object.assign(L, { stage: Math.max(0, Math.min(5, d.stage | 0)), k: d.k || '', n: d.n || '', who: d.who || '', g: d.g | 0, h: d.h | 0, end: +d.end || 0, hp: d.hp || null, pet: d.pet && d.pet.c ? d.pet : null, rc: d.rc || '', wc: d.wc || '', xs: typeof d.xs === 'string' ? d.xs.slice(0, 8) : '', cz: d.cz | 0, mv: +d.mv || 0, u: d.u || '', kk: Math.min(3, d.kk | 0) }); }
     healMove(); healOwner();
     if (W) relotW(); else if (base) { rebuild(); if (loaded >= 2) paintWorld(); }
     syncHome(); renderCard(); renderBar();
@@ -715,8 +715,10 @@ const Village = (() => {
   // online.js rooms/_loy2569: k = floated krathongs (latest 60 on the pond; each drifts across and down the stream, gone after
   // loyLife), n = how many the office floated, by = names, to/{key} = a friend's krathong for you, c = picked up in the clean-up.
   // Three ways to float (loyM): 0 a wish, 1 letting go (the text never leaves this phone; the krathong sinks), 2 for a friend
-  // (they get a notice; anyone who taps it on the pond reads it). Wish and friend krathongs go through the ทำกระทง mini game
-  // first (skippable): 1–3 stars change how it looks, no coins. First krathong a day free, then LOY_PRICE coins, LOY_CAP a day.
+  // (they get a notice; anyone who taps it on the pond reads it). Every krathong is made first at the ทำกระทง table beside
+  // the pier: the mini game is free to play as often as you like; keeping a krathong costs LOY_PRICE coins (none free,
+  // a coin sink) and puts it in your bag (LOY_BAG at most). 1–3 stars and a lit or unlit candle change how it looks.
+  // LOY_CAP floats a day. Krathongs still in the bag after the event become a keepsake by your front door (lot record kk).
   // Office goal ladder: 25 lanterns along the paths, 50 fireworks at village night (from 24 Nov), 100 everyone's names in the
   // sky on Friday night. Stamp card: one task a day, 5 stamps = a lotus crown for your pet. Title on the first float.
   // After the event (28 Nov – 6 Dec) the krathongs wait at the end of the stream for the clean-up: picking one up shows its
@@ -724,7 +726,7 @@ const Village = (() => {
   // PTR host or ?loy=1: the event is on early (dev panel: on / off / by date / clean-up).
   const LOY_FROM = Date.UTC(2026, 10, 22, 17), LOY_TO = Date.UTC(2026, 10, 27, 17), LOY_FIRE = Date.UTC(2026, 10, 23, 17), LOY_END = Date.UTC(2026, 11, 6, 17);   // Bangkok 23 Nov, 28 Nov, 24 Nov, 7 Dec 00:00
   const LOY_PRICE = 200, LOY_CAP = 5, LOY_GOAL = 50, LOY_LIFE = 30 * 60e3, LOY_VENT = 3 * 60e3, PIER = [62, 18], LOYC = { loy: 1 };
-  const CLEAN_AT = [71, 17], CLEAN_CAP = 10, PLAQUE = [30, 26], CLEANC = { loyX: 'clean' }, PLAQUEC = { loyX: 'plaque' };
+  const MAKE_AT = [57, 18], TABLE = [57, 17], MAKEC = { loyX: 'make' }, LOY_BAG = 3, CLEAN_AT = [71, 17], CLEAN_CAP = 10, PLAQUE = [30, 26], CLEANC = { loyX: 'clean' }, PLAQUEC = { loyX: 'plaque' };
   const LOY_LADDER = [[25, 'โคมไฟเรียงทางเดินทุกเส้น', 'โคมไฟ'], [50, 'ดอกไม้ไฟเหนือบึง ทุกค่ำของหมู่บ้าน', 'ดอกไม้ไฟ'], [100, 'ฉลองใหญ่คืนวันศุกร์: ชื่อทุกคนขึ้นบนฟ้า', 'ชื่อทุกคนบนฟ้า']];
   const LOY_DAYS = [['จันทร์ 23', 'ลอยกระทงใบแรก'], ['อังคาร 24 · คืนเพ็ญ', 'ลอยตอนกลางคืนในหมู่บ้าน'], ['พุธ 25', 'ลอยให้เพื่อน 1 คน'], ['พฤหัส 26', 'ทำกระทงให้ได้ 3 ดาว'], ['ศุกร์ 27', 'อยู่ในหมู่บ้านตอนกลางคืน (คืนส่งท้าย)']];
   const LOY_MOON = [.98, 1, .98, .93, .86];   // how full the moon is, Mon–Fri (full on Tuesday, Loy Krathong night)
@@ -746,7 +748,7 @@ const Village = (() => {
   const dayOf = ms => new Date((ms || 0) + 7 * 3600e3).toISOString().slice(0, 10);   // Bangkok day of a timestamp
   let loyK = {}, loyN = 0, loyNames = null, loySty = 0, loyW = '', loyBusy = false, loyGo = 0, loyGoTo = null;   // loyGo: when a float / pick-up waits for you to get there
   let loyM = 0, loyF = null, loyQ = null, loyView = '', loyFq = '', loyProfs = null, loyInbox = {}, loyAllK = null, loyPicked = {}, loyGot = null, loyLamps = null, loyNamesT = 0;
-  let loyOM = null, loyWatched = '';   // online module, which watchers are running
+  let loyOM = null, loyWatched = '', loySel = 0, loyKeepT = 0;   // online module, which watchers are running
   const onCell = c => { const m = W && W.me; if (!m) return false; const x = Math.floor(m.px / T), y = Math.floor(m.py / T); return y === c[1] && x >= c[0] - (c === PIER ? 1 : 0) && x <= c[0]; };
   const onPier = () => onCell(PIER);   // standing at the end of the pier
   const loyHide = new Set(), loyMine = new Set();
@@ -774,21 +776,26 @@ const Village = (() => {
   const row = (v, l, r) => `<button class="vil-loy-row" type="button" data-a="loyView" data-v="${v}"><span>${l}</span><span>${r} ›</span></button>`;
   const back = '<button class="btn sm vil-loy-back" type="button" data-a="loyView" data-v="">‹ กลับ</button>';
   const loyNext = () => LOY_LADDER.find(g => loyCount() < g[0]);
+  const loyBag = () => { const b = Prog.get().loyBag; return Array.isArray(b) ? b : []; };
+  const styN = k => (LOY_STY[k.s] || LOY_STY[0])[0];
   function loyCard() {
     if (loyView === 'friend') return loyFriendCard(); if (loyView === 'stamps') return loyStampCard(); if (loyView === 'goal') return loyGoalCard();
-    const p = Prog.get(), st = loyDay(p), left = LOY_CAP - st.n, dis = loyBusy ? ' disabled' : '', M = LOY_MODES[loyM], nx = loyNext(), price = st.n ? `🪙 ${LOY_PRICE}` : 'ฟรีวันนี้';
+    const p = Prog.get(), st = loyDay(p), left = LOY_CAP - st.n, dis = loyBusy ? ' disabled' : '', M = LOY_MODES[loyM], nx = loyNext(), bag = loyBag();
+    if (loySel >= bag.length) loySel = 0;
     let h = `<h4>ลอยกระทง 2569</h4><p class="muted">บึงหมู่บ้าน · 23–27 พ.ย.</p>`;
     h += row('goal', `ทั้งออฟฟิศลอยแล้ว ${fmtN(loyCount())}`, nx ? `ถัดไป ${nx[0]}: ${nx[2]}` : 'ครบทุกขั้นแล้ว');
-    h += `<div class="vil-loy-sty" role="group" aria-label="ลอยแบบไหน">${LOY_MODES.map((m, i) => `<button class="btn sm" type="button" data-a="loyM" data-i="${i}" aria-pressed="${i === loyM}">${m[0]}</button>`).join('')}</div>`;
-    h += `<div class="vil-loy-sty" role="group" aria-label="แบบกระทง">${LOY_STY.map((s, i) => `<button class="btn sm" type="button" data-a="loySty" data-i="${i}" aria-pressed="${i === loySty}">${s[0]}</button>`).join('')}</div>`;
-    if (loyM === 2) h += row('friend', `ลอยให้: ${loyF ? escH(loyF.n) : 'เลือกเพื่อน'}`, '');
-    h += `<label class="vil-loy-lbl" for="vilLoyWish"><span>${M[1]}</span><span class="muted" data-loy-len>${(loyW || '').length}/40</span></label><input id="vilLoyWish" type="text" maxlength="40" placeholder="${M[2]}" value="${escH(loyW)}" autocomplete="off">`;
-    if (loyM === 1) h += '<p class="muted">ข้อความนี้ไม่ถูกบันทึกและไม่มีใครเห็น กระทงจะลอยออกไปแล้วค่อย ๆ จมหายไป</p>';
-    if (left <= 0) h += '<p>วันนี้ลอยครบ 5 ใบแล้ว พรุ่งนี้มาลอยใหม่ได้</p>';
-    else if (loyGo) h += '<button class="btn primary" type="button" disabled>กำลังเดินไปที่สะพาน…</button><p class="muted">ถึงปลายสะพานแล้วจะลอยให้เลย</p>';
-    else { const cta = loyM === 1 ? 'ปล่อยไปเลย' : loyM === 2 ? `ลอยให้${loyF ? escH(loyF.n) : 'เพื่อน'}` : 'ลอยกระทง';
-      h += `<button class="btn primary" type="button" data-a="loyStart"${dis}>${cta} · ${price}</button>`;
-      h += `<p class="muted">${loyM === 1 ? '' : 'เปิดมินิเกมทำกระทงก่อน (ข้ามได้) · '}วันนี้ลอยได้อีก ${left} ใบ${st.n ? '' : ' · ใบแรกฟรี ใบต่อไป 200 เหรียญ'}</p>`; }
+    if (!bag.length) h += `<p>ยังไม่มีกระทง ทำได้ที่โต๊ะทำกระทงข้างสะพาน · เล่นมินิเกมฟรี จ่าย ${LOY_PRICE} เหรียญตอนรับกระทง</p><button class="btn primary" type="button" data-a="loyToMake">ไปที่โต๊ะทำกระทง</button>`;
+    else {
+      h += `<p class="vil-loy-h">กระทงของคุณ ${bag.length}/${LOY_BAG}</p><div class="vil-loy-sty" role="group" aria-label="เลือกกระทง">${bag.map((k, i) => `<button class="btn sm" type="button" data-a="loySel" data-i="${i}" aria-pressed="${i === loySel}">${styN(k)}<br><small>${k.q} ดาว${k.u ? ' · ไม่มีไฟ' : ''}</small></button>`).join('')}</div>`;
+      h += `<div class="vil-loy-sty" role="group" aria-label="ลอยแบบไหน">${LOY_MODES.map((m, i) => `<button class="btn sm" type="button" data-a="loyM" data-i="${i}" aria-pressed="${i === loyM}">${m[0]}</button>`).join('')}</div>`;
+      if (loyM === 2) h += row('friend', `ลอยให้: ${loyF ? escH(loyF.n) : 'เลือกเพื่อน'}`, '');
+      h += `<label class="vil-loy-lbl" for="vilLoyWish"><span>${M[1]}</span><span class="muted" data-loy-len>${(loyW || '').length}/40</span></label><input id="vilLoyWish" type="text" maxlength="40" placeholder="${M[2]}" value="${escH(loyW)}" autocomplete="off">`;
+      if (loyM === 1) h += '<p class="muted">ข้อความนี้ไม่ถูกบันทึกและไม่มีใครเห็น กระทงจะลอยออกไปแล้วค่อย ๆ จมหายไป</p>';
+      if (left <= 0) h += '<p>วันนี้ลอยครบ 5 ใบแล้ว พรุ่งนี้มาลอยใหม่ได้ กระทงในกระเป๋ายังอยู่</p>';
+      else if (loyGo && loyGoTo === 'float') h += '<button class="btn primary" type="button" disabled>กำลังเดินไปที่สะพาน…</button><p class="muted">ถึงปลายสะพานแล้วจะลอยให้เลย</p>';
+      else { const cta = loyM === 1 ? 'ปล่อยไปเลย' : loyM === 2 ? `ลอยให้${loyF ? escH(loyF.n) : 'เพื่อน'}` : 'ลอยกระทง';
+        h += `<button class="btn primary" type="button" data-a="loyStart"${dis}>${cta}</button><p class="muted">วันนี้ลอยได้อีก ${left} ใบ</p>`; }
+      if (bag.length < LOY_BAG) h += '<button class="btn" type="button" data-a="loyToMake">ทำกระทงเพิ่มที่โต๊ะ</button>'; }
     h += row('stamps', `บัตรแสตมป์ ${popc(p.loyS)}/5`, '');
     if (loyNames && loyNames.length) { const ns = loyNames.slice().sort((a, b) => (b.c | 0) - (a.c | 0)).map(r => escH(r.n));
       h += `<p class="muted">ร่วมลอยแล้ว ${ns.length} คน: ${ns.slice(0, 24).join(', ')}${ns.length > 24 ? ' …' : ''}</p>`; }
@@ -823,26 +830,29 @@ const Village = (() => {
       + (mine && m !== 1 ? '<button class="btn" type="button" data-a="loySink">เก็บกระทงขึ้นจากน้ำ</button>' : !mine ? '<button class="btn sm" type="button" data-a="loyHide">ซ่อนใบนี้ (เฉพาะเครื่องนี้)</button>' : ''); }
   // the press on the float button: checks first, then the mini game (wish / friend) or straight to the pier (letting go)
   function loyCheck() { const nm = loyNm(); if (!nm) return 'ตั้งชื่อก่อนแล้วค่อยลอยนะ';
+    if (!loyBag().length) return 'ยังไม่มีกระทง ไปทำที่โต๊ะทำกระทงก่อนนะ';
     if (loyM !== 1 && !loyPolite(loyW || '')) return 'ข้อความมีคำไม่สุภาพ ลองเขียนใหม่นะ';
     if (loyM === 2 && !loyF) { loyView = 'friend'; loyFriendLoad(); renderCard(); return 'เลือกเพื่อนก่อนนะ'; }
     if (loyM === 2 && loyF.k === myKey()) return 'ลอยให้ตัวเองไม่ได้ เลือกเพื่อนอีกคนนะ';
-    const p = Prog.get(), st = loyDay(p); if (st.n >= LOY_CAP) return 'วันนี้ลอยครบ 5 ใบแล้ว';
-    if (st.n && (p.coins | 0) < LOY_PRICE) return `เหรียญไม่พอ (ต้องใช้ 🪙 ${LOY_PRICE})`;
+    if (loyDay(Prog.get()).n >= LOY_CAP) return 'วันนี้ลอยครบ 5 ใบแล้ว';
     if (!O || !O.floatLoy) return 'ยังต่อออนไลน์ไม่ได้ ลองใหม่อีกครั้ง'; return ''; }
-  function loyStart() { const e = loyCheck(); if (e) return toast(e); if (loyM === 1) { loyQ = null; return loyFloat(); } kgOpen(); }
+  function loyStart() { const e = loyCheck(); if (e) return toast(e); loyFloat(); }
   async function loyFloat() {
     const e = loyCheck(); if (e) { loyGo = 0; renderCard(); return toast(e); }
     if (!onPier()) { loyGo = Date.now(); loyGoTo = 'float'; goTo(PIER); renderCard(); return; }   // step onto the pier first; liveTick floats it on arrival
     loyGo = 0; loyBusy = true; renderCard();
-    const nm = loyNm(), m = loyM, f = m === 2 ? loyF : null, q = loyQ || {}, night = loyNight(), w = m === 1 ? '' : (loyW || '').trim().slice(0, 40);
-    try { const id = await O.floatLoy(nm, loySty, w, { m, f: f ? f.n : '', q: q.q | 0, p: q.p }); if (!id) throw new Error('no id');
-      const p2 = Prog.get(), s2 = loyDay(p2); if (s2.n) { p2.coins -= LOY_PRICE; if (typeof Stats !== 'undefined') Stats.econ('out_loy', LOY_PRICE); } s2.n++; Prog.put(p2);
-      loyMine.add(id); loyW = ''; loyQ = null; const t1 = typeof Skills !== 'undefined' && Skills.evAdd && Skills.evAdd('loy2569');
+    const nm = loyNm(), m = loyM, f = m === 2 ? loyF : null, kr = loyBag()[loySel] || loyBag()[0], night = loyNight(), w = m === 1 ? '' : (loyW || '').trim().slice(0, 40);
+    try { const id = await O.floatLoy(nm, kr.s | 0, w, { m, f: f ? f.n : '', q: kr.q | 0, p: kr.p, u: kr.u ? 1 : 0 }); if (!id) throw new Error('no id');
+      const p2 = Prog.get(); loyDay(p2).n++; p2.loyBag = loyBag().filter(k => k.t !== kr.t); Prog.put(p2);
+      loyMine.add(id); loyW = ''; loySel = 0; const t1 = typeof Skills !== 'undefined' && Skills.evAdd && Skills.evAdd('loy2569');
       toast((m === 1 ? 'ปล่อยไปกับสายน้ำแล้ว' : m === 2 ? `ลอยให้ ${f.n} แล้ว` : 'ลอยกระทงแล้ว') + (t1 ? ' · ได้ฉายา "ลอยกระทง 2569" ใส่ได้ที่หน้าทักษะ' : ''));
       feed(m === 1 ? `🪷 ${nm} ปล่อยความเครียดไปกับสายน้ำที่บึงหมู่บ้าน` : m === 2 ? `🪷 ${nm} ลอยกระทงให้ ${f.n} ที่บึงหมู่บ้าน` : `🪷 ${nm} ลอยกระทงที่บึงหมู่บ้านแล้ว`);
-      loyStamp(0); if (night) loyStamp(1); if (m === 2) loyStamp(2); if ((q.q | 0) === 3) loyStamp(3); }
+      loyStamp(0); if (night) loyStamp(1); if (m === 2) loyStamp(2); if ((kr.q | 0) === 3) loyStamp(3); }
     catch (err) { toast('ลอยไม่สำเร็จ ลองใหม่อีกครั้ง'); }
     finally { loyBusy = false; if (cardL === LOYC) renderCard(); } }
+  // the table: walk up to it, then play (the game opens on arrival)
+  function loyPlay() { if (!loyOn()) return; if (loyBag().length >= LOY_BAG) return toast(`กระเป๋าใส่กระทงได้ ${LOY_BAG} ใบ ไปลอยก่อนนะ`);
+    if (!onCell(MAKE_AT)) { loyGo = Date.now(); loyGoTo = 'make'; goTo(MAKE_AT); renderCard(); return; } loyGo = 0; kgOpen(); }
   function loyFriendLoad() { if (loyProfs || !O || !O.listProfiles) return; O.listProfiles(120).then(L => { loyProfs = L || []; if (cardL === LOYC && loyView === 'friend' && !loyTyping()) renderCard(); }).catch(() => { loyProfs = []; }); }
   function loyAct(a, b) {
     if (a === 'loySty') { loySty = +b.dataset.i || 0; return renderCard(); }
@@ -850,6 +860,10 @@ const Village = (() => {
     if (a === 'loyView') { loyView = b.dataset.v || ''; if (loyView === 'friend') loyFriendLoad(); return renderCard(); }
     if (a === 'loyPick') { const n = b.dataset.n; loyF = { n, k: key(n) }; loyView = ''; return renderCard(); }
     if (a === 'loyStart') return loyStart();
+    if (a === 'loySel') { loySel = +b.dataset.i || 0; return renderCard(); }
+    if (a === 'loyToMake') return loyXOpen(MAKEC);
+    if (a === 'loyToPier') return loyOpen();
+    if (a === 'loyPlay') return loyPlay();
     if (a === 'loySink' && cardL && cardL.loyK) { const id = cardL.loyK; closeCard(); if (O && O.sinkLoy) O.sinkLoy(id); delete loyK[id]; return toast('เก็บกระทงขึ้นแล้ว'); }
     if (a === 'loyHide' && cardL && cardL.loyK) { loyHide.add(cardL.loyK); closeCard(); }
     if (a === 'loySee') { closeCard(); return goTo(PIER); }
@@ -858,6 +872,15 @@ const Village = (() => {
   }
   // cards that are not the main one: a friend's notice, the clean-up, the plaque
   function loyXCard(c) {
+    if (c.loyX === 'make') { const bag = loyBag(), full = bag.length >= LOY_BAG;
+      let h = `<h4>โต๊ะทำกระทง</h4><p class="muted">เล่นมินิเกมฟรีกี่รอบก็ได้ · พอใจใบไหนจ่าย ${LOY_PRICE} เหรียญรับใบนั้นใส่กระเป๋า</p>`;
+      h += `<div class="vil-loy-sty" role="group" aria-label="แบบกระทง">${LOY_STY.map((s1, i) => `<button class="btn sm" type="button" data-a="loySty" data-i="${i}" aria-pressed="${i === loySty}">${s1[0]}</button>`).join('')}</div>`;
+      h += `<p class="muted">กระทงในกระเป๋า ${bag.length}/${LOY_BAG}${full ? ' · เต็มแล้ว ไปลอยก่อนนะ' : ''}</p>`;
+      if (!loyOn()) h += '<p>งานลอยกระทงปิดแล้ว</p>';
+      else if (loyGo && loyGoTo === 'make') h += '<button class="btn primary" type="button" disabled>กำลังเดินไปที่โต๊ะ…</button>';
+      else h += `<button class="btn primary" type="button" data-a="loyPlay"${full ? ' disabled' : ''}>เริ่มทำกระทง</button>`;
+      if (bag.length) h += '<button class="btn" type="button" data-a="loyToPier">ไปลอยที่สะพาน</button>';
+      return h + '<p class="muted">5 ชั้นใน 25 วินาที วางเบี้ยวมากชั้นจะตกน้ำ ต้องวางใหม่ · ปิดท้ายด้วยจุดเทียน</p>'; }
     if (c.loyX === 'to') { const v = loyInbox[c.id]; if (!v) return ''; const k = loyK[c.id], left = k ? loyLife(k) - (srvNow() - (k.t || 0)) : 0;
       return `<h4>${escH(v.n)} ลอยกระทงให้คุณ</h4><p>${v.w ? `"${escH(v.w)}"` : 'ไม่ได้เขียนข้อความ'}</p><p class="muted">${left > 60e3 ? `ลอยอยู่ที่บึงหมู่บ้านอีกราว ${Math.ceil(left / 60e3)} นาที` : 'กระทงลอยไปตามลำธารแล้ว'}</p>`
         + (left > 60e3 ? '<button class="btn primary" type="button" data-a="loySee">ไปดูที่บึง</button>' : '') + (loyOn() ? `<button class="btn" type="button" data-a="loyBack">ลอยกลับให้ ${escH(v.n)}</button>` : '')
@@ -884,9 +907,13 @@ const Village = (() => {
         loyPicked[id] = 1; } }
     catch (e) { toast('เก็บไม่สำเร็จ ลองใหม่อีกครั้ง'); }
     finally { loyBusy = false; if (cardL === CLEANC) renderCard(); } }
-  function loyXOpen(g) { if (g.loyX === 'clean') { loyEnsure(); goTo(CLEAN_AT); } if (g.loyX === 'plaque') { loyNamesT = 0; loyEnsure(); goTo(nearestWalk(PLAQUE[0], PLAQUE[1] + 1)); } openCard(g); }
+  function loyXOpen(g) { if (g.loyX === 'make') { loyView = ''; goTo(MAKE_AT); } if (g.loyX === 'clean') { loyEnsure(); goTo(CLEAN_AT); } if (g.loyX === 'plaque') { loyNamesT = 0; loyEnsure(); goTo(nearestWalk(PLAQUE[0], PLAQUE[1] + 1)); } openCard(g); }
   // every few seconds: a friend's krathong you have not seen yet opens its notice; Friday night in the village is a stamp
   function loyTick() { loyEnsure();
+    if (loyPost()) { const p = Prog.get(); if (Array.isArray(p.loyBag) && p.loyBag.length) { p.loyKeep = Math.max(p.loyKeep | 0, ...p.loyBag.map(k => k.q | 0)); p.loyBag = []; Prog.put(p);
+      toast(myLot() ? 'กระทงที่ยังไม่ได้ลอย กลายเป็นของที่ระลึกหน้าบ้านแล้ว' : 'กระทงที่ยังไม่ได้ลอยเก็บไว้เป็นของที่ระลึก มีบ้านเมื่อไรจะวางไว้หน้าบ้าน'); } }
+    { const kq = Prog.get().loyKeep | 0, L = myLot(); if (kq && L && O && O.txLot && (L.kk | 0) !== kq && Date.now() - loyKeepT > 30e3) { loyKeepT = Date.now(); const mk = myKey();   // the keepsake by your front door, seen by everyone
+        O.txLot(L.id, cur => cur && cur.k === mk ? { ...cur, kk: kq } : cur ? undefined : null).catch(() => {}); } }
     if (loyOn() && loyEvDay() === 4 && loyNight() && W && !W.scene()) loyStamp(4);
     if (!cardL && !kg && loyNm()) { const p = Prog.get(), seen = p.loySeen || [], ids = Object.keys(loyInbox).filter(id => !seen.includes(id));
       if (ids.length) { const id = ids.sort((a, b) => (loyInbox[b].t || 0) - (loyInbox[a].t || 0))[0]; p.loySeen = [...seen, ...ids].slice(-60); Prog.put(p); openCard({ loyX: 'to', id, from: loyInbox[id].n }); } } }
@@ -900,7 +927,7 @@ const Village = (() => {
     else { const u = (a - .6) / .4; x = 69.6 + u * 5.4; y = 18.5; }
     return [x * T, (y + Math.sin(now / 1700 + h) * .08) * T, a > .85 ? 1 - (a - .85) / .15 : 1, 0]; }
   // one krathong in px at (x, y); q stars: 2 = five flowers, 3 = gold rim and a brighter glow; sink 0–1 = how far under it is
-  function drawKr(g, k, x, y, al, night, sink = 0, lit = true) { const S1 = LOY_STY[k.s] || LOY_STY[0], h = hashS(k.id || 'x'), q = k.q | 0, bx = Math.round(x) - 6, by = Math.round(y) - 5, fl = Math.floor(srvNow() / 160 + h) % 3 === 0 ? 1 : 0, rim = q === 3 ? '#c99700' : '#3b2316';
+  function drawKr(g, k, x, y, al, night, sink = 0, lit = true) { if (k.u) lit = false; const S1 = LOY_STY[k.s] || LOY_STY[0], h = hashS(k.id || 'x'), q = k.q | 0, bx = Math.round(x) - 6, by = Math.round(y) - 5, fl = Math.floor(srvNow() / 160 + h) % 3 === 0 ? 1 : 0, rim = q === 3 ? '#c99700' : '#3b2316';
     g.save(); g.globalAlpha = al;
     if (sink) { g.beginPath(); g.rect(bx - 8, by - 12, 30, 20 - sink * 10); g.clip(); }   // the water line rises over it
     if (night && lit) { g.globalAlpha = al * (q === 3 ? .45 : .3); g.fillStyle = '#ffcf6a'; g.beginPath(); g.arc(bx + 6, by - 3, q === 3 ? 15 : 11, 0, 7); g.fill(); g.globalAlpha = al; }
@@ -933,6 +960,11 @@ const Village = (() => {
     if (on && loyCount() >= LOY_LADDER[0][0]) for (const [lx, ly] of loyLampList()) out.push({ y: ly * T + 14, d: () => { const g = W.ctx, x = lx * T + 8, y = ly * T + 14, c = ['#ff6fa8', '#ffb21f', '#ffd23f'][(lx + ly) % 3];
       if (night) { g.save(); g.globalAlpha = .3; g.fillStyle = '#ffcf6a'; g.beginPath(); g.arc(x, y - 10, 10, 0, 7); g.fill(); g.restore(); }
       g.fillStyle = '#3b2316'; g.fillRect(x - 1, y - 8, 2, 8); g.fillRect(x - 4, y - 15, 8, 8); g.fillStyle = c; g.fillRect(x - 3, y - 14, 6, 6); g.fillStyle = night ? '#fff3a0' : '#fff8e0'; g.fillRect(x - 1, y - 12, 2, 2); } });
+    // the ทำกระทง table beside the pier: banana trunk slices, leaves and flowers on it
+    if (on) { const x = TABLE[0] * T + 8, y = TABLE[1] * T + 15;
+      out.push({ y, d: () => { const g = W.ctx; g.fillStyle = '#3b2316'; g.fillRect(x - 15, y - 12, 30, 4); g.fillRect(x - 13, y - 8, 3, 8); g.fillRect(x + 10, y - 8, 3, 8);
+        g.fillStyle = '#c4864f'; g.fillRect(x - 14, y - 11, 28, 2); g.fillStyle = '#e2c48f'; g.fillRect(x - 12, y - 15, 7, 3); g.fillStyle = '#5fae4a'; g.fillRect(x - 3, y - 16, 8, 4); g.fillStyle = '#ffb21f'; g.fillRect(x + 7, y - 15, 3, 3); g.fillStyle = '#ff6fa8'; g.fillRect(x + 10, y - 16, 3, 3); } });
+      hits.push({ l: x - 16, t: y - 20, w: 32, h: 22, hit: MAKEC }); }
     // the park's festival lights, strung across the plaza where the bunting was
     if (on) out.push({ y: 1e6, d: () => { const g = W.ctx, cols = ['#ffd23f', '#ff6fa8', '#ffb21f', '#7fd3ff'];
       for (const [x0, x1, y0, sag] of [[25.5, 31.5, 13.7, 8], [25.5, 31.5, 18.2, 6]]) { g.strokeStyle = '#3b2316'; g.lineWidth = 1; g.beginPath();
@@ -962,63 +994,113 @@ const Village = (() => {
       const x = cx + (((h % 13) - 6) * 7 + Math.sin(t / 2 + i) * 3) * S1, y = cy - u * 70 * S1; g.globalAlpha = u < .15 ? u / .15 : u > .8 ? (1 - u) / .2 : 1;
       g.fillStyle = '#ffcf6a'; g.fillRect(x - 2 * S1, y + 2 * S1, 4 * S1, 5 * S1); g.fillStyle = '#fff8e0'; g.fillText(nm, x, y); }
     g.restore(); }
-  // ---- ทำกระทง: the mini game before a wish or friend krathong. Four layers slide over the water; tap to drop each one.
-  // Accuracy of each drop = how close to the middle; the average gives 1–3 stars (85% 3, 60% 2). 20 s; layers left when the
-  // time runs out drop where they are. Remaking is free and it pays no coins: the reward is how the krathong looks.
-  const KG_L = [['ฐาน', 116, 14], ['ใบตองพับ', 100, 12], ['ดอกไม้', 76, 12], ['ธูปเทียน', 22, 22]], KG_A = 96, KG_T = 20;
+  // ---- ทำกระทง: the mini game at the table. Five layers slide over the water, each narrower and faster; tap to drop.
+  // A layer whose middle lands past the edge of the one below falls in the water ("ตกน้ำ!") and you drop it again,
+  // which eats the 25 s. Gusts of wind push the sliding layer; one surprise a game (a frog hops on and nudges the stack, or
+  // a fish jumps); two dead-centre drops in a row make the gecko chirp. Last, a swinging match: tap to light the candle
+  // (miss = no light at night). Accuracy = how close each layer sits to the middle of the one below; the average gives
+  // the stars (90% 3, 70% 2, else 1). Playing is free; keeping the krathong costs LOY_PRICE.
+  const KG_L = [['ฐานต้นกล้วย', 120, 16], ['กลีบใบตอง', 104, 12], ['ดาวเรือง', 84, 12], ['ดอกบัว', 56, 14], ['ธูปเทียน', 24, 22]], KG_A = 100, KG_T = 25, KG_W = 240, KG_H = 196, KG_B = 176;
   let kg = null;
   function kgOpen() { kgClose(); closeCard(); const el = document.createElement('div'); el.className = 'vil-kg'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', 'มินิเกมทำกระทง');
-    kg = { el, i: 0, x: -KG_A, dir: 1, placed: [], t0: performance.now(), raf: 0, res: null, last: performance.now(), fb: '' }; wrapEl.appendChild(el);
-    el.addEventListener('pointerdown', e => { if (!kg || kg.res || e.target.closest('[data-k]')) return; e.preventDefault(); kgDrop(); });
+    const now = performance.now();
+    kg = { el, i: 0, x: -KG_A, dir: 1, stack: [], t0: now, raf: 0, res: null, last: now, phase: 'stack', fall: null, fx: [], streak: 0, gecko: 0, lit: false,
+      wind: { dir: 0, until: 0, next: now + 2500 + Math.random() * 2500 }, ev: { kind: Math.random() < .5 ? 'frog' : 'fish', at: 1 + Math.floor(Math.random() * 3), t: 0, dx: 0 }, mt: 0 };
+    wrapEl.appendChild(el);
+    el.addEventListener('pointerdown', e => { if (!kg || kg.res || e.target.closest('[data-k]')) return; e.preventDefault(); kgTap(); });
     el.addEventListener('click', e => { const b = e.target.closest('[data-k]'); if (!b || !kg) return; const k = b.dataset.k;
-      if (k === 'drop') return kgDrop(); if (k === 'again') return kgOpen(); if (k === 'close') { kgClose(); return openCard(LOYC); }
-      if (k === 'skip' || k === 'float') { loyQ = k === 'float' ? kg.res : null; kgClose(); openCard(LOYC); return loyFloat(); } });
-    el.tabIndex = -1; el.addEventListener('keydown', e => { if (kg && !kg.res && (e.key === ' ' || e.key === 'Enter')) { e.preventDefault(); e.stopPropagation(); kgDrop(); } if (e.key === 'Escape') kgClose(); });
+      if (k === 'drop') return kgTap(); if (k === 'again') return kgOpen(); if (k === 'close') { kgClose(); return openCard(MAKEC); } if (k === 'take') return kgTake(); });
+    el.tabIndex = -1; el.addEventListener('keydown', e => { if (kg && !kg.res && (e.key === ' ' || e.key === 'Enter')) { e.preventDefault(); e.stopPropagation(); kgTap(); } if (e.key === 'Escape') { kgClose(); openCard(MAKEC); } });
     kgPlay(); kg.raf = requestAnimationFrame(kgLoop); el.focus(); }
   function kgClose() { if (!kg) return; cancelAnimationFrame(kg.raf); kg.el.remove(); kg = null; }
-  function kgPlay() { kg.el.innerHTML = `<div class="vil-kg-in"><div class="vil-kg-top"><b>ทำกระทง</b><span class="vil-kg-time" aria-label="เวลาที่เหลือ">0:${KG_T}</span><button class="btn sm" type="button" data-k="skip">ข้าม</button></div>
-      <p class="muted">วาง 4 ชั้นให้ตรงกลาง ยิ่งตรงยิ่งสวย</p><ol class="vil-kg-steps">${KG_L.map(l => `<li>${l[0]}</li>`).join('')}</ol>
-      <canvas width="240" height="170"></canvas><p class="vil-kg-fb" aria-live="polite">&nbsp;</p>
-      <button class="btn primary vil-kg-go" type="button" data-k="drop">แตะเพื่อวาง</button><p class="muted vil-kg-note">แตะตรงไหนบนจอก็ได้ · ไม่มีเหรียญจากเกมนี้ รางวัลคือกระทงที่สวยขึ้น</p></div>`;
+  function kgPlay() { kg.el.innerHTML = `<div class="vil-kg-in"><div class="vil-kg-top"><b>ทำกระทง</b><span class="vil-kg-time" aria-label="เวลาที่เหลือ">0:${KG_T}</span><button class="btn sm" type="button" data-k="close" aria-label="ปิด">✕</button></div>
+      <ol class="vil-kg-steps">${KG_L.map(l => `<li>${l[0]}</li>`).join('')}</ol>
+      <canvas width="${KG_W}" height="${KG_H}"></canvas><p class="vil-kg-fb" aria-live="polite">วาง 5 ชั้นให้ตรงกลางชั้นล่าง</p>
+      <button class="btn primary vil-kg-go" type="button" data-k="drop">แตะเพื่อวาง</button><p class="muted vil-kg-note">แตะตรงไหนบนจอก็ได้ · เล่นฟรี จ่ายตอนรับกระทง</p></div>`;
     kg.cv = kg.el.querySelector('canvas'); kg.g = kg.cv.getContext('2d'); kgSteps(); }
-  function kgSteps() { kg.el.querySelectorAll('.vil-kg-steps li').forEach((li, j) => { li.className = j < kg.i ? 'done' : j === kg.i ? 'now' : ''; const a = kg.placed[j]; li.textContent = KG_L[j][0] + (a ? ` · ${Math.round(a.acc * 100)}%` : ''); }); }
-  function kgLoop(now) { if (!kg || kg.res) return; const dt = Math.min(.05, (now - kg.last) / 1000); kg.last = now;
-    const left = KG_T - (now - kg.t0) / 1000; if (left <= 0) { while (kg.i < 4) kgDrop(true); return; }
-    const sp = 120 + kg.i * 40; kg.x += kg.dir * sp * dt; if (kg.x > KG_A) { kg.x = KG_A; kg.dir = -1; } if (kg.x < -KG_A) { kg.x = -KG_A; kg.dir = 1; }
+  const kgSay = t => { const f = kg && kg.el.querySelector('.vil-kg-fb'); if (f) f.textContent = t; };
+  function kgSteps() { kg.el.querySelectorAll('.vil-kg-steps li').forEach((li, j) => { const a = kg.stack[j]; li.className = j < kg.i ? 'done' : j === kg.i ? 'now' : ''; li.textContent = KG_L[j][0] + (a ? ` ${Math.round(a.acc * 100)}%` : ''); }); }
+  const kgY = j => { let y = KG_B; for (let i = 0; i < j; i++) y -= KG_L[i][2] - (i === 3 ? 4 : 0); return y - KG_L[j][2]; };   // top of layer j on the stack
+  function kgLoop(now) { if (!kg || kg.res) return; const dt = Math.min(.05, (now - kg.last) / 1000); kg.last = now; const left = KG_T - (now - kg.t0) / 1000;
+    if (left <= 0) { if (kg.phase === 'candle') { kg.lit = false; kgSay('หมดเวลา เทียนไม่ติด'); return kgEnd(); } kgSay('หมดเวลา กระทงยังไม่เสร็จ'); return kgFail(); }
+    const W8 = kg.wind; if (now > W8.next && kg.phase === 'stack') { W8.dir = Math.random() < .5 ? -1 : 1; W8.until = now + 1400; W8.next = now + 3500 + Math.random() * 2500; }
+    if (kg.phase === 'stack' && !kg.fall) { const gust = now < W8.until ? W8.dir : 0, sp = (105 + kg.i * 38) * (gust ? Math.max(.45, 1 + .75 * gust * kg.dir) : 1);
+      kg.x += kg.dir * sp * dt + gust * 26 * dt; if (kg.x > KG_A) { kg.x = KG_A; kg.dir = -1; } if (kg.x < -KG_A) { kg.x = -KG_A; kg.dir = 1; } }
+    if (kg.fall) { const f = kg.fall; f.vy += 520 * dt; f.y += f.vy * dt; f.r += f.spin * dt; if (f.y > KG_B + 8) { kgSplash(f.x, KG_B + 10, 12, 1); kg.fall = null; } }
+    if (kg.phase === 'candle') kg.mt += dt;
+    kg.fx = kg.fx.filter(p => (p.t += dt) < p.life); for (const p of kg.fx) { p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 300 * dt; }
     const tm = kg.el.querySelector('.vil-kg-time'); if (tm) tm.textContent = `0:${String(Math.ceil(left)).padStart(2, '0')}`;
-    kgDraw(); kg.raf = requestAnimationFrame(kgLoop); }
-  function kgLayer(g, j, cx, y) { const [, w, h] = KG_L[j], S1 = LOY_STY[loySty] || LOY_STY[0], x = Math.round(cx - w / 2), O1 = '#3b2316';
-    if (j === 0) { g.fillStyle = O1; g.fillRect(x, y, w, h); g.fillStyle = '#e2c48f'; g.fillRect(x + 2, y + 2, w - 4, h - 4); g.fillStyle = '#c9a56a'; for (let i = 8; i < w - 4; i += 9) g.fillRect(x + i, y + 3, 2, h - 6); }
-    if (j === 1) { for (let i = 0; i < w; i += 10) { g.fillStyle = O1; g.beginPath(); g.moveTo(x + i, y + h); g.lineTo(x + i + 5, y); g.lineTo(x + i + 10, y + h); g.fill(); g.fillStyle = S1[1]; g.beginPath(); g.moveTo(x + i + 2, y + h - 1); g.lineTo(x + i + 5, y + 3); g.lineTo(x + i + 8, y + h - 1); g.fill(); } }
-    if (j === 2) { for (let i = 0; i < 6; i++) { const fx = x + 2 + i * (w - 14) / 5, c = S1[2][i % 3]; g.fillStyle = O1; g.fillRect(fx, y + (i % 2 ? 2 : 0), 10, 10); g.fillStyle = c; g.fillRect(fx + 2, y + 2 + (i % 2 ? 2 : 0), 6, 6); g.fillStyle = '#fff6'; g.fillRect(fx + 3, y + 3 + (i % 2 ? 2 : 0), 2, 2); } }
-    if (j === 3) { g.fillStyle = O1; g.fillRect(x + 7, y + 6, 8, h - 6); g.fillStyle = '#fff8e0'; g.fillRect(x + 9, y + 8, 4, h - 9); g.fillStyle = '#8a5a36'; g.fillRect(x + 1, y + 2, 2, h - 2); g.fillRect(x + w - 3, y + 2, 2, h - 2);
-      g.fillStyle = '#ff9a1f'; g.fillRect(x + 8, y, 6, 6); g.fillStyle = '#fff3a0'; g.fillRect(x + 10, y + 1, 2, 4); g.fillStyle = '#d14d72'; g.fillRect(x, y, 4, 3); g.fillRect(x + w - 4, y, 4, 3); } }
-  function kgDraw() { const g = kg.g, W1 = 240, H1 = 170, cx = W1 / 2; g.imageSmoothingEnabled = false;
-    g.fillStyle = '#6fb4dc'; g.fillRect(0, 0, W1, H1); g.fillStyle = '#5aa0cb'; for (let y = 10; y < H1; y += 14) for (let x = (y / 14 % 2) * 12; x < W1; x += 24) g.fillRect(x, y, 10, 2);
-    g.fillStyle = '#ffffff55'; g.fillRect(cx, 0, 1, H1);   // the middle
-    let y = 146; const base = [];
-    for (let j = 0; j < kg.placed.length; j++) { y -= KG_L[j][2] - (j === 3 ? 4 : 0); base.push([j, cx + kg.placed[j].dx, y]); }
-    g.fillStyle = '#ffffff44'; g.fillRect(cx - 64, 160, 128, 2);
-    for (const [j, x1, y1] of base) kgLayer(g, j, x1, y1);
-    if (kg.i < 4) { const j = kg.i; kgLayer(g, j, cx + kg.x, 18 + (j === 3 ? 0 : 6)); g.fillStyle = '#ffffff88'; g.fillRect(cx + kg.x - 1, 48, 2, Math.max(0, y - 52)); } }
-  function kgDrop(auto) { if (!kg || kg.i >= 4) return; const dx = Math.round(kg.x), acc = Math.max(0, 1 - Math.abs(dx) / KG_A); kg.placed.push({ dx, acc });
-    const fb = kg.el.querySelector('.vil-kg-fb'); if (fb) fb.textContent = acc >= .97 ? 'ตรงเป๊ะ!' : `${KG_L[kg.i][0]}: ตรง ${Math.round(acc * 100)}%`;
+    kgDraw(now, left); kg.raf = requestAnimationFrame(kgLoop); }
+  const kgSplash = (x, y, n, snd) => { for (let i = 0; i < n; i++) kg.fx.push({ x, y, vx: (Math.random() - .5) * 110, vy: -60 - Math.random() * 90, t: 0, life: .5 + Math.random() * .3 }); if (snd && typeof SFX !== 'undefined') try { (SFX.bad || SFX.tap || (() => {}))(); } catch (e) {} };
+  function kgTap() { if (!kg || kg.res) return; if (kg.phase === 'candle') return kgLight(); if (kg.fall) return; const j = kg.i; if (j >= 5) return;
+    const cx = KG_W / 2, x = cx + Math.round(kg.x), ref = j ? kg.stack[j - 1].x : cx, half = j ? KG_L[j - 1][1] / 2 : KG_A, off = x - ref;
+    if (j && Math.abs(off) > half) { kg.fall = { j, x, y: 30, vy: 40, r: 0, spin: (off > 0 ? 1 : -1) * 4 }; kg.streak = 0; kgSay('ตกน้ำ! วางชั้นนี้ใหม่'); kg.x = kg.dir > 0 ? -KG_A : KG_A; return; }
+    const acc = Math.max(0, 1 - Math.abs(off) / half); kg.stack.push({ x, acc }); kg.i++;
+    kg.streak = acc >= .95 ? kg.streak + 1 : 0; if (kg.streak >= 2) { kg.gecko = performance.now(); kg.streak = 0; }
+    kgSay(acc >= .95 ? 'ตรงเป๊ะ!' : `${KG_L[j][0]}: ตรง ${Math.round(acc * 100)}%`);
     if (typeof SFX !== 'undefined') try { (acc >= .9 ? SFX.good : SFX.tap || SFX.good)(); } catch (e) {}
-    kg.i++; kg.x = kg.i % 2 ? KG_A : -KG_A; kg.dir = kg.i % 2 ? -1 : 1; kgSteps();
-    if (kg.i >= 4) { kgDraw(); setTimeout(kgResult, auto ? 0 : 450); } }
-  function kgResult() { if (!kg) return; const p = Math.round(kg.placed.reduce((a, b) => a + b.acc, 0) / 4 * 100), q = p >= 85 ? 3 : p >= 60 ? 2 : 1; kg.res = { q, p };
+    if (kg.i === kg.ev.at) { kg.ev.t = performance.now(); if (kg.ev.kind === 'frog') { const top = kg.stack[kg.stack.length - 1], d = Math.random() < .5 ? -6 : 6; top.x += d; kg.ev.dx = d; setTimeout(() => kgSay('กบกระโดดขึ้นมา! กระทงขยับนิดนึง'), 350); }
+      else setTimeout(() => kgSay('ปลากระโดด! อย่าตกใจ'), 200); }
+    kg.x = kg.i % 2 ? KG_A : -KG_A; kg.dir = kg.i % 2 ? -1 : 1; kgSteps();
+    if (kg.i >= 5) { kg.phase = 'candle'; kg.mt = 0; const b = kg.el.querySelector('[data-k=drop]'); if (b) b.textContent = 'แตะเพื่อจุดเทียน'; setTimeout(() => kgSay('จุดเทียน: แตะตอนไม้ขีดอยู่ตรงไส้เทียน'), 500); } }
+  // the match swings over the candle; its head is at the wick when the swing is near the middle
+  const kgMatch = () => { const a = Math.sin(kg.mt * 3.1) * .95, cx = kg.stack[4].x, top = kgY(4); return { a, hx: cx + Math.sin(a) * 46, hy: top - 4 - Math.cos(a) * 6, px: cx, py: top - 52 }; };
+  function kgLight() { const m = kgMatch(); kg.lit = Math.abs(m.hx - kg.stack[4].x) < 7; kgSay(kg.lit ? 'เทียนติดแล้ว!' : 'พลาด เทียนไม่ติด'); kgEnd(); }
+  function kgEnd() { kg.phase = 'done'; kgDraw(performance.now(), 0); setTimeout(kgResult, 650); }
+  function kgFail() { kg.res = { fail: 1 }; kg.el.innerHTML = `<div class="vil-kg-in"><div class="vil-kg-top"><b>หมดเวลา</b><button class="btn sm" type="button" data-k="close" aria-label="ปิด">✕</button></div>
+      <p>กระทงยังไม่เสร็จ วางได้ ${kg.stack.length} จาก 5 ชั้น</p><p class="muted">เล่นใหม่ได้ฟรี ไม่เสียเหรียญ</p><button class="btn primary" type="button" data-k="again">เล่นใหม่</button></div>`; }
+  function kgLayer(g, j, cx, y, al = 1) { const [, w, h] = KG_L[j], S1 = LOY_STY[loySty] || LOY_STY[0], x = Math.round(cx - w / 2), O1 = '#3b2316'; g.globalAlpha = al;
+    if (j === 0) { g.fillStyle = O1; g.fillRect(x, y, w, h); g.fillStyle = '#e2c48f'; g.fillRect(x + 2, y + 2, w - 4, h - 4); g.fillStyle = '#c9a56a'; for (let i = 8; i < w - 4; i += 9) g.fillRect(x + i, y + 3, 2, h - 6); g.fillStyle = '#f3dfb4'; g.fillRect(x + 2, y + 2, w - 4, 2); }
+    if (j === 1) { for (let i = 0; i < w; i += 13) { g.fillStyle = O1; g.beginPath(); g.moveTo(x + i, y + h); g.lineTo(x + i + 6.5, y); g.lineTo(x + i + 13, y + h); g.fill(); g.fillStyle = S1[1]; g.beginPath(); g.moveTo(x + i + 2, y + h - 1); g.lineTo(x + i + 6.5, y + 3); g.lineTo(x + i + 11, y + h - 1); g.fill(); } }
+    if (j === 2) { for (let i = 0; i < 7; i++) { const fx = x + 2 + i * (w - 14) / 6, dy = i % 2 ? 2 : 0; g.fillStyle = O1; g.fillRect(fx, y + dy, 10, 10); g.fillStyle = i % 2 ? '#ff9a1f' : '#ffc21f'; g.fillRect(fx + 2, y + 2 + dy, 6, 6); g.fillStyle = '#c96a00'; g.fillRect(fx + 4, y + 4 + dy, 2, 2); } }
+    if (j === 3) { g.fillStyle = O1; g.beginPath(); g.moveTo(x, y + h); g.lineTo(x + w / 2, y - 4); g.lineTo(x + w, y + h); g.fill(); g.fillStyle = S1[2][1]; g.beginPath(); g.moveTo(x + 3, y + h - 1); g.lineTo(x + w / 2, y - 1); g.lineTo(x + w - 3, y + h - 1); g.fill();
+      g.fillStyle = S1[2][0]; for (const d of [-14, 0, 14]) g.fillRect(x + w / 2 + d - 2, y + 4 + Math.abs(d) / 3, 4, 6); }
+    if (j === 4) { g.fillStyle = O1; g.fillRect(x + 8, y + 6, 8, h - 6); g.fillStyle = '#fff8e0'; g.fillRect(x + 10, y + 8, 4, h - 9); g.fillStyle = O1; g.fillRect(x + 11, y + 3, 2, 4);
+      g.fillStyle = '#8a5a36'; g.fillRect(x + 1, y + 2, 2, h - 2); g.fillRect(x + w - 3, y + 2, 2, h - 2); g.fillStyle = '#d14d72'; g.fillRect(x, y, 4, 3); g.fillRect(x + w - 4, y, 4, 3); }
+    g.globalAlpha = 1; }
+  function kgDraw(now, left) { const g = kg.g, cx = KG_W / 2; g.imageSmoothingEnabled = false;
+    const bob = kg.ev.t && now - kg.ev.t < 900 ? Math.sin((now - kg.ev.t) / 60) * 2 * (1 - (now - kg.ev.t) / 900) : 0;
+    g.fillStyle = '#6fb4dc'; g.fillRect(0, 0, KG_W, KG_H); g.fillStyle = '#5aa0cb'; for (let y = 12; y < KG_H; y += 14) for (let x = ((y / 14) % 2) * 12 + (now / 90 % 24); x < KG_W + 24; x += 24) g.fillRect(x - 24, y, 10, 2);
+    g.fillStyle = '#ffffff33'; g.fillRect(cx, 40, 1, KG_B - 40);
+    g.fillStyle = '#3b2316'; g.fillRect(0, 0, KG_W, 5); g.fillStyle = left > 8 ? '#5fae4a' : '#d14d72'; g.fillRect(1, 1, Math.max(0, (KG_W - 2) * left / KG_T), 3);   // time left
+    const W8 = kg.wind, gust = now < W8.until; g.fillStyle = gust ? '#fff' : '#ffffff88'; g.font = '600 10px "IBM Plex Sans Thai",Tahoma,sans-serif'; g.textAlign = 'right';
+    g.fillText(gust ? (W8.dir > 0 ? 'ลมแรง →' : '← ลมแรง') : 'ลมสงบ', KG_W - 6, 18); g.textAlign = 'left';
+    g.fillStyle = '#ffffff44'; g.fillRect(cx - 70, KG_B + 2, 140, 2);
+    kg.stack.forEach((L, j) => kgLayer(g, j, L.x, kgY(j) + bob));
+    if (kg.phase === 'stack' && !kg.fall && kg.i < 5) { const j = kg.i, y = 30 + (j === 4 ? 0 : 4); kgLayer(g, j, cx + kg.x, y); g.fillStyle = '#ffffff99'; g.fillRect(cx + kg.x - 1, y + KG_L[j][2] + 2, 2, Math.max(0, kgY(j) - y - KG_L[j][2] - 4)); }
+    if (kg.fall) { const f = kg.fall; g.save(); g.translate(f.x, f.y + KG_L[f.j][2] / 2); g.rotate(f.r * .2); kgLayer(g, f.j, 0, -KG_L[f.j][2] / 2, Math.max(.2, 1 - (f.y - 30) / 220)); g.restore(); }
+    // the surprise: a frog sits on the stack for a moment, or a fish leaps across
+    if (kg.ev.t && now - kg.ev.t < 1600) { const u = (now - kg.ev.t) / 1600;
+      if (kg.ev.kind === 'frog') { const top = kg.stack[kg.ev.at - 1], ty = kgY(kg.ev.at - 1) - 7, fx = u < .25 ? KG_W - 10 - (KG_W - 10 - top.x) * (u / .25) : u > .75 ? top.x - (u - .75) / .25 * 140 : top.x, fy = u < .25 || u > .75 ? ty - Math.sin(((u < .25 ? u : u - .75) / .25) * Math.PI) * 30 : ty;
+        g.fillStyle = '#3b2316'; g.fillRect(fx - 7, fy - 1, 14, 9); g.fillStyle = '#6cc04a'; g.fillRect(fx - 6, fy, 12, 7); g.fillStyle = '#fff'; g.fillRect(fx - 5, fy - 3, 3, 3); g.fillRect(fx + 2, fy - 3, 3, 3); g.fillStyle = '#000'; g.fillRect(fx - 4, fy - 2, 1, 1); g.fillRect(fx + 3, fy - 2, 1, 1); }
+      else { const fx = 20 + u * 200, fy = KG_B - Math.sin(u * Math.PI) * 110; g.fillStyle = '#3b2316'; g.fillRect(fx - 9, fy - 4, 18, 9); g.fillStyle = '#ff9a1f'; g.fillRect(fx - 8, fy - 3, 14, 7); g.fillRect(fx + 6, fy - 2, 4, 5); g.fillStyle = '#000'; g.fillRect(fx - 5, fy - 1, 2, 2);
+        if (u > .95 || u < .05) kgSplash(fx, KG_B, 3); } }
+    if (kg.gecko && now - kg.gecko < 1500) { const gx = 14, gy = 60; g.fillStyle = '#3b2316'; g.fillRect(gx - 2, gy - 3, 16, 6); g.fillStyle = '#b08a4f'; g.fillRect(gx - 1, gy - 2, 14, 4); g.fillRect(gx + 12, gy, 6, 2); g.fillStyle = '#000'; g.fillRect(gx + 1, gy - 1, 1, 1);
+      g.fillStyle = '#fff'; g.fillRect(gx - 4, gy - 22, 40, 14); g.fillStyle = '#3b2316'; g.font = '700 10px "IBM Plex Sans Thai",Tahoma,sans-serif'; g.fillText('จุ๊ๆ', gx + 2, gy - 11); }
+    if (kg.phase === 'candle' || (kg.phase === 'done' && kg.stack.length === 5)) { const c = kg.stack[4], top = kgY(4) + bob;
+      if (kg.phase === 'candle') { const m = kgMatch(); g.strokeStyle = '#8a5a36'; g.lineWidth = 2; g.beginPath(); g.moveTo(m.px, m.py); g.lineTo(m.hx, m.hy - 2); g.stroke(); g.fillStyle = '#d14d72'; g.fillRect(m.hx - 2, m.hy - 4, 4, 4); g.fillStyle = '#ffcf6a'; g.fillRect(m.hx - 1, m.hy - 7, 2, 3); }
+      if (kg.lit) { const fl = Math.floor(now / 120) % 2; g.fillStyle = '#ffcf6a55'; g.beginPath(); g.arc(c.x, top + 1, 14, 0, 7); g.fill(); g.fillStyle = '#ff9a1f'; g.fillRect(c.x - 2, top - 3 + fl, 4, 5); g.fillStyle = '#fff3a0'; g.fillRect(c.x - 1, top - 1 + fl, 2, 2); } }
+    g.fillStyle = '#e8f6ff'; for (const p of kg.fx) { g.globalAlpha = 1 - p.t / p.life; g.fillRect(p.x, p.y, 3, 3); } g.globalAlpha = 1; }
+  function kgResult() { if (!kg) return; const p = Math.round(kg.stack.reduce((a, b) => a + b.acc, 0) / 5 * 100), q = p >= 90 ? 3 : p >= 70 ? 2 : 1; kg.res = { q, p, u: kg.lit ? 0 : 1 };
     const today = dayOf(srvNow()), best = {}, mk = myKey();
     for (const k of Object.values(loyK)) { if (!k.q || dayOf(k.t) !== today || k.k === mk) continue; if (!best[k.k] || (k.p | 0) > best[k.k].p) best[k.k] = { n: k.n, p: k.p | 0 }; }
     const myBest = Math.max(p, ...Object.values(loyK).filter(k => k.q && k.k === mk && dayOf(k.t) === today).map(k => k.p | 0));
     const top = [...Object.values(best), { n: 'คุณ', p: myBest, me: 1 }].sort((a, b) => b.p - a.p).slice(0, 3);
-    const tiers = [[1, 'กระทงธรรมดา'], [2, 'ดอกไม้เต็ม ไม่เบี้ยว'], [3, 'ขอบทอง เรืองแสงนานขึ้นตอนกลางคืน · นับแสตมป์วันพฤหัส']];
+    const tiers = [[1, 'กระทงธรรมดา'], [2, 'ดอกไม้เต็ม (ตรง 70% ขึ้นไป)'], [3, 'ขอบทอง เรืองแสงนานขึ้น · นับแสตมป์วันพฤหัส (ตรง 90% ขึ้นไป)']];
+    const coins = Prog.get().coins | 0, full = loyBag().length >= LOY_BAG, can = coins >= LOY_PRICE && !full;
     kg.el.innerHTML = `<div class="vil-kg-in"><div class="vil-kg-top"><b>กระทงของคุณเสร็จแล้ว</b><button class="btn sm" type="button" data-k="close" aria-label="ปิด">✕</button></div>
-      <p>ความตรงเฉลี่ย ${p}% · <b>${q} ดาว</b></p><div class="vil-kg-stars" aria-hidden="true">${[1, 2, 3].map(i => `<i class="${i <= q ? 'on' : ''}"></i>`).join('')}</div>
+      <p>ความตรงเฉลี่ย ${p}% · <b>${q} ดาว</b> · ${kg.lit ? 'เทียนติด' : 'เทียนไม่ติด (ไม่มีไฟตอนกลางคืน)'}</p><div class="vil-kg-stars" aria-hidden="true">${[1, 2, 3].map(i => `<i class="${i <= q ? 'on' : ''}"></i>`).join('')}</div>
       <canvas class="vil-kg-prev" width="64" height="54"></canvas>
-      <div class="vil-loy-st">${tiers.map(([s, t]) => `<b class="vil-loy-n${s === q ? ' on' : ''}">${s} ดาว</b><span${s === q ? '' : ' class="muted"'}>${t}</span><span>${s === q ? 'ได้ใบนี้' : ''}</span>`).join('')}</div>
+      <div class="vil-loy-st">${tiers.map(([s1, t1]) => `<b class="vil-loy-n${s1 === q ? ' on' : ''}">${s1} ดาว</b><span${s1 === q ? '' : ' class="muted"'}>${t1}</span><span>${s1 === q ? 'ใบนี้' : ''}</span>`).join('')}</div>
       <p class="vil-loy-h">สวยที่สุดวันนี้</p><div class="vil-loy-st">${top.map((r, i) => `<b class="vil-loy-n">${i + 1}</b><span>${r.me ? '<b>คุณ</b>' : escH(r.n)}</span><span>${r.p}%</span>`).join('')}</div>
-      <button class="btn primary" type="button" data-k="float">ลอยกระทงใบนี้</button><button class="btn" type="button" data-k="again">ทำใหม่ (ไม่เสียเหรียญ)</button></div>`;
-    const c = kg.el.querySelector('.vil-kg-prev'), g = c.getContext('2d'); g.imageSmoothingEnabled = false; g.scale(3, 3); drawKr(g, { id: 'prev', s: loySty, q }, 10.7, 12, 1, false); }
+      <button class="btn primary" type="button" data-k="take"${can ? '' : ' disabled'}>รับกระทงใบนี้ · 🪙 ${LOY_PRICE}</button>${full ? `<p class="vil-need">กระเป๋าใส่กระทงได้ ${LOY_BAG} ใบ ไปลอยก่อนนะ</p>` : coins < LOY_PRICE ? `<p class="vil-need">เหรียญไม่พอ ขาดอีก ${fmtN(LOY_PRICE - coins)}</p>` : ''}
+      <button class="btn" type="button" data-k="again">เล่นใหม่ (ไม่เสียเหรียญ)</button></div>`;
+    const c = kg.el.querySelector('.vil-kg-prev'), g = c.getContext('2d'); g.imageSmoothingEnabled = false; g.scale(3, 3); drawKr(g, { id: 'prev', s: loySty, q, u: kg.lit ? 0 : 1 }, 10.7, 12, 1, true); }
+  // keep it: pay, into the bag, then off to the pier with the float card open
+  function kgTake() { if (!kg || !kg.res || kg.res.fail) return; const p = Prog.get(), bag = loyBag();
+    if (bag.length >= LOY_BAG) return toast(`กระเป๋าใส่กระทงได้ ${LOY_BAG} ใบ ไปลอยก่อนนะ`); if ((p.coins | 0) < LOY_PRICE) return toast(`เหรียญไม่พอ (ต้องใช้ 🪙 ${LOY_PRICE})`);
+    p.coins -= LOY_PRICE; p.loyBag = [...bag, { s: loySty, q: kg.res.q, p: kg.res.p, u: kg.res.u, t: Date.now() }]; Prog.put(p); if (typeof Stats !== 'undefined') Stats.econ('out_loy', LOY_PRICE);
+    loySel = p.loyBag.length - 1; const q = kg.res.q; kgClose(); renderBar(); toast(`ได้กระทง${LOY_STY[loySty][0]} ${q} ดาว −${LOY_PRICE} 🪙 · เดินไปลอยที่ปลายสะพาน`); loyOpen(); }
   function openCard(L) { if (W) W.closeCard(); if (cardL !== L) moveArm = 0; cardL = L; renderCard(); }
   function closeCard() { cardL = null; if (cardEl) cardEl.hidden = true; }
   function renderCard() {
@@ -1264,7 +1346,7 @@ const Village = (() => {
   function liveTick(dt) {
     if (!W) return; t += dt; const rt = performance.now(), every = (k, ms) => rt - (tickAt[k] || 0) >= ms && (tickAt[k] = rt);   // real-time timers: slow frames don't delay them
     if (every('bs', 1000)) { const bs = LOTS.map(L => building(L) ? 1 : 0).join(''); if (bs !== bsSig) { const first = !bsSig; bsSig = bs; if (!first) { relotW(); syncHome(); renderCard(); renderBar(); } } }
-    if (loyGo) { if (Date.now() - loyGo > 60e3) { loyGo = 0; renderCard(); } else if (loyGoTo === 'pick' ? onCell(CLEAN_AT) : onPier()) loyGoTo === 'pick' ? loyPickUp() : loyFloat(); }   // got there: float it / pick one up
+    if (loyGo) { if (Date.now() - loyGo > 60e3) { loyGo = 0; renderCard(); } else if (loyGoTo === 'pick' ? onCell(CLEAN_AT) : loyGoTo === 'make' ? onCell(MAKE_AT) : onPier()) { if (loyGoTo === 'pick') loyPickUp(); else if (loyGoTo === 'make') { loyGo = 0; kgOpen(); } else loyFloat(); } }   // got there: float it / pick one up
     if (every('loy', 3000)) loyTick();
     for (const a of Object.values(others)) step(a, dt);
     if (every('send', 500)) send();
@@ -1292,6 +1374,8 @@ const Village = (() => {
       o.slice(0, 4).forEach((q, i) => { if (!Array.isArray(q)) return; const c = L.cats[i] || (L.cats[i] = { x: 0, y: 0, face: 1, moving: false }); c.x = h[0] - 2 - i; c.y = h[1];
         out.push({ y: c.y * T + 11, d: () => drawCat(c, q[1], false, true, null, q[0]) }); }); }
     if (!sc && loyPhase() !== 'off') loyDraw(out);
+    if (!sc) for (const L of LOTS) { const kq = L.kk | 0; if (!kq || !movedIn(L)) continue; const x = (L.x + 1) * T + 6, y = (L.y + 3) * T + 12;   // Loy Krathong keepsake by the front door
+      out.push({ y, d: () => { const g = W.ctx; g.fillStyle = '#3b2316'; g.fillRect(x - 7, y - 3, 14, 4); g.fillStyle = '#8a5a36'; g.fillRect(x - 6, y - 2, 12, 2); drawKr(g, { id: 'kk' + L.id, s: 1, q: kq }, x, y - 6, 1, loyNight()); } }); }
     return out;
   }
   // after the engine drew the world: name tags, lot / tower / board pills and the road pickups on the overlay canvas (screen px × dpr)
@@ -1308,6 +1392,7 @@ const Village = (() => {
         if (loyCount() >= LOY_LADDER[2][0] && (loyMode !== 'date' && loyTest || loyEvDay() === 4) && loyNight()) loySky(ctx);
         const nx = loyNext(); pill(sx(62 * T), sy(12 * T) - 16 * dpr, `🪷 ลอยกระทง · ${fmtN(loyCount())}${nx ? `/${nx[0]}` : ''}`, { bg: '#ffe0ea', line: '#d14d72', hit: LOYC });
         pill(sx(33.5 * T), sy(15 * T), '🪷 ลอยกระทงที่บึงหมู่บ้าน →', { fs: 10, bg: '#fff8d6', hit: LOYC }); }
+      if (loyOn()) pill(sx(TABLE[0] * T + 8), sy(TABLE[1] * T - 6), 'ทำกระทง', { fs: 10, bg: '#fff8d6', hit: MAKEC });
       if (loyPhase() === 'clean' && loyAllK) { const n = loyLeft().length; if (n) pill(sx(71.5 * T), sy(16.6 * T), `เก็บกระทงหลังงาน · เหลือ ${fmtN(n)}`, { fs: 10, bg: '#fff8d6', hit: CLEANC }); }
       if (loyPost()) pill(sx(PLAQUE[0] * T + 8), sy(PLAQUE[1] * T - 12), 'ป้ายลอยกระทง 2569', { fs: 10, bg: '#ffe0ea', line: '#d14d72', hit: PLAQUEC });
       pill(sx((BOARD[0] + .5) * T), sy(BOARD[1] * T) - 14 * dpr, open.length ? `📌 งานส่งของ ${open.length}` : '📌 บอร์ด', { fs: 11, bg: open.length ? '#fff3c4' : '#fff', hit: 'board' });
@@ -1431,13 +1516,15 @@ const Village = (() => {
       get loyModeNow() { return loyMode; }, loyOn: () => loyOn(), loyPhase: () => loyPhase(), loyN: n => { loyNDev = n; },
       resetLoyDay: () => { const p = Prog.get(); p.loy = null; Prog.put(p); if (cardL === LOYC) renderCard(); },
       loyStamps: m => { const p = Prog.get(); p.loyS = m | 0; Prog.put(p); send(true); renderCard(); return popc(p.loyS); }, get loyStampsNow() { return Prog.get().loyS | 0; },
-      loyGame: () => { loyOpen(); kgOpen(); },
+      loyGame: () => { kgOpen(); },
+      loyGive: q => { const p = Prog.get(), b = Array.isArray(p.loyBag) ? p.loyBag : []; if (b.length >= LOY_BAG) return b.length; p.loyBag = [...b, { s: loySty, q: q || 3, p: q === 3 ? 95 : q === 2 ? 80 : 50, u: 0, t: Date.now() }]; Prog.put(p); renderCard(); return p.loyBag.length; },
+      loyKeepTest: () => { const p = Prog.get(); p.loyKeep = 3; Prog.put(p); loyKeepT = 0; loyTick(); },
       // a friend's krathong for you from a test name: floats on the pond and lands in your inbox, so the notice shows
       loyFriendTest: async () => { if (!O || !O.floatLoy || !loyNm()) return false; return !!(await O.floatLoy('เพื่อนทดสอบ', 1, 'ขอให้งานปีหน้าราบรื่นนะ', { m: 2, f: loyNm() })); },
       loyCleanReset: () => { const p = Prog.get(); p.loyC = null; p.loySeen = []; Prog.put(p); loyGot = null; renderCard(); },
       loyClear: () => { const ids = Object.keys(loyK); for (const id of ids) O && O.sinkLoy(id); loyK = {}; return ids.length; },
       loyFill: async n => { if (!O || !O.floatLoy) return 0; const W8 = ['ขอให้รวย', 'ขอให้สุขภาพแข็งแรง', 'ขอให้งานเสร็จทันเวลา']; for (let i = 0; i < n; i++) { await O.floatLoy('ทดสอบ' + (i + 1), i % 3, W8[i % 3]); await new Promise(r => setTimeout(r, 120)); } return n; },
     } : undefined,
-    _dbg: { loy: { open: loyOpen, float: loyFloat, start: loyStart, wish: v => { loyW = v; }, mode: m => { loyM = m; }, friend: n => { loyF = n ? { n, k: key(n) } : null; }, get n() { return loyN; }, get k() { return loyK; }, get kg() { return kg; }, get inbox() { return loyInbox; }, get all() { return loyAllK; }, get picked() { return loyPicked; }, phase: () => loyPhase(), day: () => loyEvDay(), lamps: () => loyLampList(), pos: loyPos, on: () => loyOn(), pickUp: () => loyPickUp(), xopen: g => loyXOpen(g === 'clean' ? CLEANC : PLAQUEC) }, me, LOTS, others, pm, adopt, feedPet, dyePet, renamePet, swapPet, petBook, myPet, moveHouse, moveInfo, get farms() { return farms; }, syncHome, gCell, get hits() { return hits; }, get ready() { return !!(world || W); }, get W() { return W; }, act, lock, goTo, fast: false, floorSpots, reserve, jobs, jobsDone, deliver, haveCrop, NPCS, BOARDC, next, help, myLot, get busy() { return busy; }, decorate, movedIn, get held() { return W ? W.held : held; }, gSize, tinted, roofOf, wallOf },
+    _dbg: { loy: { open: loyOpen, float: loyFloat, start: loyStart, wish: v => { loyW = v; }, mode: m => { loyM = m; }, friend: n => { loyF = n ? { n, k: key(n) } : null; }, get n() { return loyN; }, get k() { return loyK; }, get kg() { return kg; }, get inbox() { return loyInbox; }, get all() { return loyAllK; }, get picked() { return loyPicked; }, phase: () => loyPhase(), day: () => loyEvDay(), get bag() { return loyBag(); }, play: () => loyPlay(), tap: () => kgTap(), make: () => loyXOpen(MAKEC), lamps: () => loyLampList(), pos: loyPos, on: () => loyOn(), pickUp: () => loyPickUp(), xopen: g => loyXOpen(g === 'clean' ? CLEANC : PLAQUEC) }, me, LOTS, others, pm, adopt, feedPet, dyePet, renamePet, swapPet, petBook, myPet, moveHouse, moveInfo, get farms() { return farms; }, syncHome, gCell, get hits() { return hits; }, get ready() { return !!(world || W); }, get W() { return W; }, act, lock, goTo, fast: false, floorSpots, reserve, jobs, jobsDone, deliver, haveCrop, NPCS, BOARDC, next, help, myLot, get busy() { return busy; }, decorate, movedIn, get held() { return W ? W.held : held; }, gSize, tinted, roofOf, wallOf },
   };
 })();

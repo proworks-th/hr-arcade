@@ -208,7 +208,7 @@ export async function takeGifts(me){
 /* ---------- farm market: rooms/_mkt/o/{id}={s:'s'|'b',c,q,l,p,k,n,d,t} resting orders (d = hours it stays up) (crops or coins already held by the owner);
    a fill owed to a resting order's owner waits in rooms/_mkt/c/{key}/{id}={s,c,u,p,n,t}; NPC vendor lots taken: rooms/_mkt/bt/{slot}=n ---------- */
 // Loy Krathong 23–27 Nov 2026 (rooms/_loy2569): k = floated krathongs {n,k,s,w,t, m: 0 wish | 1 letting go (w is always '') | 2 for a friend
-// (f,fk = the friend), q stars 0–3 and p accuracy % from the ทำกระทง game}, n = how many the office floated, by = who and how many,
+// (f,fk = the friend), q stars 0–3, p accuracy % and u = unlit candle, from the ทำกระทง game}, n = how many the office floated, by = who and how many,
 // to/{friendKey}/{id} = a friend's krathong for that person {n,w,t}, c/{id} = picked up in the clean-up after the event {k,n,t} (once)
 const LOY='rooms/_loy2569',loyId=id=>String(id).replace(/[.#$\[\]\/]/g,'');
 export function watchLoy(cb){return FIREBASE_CONFIG?onValue(query(ref(db(),LOY+'/k'),limitToLast(60)),s=>cb(s.val()||{})):()=>{}}
@@ -223,6 +223,7 @@ export async function floatLoy(name,sty,wish,o={}){
   const v={n,k,s:sty|0,w:m===1?'':String(wish||'').slice(0,40),t:serverTimestamp(),m};
   if(m===2&&o.f){v.f=String(o.f).trim().slice(0,20);v.fk=nameKey(o.f)}
   if(o.q){v.q=Math.max(0,Math.min(3,o.q|0));v.p=Math.max(0,Math.min(100,Math.round(+o.p||0)))}
+  if(o.u)v.u=1;   // the candle wasn't lit in the game: no light at night
   const r=await push(ref(db(),LOY+'/k'),v);
   if(v.fk&&v.fk!==k)set(ref(db(),LOY+'/to/'+v.fk+'/'+r.key),{n,w:v.w,t:serverTimestamp()}).catch(()=>{});
   runTransaction(ref(db(),LOY+'/n'),c=>(c||0)+1);runTransaction(ref(db(),LOY+'/by/'+k),c=>({n,c:((c&&c.c)||0)+1}));return r.key}

@@ -52,6 +52,9 @@
             },
             "p": {
               ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100"
+            },
+            "u": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1"
             }
           }
         },
