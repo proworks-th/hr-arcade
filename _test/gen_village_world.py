@@ -28,7 +28,7 @@ def cut(a, b, keep_b=True, repl=''):
 
 # ---------------- CSS / HTML ----------------
 css = css.replace(':root{', ':host{')
-css = re.sub(r'html,body\{[^}]*\}', ':host{position:absolute;inset:0;z-index:1;display:block;overflow:hidden;background:#1b1422;font-family:Kanit,"Leelawadee UI",Tahoma,sans-serif;color:var(--ink);font-size:14px;line-height:1.4}', css)
+css = re.sub(r'html,body\{[^}]*\}', ':host{position:absolute;inset:0;z-index:1;display:block;overflow:hidden;background:#1b1422;font-family:var(--t-font,Tahoma,sans-serif);color:var(--ink);font-size:14px;line-height:1.4}', css)
 css += '\n#ov{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}\n#clock input,#clock button{display:none}\n#clock{padding:3px 12px}\n'
 assert '<small style="font-weight:400;color:var(--muted)">· ตัวอย่าง 2</small>' in body
 body = body.replace(' <small style="font-weight:400;color:var(--muted)">· ตัวอย่าง 2</small>', '')
@@ -75,7 +75,7 @@ rep("""  L.garden = gCells(L);   // real plots (added with the farm plots below)
   const fN = L.stage === 4 && L.building ? 3 : 5;
   for (let i = 0; i < fN; i++) fence(X + 5 + i, Y + 3, i === 0 ? 0 : i === 4 ? 2 : 1);""",
 """  L.garden = [];   // the live farm's beds (same cells as farm.js plots); crops drawn from the real save, tap = the lot card
-  for (let i = 0; i < L.gN; i++) { const [x, y] = H.gCell(L.live, i); L.garden.push([x, y]); block[y][x] = 1;
+  for (let i = 0; i < L.gN; i++) { const [x, y] = H.gCell(L.live, i); L.garden.push([x, y]); setBlk(x, y, 1);
     const p = { x, y, o: 'home', c: null, w: 0, fw: [] }; BED_AT.set(x + ',' + y, p);
     add(y * T + 14, g => { drawSoil(g, p, x * T, y * T); H.drawCrop(g, L.live, i, x * T, y * T); }); }
   if (L.garden.every(c => c[1] < Y + 3)) { const fN = L.stage === 4 && L.building ? 3 : 5;
@@ -98,18 +98,19 @@ rep(_cafe, _cafe + "\nbuilding('arcade', 61, 27, 8, 3, 'blue', 'red', [3, 'doubl
     "\nrect(64, 32, 65, 33, (x, y) => setG(x, y, 5));")
 rep("  if (r.kind === 'barn') {", """  if (r.kind === 'arcade') { lampW(1); lampW(7); rug('#ff6fa8', 1, 8, 8, 1);
     // 13 Nov 2026: 10 x 9 hall so it fits a phone at zoom 2 — three rows of cabinets with aisles between (stand on the row below a cabinet)
-    const SP = [[2, 2], [4, 2], [6, 2], [1, 4], [3, 4], [5, 4], [7, 4], [1, 6], [3, 6], [5, 6], [7, 6]];
-    r.mach = []; H.games().slice(0, SP.length).forEach((gm, i) => { const x = X + SP[i][0], y = Y + SP[i][1], M = { id: gm.id, x, y }; r.mach.push(M); block[y][x] = 1;
+    // 18 Nov 2026: 12th spot at the far right of row 2, added last so the other cabinets keep their places (ซ้อนแฟ้มเสียดฟ้า had no cabinet, so it could not be played)
+    const SP = [[2, 2], [4, 2], [6, 2], [1, 4], [3, 4], [5, 4], [7, 4], [1, 6], [3, 6], [5, 6], [7, 6], [9, 4]];
+    r.mach = []; H.games().slice(0, SP.length).forEach((gm, i) => { const x = X + SP[i][0], y = Y + SP[i][1], M = { id: gm.id, x, y }; r.mach.push(M); setBlk(x, y, 1);
       add(y * T + 14, (g, t) => drawCab(g, gm, x * T, y * T, t)); });
-    r.board = [X + 8, Y + 2]; block[Y + 2][X + 8] = 1; add((Y + 2) * T + 14, g => drawTrophy(g, (X + 8) * T, (Y + 2) * T));
+    r.board = [X + 8, Y + 2]; setBlk(X + 8, Y + 2, 1); add((Y + 2) * T + 14, g => drawTrophy(g, (X + 8) * T, (Y + 2) * T));
     // 🎰 gacha machine + 🎉 party room door (12 Nov 2026: ห้องรวม moved here — the door opens the party room)
-    r.gacha = [X, Y + 2]; block[Y + 2][X] = 1; add((Y + 2) * T + 14, (g, t) => drawGachaM(g, X * T, (Y + 2) * T, t));
-    r.party = [X + 9, Y + 2]; block[Y + 2][X + 9] = 1; add((Y + 2) * T + 14, (g, t) => drawPartyDoor(g, (X + 9) * T, (Y + 2) * T, t));
+    r.gacha = [X, Y + 2]; setBlk(X, Y + 2, 1); add((Y + 2) * T + 14, (g, t) => drawGachaM(g, X * T, (Y + 2) * T, t));
+    r.party = [X + 9, Y + 2]; setBlk(X + 9, Y + 2, 1); add((Y + 2) * T + 14, (g, t) => drawPartyDoor(g, (X + 9) * T, (Y + 2) * T, t));
     // 📋 the game list sign, right next to where you walk in
-    r.alist = [X + 6, Y + 8]; block[Y + 8][X + 6] = 1; add((Y + 8) * T + 14, g => drawListSign(g, (X + 6) * T, (Y + 8) * T)); }
+    r.alist = [X + 6, Y + 8]; setBlk(X + 6, Y + 8, 1); add((Y + 8) * T + 14, g => drawListSign(g, (X + 6) * T, (Y + 8) * T)); }
   if (r.kind === 'barn') {""")
 # arcade cabinet + trophy board, drawn live (featured glow pulses, screen flickers)
-rep("/* ============ ground, painted once ============ */", """function drawCab(g, gm, x, y, t) {
+rep("/* ============ ground, painted in chunks the first time they come on screen ============ */", """function drawCab(g, gm, x, y, t) {
   const L = x + 1, B = y + 15, ft = H.featured() === gm.id, f = (a, b, w, h, c) => { g.fillStyle = c; g.fillRect(L + a, B - 26 + b, w, h); };
   if (ft) { g.fillStyle = `rgba(255,214,74,${.35 + .25 * Math.sin(t * 4)})`; g.fillRect(L - 2, B - 29, 18, 30); }
   const col = gm.color || '#ff8fbf';
@@ -130,7 +131,7 @@ function drawPartyDoor(g, x, y, t) { const f = (a, b, w, h, c) => { g.fillStyle 
 function drawTrophy(g, x, y) { const f = (a, b, w, h, c) => { g.fillStyle = c; g.fillRect(x + a, y + b, w, h); };
   f(1, -10, 14, 25, O); f(2, -9, 12, 18, '#f7e3b5'); f(2, 9, 12, 5, '#a8643a'); f(5, -7, 6, 5, '#ffd23f'); f(7, -2, 2, 3, '#ffd23f'); f(5, 1, 6, 1, '#c99a1a');
   for (let i = 0; i < 3; i++) f(4, 3 + i * 2, 8, 1, '#c9a27a'); }
-/* ============ ground, painted once ============ */""")
+/* ============ ground, painted in chunks the first time they come on screen ============ */""")
 
 # ---------------- world build → a function that can run again when lots change ----------------
 A = "/* ============ world grid"; B = "/* ============ people ============ */"
@@ -617,8 +618,10 @@ return { me, held, C, R,
   // board deliveries (village.js) also use vegetables harvested here: count / take '<crop>' from the bag
   bagN: id => count(BAG, id), bagTake(id, n) { if (count(BAG, id) < n) return false; takeFrom(BAG, id, n); save(); hud(); return true; },
   arcade: { room: arcRoom, walk(id, cb) { const r = arcRoom(); if (!r) return false; const M = r.mach.find(m => m.id === id); warpArc();
-    if (M) playAt(M, cb); else { closeCard(); me.after = null; travel(me, r.entry); } return true; },
-    to(what, cb) { const r = arcRoom(); if (!r || !r[what]) return false; warpArc(); playAt({ x: r[what][0], y: r[what][1], st: what === 'alist' ? [r[what][0] - 1, r[what][1]] : null }, cb); return true; } }, get G() { return G; }, get block() { return block; }, get ctx() { return ctx; }, ov: SR.getElementById('ov'),
+    if (M) playAt(M, cb); else if (id && H.games().some(g => g.id === id)) { closeCard(); H.play(id); }   // a game without a cabinet still starts
+    else { closeCard(); me.after = null; travel(me, r.entry); } return true; },
+    to(what, cb) { const r = arcRoom(); if (!r || !r[what]) return false; warpArc(); playAt({ x: r[what][0], y: r[what][1], st: what === 'alist' ? [r[what][0] - 1, r[what][1]] : null }, cb); return true; } }, // gAt / blk: tile and wall at (x, y), x and y may be negative (the border); the raw G / block rows start at WX0 / WY0, not 0
+  gAt: (x, y) => gAt(x, y), blk: (x, y) => blk(x, y), get G() { return G; }, get block() { return block; }, get ctx() { return ctx; }, ov: SR.getElementById('ov'),
   travel: c => { closeCard(); me.after = null; travel(me, c); }, place: c => place(me, c), warp: c => { closeCard(); warp(c); }, warpArc: () => { closeCard(); return warpArc(); },
   pos: () => cellOf(me), walkable: (x, y) => walkable(x, y), get ride() { return riding(me); }, rideMul: k => RIDES[k]?.[2] || 1,
   drawRide: (g, P, k, back, col) => { if (RIDE_SPR[k]) drawRide(g, P, k, back, col || ''); }, get rideCol() { const k = riding(me); return k ? rcolOk(k, F.rcol[k]) : ''; }, sceneOf, scene: () => scene, relots, closeCard,

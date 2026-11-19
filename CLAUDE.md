@@ -11,7 +11,8 @@ Never point tests at the real Firebase; test mode (`?test=1`) uses the mocks in 
 
 ## PTR (test server) before live
 
-Changes go to the `ptr` branch first. Every push to `ptr` publishes to https://hr-arcade-ptr.web.app with its own
+Every change goes to the `ptr` branch first, however small: code, text, balance numbers, art, fixes. Nothing
+goes straight to `main`. Feature pull requests target `ptr`; only release pull requests (`ptr` into `main`) target `main`. Every push to `ptr` publishes to https://hr-arcade-ptr.web.app with its own
 database (Firebase project `hr-arcade-ptr`, see `.github/workflows/ptr.yml`), so testing never touches live saves,
 leaderboards or the office fund. Test there on a phone, then open one release PR from `ptr` into `main` (live).
 The PTR shows a top strip and a test-coins button; both exist only on the PTR host.

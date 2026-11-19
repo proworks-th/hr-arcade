@@ -236,7 +236,7 @@ const Dungeon = {
       fxW.burst(P.x, P.y - 6, { n: 8, colors: ['#fff', '#d9dde3'], speed: 120, grav: 0, size: 5, shape: 'puff', life: .35 });
     }
     function clearFloor() {
-      open = true; swirls = []; const b = DD.CLEAR(S.depth); S.score += b; api.sfx('level');
+      open = true; swirls = []; const b = DD.CLEAR(S.depth); S.score += b; api.sfx('level'); bank();
       fxS.text(W / 2, L.msgY, `เคลียร์ชั้น B${S.depth}! +${b}`, { color: PAL.green, size: 24, life: 1.6, rise: 6 });
       fxS.text(W / 2, L.msgY + 28, 'ประตูเปิดแล้ว ตามลูกศรไปได้เลย', { color: '#fff', size: 15, life: 1.6, rise: 6 });
       mm.add(fog.reveal(F.exit.x, F.exit.y + 1, 2)); setHud();
@@ -317,6 +317,7 @@ const Dungeon = {
     function quit() { if (S.mode !== 'play' && S.mode !== 'pick' && S.mode !== 'menu') return; document.querySelector('.dgn-pick')?.remove(); if (menuSheet) menuSheet.hidden = true; S.big = false; S.mode = 'over'; finish(`ถอยกลับขึ้นมาจาก B${S.depth}`); }
     function finish(msg) {
       // owner's rule: nothing is lost — fainting or leaving both pay out what the run earned, like any arcade game
+      if (S.fin) return; S.fin = true; confirmSheet?.remove();
       const best = daily('best', 0), deep = S.depth; if (deep > best) setDaily('best', deep);
       codex.runs++; codex.kills += S.kills; codex.best = Math.max(codex.best, deep); store2.set(CODEX, codex);
       // combat skill XP (lasting perks), then the hub's results card: the ranked number is the deepest floor,
@@ -328,6 +329,45 @@ const Dungeon = {
           secs: Math.round((performance.now() - S.t0) / 1000), best: Math.max(best, deep), newBest: deep > best, codex });
     }
 
+    // ---------- a run is never lost (owner, 18 Nov 2026, after jjib's ~1,000,000-point run paid nothing) ----------
+    // Bank the run with the hub after every cleared floor, every 15 s and whenever the tab is hidden. If the tab is then
+    // killed or reloaded (iPhone Safari does this to background tabs), the hub pays the banked run on the next visit
+    // (index.html settleRun) and ranks its floor. A closed tab ends the run; it can't be resumed.
+    const live = () => S.depth > 0 && !S.fin && ['play', 'pick', 'menu', 'trans'].includes(S.mode);
+    function bank() { if (live()) api.checkpoint(S.depth, `ออกกลางคันที่ B${S.depth} · คะแนน ${fmt(S.score)}`, false, { award: S.score, floor: S.depth, kills: S.kills }); }
+    let bankT = 15;
+    const onHide = () => { if (document.hidden) bank(); };
+    document.addEventListener('visibilitychange', onHide);
+    // the hub calls leave() when the game is closed from outside (another screen opened): it pays like ถอยกลับ,
+    // with combat XP and the daily best. A fainting run that is still on its 1.4 s "หมดแรง" beat is finished too.
+    function leave(msg) {
+      if (S.fin || S.depth < 1 || S.mode === 'intro') return;
+      document.querySelector('.dgn-pick')?.remove(); if (menuSheet) menuSheet.hidden = true; S.big = false;
+      const fainted = S.mode === 'over'; S.mode = 'over'; finish(fainted ? `หมดแรงที่ B${S.depth}` : msg || `ออกจากดันเจี้ยนที่ B${S.depth}`);
+    }
+    // the hub's 🏠 buttons call confirmLeave(go): ask first, then end the run here so the player sees the result screen and
+    // what it paid, instead of being dropped on the hub with nothing
+    let confirmSheet = null;
+    const coinsNow = () => { const raw = Math.max(2, Math.round(S.score / ((typeof PROG_NORM !== 'undefined' && PROG_NORM.dungeon) || 20)));
+      return Math.round(typeof softBase === 'function' ? softBase(raw) : raw); };
+    function confirmLeave(go) {
+      if (!live()) return go();
+      if (confirmSheet) return;
+      const was = S.mode; if (was === 'play' || was === 'trans') S.mode = 'menu'; stick = null; keys.clear();
+      confirmSheet = document.createElement('div'); confirmSheet.className = 'dgn-sheet dgn-leave';
+      confirmSheet.innerHTML = `<div class="pn" role="dialog" aria-label="ออกจากดันเจี้ยน"><b>ออกจากดันเจี้ยน?</b>
+        <p class="lv">ลงมาถึง B${S.depth} · คะแนน ${fmt(S.score)}<br>ออกตอนนี้ได้ประมาณ <b>${fmt(coinsNow())} เหรียญ</b> และลงอันดับ</p>
+        <button type="button" class="go">เล่นต่อ</button><button type="button" class="q">ออกและรับรางวัล</button></div>`;
+      confirmSheet.querySelectorAll('button').forEach(press);
+      const back = () => { confirmSheet?.remove(); confirmSheet = null; if (S.mode === 'menu' && (!menuSheet || menuSheet.hidden)) { S.mode = was === 'trans' ? 'trans' : 'play'; P.inv = Math.max(P.inv, .4); } };
+      confirmSheet.querySelector('.go').onclick = back;
+      confirmSheet.querySelector('.q').onclick = () => { confirmSheet?.remove(); confirmSheet = null; leave(`ถอยกลับขึ้นมาจาก B${S.depth}`); };
+      confirmSheet.addEventListener('pointerdown', e => { if (e.target === confirmSheet) back(); });
+      root.appendChild(confirmSheet);
+      if (!TOUCH) setTimeout(() => confirmSheet?.querySelector('.go')?.focus(), 30);
+    }
+    css.textContent += `.dgn-leave .pn .lv{margin:0;text-align:center;font-size:15px;line-height:1.5;color:#2b2140}.dgn-leave .pn .lv b{font-size:15px}`;
+
     // ---------- input: move + dodge only (weapons fire by themselves) ----------
     api.onKey(e => {
       const k = e.key.toLowerCase();
@@ -338,7 +378,7 @@ const Dungeon = {
     });
     const onUp = e => keys.delete(e.key.toLowerCase()), onBlur = () => { keys.clear(); stick = null; };
     addEventListener('keyup', onUp); addEventListener('blur', onBlur);
-    const gone = new MutationObserver(() => { if (!root.isConnected) { removeEventListener('keyup', onUp); removeEventListener('blur', onBlur); unTouch(); gone.disconnect(); if (window.__dgn && window.__dgn.root === root) delete window.__dgn; } });
+    const gone = new MutationObserver(() => { if (!root.isConnected) { removeEventListener('keyup', onUp); removeEventListener('blur', onBlur); document.removeEventListener('visibilitychange', onHide); unTouch(); gone.disconnect(); if (window.__dgn && window.__dgn.root === root) delete window.__dgn; } });
     gone.observe(document.body, { childList: true, subtree: true });
     const mmRect = () => { const s = mmScale(); return { x: W - g.w * s - 10, y: 16, w: g.w * s, h: g.h * s }; };
     // desktop (mouse): drag anywhere = stick, click the minimap to enlarge it. Touch devices use the layout below.
@@ -768,6 +808,7 @@ const Dungeon = {
       const t0 = TEST ? performance.now() : 0;
       const d = fxS.step(dt); fxW.step(dt); if (dodgeT > 0) dodgeT -= dt;
       if (S.mode === 'play' && d) step(d);
+      if (S.mode === 'play' && (bankT -= dt) <= 0) { bankT = 15; bank(); }
       else if (S.mode === 'trans') { trans -= dt; if (trans <= 0) { S.mode = 'play'; build(S.depth + 1); } }
       if (hudSoon > 0 && (hudSoon -= dt) <= 0) setHud();
       if (TOUCH && menuShown !== (S.mode === 'play' || S.mode === 'menu' || S.mode === 'pick' || S.mode === 'trans')) paintHud();
@@ -830,5 +871,6 @@ const Dungeon = {
         swirls.push({ kind: 'slime', x: wx, y: wy, t: DD.WAVE.warn }); return { dx, dy }; } return null; },
       markers: () => mkN, menu() { openMenu(); }, cam: () => ({ x: cam.x, y: cam.y, w: VW, h: VH }),
     };
+    return { leave, confirmLeave };
   },
 };

@@ -358,7 +358,7 @@ const Village = (() => {
   }
 
   /* ---------- walking ---------- */
-  const walk = (x, y) => x >= 0 && y >= 0 && x < C && y < R && !block[y][x];
+  const walk = (x, y) => W ? W.walkable(x, y) : x >= 0 && y >= 0 && x < C && y < R && !block[y][x];   // the world's grid has a border, read it through W
   function bfs(from, to) {
     const k = (x, y) => y * C + x, prev = new Map([[k(...from), -1]]), q = [from];
     while (q.length) { const [x, y] = q.shift(); if (x === to[0] && y === to[1]) break;
@@ -441,7 +441,7 @@ const Village = (() => {
   function floorSpots() {
     const d = bkkDay(); if (floorDay === d || !(base || W)) return floor; floorDay = d;
     const rnd = rng(+d.replace(/-/g, '') % 2147483646 + 1), cells = [];
-    for (let y = 0; y < R; y++) for (let x = 0; x < C; x++) if ((W ? x < 72 && W.G[y][x] === 0 && !(W.block[y + 1] || [])[x] : [25, 40, 41].includes(base[y][x])) && !block[y][x] && Math.hypot(x - 5, y - 8) > 6) cells.push([x, y]);
+    for (let y = 0; y < R; y++) for (let x = 0; x < C; x++) if ((W ? x < 72 && W.gAt(x, y) === 0 && !W.blk(x, y + 1) && !W.blk(x, y) : [25, 40, 41].includes(base[y][x]) && !block[y][x]) && Math.hypot(x - 5, y - 8) > 6) cells.push([x, y]);
     for (let i = 0; i < 5; i++) rnd();
     floor = [];
     while (floor.length < FLOOR_N + EXTRA.length && cells.length) { const [x, y] = cells.splice(Math.floor(rnd() * cells.length), 1)[0]; if (floor.every(f => Math.hypot(f.x - x, f.y - y) > (floor.length < FLOOR_N ? 8 : 4))) floor.push({ x, y, i: floor.length }); }

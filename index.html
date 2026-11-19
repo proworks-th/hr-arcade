@@ -12,7 +12,7 @@
 <link rel="preload" href="assets/fonts/plexthai-thai-600.woff2" as="font" type="font/woff2" crossorigin>
 <script>/* canvas text needs the faces loaded before it draws */if(document.fonts){for(const w of [400,600,700])document.fonts.load(w+" 16px 'IBM Plex Sans Thai'","กA1");document.fonts.load("500 16px 'Pixelify Sans'","1")}</script>
 <style>
-:root{/* mapped onto tokens.css (17 Nov 2026); old names kept so every screen picks the new colors up */--bg:var(--t-bg);--ink:var(--t-ink);--card:var(--t-surface);--line:var(--t-ink);--pri:var(--t-main);--yel:var(--t-main-soft);--ok:var(--t-main);--bad:var(--t-bad);--blue:var(--t-main-dark);--muted:var(--t-muted);
+:root{/* mapped onto tokens.css (17 Nov 2026); old names kept so every screen picks the new colors up */--bg:var(--t-bg);--ink:var(--t-ink);--card:var(--t-surface);--line:var(--t-ink);--pri:var(--t-main);--yel:var(--t-main-soft);--ok:var(--t-main);--bad:var(--t-bad);--blue:var(--t-main-dark);--muted:var(--t-muted);--pink:var(--t-main);/* badges + dots (ตะกร้า count, gacha/cloud dots) used --pink, which was never set here, so they were see-through (18 Nov 2026) */
   --emoji:"Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif}
 *{box-sizing:border-box}
 html,body{margin:0;min-height:100%}
@@ -776,7 +776,7 @@ html.touch #hub .vil-bar{flex-wrap:wrap;white-space:normal;overflow:visible}html
 <script src="dungeon/data.js?v=4"></script>
 <script src="dungeon/engine.js?v=2"></script>
 <script src="dungeon/gen.js?v=1"></script>
-<script src="dungeon/game.js?v=6"></script>
+<script src="dungeon/game.js?v=7"></script>
 <script src="prism-core.js?v=3"></script>
 <script src="prism-levels.js?v=2"></script>
 <script src="prism-daily.js?v=1"></script>
@@ -789,8 +789,8 @@ html.touch #hub .vil-bar{flex-wrap:wrap;white-space:normal;overflow:visible}html
 <script src="gacha.js?v=4"></script>
 <script src="hubroom.js?v=12"></script>
 <script src="tower.js?v=12"></script>
-<script src="village-world.js?v=21"></script>
-<script src="village.js?v=39"></script>
+<script src="village-world.js?v=26"></script>
+<script src="village.js?v=40"></script>
 <script src="farm.js?v=14"></script>
 <script src="cloud.js?v=12"></script>
 <script src="news.js?v=20"></script>
@@ -1094,7 +1094,7 @@ function startGame(id){
     },
     end(score,extra='',daily=false,stats={}){
       if(cur.ended)return;cur.ended=true;
-      const mult=cur.cp?cur.cp.mult:g.id===featuredId()?2:1,{rw,lastSc,prev,isBest}=payRun(g,score,daily,stats,mult),rs=stats.rank!=null?stats.rank:score,ru=g.rankUnit||g.unit||'แต้ม';
+      const mult=cur.cp?cur.cp.mult:g.id===featuredId()?2:1,{rw,lastSc,prev,isBest}=payRun(g,score,daily,stats,mult),rs=stats.rank!=null?stats.rank:score,ru=g.rankUnit||g.unit||'แต้ม';cur.rw=rw;
       mine.forEach(f=>loops.delete(f));mine.clear();
       api.sfx('over');
       const ov=document.createElement('div');ov.className='overlay';
@@ -1144,6 +1144,10 @@ function startGame(id){
   cur.inst=g.mount(root,api)||{};
 }
 function stopGame(){
+  // a game that can wrap up its own run (the dungeon: leave()) does it first, so leaving pays in full like its own exit
+  // (owner, 18 Nov 2026: a dungeon run left through 🏠 or another screen paid nothing). Others fall back to the checkpoint.
+  if(current&&current.started&&!current.ended&&current.inst&&current.inst.leave){try{current.inst.leave()}catch(e){}
+    if(current.ended&&current.rw)toast(`บันทึกรอบ ${current.g.title} แล้ว · +${fmt(current.rw.coins)} 🪙`)}
   if(current&&current.started&&!current.ended&&current.cp){current.ended=true;settleRun(current.cp)}
   if(current){current.mine.forEach(f=>loops.delete(f));current.inst&&current.inst.destroy&&current.inst.destroy();current=null}
   paused=false;const p=$('#pauseOv');p&&p.remove();
@@ -1158,8 +1162,11 @@ function flyCoins(x,y,to,n){
       {duration:650+i*70,easing:'cubic-bezier(.5,0,.7,1)'}).onfinish=()=>{c.remove();to.classList.remove('bump');void to.offsetWidth;to.classList.add('bump')}}
 }
 function goHome(){stopGame();document.body.classList.remove('playing');stage.hidden=true;stage.innerHTML='';hub.hidden=false;$('#homeBtn').hidden=true;renderHub()}
-$('#homeBtn').onclick=goHome;
-$('#gmExit').onclick=goHome;
+// 🏠 during a run: a game with confirmLeave (the dungeon) asks first and ends the run on its own result screen
+function leaveGame(){const c=current;
+  if(c&&c.started&&!c.ended&&c.inst&&c.inst.confirmLeave){const p=$('#pauseOv');if(p){p.remove();paused=false}c.inst.confirmLeave(goHome)}else goHome()}
+$('#homeBtn').onclick=leaveGame;
+$('#gmExit').onclick=leaveGame;   // phones: the corner ออก button sits in the play area, so the dungeon asks first
 $('#setBtn').onclick=openSettings;
 // portrait only on phones (owner, 15 Nov 2026): turning sideways pauses the game behind a "turn it upright" card
 function orient(){const l=Phone.touch&&innerWidth>innerHeight&&innerHeight<560;document.body.classList.toggle('landscape',l);if(l&&document.body.classList.contains('playing'))showPause()}
@@ -1186,7 +1193,7 @@ function showPause(){
   const ov=document.createElement('div');ov.className='overlay';ov.id='pauseOv';
   ov.innerHTML=`<div class="panel popin"><div class="big">⏸️</div><h2>พักเกมไว้ก่อน</h2><p class="muted">รอดตัวไปอีกรอบ 😮‍💨</p><div class="row"><button class="btn primary">▶ เล่นต่อ</button><button class="btn">🏠 หน้าหลัก</button></div>${Phone.touch?'<div class="row"><button class="btn sm" type="button">ตั้งค่าปุ่ม</button></div>':''}</div>`;
   const [go,home,set]=ov.querySelectorAll('button');
-  go.onclick=()=>{if(document.body.classList.contains('landscape'))return;ov.remove();paused=false};home.onclick=goHome;if(set)set.onclick=openSettings;
+  go.onclick=()=>{if(document.body.classList.contains('landscape'))return;ov.remove();paused=false};home.onclick=leaveGame;if(set)set.onclick=openSettings;
   document.body.appendChild(ov);
 }
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&!bossOn)showPause()});
