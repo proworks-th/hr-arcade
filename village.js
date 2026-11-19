@@ -252,7 +252,9 @@ const Village = (() => {
     if (((p.vil || {}).g | 0) < g) { p.vil = p.vil || {}; p.vil.g = g; Prog.put(p); if (typeof Farm !== 'undefined' && Farm.pub) Farm.pub(); }
     if ((L.g | 0) < g) setGarden(g); }
   function openGarden(L) { if (L.k !== myKey()) window.farmVisit = L.k; if (typeof startGame === 'function') startGame('farm'); }
-  const srvNow = () => Date.now() + offset;
+  // with the PTR dev panel's pretend date (window.__devDT), Firebase measures its offset against the fake clock and so cancels
+  // the date out (offset ≈ −devDT): add it back only when that happened (the test mock reports 0)
+  const srvNow = () => { const F = window.__devDT || 0; return Date.now() + offset + (F && Math.abs(offset + F) < Math.abs(offset) ? F : 0); };
   const myLots = () => LOTS.filter(L => L.stage && ((L.k && L.k === myKey()) || (L.u && L.u === myUid())));
   const myLot = () => myLots().sort((a, b) => b.mv - a.mv)[0];   // after a move the newest (mv) is home, even before the old lot is freed
   const building = L => L.stage >= 2 && L.end > srvNow();
@@ -713,8 +715,12 @@ const Village = (() => {
   // Fireworks over the pond at village night once the office floated LOY_GOAL, from 24 Nov. PTR host or ?loy=1: always on.
   const LOY_FROM = Date.UTC(2026, 10, 22, 17), LOY_TO = Date.UTC(2026, 10, 27, 17), LOY_FIRE = Date.UTC(2026, 10, 23, 17);   // Bangkok 23 Nov 00:00, 28 Nov 00:00, 24 Nov 00:00
   const LOY_PRICE = 200, LOY_CAP = 5, LOY_GOAL = 50, LOY_LIFE = 30 * 60e3, PIER = [62, 18], LOYC = { loy: 1 };
-  const loyTest = /^hr-arcade-ptr\./.test(location.hostname) || /[?&]loy=1\b/.test(location.search);
-  const loyOn = () => loyTest || (srvNow() >= LOY_FROM && srvNow() < LOY_TO);
+  const loyTest = /^hr-arcade-ptr\./.test(location.hostname) || (/^(localhost|127\.0\.0\.1)$/.test(location.hostname) && /[?&]loy=1\b/.test(location.search));   // never early on live
+  const DEV = /^hr-arcade-ptr\./.test(location.hostname) || (/^(localhost|127\.0\.0\.1)$/.test(location.hostname) && /[?&]dev=1\b/.test(location.search));   // never on live   // the PTR dev panel's switches
+  let loyMode = DEV ? (() => { try { return localStorage.getItem('hra_dev_loy') || ''; } catch (e) { return ''; } })() : '', loyNDev = null;   // '' | on | off | date
+  const loyDate = () => srvNow() >= LOY_FROM && srvNow() < LOY_TO;
+  const loyOn = () => loyMode === 'on' ? true : loyMode === 'off' ? false : loyMode === 'date' ? loyDate() : loyTest || loyDate();
+  const loyCount = () => loyNDev ?? loyN;
   const LOY_STY = [['ใบตอง', '#5fae4a', ['#ffb21f', '#ff7a1a', '#ffb21f']], ['ดอกบัว', '#ff9cc0', ['#ffe3ee', '#ff6fa8', '#ffe3ee']], ['ขนมปัง', '#d9a35f', ['#ff5c8a', '#4cc3ff', '#ffd23f']]];
   const LOY_BAD = ['ควย', 'เหี้ย', 'เหี่ย', 'สัส', 'สัด', 'เย็ด', 'หี', 'แตด', 'มึง', 'ไอ้สัตว์', 'อีสัตว์', 'ระยำ', 'ชิบหาย', 'ส้นตีน', 'ตีน', 'อีดอก', 'ดอกทอง', 'กะหรี่', 'แม่ง', 'เชี่ย', 'พ่องตาย', 'พ่อมึง', 'แม่มึง', 'ห่าน', 'อีห่า', 'ไอ้ห่า', 'จัญไร', 'fuck', 'shit', 'bitch', 'dick', 'pussy', 'asshole', 'cunt', 'bastard'];
   const loyClean = s => { const z = String(s).toLowerCase().replace(/[\s.\-_*!?,'"~0-9]/g, ''); return !LOY_BAD.some(b => z.includes(b)); };
@@ -723,14 +729,14 @@ const Village = (() => {
   const onPier = () => { const m = W && W.me; if (!m) return false; const x = Math.floor(m.px / T), y = Math.floor(m.py / T); return y === PIER[1] && x >= PIER[0] - 1 && x <= PIER[0]; };   // standing at the end of the pier
   const loyHide = new Set(), loyMine = new Set();
   const loyDay = p => { const d = bkkDay(); p.loy = p.loy && p.loy.d === d ? p.loy : { d, n: 0 }; return p.loy; };
-  function loyWatch(M) { if (!M.watchLoy || !loyOn()) return;
+  function loyWatch(M) { if (!M.watchLoy || !(loyOn() || DEV)) return;
     M.watchLoy(v => { loyK = Object.fromEntries(Object.entries(v).map(([id, k]) => [id, { ...k, id }])); });
     M.watchLoyCount(n => { loyN = n | 0; if (cardL === LOYC && !loyTyping()) renderCard(); }); }
   const loyTyping = () => { const f = document.activeElement; return !!(f && f.id === 'vilLoyWish' && cardEl && cardEl.contains(f)); };
   function loyOpen() { goTo(PIER); openCard(LOYC); if (O && O.loyNames) O.loyNames().then(a => { loyNames = a; if (cardL === LOYC && !loyTyping()) renderCard(); }).catch(() => {}); }
   function loyCard() {
     const p = Prog.get(), st = loyDay(p), left = LOY_CAP - st.n, dis = loyBusy ? ' disabled' : '';
-    let h = `<h4>🪷 ลอยกระทง 2569</h4><p class="muted">บึงหมู่บ้าน · 23–27 พ.ย. · ทั้งออฟฟิศลอยแล้ว ${fmtN(loyN)}/${LOY_GOAL}${loyN >= LOY_GOAL ? ' · มีดอกไม้ไฟตอนค่ำ' : ' · ครบแล้วมีดอกไม้ไฟตอนค่ำ'}</p>`;
+    let h = `<h4>🪷 ลอยกระทง 2569</h4><p class="muted">บึงหมู่บ้าน · 23–27 พ.ย. · ทั้งออฟฟิศลอยแล้ว ${fmtN(loyCount())}/${LOY_GOAL}${loyCount() >= LOY_GOAL ? ' · มีดอกไม้ไฟตอนค่ำ' : ' · ครบแล้วมีดอกไม้ไฟตอนค่ำ'}</p>`;
     h += `<div class="vil-loy-sty" role="group" aria-label="แบบกระทง">${LOY_STY.map((s, i) => `<button class="btn sm" type="button" data-a="loySty" data-i="${i}" aria-pressed="${i === loySty}">${s[0]}</button>`).join('')}</div>`;
     h += `<input id="vilLoyWish" type="text" maxlength="40" placeholder="คำอธิษฐาน (ไม่เกิน 40 ตัวอักษร)" value="${escH(loyW)}" style="width:100%;margin:6px 0">`;
     h += left > 0 ? (loyGo ? '<button class="btn primary" type="button" disabled>กำลังเดินไปที่สะพาน…</button><p class="muted">ถึงปลายสะพานแล้วจะลอยให้เลย</p>'
@@ -1078,8 +1084,8 @@ const Village = (() => {
     if (!scn) {
       pill(sx((TOWER.x + 4) * T), sy(TOWER.y * T) - 4 * dpr, '🏢 ตึกออฟฟิศ', { bg: '#e8f0ff', hit: 'tower' });
       const open = jobs().filter(J => !jobsDone().includes(J.j)), jobK = new Set(open.map(J => J.to.L ? 'L' + J.to.L.id : 'N' + J.to.npc));
-      if (loyOn()) { if (loyN >= LOY_GOAL && (loyTest || srvNow() >= LOY_FIRE) && loyNight()) loyFire(ctx);
-        pill(sx(62 * T), sy(12 * T) - 16 * dpr, `🪷 ลอยกระทง · ${fmtN(loyN)}/${LOY_GOAL}`, { bg: '#ffe0ea', line: '#d14d72', hit: LOYC });
+      if (loyOn()) { if (loyCount() >= LOY_GOAL && (loyMode !== 'date' && loyTest || srvNow() >= LOY_FIRE) && loyNight()) loyFire(ctx);
+        pill(sx(62 * T), sy(12 * T) - 16 * dpr, `🪷 ลอยกระทง · ${fmtN(loyCount())}/${LOY_GOAL}`, { bg: '#ffe0ea', line: '#d14d72', hit: LOYC });
         pill(sx(33.5 * T), sy(15 * T), '🪷 ลอยกระทงที่บึงหมู่บ้าน →', { fs: 10, bg: '#fff8d6', hit: LOYC }); }
       pill(sx((BOARD[0] + .5) * T), sy(BOARD[1] * T) - 14 * dpr, open.length ? `📌 งานส่งของ ${open.length}` : '📌 บอร์ด', { fs: 11, bg: open.length ? '#fff3c4' : '#fff', hit: 'board' });
       const onK = onlineKeys(), mk = myKey();
@@ -1197,6 +1203,13 @@ const Village = (() => {
     // walk into 🕹️ ตึกเกม (to a machine when id is given); waits for the engine to load the first time
     party(n = 0) { if (W && W.arcade) return void W.arcade.to('party', partyIn); if (n < 60) setTimeout(() => Village.party(n + 1), 150); },
     arcade(id, n = 0) { if (W && W.arcade) return void W.arcade.walk(id || ''); if (n < 60) setTimeout(() => Village.arcade(id, n + 1), 150); },
+    _dev: DEV ? {
+      loyMode: m => { loyMode = m; try { localStorage.setItem('hra_dev_loy', m); } catch (e) {} renderBar(); return loyOn(); },
+      get loyModeNow() { return loyMode; }, loyOn: () => loyOn(), loyN: n => { loyNDev = n; },
+      resetLoyDay: () => { const p = Prog.get(); p.loy = null; Prog.put(p); if (cardL === LOYC) renderCard(); },
+      loyClear: () => { const ids = Object.keys(loyK); for (const id of ids) O && O.sinkLoy(id); loyK = {}; return ids.length; },
+      loyFill: async n => { if (!O || !O.floatLoy) return 0; const W8 = ['ขอให้รวย', 'ขอให้สุขภาพแข็งแรง', 'ขอให้งานเสร็จทันเวลา']; for (let i = 0; i < n; i++) { await O.floatLoy('ทดสอบ' + (i + 1), i % 3, W8[i % 3]); await new Promise(r => setTimeout(r, 120)); } return n; },
+    } : undefined,
     _dbg: { loy: { open: loyOpen, float: loyFloat, wish: v => { loyW = v; }, get n() { return loyN; }, get k() { return loyK; }, pos: loyPos, on: () => loyOn() }, me, LOTS, others, pm, adopt, feedPet, dyePet, renamePet, swapPet, petBook, myPet, moveHouse, moveInfo, get farms() { return farms; }, syncHome, gCell, get hits() { return hits; }, get ready() { return !!(world || W); }, get W() { return W; }, act, lock, goTo, fast: false, floorSpots, reserve, jobs, jobsDone, deliver, haveCrop, NPCS, BOARDC, next, help, myLot, get busy() { return busy; }, decorate, movedIn, get held() { return W ? W.held : held; }, gSize, tinted, roofOf, wallOf },
   };
 })();

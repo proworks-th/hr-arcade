@@ -717,7 +717,7 @@ function frame(now, fixed) {
   const dt = fixed || Math.min(.05, (now - (frame.last || now)) / 1000); frame.last = now; gameT += dt;
   keyMove(dt);
   for (const k of BOTS) botThink(k);
-  me.speed = 46 * rideMul();
+  me.speed = 46 * rideMul() * (window.__devSpeed || 1);   // __devSpeed: faster walking from the PTR dev panel
   for (const P of people) { P.t += dt; P.moving = !!P.path.length || !!P.kmove;
     if (P.path.length) { const [nx, ny] = P.path[0], tx = nx * T + 8, ty = ny * T + 12, dx = tx - P.px, dy = ty - P.py, d = Math.hypot(dx, dy), st = P.speed * dt;
       P.dir = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 'left' : 'right') : (dy < 0 ? 'up' : 'down');

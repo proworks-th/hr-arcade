@@ -686,7 +686,7 @@ function frame(now, fixed) {
   keyMove(dt);
   H.tick(dt);
   for (const k of BOTS) botThink(k);
-  me.speed = 46 * rideMul();
+  me.speed = 46 * rideMul() * (window.__devSpeed || 1);   // __devSpeed: faster walking from the PTR dev panel
   for (const P of people) { P.t += dt; P.moving = !!P.path.length || !!P.kmove;
     if (P.path.length) { const [nx, ny] = P.path[0], tx = nx * T + 8, ty = ny * T + 12, dx = tx - P.px, dy = ty - P.py, d = Math.hypot(dx, dy), st = P.speed * dt;
       P.dir = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 'left' : 'right') : (dy < 0 ? 'up' : 'down');
@@ -1298,7 +1298,7 @@ return { me, held, C, R,
     if (M) playAt(M, cb); else if (id && H.games().some(g => g.id === id)) { closeCard(); H.play(id); }   // a game without a cabinet still starts
     else { closeCard(); me.after = null; travel(me, r.entry); } return true; },
     to(what, cb) { const r = arcRoom(); if (!r || !r[what]) return false; warpArc(); playAt({ x: r[what][0], y: r[what][1], st: what === 'alist' ? [r[what][0] - 1, r[what][1]] : null }, cb); return true; } }, // gAt / blk: tile and wall at (x, y), x and y may be negative (the border); the raw G / block rows start at WX0 / WY0, not 0
-  gAt: (x, y) => gAt(x, y), blk: (x, y) => blk(x, y), hour: () => hour, get G() { return G; }, get block() { return block; }, get ctx() { return ctx; }, ov: SR.getElementById('ov'),
+  gAt: (x, y) => gAt(x, y), blk: (x, y) => blk(x, y), hour: () => hour, setHour: h => { real = false; realB.classList.remove('on'); setHour(h, true); }, realClock: () => realB.onclick(), get G() { return G; }, get block() { return block; }, get ctx() { return ctx; }, ov: SR.getElementById('ov'),
   travel: c => { closeCard(); me.after = null; travel(me, c); }, place: c => place(me, c), warp: c => { closeCard(); warp(c); }, warpArc: () => { closeCard(); return warpArc(); },
   pos: () => cellOf(me), walkable: (x, y) => walkable(x, y), get ride() { return riding(me); }, rideMul: k => RIDES[k]?.[2] || 1,
   drawRide: (g, P, k, back, col) => { if (RIDE_SPR[k]) drawRide(g, P, k, back, col || ''); }, get rideCol() { const k = riding(me); return k ? rcolOk(k, F.rcol[k]) : ''; }, sceneOf, scene: () => scene, relots, closeCard,
