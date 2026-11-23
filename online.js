@@ -207,6 +207,37 @@ export async function takeGifts(me){
 }
 /* ---------- farm market: rooms/_mkt/o/{id}={s:'s'|'b',c,q,l,p,k,n,d,t} resting orders (d = hours it stays up) (crops or coins already held by the owner);
    a fill owed to a resting order's owner waits in rooms/_mkt/c/{key}/{id}={s,c,u,p,n,t}; NPC vendor lots taken: rooms/_mkt/bt/{slot}=n ---------- */
+// Loy Krathong 23–27 Nov 2026 (rooms/_loy2569): k = floated krathongs {n,k,s,w,t, m: 0 wish | 1 letting go (w is always '') | 2 for a friend
+// (f,fk = the friend), q stars 0–3, p accuracy % and u = unlit candle, from the ทำกระทง game}, n = how many the office floated, by = who and how many,
+// to/{friendKey}/{id} = a friend's krathong for that person {n,w,t}, c/{id} = picked up in the clean-up after the event {k,n,t} (once)
+const LOY='rooms/_loy2569',loyId=id=>String(id).replace(/[.#$\[\]\/]/g,'');
+export function watchLoy(cb){return FIREBASE_CONFIG?onValue(query(ref(db(),LOY+'/k'),limitToLast(60)),s=>cb(s.val()||{})):()=>{}}
+export function watchLoyCount(cb){return FIREBASE_CONFIG?onValue(ref(db(),LOY+'/n'),s=>cb(s.val()||0)):()=>{}}
+export async function loyNames(){if(!FIREBASE_CONFIG)return[];const s=await get(ref(db(),LOY+'/by'));return Object.values(s.val()||{})}
+export async function loyAll(){if(!FIREBASE_CONFIG)return{};const s=await get(ref(db(),LOY+'/k'));return s.val()||{}}
+export function watchLoyTo(me,cb){return FIREBASE_CONFIG&&me?onValue(ref(db(),LOY+'/to/'+loyId(me)),s=>cb(s.val()||{})):()=>{}}
+export function watchLoyPicked(cb){return FIREBASE_CONFIG?onValue(ref(db(),LOY+'/c'),s=>cb(s.val()||{})):()=>{}}
+// o = {m, f (friend name), q, p}; a letting-go krathong never carries its text
+export async function floatLoy(name,sty,wish,o={}){
+  if(!FIREBASE_CONFIG||!name)return null;const n=String(name).trim().slice(0,20),k=nameKey(name),m=[0,1,2].includes(o.m)?o.m:0;
+  const v={n,k,s:sty|0,w:m===1?'':String(wish||'').slice(0,40),t:serverTimestamp(),m};
+  if(m===2&&o.f){v.f=String(o.f).trim().slice(0,20);v.fk=nameKey(o.f)}
+  if(o.q){v.q=Math.max(0,Math.min(3,o.q|0));v.p=Math.max(0,Math.min(100,Math.round(+o.p||0)))}
+  if(o.u)v.u=1;   // the candle wasn't lit in the game: no light at night
+  const r=await push(ref(db(),LOY+'/k'),v);
+  if(v.fk&&v.fk!==k)set(ref(db(),LOY+'/to/'+v.fk+'/'+r.key),{n,w:v.w,t:serverTimestamp()}).catch(()=>{});
+  runTransaction(ref(db(),LOY+'/n'),c=>(c||0)+1);runTransaction(ref(db(),LOY+'/by/'+k),c=>({n,c:((c&&c.c)||0)+1}));return r.key}
+// sky lanterns l/{id}={n,k,c,t}; likes lk/{krathongId}/{key}=1 (once each); best/{day}={n,k,p,s,q,t} = the day's best krathong, written once
+export function watchLanterns(cb){return FIREBASE_CONFIG?onValue(query(ref(db(),LOY+'/l'),limitToLast(40)),s=>cb(s.val()||{})):()=>{}}
+export async function releaseLantern(name,c){if(!FIREBASE_CONFIG||!name)return null;const r=await push(ref(db(),LOY+'/l'),{n:String(name).trim().slice(0,20),k:nameKey(name),c:Math.max(0,Math.min(2,c|0)),t:serverTimestamp()});return r.key}
+export function watchLoyLikes(cb){return FIREBASE_CONFIG?onValue(ref(db(),LOY+'/lk'),s=>cb(s.val()||{})):()=>{}}
+export function likeLoy(id,name){return FIREBASE_CONFIG&&name?set(ref(db(),LOY+'/lk/'+loyId(id)+'/'+nameKey(name)),1):Promise.resolve()}
+export function watchLoyBest(cb){return FIREBASE_CONFIG?onValue(ref(db(),LOY+'/best'),s=>cb(s.val()||{})):()=>{}}
+export async function setLoyBest(day,v){if(!FIREBASE_CONFIG)return false;const r=await runTransaction(ref(db(),LOY+'/best/'+loyId(day)),c=>c?undefined:{n:String(v.n).slice(0,20),k:String(v.k).slice(0,24),p:Math.max(0,Math.min(100,v.p|0)),s:Math.max(0,Math.min(3,v.s|0)),q:Math.max(0,Math.min(3,v.q|0)),t:Date.now()});return r.committed}
+export function sinkLoy(id){return FIREBASE_CONFIG?remove(ref(db(),LOY+'/k/'+loyId(id))):Promise.resolve()}
+// clean-up: claim krathong id for me; resolves true when it was still there to pick up
+export async function pickLoy(id,name){if(!FIREBASE_CONFIG||!name)return false;
+  const r=await runTransaction(ref(db(),LOY+'/c/'+loyId(id)),c=>c?undefined:{k:nameKey(name),n:String(name).trim().slice(0,20),t:Date.now()});return !!r.committed}
 export function watchMkt(cb){return FIREBASE_CONFIG?onValue(ref(db(),'rooms/_mkt/o'),s=>cb(s.val()||{})):()=>{}}
 export function watchNpc(cb){return FIREBASE_CONFIG?onValue(ref(db(),'rooms/_mkt/bt'),s=>cb(s.val()||{})):()=>{}}
 export async function mktPut(o){const r=await push(ref(db(),'rooms/_mkt/o'),{s:o.s,c:String(o.c).slice(0,4),q:o.q|0,l:o.q|0,p:o.p|0,k:o.k,n:String(o.n).trim().slice(0,20),d:Math.max(1,Math.min(24,o.d|0||24)),t:serverTimestamp()});return r.key}

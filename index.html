@@ -2,6 +2,11 @@
 <html lang="th">
 <head>
 <meta charset="utf-8">
+<script>/* PTR dev panel, pretend date (set in ptrdev.js, PTR host, or ?dev=1 on localhost): every Date reads as real time + hra_dev_dt ms.
+   Runs before any other script so daily resets, events and saves all see the same day. */
+(function(){if(!/^hr-arcade-ptr\.(web|firebaseapp)\.app$/.test(location.hostname)&&!(/^(localhost|127\.0\.0\.1)$/.test(location.hostname)&&/[?&]dev=1\b/.test(location.search)))return;
+var F=0;try{F=+localStorage.getItem('hra_dev_dt')||0}catch(e){}window.__devDT=F;if(!F)return;var R=Date;
+class D extends R{constructor(...a){a.length?super(...a):super(R.now()+F)}static now(){return R.now()+F}}window.Date=D;})();</script>
 <!-- ?test=1 swaps Firebase for in-memory mocks (verify/); does nothing for normal visits -->
 <script src="verify/testmode.js?v=2"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -261,7 +266,7 @@ button.pk:hover{transform:translateY(-2px)}div.pk{cursor:default}.pk b{font-size
 /* phones: tighter profile bar + tabs, the map fills the rest of the screen (12 Nov 2026) */
 @media (max-width:719px){#hub.vil-on .me{padding:3px 8px;margin-bottom:6px;min-height:0}#hub.vil-on .room-h{margin:0 0 6px}#hub.vil-on .room-h .seg button{padding:4px 8px;font-size:13px}#hub.vil-on .vil-wrap{height:calc(100dvh - 258px);min-height:360px;max-height:none}#hub.vil-on.vil-full .vil-wrap{height:calc(100dvh - 120px)}}
 .vil-wrap canvas{display:block;width:100%;height:100%;image-rendering:pixelated;cursor:pointer;touch-action:manipulation}
-.vil-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px;font-size:13px}.vil-card{--ink:var(--t-wood-ink);--muted:var(--t-wood-muted);--line:var(--t-wood);color:var(--ink);position:absolute;left:8px;top:8px;width:min(330px,calc(100% - 16px));max-height:calc(100% - 16px);overflow:auto;background:var(--t-parch);border:var(--t-wood-frame);border-radius:var(--t-wood-r);box-shadow:var(--t-wood-shadow);padding:10px 12px;font-size:13.5px;z-index:2}
+.vil-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px;font-size:13px}.vil-loy-sty{display:flex;gap:6px;margin:6px 0}.vil-loy-sty .btn{flex:1;width:auto;margin:0}.vil-loy-sty .btn[aria-pressed=true]{background:var(--t-main);color:var(--t-main-ink);border-color:var(--t-main)}.vil-card .vil-loy-row{display:flex;justify-content:space-between;align-items:center;gap:8px;width:100%;min-height:40px;margin:6px 0;padding:6px 10px;border:2px solid var(--line);border-radius:10px;background:#fff;color:var(--ink);font:inherit;font-size:13px;text-align:left;cursor:pointer}.vil-card .vil-loy-row span:last-child{color:var(--muted);white-space:nowrap}.vil-card .vil-loy-back{width:auto;margin:0 0 4px}.vil-loy-lbl{display:flex;justify-content:space-between;margin-top:6px;font-size:12.5px}.vil-card #vilLoyWish,.vil-card #vilLoyFq{width:100%;margin:4px 0 6px;box-sizing:border-box}.vil-loy-h{margin:10px 0 4px;font-weight:700;font-size:12.5px}.vil-card .vil-loy-pick{display:flex;justify-content:space-between;width:100%;min-height:40px;margin:0 0 4px;padding:6px 10px;border:2px solid var(--line);border-radius:10px;background:#fff;color:var(--ink);font:inherit;text-align:left;cursor:pointer}.vil-card .vil-loy-pick[aria-pressed=true]{border-color:#4a7a52;background:#eaf5e6}.vil-card .vil-loy-pick[hidden]{display:none}.vil-loy-st{display:grid;grid-template-columns:auto 1fr auto;gap:6px 10px;align-items:center;margin:6px 0;font-size:12.5px}.vil-loy-st.two{grid-template-columns:1fr auto}.vil-loy-st.two b{text-align:right;font-variant-numeric:tabular-nums}.vil-loy-st:not(.two)>span:nth-child(3n){text-align:right;white-space:nowrap}.vil-loy-n{min-width:28px;text-align:right;font-variant-numeric:tabular-nums}.vil-loy-n.on{color:#4a7a52}.vil-loy-dot{width:16px;height:16px;border-radius:50%;border:2px solid var(--line);background:#fff;box-sizing:border-box}.vil-loy-dot.on{background:#d14d72;border-color:#d14d72}.vil-loy-dot.now{border-color:#d14d72}.vil-loy-moon{display:flex;justify-content:space-between;gap:4px}.vil-loy-moon span{display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px;border-radius:8px;font-size:12px}.vil-loy-moon span.on{background:#fff3c4}.vil-loy-got{margin:8px 0;padding:8px 10px;border:2px dashed var(--line);border-radius:10px;background:#fff}.vil-loy-got p{margin:4px 0}.vil-loy-names{line-height:1.7}.vil-ann{max-width:400px;text-align:left}.vil-ann h2{margin:0}.vil-ann ul,.vil-ann li,.vil-ann-skip{text-align:left}.vil-ann ul{list-style:none;margin:10px 0 0;padding:8px 12px;background:#fff8ec;border-radius:12px}.vil-ann li{margin:6px 0;font-size:15px;line-height:1.45}.vil-ann-skip{display:flex;align-items:center;gap:8px;margin-top:12px;font-size:14px;min-height:32px}.vil-ann-skip input{width:20px;height:20px}.vil-kg{position:fixed;inset:0;z-index:60;overflow:auto;background:var(--t-parch,#fff8e8);color:var(--t-wood-ink,#3b2316);display:flex;justify-content:center;touch-action:manipulation;user-select:none;-webkit-user-select:none;outline:none}.vil-kg-in{width:min(380px,100%);margin:auto 0;padding:12px 12px max(12px,env(safe-area-inset-bottom));box-sizing:border-box;display:flex;flex-direction:column;gap:6px}.vil-kg-in p{margin:0}.vil-kg-top{display:flex;align-items:center;gap:8px}.vil-kg-top b{flex:1;font-size:16px}.vil-kg-top .btn{width:auto;margin:0}.vil-kg-time{font-variant-numeric:tabular-nums;font-weight:700}.vil-kg-steps{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin:0;padding:0;list-style:none;font-size:12px;text-align:center}.vil-kg-steps li{padding:4px 2px;border:2px solid var(--t-wood,#8a5a36);border-radius:8px;background:#fff;opacity:.6}.vil-kg-steps li.now{opacity:1;border-color:#d14d72}.vil-kg-steps li.done{opacity:1;background:#eaf5e6}.vil-kg canvas{width:100%;image-rendering:pixelated;border:3px solid #3b2316;border-radius:10px;box-sizing:border-box}.vil-kg-fb{min-height:20px;text-align:center;font-weight:700}.vil-kg .vil-kg-go{min-height:56px;font-size:17px}.vil-kg-note{font-size:12px;text-align:center}.vil-kg-stars{display:flex;gap:6px;justify-content:center}.vil-kg-stars i{width:18px;height:18px;border-radius:50%;border:2px solid #3b2316;background:#fff}.vil-kg-stars i.on{background:#ffc93c}.vil-kg canvas.vil-kg-prev{width:128px;align-self:center;border:0;background:#6fb4dc;border-radius:12px}.vil-card{--ink:var(--t-wood-ink);--muted:var(--t-wood-muted);--line:var(--t-wood);color:var(--ink);position:absolute;left:8px;top:8px;width:min(330px,calc(100% - 16px));max-height:calc(100% - 16px);overflow:auto;background:var(--t-parch);border:var(--t-wood-frame);border-radius:var(--t-wood-r);box-shadow:var(--t-wood-shadow);padding:10px 12px;font-size:13.5px;z-index:2}
 .vil-wrap .vil-card{z-index:3}.vil-card[hidden]{display:none}.vil-card h4{margin:0 34px 2px 0;font-size:16px}.vil-card p{margin:6px 0}
 /* 🕹️ ตึกเกม: card at the cabinet you stand at + the 📋 game list (13 Nov 2026) */
 .vil-arc{position:absolute;left:50%;transform:translateX(-50%);bottom:64px;z-index:3;width:min(440px,calc(100% - 20px));display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--card,#fff8ec);border:3px solid var(--line);border-left:10px solid var(--c);border-radius:14px;box-shadow:0 4px 0 var(--line)}.vil-arc.top{bottom:auto;top:76px}.vil-arc.side{left:8px;top:50%;bottom:auto;transform:translateY(-50%);width:200px;flex-wrap:wrap}.vil-arc.side .t{flex-basis:calc(100% - 44px)}.vil-arc.side .t small{white-space:normal}.vil-arc.side .btn{width:100%}.vil-arc[hidden]{display:none}.vil-arc .e{font-size:30px;line-height:1}.vil-arc .t{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.3}.vil-arc .t b{font-size:15px}.vil-arc .t small{font-size:12px;color:var(--muted,#7a5c48);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.vil-arc .btn{flex:none;min-height:44px}
@@ -784,13 +789,13 @@ html.touch #hub .vil-bar{flex-wrap:wrap;white-space:normal;overflow:visible}html
 <script src="prism.js?v=10"></script>
 <script src="season-art.js?v=5"></script>
 <script src="office.js?v=34"></script>
-<script src="skills.js?v=1"></script>
+<script src="skills.js?v=2"></script>
 <script src="wardrobe.js?v=9"></script>
 <script src="gacha.js?v=4"></script>
 <script src="hubroom.js?v=12"></script>
 <script src="tower.js?v=12"></script>
-<script src="village-world.js?v=26"></script>
-<script src="village.js?v=40"></script>
+<script src="village-world.js?v=29"></script>
+<script src="village.js?v=46"></script>
 <script src="farm.js?v=14"></script>
 <script src="cloud.js?v=12"></script>
 <script src="news.js?v=20"></script>
@@ -840,7 +845,7 @@ $('#muteBtn').onclick=()=>{muted=!muted;store.set('muted',muted);renderMute()};
 
 /* ---------- online services (online.js, Firebase): ranking, presence, feed ---------- */
 let onlineMod=null;
-const loadRank=()=>onlineMod||(onlineMod=import('./online.js?v=34'));
+const loadRank=()=>onlineMod||(onlineMod=import('./online.js?v=38'));
 const loadOnline=loadRank;
 const PIX_AVAS=['p_office','p_woffice','p_whealth','p_tech','p_cat','p_dog'];
 const myAva=()=>{const a=store.get('partyAva','p_office');return PIX_AVAS.includes(a)?a:'p_office'};
@@ -1996,9 +2001,11 @@ if(window.__TEST__)window.__app={open:id=>startGame(id),home:()=>goHome(),start:
 /* PTR (test server, hr-arcade-ptr.web.app): a label so nobody mistakes it for the live game, and test coins so shops can be
    tried without grinding. Only on the PTR host: the live site never shows either. Its database is a separate project. */
 (function(){
-  if(!/^hr-arcade-ptr\.(web|firebaseapp)\.app$/.test(location.hostname))return;
+  if(!/^hr-arcade-ptr\.(web|firebaseapp)\.app$/.test(location.hostname)&&!(/^(localhost|127\.0\.0\.1)$/.test(location.hostname)&&/[?&]dev=1\b/.test(location.search)))return;   // ?dev=1 only on a local test server, never on live
   const b=document.createElement('div');b.className='ptr-badge';
-  b.innerHTML='<span>PTR · เซิร์ฟเวอร์ทดสอบ ไม่ใช่เกมจริง</span><button type="button" aria-label="รับเหรียญทดสอบ 10,000">+10,000</button>';
+  b.innerHTML='<span>PTR · เซิร์ฟเวอร์ทดสอบ ไม่ใช่เกมจริง</span><button type="button" aria-label="รับเหรียญทดสอบ 10,000">+10,000</button><button type="button" data-dev aria-expanded="false">เครื่องมือทดสอบ</button>'+(window.__devDT?'<span data-devdt></span>':'');
+  b.querySelector('[data-dev]').onclick=e=>{const go=()=>window.PtrDev.toggle(e.currentTarget);if(window.PtrDev)return go();const sc=document.createElement('script');sc.src='ptrdev.js?v=4';sc.onload=go;document.head.appendChild(sc);};
+  if(window.__devDT){const r=new Date();b.querySelector('[data-devdt]').textContent='· วันที่สมมติ '+r.toLocaleString('th-TH',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});}
   b.querySelector('button').onclick=()=>{const p=Prog.get();p.coins+=10000;Prog.put(p);toast('ได้เหรียญทดสอบ 10,000 (เฉพาะ PTR)')};
   const st=document.createElement('style');
   st.textContent='body{padding-top:26px}.ptr-badge{position:fixed;left:0;right:0;top:0;z-index:9999;height:26px;display:flex;align-items:center;justify-content:center;gap:10px;background:var(--t-ink);color:var(--t-surface);font:600 12px var(--t-font)}.ptr-badge button{font:inherit;border:0;border-radius:6px;padding:2px 8px;background:var(--t-main);color:var(--t-main-ink);cursor:pointer}';

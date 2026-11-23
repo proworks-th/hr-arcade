@@ -34,7 +34,7 @@ const kt = (sh, id) => ktc[sh + id] ??= (() => { const s = K[sh], cols = s.width
 function tiles(sh, rows) { const c = mk(Math.max(...rows.map(r => r.length)) * 16, rows.length * 16), g = c.getContext('2d');
   rows.forEach((r, y) => r.forEach((id, x) => { if (id != null) g.drawImage(kt(sh, id), x * 16, y * 16); })); return c; }
 
-let T, VC, VR, VM, RX0, C, R, O, RS, rnd, ri, WX0, WY0, inW, grid, G, block, res, gAt, setG, blk, setBlk, resAt, setRes, rect, PARK, POND_K, LANDING, TOWER, BOARD, WELL, STAGE_TH, ROOFS, ROOF_IN, WALLS, WALL_IN, LOTS, MY, BED_AT, ROOMS, ROOM, makeRoom, sceneOf, ga, alphaAt, qStats, WANT, QPICK, grassAt, hexRGB, paint, cottageRaw, bigRaw, houseCache, isBig, hasHouse, houseFor, sprite, SIGN, STAKE, JAR, LANTERN, BOARD_S, WELL_S, LAMP, SCAFF, FOUND, BRICKS, tower, STALL, BED, SOFA, COUNTER, COFFEE, RACK, MIRROR, FRAME, MENU, WLAMP, RUG, BUNT, skyAt, objs, glows, places, add, MAPLE, tree, fence, at, put, putS, bunting, G_ORDER, gCells, flower, lot, cityB, BUILDINGS, building, REED, SALA, BED_F, DECK, LANE_W, LANE_E, ROAD_X0, ROAD_X1, CARS, barn, BARN, ANIM, PLOTS, CHEST_S, inLot, free, furnish, inV, hashXY, drawCab, drawListSign, drawGachaM, drawPartyDoor, drawTrophy, CHUNK, CHUNK_PX, CHUNKS, groundTile, groundOver, LOT_DIRT, GW, GH, gi, TILE_SEED, TILE_V, TILE_B, tileV, tileB, chunkAt, drawGround;
+let T, VC, VR, VM, RX0, C, R, O, RS, rnd, ri, WX0, WY0, inW, grid, G, block, res, gAt, setG, blk, setBlk, resAt, setRes, rect, PARK, POND_K, LANDING, TOWER, BOARD, WELL, STAGE_TH, ROOFS, ROOF_IN, WALLS, WALL_IN, LOTS, MY, BED_AT, ROOMS, ROOM, makeRoom, sceneOf, ga, alphaAt, qStats, WANT, QPICK, grassAt, hexRGB, paint, cottageRaw, bigRaw, houseCache, isBig, hasHouse, houseFor, sprite, SIGN, STAKE, JAR, LANTERN, BOARD_S, WELL_S, LAMP, SCAFF, FOUND, BRICKS, tower, STALL, BED, SOFA, COUNTER, COFFEE, RACK, MIRROR, FRAME, MENU, WLAMP, RUG, BUNT, skyAt, objs, glows, places, add, MAPLE, tree, fence, at, put, putS, bunting, G_ORDER, gCells, flower, lot, cityB, BUILDINGS, building, REED, SALA, BED_F, DECK, POND_E, PIER, LANE_W, LANE_E, ROAD_X0, ROAD_X1, CARS, barn, BARN, ANIM, PLOTS, CHEST_S, inLot, free, furnish, inV, hashXY, drawCab, drawListSign, drawGachaM, drawPartyDoor, drawTrophy, CHUNK, CHUNK_PX, CHUNKS, groundTile, groundOver, LOT_DIRT, GW, GH, gi, TILE_SEED, TILE_V, TILE_B, tileV, tileB, chunkAt, drawGround;
 function buildWorld() {
 /* ============ world grid: the live 48×34 village, grown to 72×48, plus a strip of rooms off to the right ============ */
 T = 16, VC = 72, VR = 48, VM = 3, RX0 = 76, C = RX0 + 8 * 16, R = VR + VM, O = '#3b2316';   // VM: border tiles round the village
@@ -58,7 +58,7 @@ for (let y = 7; y <= 35; y++) { setG(22, y, 0); setG(34, y, 0); }
 for (const y of [16, 23, 30]) for (let x = 1; x <= 48; x++) setG(x, y, 0);
 // central park: grass, a stone cross path and a round plaza in the middle, the Loy Krathong pond in one corner
 PARK = { x0: 23, y0: 11, x1: 33, y1: 22, cx: 28, cy: 16 };
-// 18 Nov 2026: the park pond (สระบัว), a rounded shape (x 30–33, y 18–22) with a small landing on the path side at (29, 20)
+// 18 Nov 2026: the Loy Krathong pond, a rounded shape (x 30–33, y 18–22) with a landing on the path side at (29, 20)
 POND_K = ['.WW.', 'WWWW', 'WWWW', 'WWWW', '.WW.'], LANDING = [29, 20];
 rect(PARK.x0, PARK.y0, PARK.x1, PARK.y1, (x, y) => setG(x, y, 1));
 rect(PARK.x0, 16, PARK.x1, 16, (x, y) => setG(x, y, 3)); rect(28, PARK.y0, 28, PARK.y1, (x, y) => setG(x, y, 3));
@@ -68,9 +68,10 @@ rect(1, 11, 9, 17, (x, y) => setG(x, y, 3)); setG(5, 7, 3); setG(5, 8, 3);
 // new: east lane, farm road, town street (asphalt + sidewalks)
 for (let y = 11; y <= 35; y++) setG(48, y, 0);
 rect(1, 34, 70, 35, (x, y) => setG(x, y, 0));
-rect(49, 9, 71, 10, (x, y) => setG(x, y, 4));
-rect(49, 7, 71, 8, (x, y) => setG(x, y, 5)); rect(49, 11, 71, 11, (x, y) => setG(x, y, 5));
-rect(49, 18, 53, 18, (x, y) => setG(x, y, 5)); rect(60, 12, 60, 25, (x, y) => setG(x, y, 5)); rect(60, 25, 70, 25, (x, y) => setG(x, y, 5));
+// 18 Nov 2026 (east side redraw, draft): a cobbled market lane replaces the asphalt street; dirt paths replace the sidewalks
+rect(49, 7, 71, 10, (x, y) => setG(x, y, 3));
+rect(49, 18, 53, 18, (x, y) => setG(x, y, 0)); rect(59, 11, 59, 33, (x, y) => setG(x, y, 0));
+rect(49, 23, 51, 23, (x, y) => setG(x, y, 0)); rect(49, 30, 51, 30, (x, y) => setG(x, y, 0));   // paths to the fronts of lots 5 and 8
 TOWER = { x: 1, y: 1, w: 8 }, BOARD = [8, 12], WELL = [5, 13];
 rect(1, 1, 8, 6, (x, y) => setBlk(x, y, 1));
 for (const r of [[49, 0, 70, 8], [49, 12, 58, 19], [59, 12, 70, 33], [1, 33, 70, 45]]) rect(...r, (x, y) => setRes(x, y, 1));
@@ -266,14 +267,13 @@ building('canteen', 50, 2, 7, 3, 'brown', 'red', [3, 'double'], '🍲 โรง�
 building('shop', 59, 2, 7, 3, 'blue', 'brown', [3, 'shop'], '👕 ร้านเสื้อผ้า', { kind: 'shop', w: 10, h: 6, wall: '#ffd9e6', floor: '#d9b48a' });
 building('cafe', 50, 13, 6, 3, 'blue', 'red', [2, 'single'], '☕ คาเฟ่', { kind: 'cafe', w: 10, h: 6, wall: '#d9efe6', floor: '#a8703f' });
 building('arcade', 61, 27, 8, 3, 'blue', 'red', [3, 'double'], '🕹️ ตึกเกม', { kind: 'arcade', w: 10, h: 9, wall: '#3d3478', floor: '#6a5aa8', slot: 16 });
-rect(64, 32, 65, 33, (x, y) => setG(x, y, 5));
+rect(60, 32, 69, 33, (x, y) => setG(x, y, 3));   // a small cobbled plaza in front of the hall
 putS(STALL, 67, 6, { dx: 2 }); setBlk(69, 6, 1); setBlk(70, 6, 1);
 add(6 * T + 16, g => { ['mgo', 'ram', 'lyc', 'wat', 'pum', 'tom'].filter(id => CROPS[id]).forEach((id, i) => { const a = cropArt(id); g.drawImage(a, 67 * T + 8 + i * 7 - (a.width >> 1) + 2, 6 * T + 11 - a.height + (i % 2) * 2); }); });
 places.push([69 * T, 3 * T + 6, '🥭 แผงผลไม้']);
-for (const x of [52, 58, 64, 70]) { put('city', [86, 98], x, 8, { block: true }); glows.push([x * T + 8, 7 * T + 6, 26, .6]); }
-for (const x of [55, 63, 69]) put('city', [85, 97], x, 11, { dx: 0 });
-put('city', 81, 57, 7); put('city', 82, 58, 7, { block: false }); put('city', 109, 66, 7); put('city', 102, 49, 7);
-put('city', 84, 49, 11); put('city', [91, 103], 61, 12); put('city', [92, 104], 62, 12);
+for (const x of [56, 63, 70]) { at(LAMP, x * T + 8, 11 * T + 14); setBlk(x, 11, 1); glows.push([x * T + 8, 11 * T - 10, 26, .55]); }
+putS(STALL, 60, 12, { dx: 2 }); putS(STALL, 64, 12, { dx: 2 });   // more market stalls on the lane's south side
+put('city', 84, 69, 33); put('city', [91, 103], 70, 33); put('city', [92, 104], 71, 33);   // bus stop on the south-east road (the town bus, later)
 REED = sprite(12, 14, (g, r) => { for (const [x, h] of [[2, 10], [5, 13], [8, 9]]) { r(x, 14 - h, 1, h, '#4f8f3a'); r(x, 14 - h, 2, 3, '#8a5a36'); } r(0, 12, 12, 2, '#3f7a30'); });
 // ---- central park: fountain plaza, a Thai sala, the Loy Krathong pond, benches, trees, lamps, flower beds ----
 SALA = sprite(50, 46, (g, r) => { r(3, 40, 44, 6, O); r(4, 41, 42, 4, '#b97a45'); r(4, 41, 42, 1, '#d99a62');
@@ -291,7 +291,8 @@ add(16 * T + 15, (g, t) => { const x = PARK.cx * T + 8, y = 16 * T + 10;
   g.fillStyle = '#bfe9ff'; for (let i = 0; i < 6; i++) { const a = (t * 1.8 + i / 6) % 1, dx = (i % 2 ? 1 : -1) * (2 + a * 11); g.fillRect(x + dx, y - 22 - Math.sin(a * Math.PI) * 9 + a * 12, 2, 2); } },
   { shadow: [PARK.cx * T + 8, 16 * T + 12, 28] });
 setBlk(27, 16, 1); setBlk(28, 16, 1); setBlk(29, 16, 1); places.push([PARK.cx * T + 8, 14.2 * T, '⛲ สวนกลางหมู่บ้าน']);
-places.push([31.5 * T, 23.7 * T, '🪷 สระบัว']);   // below the pond, clear of the fountain
+places.push([31.5 * T, 23.7 * T, '🪷 สระบัว']);   // 18 Nov 2026: Loy Krathong happens on the east pond   // below the pond, clear of the fountain
+// the landing: a small wooden deck with steps, where you stand to float a krathong
 DECK = sprite(34, 16, (g, r) => { r(0, 0, 34, 11, O); r(1, 1, 32, 9, '#c4864f'); for (let x = 6; x < 33; x += 5) r(x, 1, 1, 9, '#8a5a36'); r(1, 1, 32, 2, '#e0a56c');
   for (const x of [20, 29]) { r(x, 10, 3, 6, O); r(x + 1, 10, 1, 5, '#6b4428'); } r(0, 10, 9, 4, O); r(1, 11, 7, 2, '#c4864f'); });   // planks over the water, posts in it, a step up from the path
 add(LANDING[1] * T + 3, g => g.drawImage(DECK, LANDING[0] * T + 1, LANDING[1] * T + 3));
@@ -301,17 +302,21 @@ for (const [x, y] of [[26, 13], [27, 13], [29, 13], [30, 13], [26, 19], [27, 19]
 for (const [x, y, k] of [[32, 12, 'big'], [33, 14, 'mid'], [31, 14, 'sap'], [24, 21, 'big'], [23, 18, 'mid'], [26, 22, 'sap']]) tree(x, y, k);   // (the tree at 33, 22 went: it crowded the pond)
 putS(tiles('city', [[93, 94, 95]]), 24, 17); putS(tiles('city', [[93, 94, 95]]), 30, 11);
 for (const [x, y] of [[25, 15], [31, 15], [27, 20], [29, 11]]) { at(LAMP, x * T + 8, y * T + 14); setBlk(x, y, 1); glows.push([x * T + 8, y * T - 10, 26, .55]); }
-// (the plaza bunting is gone: it sat under the park's name)
+// (the plaza bunting is gone: it sat under the park's name; the Loy Krathong lights hang here during the event)
 // park + lake (Tiny Battle water) on the town side
-(() => { const x0 = 61, y0 = 15, w = 8, h = 9; rect(x0, y0, x0 + w - 1, y0 + h - 1, (x, y) => { setG(x, y, 6); setBlk(x, y, 1); }); })();
-for (const [x, y, id] of [[59, 13, 68], [69, 14, 67], [70, 21, 68], [60, 29, 68], [70, 30, 68]]) put('city', [id, id + 12], x, y);
+POND_E = ['..WWWWW.....', '.WWWWWWWW...', 'WWWWWWWWWW..', 'WWWWWWWWWWW.', 'WWWWWWWWWWWW', 'WWWWWWWWWWWW', '.WWWWWWWWW..', '.WWWWWWWW...', '..WWWWWW....', '...WWW......'];   // x 60–71, y 14–23; rows 18–19 run on east as a stream
+POND_E.forEach((row, i) => [...row].forEach((c, j) => { if (c === 'W') { setG(60 + j, 14 + i, 6); setBlk(60 + j, 14 + i, 1); } }));
+PIER = sprite(48, 14, (g, r) => { r(0, 0, 48, 12, O); r(1, 1, 46, 10, '#b97a45'); for (let x = 7; x < 46; x += 7) r(x, 1, 1, 10, '#8a5a36'); r(1, 1, 46, 2, '#d99a62'); r(4, 11, 3, 3, O); r(40, 11, 3, 3, O); });
+add(18 * T + 13, g => g.drawImage(PIER, 60 * T, 18 * T + 2)); for (const x of [60, 61, 62]) setBlk(x, 18, 0);   // a short pier: fishing starts here
+for (const [x, y] of [[61, 14], [67, 14], [70, 16], [60, 20], [62, 22], [66, 23], [69, 21]]) at(REED, x * T + 8, y * T + 15);
+for (const [x, y, id] of [[69, 14, 67], [70, 21, 68], [60, 29, 68], [70, 30, 68]]) tree(x, y, id === 67 ? 'sap' : 'mid');   // village trees, not Tiny City's
 putS(tiles('city', [[93, 94, 95]]), 61, 26); putS(tiles('city', [[93, 94, 95]]), 66, 26);
-for (const x of [61, 69]) { put('city', [86, 98], x, 24); glows.push([x * T + 8, 23 * T + 6, 26, .6]); }
+for (const x of [61, 69]) { at(LAMP, x * T + 8, 24 * T + 14); setBlk(x, 24, 1); glows.push([x * T + 8, 24 * T - 10, 26, .55]); }   // village lamps by the pond
 places.push([65 * T, 15 * T - 4, '🌊 บึงหมู่บ้าน']);
 // traffic on the town street
 // two lanes on road rows 9–10 (westbound on top, eastbound below). The car body sits at y 9–28 of its 32px tile, so y = body bottom + 4.
 LANE_W = 9 * T + 19, LANE_E = 10 * T + 19, ROAD_X0 = 49 * T, ROAD_X1 = (VC + VM) * T;   // cars drive on into the border
-CARS = [[52, LANE_E, 1, 0, 34], [66, LANE_W, -1, 1, 26], [62, LANE_E, 1, 1, 30], [55, LANE_W, -1, 0, 38]]
+CARS = [].filter(() => [[52, LANE_E, 1, 0, 34], [66, LANE_W, -1, 1, 26], [62, LANE_E, 1, 1, 30], [55, LANE_W, -1, 0, 38]])   // no cars in the village (they belong on the town map)
   .map(([x, y, d, k, v]) => ({ x: x * T, y, d, v, s: v, ids: k ? [[110, 111], [122, 123]] : [[112, 113], [124, 125]] }));
 CARS.forEach(c => { c.spr = tiles('city', c.ids); });
 
@@ -352,7 +357,7 @@ for (let x = 62; x <= 70; x += 2) for (let y = 37; y <= 43; y += 3) put('farm', 
 /* ---- trees: edges, the hedge between village and farm, a few between lanes ---- */
 inLot = (x, y) => LOTS.some(L => x >= L.x - 1 && x <= L.x + 10 && y >= L.y - 4 && y <= L.y + 3);
 free = (x, y) => x < VC && y < VR - 1 && gAt(x, y) === 1 && gAt(x, y + 1) === 1 && !blk(x, y) && !blk(x, y + 1) && !inLot(x, y) && !(x <= 9 && y <= 8) && !resAt(x, y);
-for (let y = 0; y < VR - 1; y++) for (const x of [0, VC - 1]) if (free(x, y) && rnd() < .55) tree(x, y, rnd() < .7 ? 'big' : 'mid');
+for (let y = 0; y < VR - 1; y++) for (const x of [0, VC - 1]) if (free(x, y) && rnd() < .55) { const k = rnd() < .7 ? 'big' : 'mid'; if (x === 0) tree(x, y, k); }   // east column: the border's tree line is enough
 for (let x = 1; x < 48; x++) { if (free(x, 31) && rnd() < .6) tree(x, 31, rnd() < .75 ? 'big' : 'mid'); if (free(x, 32) && rnd() < .3) tree(x, 32, 'mid'); if (free(x, 0) && rnd() < .5) tree(x, 0, rnd() < .5 ? 'big' : 'mid'); }
 for (let x = 1; x < VC - 1; x++) for (const y of [46, 47]) if (gAt(x, y) === 1 && !blk(x, y) && rnd() < .75) put('farm', [3, 15], x, y);
 for (let i = 0; i < 90; i++) { const x = 1 + ri(VC - 2), y = 1 + ri(44); if (free(x, y) && free(x + 1, y)) tree(x, y, rnd() < .5 ? 'big' : rnd() < .6 ? 'mid' : 'sap'); }
@@ -681,7 +686,7 @@ function frame(now, fixed) {
   keyMove(dt);
   H.tick(dt);
   for (const k of BOTS) botThink(k);
-  me.speed = 46 * rideMul();
+  me.speed = 46 * rideMul() * (window.__devSpeed || 1);   // __devSpeed: faster walking from the PTR dev panel
   for (const P of people) { P.t += dt; P.moving = !!P.path.length || !!P.kmove;
     if (P.path.length) { const [nx, ny] = P.path[0], tx = nx * T + 8, ty = ny * T + 12, dx = tx - P.px, dy = ty - P.py, d = Math.hypot(dx, dy), st = P.speed * dt;
       P.dir = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 'left' : 'right') : (dy < 0 ? 'up' : 'down');
@@ -1293,7 +1298,7 @@ return { me, held, C, R,
     if (M) playAt(M, cb); else if (id && H.games().some(g => g.id === id)) { closeCard(); H.play(id); }   // a game without a cabinet still starts
     else { closeCard(); me.after = null; travel(me, r.entry); } return true; },
     to(what, cb) { const r = arcRoom(); if (!r || !r[what]) return false; warpArc(); playAt({ x: r[what][0], y: r[what][1], st: what === 'alist' ? [r[what][0] - 1, r[what][1]] : null }, cb); return true; } }, // gAt / blk: tile and wall at (x, y), x and y may be negative (the border); the raw G / block rows start at WX0 / WY0, not 0
-  gAt: (x, y) => gAt(x, y), blk: (x, y) => blk(x, y), get G() { return G; }, get block() { return block; }, get ctx() { return ctx; }, ov: SR.getElementById('ov'),
+  gAt: (x, y) => gAt(x, y), blk: (x, y) => blk(x, y), hour: () => hour, setHour: h => { real = false; realB.classList.remove('on'); setHour(h, true); }, realClock: () => realB.onclick(), get G() { return G; }, get block() { return block; }, get ctx() { return ctx; }, ov: SR.getElementById('ov'),
   travel: c => { closeCard(); me.after = null; travel(me, c); }, place: c => place(me, c), warp: c => { closeCard(); warp(c); }, warpArc: () => { closeCard(); return warpArc(); },
   pos: () => cellOf(me), walkable: (x, y) => walkable(x, y), get ride() { return riding(me); }, rideMul: k => RIDES[k]?.[2] || 1,
   drawRide: (g, P, k, back, col) => { if (RIDE_SPR[k]) drawRide(g, P, k, back, col || ''); }, get rideCol() { const k = riding(me); return k ? rcolOk(k, F.rcol[k]) : ''; }, sceneOf, scene: () => scene, relots, closeCard,

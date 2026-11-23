@@ -85,17 +85,15 @@ for (const L of LOTS) if (L.garden) L.garden.forEach(([x, y]) => { const p = { x
   PLOTS.push(p); add(y * T + 14, (g, t) => drawPlot(g, p, t)); });
 """, "")
 # lots 5 + 8 moved out of the park to the east lane: no trees there, the side walk + lamp shift one column east
-rep(", [57, 22, 67], [55, 27, 68], [51, 24, 67]]) put('city'", "]) put('city'")
-rep("[60, 13, 68]", "[59, 13, 68]")
-rep("rect(59, 12, 59, 25, (x, y) => setG(x, y, 5)); rect(59, 25, 70, 25, (x, y) => setG(x, y, 5));", "rect(60, 12, 60, 25, (x, y) => setG(x, y, 5)); rect(60, 25, 70, 25, (x, y) => setG(x, y, 5));")
-rep("for (const x of [60, 69]) { put('city', [86, 98], x, 24);", "for (const x of [61, 69]) { put('city', [86, 98], x, 24);")
+rep(", [57, 22, 67], [55, 27, 68], [51, 24, 67]]) tree(", "]) tree(")
+rep("[[60, 13, 68], ", "[")   # 18 Nov 2026 (east side draft): that tree stood where the path to the lane now runs
 
 # ---------------- 🕹️ ตึกเกม (12 Nov 2026): the arcade hall south of the lake — every solo game is a machine inside ----------------
 # lessons: _test/references-arcade.md · machines from H.games(), tap = walk up + H.play(id); labels / live players drawn by village.js
 rep(", [66, 30, 67]", ""); rep(", [63, 31, 68]", "")
 _cafe = s[s.index("building('cafe', 50, 13"):].split('\n')[0]
 rep(_cafe, _cafe + "\nbuilding('arcade', 61, 27, 8, 3, 'blue', 'red', [3, 'double'], '🕹️ ตึกเกม', { kind: 'arcade', w: 10, h: 9, wall: '#3d3478', floor: '#6a5aa8', slot: 16 });"
-    "\nrect(64, 32, 65, 33, (x, y) => setG(x, y, 5));")
+    "\nrect(60, 32, 69, 33, (x, y) => setG(x, y, 3));   // a small cobbled plaza in front of the hall")
 rep("  if (r.kind === 'barn') {", """  if (r.kind === 'arcade') { lampW(1); lampW(7); rug('#ff6fa8', 1, 8, 8, 1);
     // 13 Nov 2026: 10 x 9 hall so it fits a phone at zoom 2 — three rows of cabinets with aisles between (stand on the row below a cabinet)
     // 18 Nov 2026: 12th spot at the far right of row 2, added last so the other cabinets keep their places (ซ้อนแฟ้มเสียดฟ้า had no cabinet, so it could not be played)
@@ -621,7 +619,7 @@ return { me, held, C, R,
     if (M) playAt(M, cb); else if (id && H.games().some(g => g.id === id)) { closeCard(); H.play(id); }   // a game without a cabinet still starts
     else { closeCard(); me.after = null; travel(me, r.entry); } return true; },
     to(what, cb) { const r = arcRoom(); if (!r || !r[what]) return false; warpArc(); playAt({ x: r[what][0], y: r[what][1], st: what === 'alist' ? [r[what][0] - 1, r[what][1]] : null }, cb); return true; } }, // gAt / blk: tile and wall at (x, y), x and y may be negative (the border); the raw G / block rows start at WX0 / WY0, not 0
-  gAt: (x, y) => gAt(x, y), blk: (x, y) => blk(x, y), get G() { return G; }, get block() { return block; }, get ctx() { return ctx; }, ov: SR.getElementById('ov'),
+  gAt: (x, y) => gAt(x, y), blk: (x, y) => blk(x, y), hour: () => hour, setHour: h => { real = false; realB.classList.remove('on'); setHour(h, true); }, realClock: () => realB.onclick(), get G() { return G; }, get block() { return block; }, get ctx() { return ctx; }, ov: SR.getElementById('ov'),
   travel: c => { closeCard(); me.after = null; travel(me, c); }, place: c => place(me, c), warp: c => { closeCard(); warp(c); }, warpArc: () => { closeCard(); return warpArc(); },
   pos: () => cellOf(me), walkable: (x, y) => walkable(x, y), get ride() { return riding(me); }, rideMul: k => RIDES[k]?.[2] || 1,
   drawRide: (g, P, k, back, col) => { if (RIDE_SPR[k]) drawRide(g, P, k, back, col || ''); }, get rideCol() { const k = riding(me); return k ? rcolOk(k, F.rcol[k]) : ''; }, sceneOf, scene: () => scene, relots, closeCard,

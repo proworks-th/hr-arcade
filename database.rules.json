@@ -2,8 +2,8 @@
   "rules": {
     "rooms": {
       "$room": {
-        ".read": "$room !== '_usave' && $room !== '_mkt'",
-        ".write": "$room !== '_usave' && $room !== '_mkt'",
+        ".read": "$room !== '_usave' && $room !== '_mkt' && $room !== '_loy2569'",
+        ".write": "$room !== '_usave' && $room !== '_mkt' && $room !== '_loy2569'",
         ".validate": "$room.length <= 16"
       },
       "_usave": {
@@ -32,6 +32,75 @@
           "$id": {
             ".write": true,
             ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 999 && (!data.exists() || newData.val() > data.val())"
+          }
+        }
+      },
+      "_loy2569": {
+        ".read": true,
+        "k": {
+          "$id": {
+            ".write": true,
+            ".validate": "newData.hasChildren(['n','k','s','w','t']) && newData.child('n').isString() && newData.child('n').val().length <= 20 && newData.child('k').isString() && newData.child('k').val().length <= 24 && newData.child('s').isNumber() && newData.child('s').val() >= 0 && newData.child('s').val() <= 3 && newData.child('w').isString() && newData.child('w').val().length <= 40 && newData.child('t').isNumber() && (!newData.child('m').exists() || (newData.child('m').isNumber() && newData.child('m').val() >= 0 && newData.child('m').val() <= 2)) && (newData.child('m').val() !== 1 || newData.child('w').val() === '')",
+            "f": {
+              ".validate": "newData.isString() && newData.val().length <= 20"
+            },
+            "fk": {
+              ".validate": "newData.isString() && newData.val().length <= 24"
+            },
+            "q": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 3"
+            },
+            "p": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100"
+            },
+            "u": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1"
+            }
+          }
+        },
+        "n": {
+          ".write": true,
+          ".validate": "newData.isNumber() && newData.val() === (data.exists() ? data.val() : 0) + 1"
+        },
+        "by": {
+          "$key": {
+            ".write": true,
+            ".validate": "newData.hasChildren(['n','c']) && newData.child('n').isString() && newData.child('n').val().length <= 20 && newData.child('c').isNumber() && newData.child('c').val() === (data.exists() ? data.child('c').val() : 0) + 1"
+          }
+        },
+        "to": {
+          "$fk": {
+            ".read": true,
+            "$id": {
+              ".write": true,
+              ".validate": "newData.hasChildren(['n','w','t']) && newData.child('n').isString() && newData.child('n').val().length <= 20 && newData.child('w').isString() && newData.child('w').val().length <= 40 && newData.child('t').isNumber()"
+            }
+          }
+        },
+        "c": {
+          "$id": {
+            ".write": "!data.exists()",
+            ".validate": "newData.hasChildren(['k','n','t']) && newData.child('k').isString() && newData.child('k').val().length <= 24 && newData.child('n').isString() && newData.child('n').val().length <= 20 && newData.child('t').isNumber()"
+          }
+        },
+        "l": {
+          "$id": {
+            ".write": "!data.exists()",
+            ".validate": "newData.hasChildren(['n','k','c','t']) && newData.child('n').isString() && newData.child('n').val().length <= 20 && newData.child('k').isString() && newData.child('k').val().length <= 24 && newData.child('c').isNumber() && newData.child('c').val() >= 0 && newData.child('c').val() <= 2 && newData.child('t').isNumber()"
+          }
+        },
+        "lk": {
+          "$kid": {
+            "$key": {
+              ".write": "!data.exists()",
+              ".validate": "newData.val() === 1 && $key.length <= 24"
+            }
+          }
+        },
+        "best": {
+          "$day": {
+            ".write": "!data.exists()",
+            ".validate": "newData.hasChildren(['n','k','p','s','q','t']) && newData.child('n').isString() && newData.child('n').val().length <= 20 && newData.child('p').isNumber() && newData.child('p').val() >= 0 && newData.child('p').val() <= 100 && $day.length <= 10"
           }
         }
       }
